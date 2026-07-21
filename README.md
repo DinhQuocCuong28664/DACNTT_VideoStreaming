@@ -9,6 +9,8 @@
 >
 > **Giảng viên hướng dẫn:** Thầy Mai Văn Mạnh
 > **Định hướng:** DEVOPS, CONTAINERIZATION & CLOUD SYSTEMS
+> **GitHub:** https://github.com/DinhQuocCuong28664 | https://github.com/minhduc14022005-dev
+> **Domain:** https://zelostech.site
 
 ---
 
@@ -19,8 +21,11 @@
 3. [Luồng nghiệp vụ thực tế (Business Flow)](#3-luồng-nghiệp-vụ-thực-tế-business-flow)
 4. [Kiến trúc hệ thống (Architecture Diagram)](#4-kiến-trúc-hệ-thống-architecture-diagram)
 5. [Công nghệ sử dụng (Tech Stack)](#5-công-nghệ-sử-dụng-tech-stack)
-6. [Giải thích thuật ngữ kỹ thuật](#6-giải-thích-thuật-ngữ-kỹ-thuật)
-7. [Nhận diện rủi ro & Chiến lược giảm thiểu](#7-nhận-diện-rủi-ro--chiến-lược-giảm-thiểu)
+6. [DevSecOps & CI/CD Pipeline](#6-devsecops--cicd-pipeline)
+7. [Hệ thống Giám sát (Monitoring & Observability)](#7-hệ-thống-giám-sát-monitoring--observability)
+8. [Giải thích thuật ngữ kỹ thuật](#8-giải-thích-thuật-ngữ-kỹ-thuật)
+9. [Nhận diện rủi ro & Chiến lược giảm thiểu](#9-nhận-diện-rủi-ro--chiến-lược-giảm-thiểu)
+10. [Lộ trình thực hiện (Timeline)](#10-lộ-trình-thực-hiện-timeline)
 
 ---
 
@@ -76,8 +81,18 @@ Các nền tảng chia sẻ video hiện đại (YouTube, Vimeo, TikTok) đều 
 
 *D. Hạ tầng Cloud-Native, Containerization & DevOps:*
 - **Containerization**: Đóng gói môi trường transcoding (FFmpeg + Node.js) thành Docker Image tối ưu qua Multi-stage Build. Push Image lên Amazon ECR.
-- **CI/CD Pipeline**: Xây dựng bằng **GitHub Actions**: Tự động chạy lint/test → Build Docker Image → Push lên ECR → Cập nhật AWS Batch Job Definition → Deploy Backend API.
-- **Infrastructure as Code (IaC)**: Toàn bộ hạ tầng AWS (S3 Buckets, SQS Queue, Batch Compute Environment, Fargate, ECR, CloudFront Distribution, IAM Roles, DynamoDB/MongoDB) được quản lý tự động bằng **Terraform**. Một câu lệnh `terraform apply` dựng toàn bộ hệ thống.
+- **CI/CD Pipeline**: Xây dựng bằng **GitHub Actions** với tích hợp DevSecOps: tự động chạy Lint/Test → Quét bảo mật mã nguồn (SonarQube SAST) → Quét lỗ hổng Docker Image và thư viện dependencies (Trivy) → Phát hiện secret bị lộ trong code (Gitleaks) → Build Docker Image → Push lên ECR → Cập nhật AWS Batch Job Definition → Deploy Backend API. Pipeline tự động chặn deploy nếu phát hiện lỗ hổng bảo mật Critical/High (Quality Gate).
+- **Infrastructure as Code (IaC)**: Toàn bộ hạ tầng AWS (S3 Buckets, SQS Queue, Batch Compute Environment, Fargate, ECR, CloudFront Distribution, IAM Roles, MongoDB) được quản lý tự động bằng **Terraform**. Một câu lệnh `terraform apply` dựng toàn bộ hệ thống.
+
+*E. Tích hợp Security Scanning đa tầng (DevSecOps):*
+- **SonarQube (SAST):** Quét mã nguồn tìm lỗ hổng bảo mật (SQL Injection, XSS, Path Traversal), phát hiện Code Smell và Technical Debt, đo Code Coverage. Thiết lập Quality Gate tự động block deploy khi code không đạt chuẩn.
+- **Trivy (Container & SCA Scanning):** Quét Docker Image tìm lỗ hổng CVE trong OS packages. Quét file `package.json` tìm lỗ hổng trong thư viện open-source (Software Composition Analysis).
+- **Gitleaks (Secret Detection):** Quét toàn bộ Git history phát hiện API key, Database password, JWT Secret bị commit nhầm vào source code.
+
+*F. Hệ thống Giám sát (Monitoring & Observability):*
+- **Amazon CloudWatch**: Thu thập Metrics (CPU, Memory, thời gian xử lý transcoding, số job thành công/thất bại) từ AWS Batch/Fargate và Backend API. Tạo Dashboard trực quan theo dõi health hệ thống real-time.
+- **CloudWatch Alarms + Amazon SNS**: Cấu hình cảnh báo tự động khi phát hiện bất thường (VD: SQS Dead Letter Queue có message → gửi email/Telegram cảnh báo ngay lập tức).
+- **Structured Logging**: Tất cả log từ Transcoder Container và Backend được ghi theo format JSON chuẩn, đẩy về CloudWatch Logs để tìm kiếm và debug nhanh chóng.
 
 **3. Công nghệ sử dụng:**
 - **Frontend**: React.js, HLS.js (Adaptive Bitrate Video Player), Axios.
@@ -86,19 +101,26 @@ Các nền tảng chia sẻ video hiện đại (YouTube, Vimeo, TikTok) đều 
 - **Cloud Infrastructure**: Amazon S3 (Storage), Amazon SQS (Message Queue), AWS Batch on Fargate (Serverless Compute), Amazon ECR (Container Registry), Amazon CloudFront (CDN), Amazon SNS/SES (Notification).
 - **Database**: MongoDB Atlas (Video Metadata, User data).
 - **DevOps & IaC**: Docker, GitHub Actions (CI/CD), Terraform (Infrastructure as Code).
+- **DevSecOps**: SonarQube (SAST + Quality Gate), Trivy (Container & SCA Scanning), Gitleaks (Secret Detection).
+- **Monitoring**: Amazon CloudWatch (Metrics + Logs + Alarms), Amazon SNS (Alerting).
+- **Load Testing**: k6 (Mô phỏng tải upload đồng thời).
+- **HTTPS**: AWS Certificate Manager (ACM) + CloudFront (TLS/SSL).
 
 **4. Phương pháp đánh giá:**
 - **Đánh giá trải nghiệm xem video (Quality of Experience):** Đo thời gian từ lúc bấm Play đến khi khung hình đầu tiên hiển thị (Time-to-First-Frame). Kiểm tra chuyển đổi chất lượng mượt mà khi thay đổi băng thông mạng (dùng DevTools throttle).
 - **Đánh giá hiệu năng Transcoding Pipeline:** Đo thời gian xử lý end-to-end (từ lúc upload xong đến khi video sẵn sàng xem) cho các kích thước file khác nhau (100MB, 500MB, 1GB).
-- **Kiểm thử chịu tải (Stress Test):** Dùng script tự động upload cùng lúc 50-100 video lên S3 để kiểm chứng khả năng scale tự động của AWS Batch và khả năng giữ lệnh chờ xử lý của SQS.
+- **Kiểm thử chịu tải (Load Testing):** Dùng **k6** viết kịch bản tự động upload cùng lúc 50-100 video lên S3 để kiểm chứng khả năng scale tự động của AWS Batch và khả năng giữ lệnh chờ xử lý của SQS. Đo Throughput (request/giây), Latency p95, Error Rate (%).
+- **Kiểm chứng bảo mật (Security Report):** Xuất báo cáo SonarQube (SAST Report), Trivy (Vulnerability Report), Gitleaks (Secret Scan Report) cho toàn bộ codebase.
 - **Phân tích chi phí (FinOps):** Lập bảng so sánh chi phí vận hành giữa kiến trúc EC2 chạy FFmpeg 24/7 so với kiến trúc Serverless Batch/Fargate chỉ tính tiền theo thời gian thực thi.
 
 **5. Kết quả dự kiến:**
 - Một **nền tảng chia sẻ video hoàn chỉnh** (sản phẩm đầu cuối): người dùng có thể đăng ký, upload video, xem video với nhiều chất lượng (Adaptive Bitrate HLS), và chia sẻ video — tương tự trải nghiệm YouTube.
 - Hệ thống **Transcoding Pipeline tự động** trên Serverless Container: Video upload lên → tự động chuyển mã sang HLS (360p/720p/1080p) → phân phối qua CDN → sẵn sàng xem.
 - Bộ mã nguồn **IaC (Terraform)** chuẩn hóa, dựng toàn bộ hạ tầng AWS chỉ bằng 1 câu lệnh.
-- Đường ống **CI/CD** tự động hóa toàn diện từ commit code đến production.
+- Đường ống **CI/CD** tự động hóa toàn diện từ commit code đến production với Security Gate tích hợp.
+- Báo cáo bảo mật từ SonarQube (SAST Report), Trivy (Vulnerability Report), Gitleaks (Secret Scan Report).
 - Báo cáo phân tích hiệu năng transcoding và tối ưu chi phí (FinOps Report).
+- Sản phẩm được triển khai trên hosting thực tế với domain `zelostech.site` và HTTPS.
 
 ---
 
@@ -249,56 +271,278 @@ Dưới đây là luồng hoạt động hoàn chỉnh từ góc nhìn người 
 | **Amazon ECR** | Container Registry: lưu trữ Docker Image |
 | **Amazon SNS / SES** | Notification: gửi email/SMS thông báo khi transcoding xong |
 | **Terraform** | Infrastructure as Code: tự động hóa toàn bộ hạ tầng AWS |
-| **GitHub Actions** | CI/CD Pipeline: tự động test, build, push, deploy |
+| **GitHub Actions** | CI/CD Pipeline: tự động test, scan, build, push, deploy |
+
+### Khối DevSecOps (Bảo mật tích hợp)
+| Công nghệ | Vai trò |
+|-----------|---------|
+| **SonarQube (Community Edition)** | Quét mã nguồn: lỗ hổng bảo mật, Code Smell, Technical Debt, Coverage |
+| **Trivy** | Quét Docker Image + dependencies tìm lỗ hổng CVE |
+| **Gitleaks** | Phát hiện API key, password bị commit nhầm vào Git |
+
+### Khối Monitoring & Observability
+| Công nghệ | Vai trò |
+|-----------|---------|
+| **Amazon CloudWatch** | Thu thập Metrics (CPU, Memory, Job Duration) + Logs tập trung |
+| **CloudWatch Alarms** | Cảnh báo tự động khi metrics vượt ngưỡng |
+| **Amazon SNS** | Gửi cảnh báo qua Email/Telegram khi hệ thống gặp sự cố |
+
+### Khối Kiểm thử & Triển khai
+| Công nghệ | Vai trò |
+|-----------|---------|
+| **k6** | Load Testing: mô phỏng tải upload đồng thời, đo hiệu năng |
+| **AWS Certificate Manager (ACM)** | Tự động cấp chứng chỉ HTTPS/TLS cho domain `zelostech.site` |
 
 ---
 
-## 6. GIẢI THÍCH THUẬT NGỮ KỸ THUẬT
+## 6. DEVSECOPS & CI/CD PIPELINE
 
-### 6.1. HLS (HTTP Live Streaming)
-Giao thức phát video trực tuyến được phát triển bởi Apple, hiện là chuẩn công nghiệp được dùng bởi YouTube, Netflix, Twitch. Thay vì tải toàn bộ file video về rồi mới phát (download), HLS chia video thành các đoạn nhỏ (segment `.ts`, mỗi đoạn 2-10 giây) và phát từng đoạn một qua giao thức HTTP thông thường. Trình phát chỉ cần tải trước 1-2 đoạn là đã có thể bắt đầu phát ngay.
+### 6.1. Kiến trúc Pipeline (GitHub Actions)
 
-### 6.2. Adaptive Bitrate Streaming (ABR)
-"Trí thông minh" của HLS. Cùng một video nhưng được tạo ra ở nhiều mức chất lượng khác nhau (360p, 720p, 1080p). Trình phát video (HLS.js) liên tục đo tốc độ mạng hiện tại của người xem. Nếu mạng nhanh → tải segment chất lượng cao (1080p). Nếu mạng chậm → tự động chuyển sang chất lượng thấp (360p) ở segment tiếp theo để tránh giật (buffering). Người xem không cần làm gì — mọi thứ diễn ra tự động.
+```
+Developer Push Code
+       ↓
+GitHub Actions Trigger
+       ↓
+┌─────────────────────────────────┐
+│  Stage 1: Code Quality         │
+│  - ESLint, Prettier            │
+│  - Jest unit tests             │
+│  - npm audit (dependency scan) │
+└────────────┬────────────────────┘
+             ↓
+┌─────────────────────────────────┐
+│  Stage 2: Security Scanning    │
+│  - Gitleaks (Secret Detection) │
+│  - SonarQube (SAST + Quality   │
+│    Gate: block nếu Critical)   │
+└────────────┬────────────────────┘
+             ↓
+┌─────────────────────────────────┐
+│  Stage 3: Build & Scan Image   │
+│  - docker build (Multi-stage)  │
+│  - Trivy scan Docker Image     │
+│    (block nếu CVE Critical)    │
+│  - docker push → Amazon ECR    │
+└────────────┬────────────────────┘
+             ↓
+┌─────────────────────────────────┐
+│  Stage 4: Deploy               │
+│  - Update Batch Job Definition │
+│  - Deploy Backend API          │
+│  - CloudFront cache invalidate │
+└─────────────────────────────────┘
+```
 
-### 6.3. Manifest / Playlist (`.m3u8`)
-File văn bản nhỏ (chỉ vài KB) đóng vai trò "Mục lục" cho trình phát video:
-- **Master Playlist**: Liệt kê tất cả phiên bản chất lượng có sẵn (360p, 720p, 1080p) kèm thông tin băng thông tối thiểu cần thiết cho mỗi mức.
-- **Media Playlist**: Liệt kê danh sách URL của từng segment `.ts` theo đúng thứ tự phát cho một mức chất lượng cụ thể.
+### 6.2. Security Scanning đa tầng
 
-### 6.4. HLS.js
-Thư viện JavaScript mã nguồn mở cho phép phát video HLS trên mọi trình duyệt (Chrome, Firefox, Edge — những trình duyệt không hỗ trợ HLS sẵn). HLS.js tải file `.m3u8`, phân tích các chất lượng khả dụng, tải từng segment `.ts`, chuyển đổi (transmux) sang định dạng fMP4, và đẩy vào trình duyệt qua **Media Source Extensions (MSE)** API để phát video.
+| Tầng | Công cụ | Mục tiêu | Hành động khi phát hiện |
+|------|---------|----------|------------------------|
+| **SAST** | SonarQube | Quét mã nguồn tìm SQL Injection, XSS, Path Traversal. Đo Code Coverage, phát hiện Code Smell và Technical Debt | Quality Gate → Block deploy nếu có Critical Vulnerability hoặc Coverage < 80% |
+| **SCA** | Trivy | Quét `package.json` tìm lỗ hổng CVE trong thư viện open-source | Block deploy nếu có CVE Critical/High |
+| **Container Scan** | Trivy | Quét Docker Image tìm lỗ hổng CVE trong OS packages (`debian-slim`, FFmpeg) | Block deploy nếu có CVE Critical/High |
+| **Secret Detection** | Gitleaks | Quét toàn bộ Git history phát hiện API key, AWS credentials, JWT Secret bị commit nhầm | Block deploy + cảnh báo ngay lập tức |
 
-### 6.5. Pre-signed URL (Đường link upload có thời hạn)
-Thay vì upload file qua Backend Server (gây tắc nghẽn), Backend tạo một đường link tạm thời (có hạn 15 phút) cho phép Client upload trực tiếp lên S3. Đường link này chứa chữ ký số (Signature) của AWS — đảm bảo chỉ người được cấp link mới có quyền upload, và link hết hạn sau thời gian quy định.
+### 6.3. Workflows
 
-### 6.6. AWS Batch on Fargate (Serverless Container)
-AWS Batch là dịch vụ quản lý hàng đợi xử lý hàng loạt (Batch Processing). Khi kết hợp với Fargate, nó trở thành Serverless: tự động khởi tạo Container khi có job cần xử lý, tự phân bổ CPU/RAM phù hợp, và tự tiêu hủy Container khi xong việc. Không cần duy trì máy chủ.
-
-### 6.7. Amazon CloudFront (CDN)
-Mạng phân phối nội dung (Content Delivery Network) toàn cầu của AWS. CloudFront cache các file `.ts` video segments tại hơn 400 Edge Location trên khắp thế giới. Khi người xem ở Việt Nam bấm Play, video được tải từ Edge Location tại Singapore (gần nhất) thay vì từ S3 tại US — giảm độ trễ từ 200ms xuống còn 20ms.
-
-### 6.8. Infrastructure as Code (IaC - Terraform)
-Quản lý cơ sở hạ tầng đám mây bằng code. Thay vì lên giao diện web AWS click chuột tạo từng cái S3, SQS, CloudFront... bạn viết file cấu hình Terraform (`.tf`), chạy `terraform apply` → toàn bộ kiến trúc được dựng lên chuẩn xác 100%. Có thể tái sử dụng, version control trên Git, và rollback khi có sự cố.
+| File Workflow | Trigger | Nội dung |
+|--------------|---------|----------|
+| `ci-backend.yml` | Push vào `backend/` | Lint → Test → SonarQube → Trivy SCA → Build check |
+| `ci-transcoder.yml` | Push vào `transcoder/` | Build Docker Image → Trivy scan Image → Push ECR → Update Batch Job Definition |
+| `cd-deploy.yml` | Merge vào `main` | Deploy Backend API → Invalidate CloudFront cache |
+| `security-scan.yml` | Mỗi Pull Request | Gitleaks scan → SonarQube SAST → Trivy dependency scan |
 
 ---
 
-## 7. NHẬN DIỆN RỦI RO & CHIẾN LƯỢC GIẢM THIỂU (Senior Insights)
+## 7. HỆ THỐNG GIÁM SÁT (Monitoring & Observability)
+
+### 7.1. Kiến trúc giám sát
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                Amazon CloudWatch                         │
+│                                                          │
+│  ┌─────────────────┐  ┌──────────────────┐              │
+│  │ CloudWatch       │  │ CloudWatch       │              │
+│  │ Metrics          │  │ Logs             │              │
+│  │ - CPU/Memory     │  │ - Backend API    │              │
+│  │ - Job Duration   │  │ - Transcoder     │              │
+│  │ - SQS Queue      │  │ - Error Traces   │              │
+│  │   Depth          │  │   (JSON format)  │              │
+│  └────────┬─────────┘  └──────────────────┘              │
+│           │                                              │
+│  ┌────────▼─────────────────────────────────┐            │
+│  │ CloudWatch Alarms                         │            │
+│  │ - SQS DLQ messages > 0 → ALERT           │            │
+│  │ - Transcoding Error Rate > 5% → ALERT    │            │
+│  │ - API Latency p95 > 3s → WARNING         │            │
+│  └────────┬──────────────────────────────────┘            │
+│           │                                              │
+│  ┌────────▼────────┐                                     │
+│  │ Amazon SNS       │                                     │
+│  │ → Email Alert    │                                     │
+│  │ → Telegram Bot   │                                     │
+│  └──────────────────┘                                     │
+└─────────────────────────────────────────────────────────┘
+```
+
+### 7.2. Metrics quan trọng cần theo dõi
+
+| Metric | Nguồn | Mục đích |
+|--------|-------|----------|
+| **Upload Success Rate** | Backend API | Tỷ lệ upload thành công vs thất bại |
+| **SQS Queue Depth** | Amazon SQS | Số lượng video đang chờ transcoding (phát hiện tắc nghẽn) |
+| **SQS DLQ Messages** | Amazon SQS DLQ | Số message lỗi sau retry (= số video transcode thất bại) |
+| **Transcoding Duration** | Fargate Container | Thời gian xử lý trung bình mỗi video (phát hiện performance regression) |
+| **Transcoding Error Rate** | Fargate Container | Tỷ lệ job lỗi / tổng job (mục tiêu < 1%) |
+| **API Response Latency p95** | Backend API | 95% request xử lý trong bao lâu (mục tiêu < 500ms) |
+| **CloudFront Cache Hit Ratio** | CloudFront | Tỷ lệ request được serve từ cache (mục tiêu > 95%) |
+| **S3 Storage Used** | Amazon S3 | Dung lượng lưu trữ để dự báo chi phí |
+
+### 7.3. Structured Logging
+
+Tất cả log từ Backend và Transcoder Container được ghi theo format JSON chuẩn:
+```json
+{
+  "timestamp": "2026-07-21T12:30:00Z",
+  "level": "INFO",
+  "service": "transcoder",
+  "videoId": "abc123",
+  "action": "transcode_complete",
+  "duration_seconds": 45,
+  "renditions": ["360p", "720p", "1080p"],
+  "output_size_mb": 125.4
+}
+```
+
+---
+
+## 8. GIẢI THÍCH THUẬT NGỮ KỸ THUẬT
+
+### Video Streaming
+| Thuật ngữ | Giải thích |
+|-----------|------------|
+| **HLS** | HTTP Live Streaming — Giao thức phát video do Apple phát triển, chuẩn công nghiệp (YouTube, Netflix, Twitch). Chia video thành segment `.ts` (2-10 giây), phát từng đoạn qua HTTP. |
+| **ABR** | Adaptive Bitrate Streaming — Tự động chuyển chất lượng (360p/720p/1080p) theo tốc độ mạng người xem. |
+| **Manifest (`.m3u8`)** | File "mục lục" cho trình phát video. Master Playlist liệt kê các chất lượng. Media Playlist liệt kê danh sách segment `.ts`. |
+| **HLS.js** | Thư viện JavaScript phát video HLS trên mọi trình duyệt (Chrome, Firefox, Edge). Transmux `.ts` sang fMP4 qua MSE API. |
+| **Transcoding** | Quá trình chuyển đổi video từ định dạng/codec/độ phân giải này sang định dạng khác. |
+| **FFmpeg** | Công cụ mã nguồn mở mạnh nhất để xử lý video: transcode, cắt, ghép, tạo HLS segments, sinh thumbnail. |
+
+### Cloud & Serverless
+| Thuật ngữ | Giải thích |
+|-----------|------------|
+| **Pre-signed URL** | Đường link upload tạm thời (15 phút) cho phép Client upload trực tiếp lên S3 mà không cần đi qua Backend. |
+| **AWS Batch on Fargate** | Dịch vụ Serverless: tự động tạo Container khi có job, tự tiêu hủy khi xong. Không cần duy trì máy chủ. |
+| **Amazon CloudFront** | CDN toàn cầu (400+ Edge Location). Cache video `.ts` gần người xem, giảm độ trễ. |
+| **Amazon SQS** | Message Queue: hàng đợi bộ đệm giữa upload và transcoding. Đảm bảo không rớt task dù upload ồ ạt. |
+| **Amazon ECR** | Container Registry: kho lưu trữ Docker Image trên AWS. |
+| **OAC** | Origin Access Control — S3 hoàn toàn Private, chỉ CloudFront truy cập được. |
+| **Event-Driven** | Kiến trúc dựa trên sự kiện: S3 upload xong → phát event → SQS nhận → Batch xử lý. Không có polling liên tục. |
+
+### DevOps & IaC
+| Thuật ngữ | Giải thích |
+|-----------|------------|
+| **Docker** | "Đóng hộp" ứng dụng + môi trường vào Container. Ai nhận cũng chạy được y hệt. |
+| **Multi-stage Build** | Kỹ thuật Docker: dùng 1 stage để build, 1 stage để chạy → Image nhỏ gọn hơn 5-10 lần. |
+| **Terraform** | Viết code (`.tf`) để tạo tài nguyên Cloud tự động. Không cần click chuột trên AWS Console. |
+| **CI/CD** | CI: Push code → tự động test. CD: Test pass → tự động build + deploy lên Production. |
+| **GitHub Actions** | Dịch vụ CI/CD tích hợp sẵn trong GitHub. |
+
+### DevSecOps & Bảo mật
+| Thuật ngữ | Giải thích |
+|-----------|------------|
+| **DevSecOps** | Dev + Sec + Ops. Tích hợp bảo mật vào mọi giai đoạn phát triển phần mềm, không để cuối cùng mới kiểm tra. |
+| **SAST** | Static Application Security Testing — Quét mã nguồn (code tĩnh) tìm lỗ hổng trước khi build. |
+| **SCA** | Software Composition Analysis — Quét các thư viện mã nguồn mở tìm lỗ hổng CVE đã biết. |
+| **SonarQube** | Nền tảng quét code quality + SAST. Phát hiện bug, lỗ hổng, Code Smell, đo Coverage. Bản Community miễn phí. |
+| **Quality Gate** | Ngưỡng chất lượng tự động. VD: "Coverage < 80% hoặc có Critical Vulnerability → Block Deploy". |
+| **Code Smell** | Code chạy được nhưng thiết kế tệ, khó bảo trì. SonarQube phát hiện và đề xuất sửa. |
+| **Technical Debt** | "Nợ kỹ thuật" — Số giờ ước tính cần để sửa hết các vấn đề trong code. |
+| **Trivy** | Công cụ quét lỗ hổng CVE trong Docker Image, dependencies, và cấu hình IaC. |
+| **CVE** | Common Vulnerabilities and Exposures — Mã định danh quốc tế cho lỗ hổng bảo mật đã công bố. |
+| **Gitleaks** | Quét Git history phát hiện API key, password, JWT secret bị commit nhầm. |
+| **Shift-Left Security** | Triết lý "dịch chuyển bảo mật sang trái" — kiểm tra bảo mật sớm nhất có thể (lúc viết code). |
+
+### Monitoring & Kiểm thử
+| Thuật ngữ | Giải thích |
+|-----------|------------|
+| **CloudWatch** | Dịch vụ giám sát của AWS: thu thập metrics, logs, đặt alarms. |
+| **Structured Logging** | Ghi log theo format JSON chuẩn để dễ tìm kiếm và phân tích tự động. |
+| **k6** | Công cụ Load Testing viết script bằng JavaScript. Mô phỏng hàng trăm/nghìn user đồng thời. |
+| **Throughput** | Số request hệ thống xử lý được mỗi giây (req/s). |
+| **Latency p95** | 95% request được xử lý trong bao nhiêu mili-giây. |
+| **Time-to-First-Frame** | Thời gian từ bấm Play đến khi khung hình đầu tiên hiển thị. |
+| **FinOps** | Financial Operations — Phân tích và tối ưu chi phí vận hành Cloud. |
+
+---
+
+## 9. NHẬN DIỆN RỦI RO & CHIẾN LƯỢC GIẢM THIỂU (Senior Insights)
 
 Để đảm bảo hệ thống vận hành hoàn hảo trên môi trường Production thực tế, dưới đây là phân tích các rủi ro kỹ thuật lớn nhất và chiến lược tối ưu hóa:
 
-### 7.1. Bẫy SQS Visibility Timeout (Rủi ro xử lý trùng lặp)
+### 9.1. Bẫy SQS Visibility Timeout (Rủi ro xử lý trùng lặp)
 - **Vấn đề:** Thời gian transcode video rất khó đoán (video 100MB mất 30 giây, video 5GB có thể mất 1 tiếng). Khi Fargate nhận task từ SQS, task đó sẽ bị "ẩn" (Invisible). Nếu cấu hình `Visibility Timeout` của SQS quá ngắn so với thời gian transcode thực tế, SQS sẽ tưởng Container đã chết → làm task "hiện" lại → Một Container khác sẽ nhặt lấy → 1 video bị transcode trùng lặp 2 lần (tốn gấp đôi tiền Cloud).
 - **Chiến lược giải quyết (Heartbeat Pattern):** Đặt Visibility Timeout ngắn (5 phút). Trong code Node.js của Container, tạo vòng lặp `setInterval`: cứ mỗi 3 phút gọi API `ChangeMessageVisibility` để "xin gia hạn" thêm 5 phút. Nếu Container crash thật, vòng lặp dừng → 5 phút sau task tự nhả ra cho máy khác.
 
-### 7.2. Rủi ro Cold Start & Tối ưu Docker Image
+### 9.2. Rủi ro Cold Start & Tối ưu Docker Image
 - **Vấn đề:** Mỗi lần AWS Batch khởi tạo Container mới, Fargate phải kéo Docker Image từ ECR. Image chứa FFmpeg + đầy đủ codec có thể nặng tới 1.5GB → Cold Start mất 40-60 giây.
 - **Chiến lược giải quyết:**
   - **Multi-stage Build** bắt buộc: dùng base image `debian:bullseye-slim` hoặc `node:18-slim` (~70MB). Tránh `alpine` vì FFmpeg cần `glibc` (Alpine dùng `musl libc` → lỗi tương thích).
   - Cấu hình **AWS PrivateLink (VPC Endpoint)** nối thẳng mạng nội bộ VPC → ECR, tránh pull Image qua Internet công cộng → tốc độ pull tăng gấp 3-4 lần.
 
-### 7.3. Chi phí CloudFront Egress (Rủi ro phình phí CDN)
+### 9.3. Chi phí CloudFront Egress (Rủi ro phình phí CDN)
 - **Vấn đề:** Video streaming tiêu tốn băng thông rất lớn. Nếu có 1.000 người xem video 1080p (4Mbps) cùng lúc trong 10 phút, lượng data transfer qua CloudFront là khoảng 300GB — chi phí egress có thể lên đến $25/ngày chỉ cho 1 video.
 - **Chiến lược giải quyết:**
   - Cấu hình **Cache Policy** trên CloudFront: cache `.ts` segments với TTL dài (24h) vì segments không bao giờ thay đổi sau khi transcode.
   - Thiết lập **S3 Lifecycle Policy**: tự động chuyển video gốc (Raw) sang S3 Glacier (storage rẻ hơn 90%) sau 30 ngày.
+
+---
+
+## 10. LỘ TRÌNH THỰC HIỆN (Timeline)
+
+### Giai đoạn 1: Nền tảng cốt lõi (Tuần 1-2)
+- [ ] Khởi tạo repository, cấu trúc thư mục Monorepo
+- [ ] Setup Frontend (Vite + React.js + HLS.js)
+- [ ] Setup Backend (Node.js + Express + MongoDB Atlas)
+- [ ] Thiết kế Database Schema (Video, User)
+- [ ] Bắt đầu viết Outline báo cáo song song
+
+### Giai đoạn 2: Backend API & Frontend (Tuần 3-5)
+- [ ] Xây dựng API: Auth (JWT), Video CRUD, Pre-signed URL
+- [ ] Xây dựng Frontend: Upload Page (Progress Bar), Watch Page (HLS.js Player), Channel Page
+- [ ] Tích hợp Frontend ↔ Backend ↔ S3
+
+### Giai đoạn 3: Transcoder Container (Tuần 5-7)
+- [ ] Viết FFmpeg Transcoding Script (360p/720p/1080p → HLS)
+- [ ] Viết SQS Handler + Heartbeat Pattern
+- [ ] Viết Dockerfile Multi-stage Build (debian-slim + FFmpeg + Node.js)
+- [ ] Test transcoding trên local trước khi lên Cloud
+
+### Giai đoạn 4: Terraform IaC & CI/CD (Tuần 7-10)
+- [ ] Viết Terraform modules (S3, SQS, ECR, Batch, CloudFront, IAM, VPC)
+- [ ] Xây dựng CI/CD Pipeline (GitHub Actions)
+- [ ] Tích hợp SonarQube vào Pipeline (SAST + Quality Gate)
+- [ ] Tích hợp Trivy vào Pipeline (Container & SCA Scanning)
+- [ ] Tích hợp Gitleaks vào Pipeline (Secret Detection)
+- [ ] Thiết lập CloudWatch Monitoring + Alarms + SNS
+
+### Giai đoạn 5: Kiểm thử & Triển khai (Tuần 10-13)
+- [ ] Mua domain `zelostech.site` + Cấu hình HTTPS + Deploy hosting thực tế
+- [ ] Viết kịch bản Load Testing bằng k6 (50-100 video upload đồng thời)
+- [ ] Đo QoE: Time-to-First-Frame, ABR switching
+- [ ] Lập báo cáo FinOps: EC2 24/7 vs Serverless Batch/Fargate
+- [ ] Xuất báo cáo SonarQube, Trivy, Gitleaks
+
+### Giai đoạn 6: Báo cáo & Nộp bài (Tuần 13-16)
+- [ ] Hoàn thiện báo cáo Dự án CNTT
+- [ ] Vẽ Architecture Diagram, Sequence Diagram
+- [ ] Rà soát chính tả, định dạng
+- [ ] Nộp bản final
+
+---
+
+> 📌 **Tài liệu này được cập nhật lần cuối:** 21/07/2026
+> 📌 **Liên hệ:** Đinh Quốc Cường (0869087561) | Võ Huỳnh Minh Đức (0383229267)
+> 📌 **Email:** 523H0008@student.tdtu.edu.vn | 523H0014@student.tdtu.edu.vn
+
