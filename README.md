@@ -68,11 +68,12 @@ Các nền tảng chia sẻ video hiện đại (YouTube, Vimeo, TikTok) đều 
 *B. Hệ thống Transcoding Pipeline (Backend xử lý video):*
 - Áp dụng mô hình **Event-Driven Architecture**: Khi video gốc được upload thành công lên S3 (Raw Bucket), S3 tự động phát ra Event Notification.
 - Event được đẩy vào **Amazon SQS** (Message Queue) làm bộ đệm — đảm bảo không rớt task dù có hàng trăm video upload cùng lúc.
-- SQS kích hoạt **AWS Batch trên Fargate** (Serverless Container): AWS Batch tự động tạo Docker Container chứa **FFmpeg**, kéo video gốc từ S3 về, và thực hiện transcoding:
+- SQS kích hoạt một **AWS Lambda Function** (rất nhẹ và rẻ) đóng vai trò là Job Submitter. Lambda sẽ đọc thông tin video từ SQS và gọi API `SubmitJob` truyền vào **AWS Batch trên Fargate** (Serverless Container).
+- Fargate Container tự động được khởi tạo chứa **FFmpeg**, kéo video gốc từ S3 về và thực hiện transcoding:
   - Chuyển đổi video sang **định dạng HLS**: cắt thành các segment `.ts` dài 6 giây.
   - Tạo nhiều phiên bản chất lượng (Renditions): **360p** (400kbps), **720p** (1.5Mbps), **1080p** (4Mbps).
   - Sinh file **Master Playlist** (`.m3u8`) liệt kê tất cả phiên bản chất lượng — trình phát HLS.js sẽ đọc file này để biết có những chất lượng nào khả dụng.
-- Sau khi transcoding hoàn tất: tất cả file `.ts` segments và `.m3u8` manifests được upload lên **S3 Processed Bucket**. Metadata (tiêu đề, mô tả, URL manifest, thumbnail, thời lượng) được lưu vào **MongoDB Atlas**.
+- Sau khi transcoding hoàn tất: file `.ts` và `.m3u8` được upload lên **S3 Processed Bucket**. Metadata được lưu vào **MongoDB Atlas**. (Lưu ý: URI của MongoDB không hardcode mà được Fargate kéo bảo mật từ **AWS Secrets Manager**).
 - Container tự động bị tiêu hủy (Terminated) sau khi hoàn thành nhiệm vụ — chỉ trả tiền cho thời gian thực thi.
 
 *C. Phân phối Video (Content Delivery):*
@@ -152,10 +153,11 @@ Dưới đây là luồng hoạt động hoàn chỉnh từ góc nhìn người 
 - Event này được đẩy vào **Amazon SQS Queue** (Hàng đợi) để làm bộ đệm.
 - **Tại sao cần SQS?** Nếu 100 người upload cùng lúc, SQS giữ 100 lệnh xếp hàng ngay ngắn, tránh hệ thống bị quá tải (Throttling). Các lệnh được rút ra xử lý tuần tự hoặc song song tùy cấu hình.
 
-#### Bước 5: AWS Batch khởi tạo Serverless Container
-- Amazon SQS kích hoạt **AWS Batch**. Batch tự động submit một Job chạy trên **AWS Fargate** (Serverless Container).
-- Fargate kéo (pull) **Docker Image** chứa FFmpeg + Node.js từ **Amazon ECR** (Container Registry).
-- Container được khởi tạo, nhận thông tin video cần xử lý từ message SQS.
+#### Bước 5: Kích hoạt Lambda & Submit AWS Batch Job
+- SQS trigger một hàm **AWS Lambda** nhỏ (Job Submitter). Do SQS không thể tự kích hoạt Batch trực tiếp, Lambda đóng vai trò trung gian đọc message từ SQS và gọi API `batch:SubmitJob`.
+- AWS Batch nhận lệnh và tự động submit một Job chạy trên **AWS Fargate** (Serverless Container).
+- Fargate kéo (pull) **Docker Image** chứa FFmpeg + Node.js từ **Amazon ECR** (Container Registry). Đồng thời kéo các biến môi trường nhạy cảm (DB URI) từ **AWS Secrets Manager**.
+- Container được khởi tạo, sẵn sàng xử lý video.
 
 #### Bước 6: Transcoding video sang HLS (Adaptive Bitrate)
 - Container tải video gốc (`raw-video.mp4`) từ S3 Raw Bucket xuống.
@@ -227,11 +229,13 @@ Dưới đây là luồng hoạt động hoàn chỉnh từ góc nhìn người 
 | **Upload** | Object Storage (Raw) | Amazon S3 | Lưu trữ video gốc (Raw Zone) |
 | **Event Trigger** | Event Notification | S3 Event → SQS | Tự động phát sự kiện khi có file mới upload |
 | **Message Queue** | Hàng đợi | Amazon SQS | Bộ đệm (Decoupling) giữa upload và transcoding |
+| **Job Submitter** | Serverless Function | AWS Lambda | Đọc SQS message và kích hoạt AWS Batch |
 | **Transcoding** | Serverless Compute | AWS Batch on Fargate | Khởi tạo Container FFmpeg tự động, transcode sang HLS |
 | **Container Image** | Registry | Amazon ECR | Lưu trữ Docker Image chứa FFmpeg + Node.js |
 | **Output** | Object Storage (Processed) | Amazon S3 | Lưu trữ HLS segments (`.ts`) và manifests (`.m3u8`) |
 | **Delivery** | CDN | Amazon CloudFront | Cache và phân phối video tới người xem toàn cầu với độ trễ thấp |
 | **Database** | Metadata Store | MongoDB Atlas | Lưu thông tin video (tiêu đề, mô tả, URL, trạng thái, user) |
+| **Security** | Secrets Management | AWS Secrets Manager | Quản lý an toàn DB Credentials, JWT Secret |
 | **Notification** | Alert | Amazon SNS / SES | Gửi email thông báo khi transcoding hoàn tất |
 | **IaC** | Hạ tầng | Terraform | Tự động hóa khởi tạo toàn bộ hạ tầng AWS bằng code |
 | **CI/CD** | Pipeline | GitHub Actions | Tự động test → build Docker → push ECR → deploy |
@@ -261,6 +265,7 @@ Dưới đây là luồng hoạt động hoàn chỉnh từ góc nhìn người 
 | **FFmpeg** | Công cụ mã nguồn mở mạnh nhất để transcode video, tạo HLS segments, sinh thumbnail |
 | **Docker** | Đóng gói FFmpeg + Node.js thành Container image tối ưu (Multi-stage Build) |
 | **AWS Batch on Fargate** | Serverless compute: tự động khởi tạo/tiêu hủy Container theo workload, tính tiền theo giây |
+| **AWS Lambda** | Trigger trung gian đọc SQS message để submit Batch Job |
 
 ### Khối Cloud Infrastructure & DevOps (TRỌNG TÂM)
 | Công nghệ | Vai trò |
@@ -279,6 +284,7 @@ Dưới đây là luồng hoạt động hoàn chỉnh từ góc nhìn người 
 | **SonarQube (Community Edition)** | Quét mã nguồn: lỗ hổng bảo mật, Code Smell, Technical Debt, Coverage |
 | **Trivy** | Quét Docker Image + dependencies tìm lỗ hổng CVE |
 | **Gitleaks** | Phát hiện API key, password bị commit nhầm vào Git |
+| **AWS Secrets Manager** | Lưu trữ bảo mật các thông tin nhạy cảm (Credentials) thay vì file `.env` |
 
 ### Khối Monitoring & Observability
 | Công nghệ | Vai trò |
@@ -433,12 +439,14 @@ Tất cả log từ Backend và Transcoder Container được ghi theo format JS
 | Thuật ngữ | Giải thích |
 |-----------|------------|
 | **Pre-signed URL** | Đường link upload tạm thời (15 phút) cho phép Client upload trực tiếp lên S3 mà không cần đi qua Backend. |
+| **AWS Lambda** | Dịch vụ chạy code không cần quản lý máy chủ. Trong dự án dùng làm Trigger nối giữa SQS và Batch. |
 | **AWS Batch on Fargate** | Dịch vụ Serverless: tự động tạo Container khi có job, tự tiêu hủy khi xong. Không cần duy trì máy chủ. |
 | **Amazon CloudFront** | CDN toàn cầu (400+ Edge Location). Cache video `.ts` gần người xem, giảm độ trễ. |
 | **Amazon SQS** | Message Queue: hàng đợi bộ đệm giữa upload và transcoding. Đảm bảo không rớt task dù upload ồ ạt. |
+| **AWS Secrets Manager** | Két sắt bảo mật trên Cloud. Dùng để truyền MongoDB URI vào Container lúc runtime mà không bị lộ trong source code. |
 | **Amazon ECR** | Container Registry: kho lưu trữ Docker Image trên AWS. |
 | **OAC** | Origin Access Control — S3 hoàn toàn Private, chỉ CloudFront truy cập được. |
-| **Event-Driven** | Kiến trúc dựa trên sự kiện: S3 upload xong → phát event → SQS nhận → Batch xử lý. Không có polling liên tục. |
+| **Event-Driven** | Kiến trúc dựa trên sự kiện: S3 upload xong → phát event → SQS nhận → Lambda chạy → Batch xử lý. Không có polling liên tục. |
 
 ### DevOps & IaC
 | Thuật ngữ | Giải thích |
