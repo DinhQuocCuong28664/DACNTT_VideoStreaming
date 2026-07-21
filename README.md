@@ -24,7 +24,7 @@
 6. [DevSecOps & CI/CD Pipeline](#6-devsecops--cicd-pipeline)
 7. [Hệ thống Giám sát (Monitoring & Observability)](#7-hệ-thống-giám-sát-monitoring--observability)
 8. [Giải thích thuật ngữ kỹ thuật](#8-giải-thích-thuật-ngữ-kỹ-thuật)
-9. [Nhận diện rủi ro & Chiến lược giảm thiểu](#9-nhận-diện-rủi-ro--chiến-lược-giảm-thiểu)
+9. [Nhận diện rủi ro & Chiến lược giảm thiểu](#9-nhận-diện-rủi-ro--chiến-lược-giảm-thiểu-senior-insights)
 10. [Lộ trình thực hiện (Timeline)](#10-lộ-trình-thực-hiện-timeline)
 
 ---
