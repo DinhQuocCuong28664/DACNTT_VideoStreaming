@@ -1,17 +1,34 @@
+/**
+ * Request Validation Middleware Factory
+ * Lightweight validation without external libraries (Joi, etc.)
+ *
+ * Usage:
+ *   const { validateRequest } = require('../middleware/validateRequest');
+ *   router.post('/register', validateRequest(['username', 'email', 'password']), controller);
+ */
+
+/**
+ * Validate that required fields exist in request body
+ * @param {string[]} requiredFields - Array of required field names
+ */
 const validateRequest = (requiredFields) => {
   return (req, res, next) => {
-    const missingFields = [];
+    const missing = [];
 
     for (const field of requiredFields) {
-      if (!req.body || req.body[field] === undefined || req.body[field] === '') {
-        missingFields.push(field);
+      if (
+        req.body[field] === undefined ||
+        req.body[field] === null ||
+        req.body[field] === ''
+      ) {
+        missing.push(field);
       }
     }
 
-    if (missingFields.length > 0) {
+    if (missing.length > 0) {
       return res.status(400).json({
         success: false,
-        message: `Missing required fields: ${missingFields.join(', ')}`,
+        message: `Missing required fields: ${missing.join(', ')}`,
       });
     }
 
@@ -19,4 +36,20 @@ const validateRequest = (requiredFields) => {
   };
 };
 
-module.exports = validateRequest;
+/**
+ * Validate email format
+ */
+const validateEmail = (req, res, next) => {
+  if (req.body.email) {
+    const emailRegex = /^\S+@\S+\.\S+$/;
+    if (!emailRegex.test(req.body.email)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please enter a valid email address',
+      });
+    }
+  }
+  next();
+};
+
+module.exports = { validateRequest, validateEmail };

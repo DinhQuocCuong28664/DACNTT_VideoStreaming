@@ -1,44 +1,51 @@
 const Video = require('../models/Video');
-const { generatePresignedUploadUrl, deleteS3Object } = require('./s3Service');
-const crypto = require('crypto');
+const s3Service = require('./s3Service');
 
-const createVideoRecord = async (userId, { title, description, tags, visibility, fileSize, mimeType, filename }) => {
-  const fileExt = filename.split('.').pop() || 'mp4';
-  const uniqueId = crypto.randomBytes(16).toString('hex');
-  const rawS3Key = `uploads/${userId}/${uniqueId}.${fileExt}`;
+/**
+ * Request a Pre-signed URL for uploading video to S3
+ */
+const getUploadUrl = async (userId, filename, mimetype) => {
+  const s3Key = s3Service.generateS3Key(userId, filename);
+  const uploadUrl = await s3Service.generatePresignedUploadUrl(s3Key, mimetype);
 
-  const uploadUrl = await generatePresignedUploadUrl(rawS3Key, mimeType || 'video/mp4');
-
-  const video = await Video.create({
-    title,
-    description: description || '',
-    tags: tags || [],
-    visibility: visibility || 'public',
-    user: userId,
-    status: 'UPLOADING',
-    rawS3Key,
-    fileSize: fileSize || 0,
-    mimeType: mimeType || 'video/mp4',
-  });
-
-  return {
-    video,
-    uploadUrl,
-    rawS3Key,
-  };
+  return { uploadUrl, s3Key };
 };
 
-const confirmVideoUpload = async (videoId, userId) => {
+/**
+ * Create a new video record in database
+ */
+const createVideo = async (userId, videoData) => {
+  const video = await Video.create({
+    title: videoData.title,
+    description: videoData.description || '',
+    user: userId,
+    rawS3Key: videoData.rawS3Key,
+    mimeType: videoData.mimeType,
+    fileSize: videoData.fileSize || 0,
+    tags: videoData.tags || [],
+    visibility: videoData.visibility || 'public',
+    status: 'UPLOADING',
+  });
+
+  return video;
+};
+
+/**
+ * Confirm upload complete — transition status UPLOADING → PROCESSING
+ */
+const confirmUpload = async (videoId, userId) => {
   const video = await Video.findOne({ _id: videoId, user: userId });
 
   if (!video) {
-    const error = new Error('Video not found or unauthorized');
+    const error = new Error('Video not found or not owned by user');
     error.statusCode = 404;
     throw error;
   }
 
   if (video.status !== 'UPLOADING') {
-    const error = new Error(`Video is already in status ${video.status}`);
+    const error = new Error(
+      `Cannot confirm upload — video status is ${video.status}, expected UPLOADING`
+    );
     error.statusCode = 400;
     throw error;
   }
@@ -49,40 +56,14 @@ const confirmVideoUpload = async (videoId, userId) => {
   return video;
 };
 
-const getAllReadyVideos = async ({ page = 1, limit = 12, search = '' }) => {
-  const query = {
-    status: 'READY',
-    visibility: 'public',
-  };
-
-  if (search) {
-    query.title = { $regex: search, $options: 'i' };
-  }
-
-  const skip = (page - 1) * limit;
-
-  const [videos, total] = await Promise.all([
-    Video.find(query)
-      .populate('user', 'username displayName avatar')
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(Number(limit)),
-    Video.countDocuments(query),
-  ]);
-
-  return {
-    videos,
-    pagination: {
-      page: Number(page),
-      limit: Number(limit),
-      total,
-      pages: Math.ceil(total / limit),
-    },
-  };
-};
-
+/**
+ * Get a single video by ID (with user info populated)
+ */
 const getVideoById = async (videoId) => {
-  const video = await Video.findById(videoId).populate('user', 'username displayName avatar channelDescription subscribers');
+  const video = await Video.findById(videoId).populate(
+    'user',
+    'username displayName avatar'
+  );
 
   if (!video) {
     const error = new Error('Video not found');
@@ -90,83 +71,134 @@ const getVideoById = async (videoId) => {
     throw error;
   }
 
-  // Increment views
-  video.views += 1;
-  await video.save();
-
   return video;
 };
 
-const getVideosByUser = async (userId, { page = 1, limit = 12 }) => {
+/**
+ * Get all public READY videos (for Home page) with pagination
+ */
+const getAllVideos = async (page = 1, limit = 12) => {
   const skip = (page - 1) * limit;
 
   const [videos, total] = await Promise.all([
-    Video.find({ user: userId })
+    Video.find({ visibility: 'public', status: 'READY' })
+      .populate('user', 'username displayName avatar')
       .sort({ createdAt: -1 })
       .skip(skip)
-      .limit(Number(limit)),
-    Video.countDocuments({ user: userId }),
+      .limit(limit),
+    Video.countDocuments({ visibility: 'public', status: 'READY' }),
   ]);
 
   return {
     videos,
     pagination: {
-      page: Number(page),
-      limit: Number(limit),
+      page,
+      limit,
       total,
       pages: Math.ceil(total / limit),
     },
   };
 };
 
-const updateVideo = async (videoId, userId, updateFields) => {
+/**
+ * Get videos by a specific user (for Channel page) with pagination
+ */
+const getVideosByUser = async (userId, page = 1, limit = 12, requesterId = null) => {
+  const skip = (page - 1) * limit;
+
+  // If requester is the owner, show all videos; otherwise only public + READY
+  const filter = { user: userId };
+  if (requesterId && requesterId.toString() === userId.toString()) {
+    // Owner sees all their videos (any status/visibility)
+  } else {
+    filter.visibility = 'public';
+    filter.status = 'READY';
+  }
+
+  const [videos, total] = await Promise.all([
+    Video.find(filter)
+      .populate('user', 'username displayName avatar')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit),
+    Video.countDocuments(filter),
+  ]);
+
+  return {
+    videos,
+    pagination: {
+      page,
+      limit,
+      total,
+      pages: Math.ceil(total / limit),
+    },
+  };
+};
+
+/**
+ * Update video metadata (title, description, tags, visibility)
+ */
+const updateVideo = async (videoId, userId, updateData) => {
   const video = await Video.findOne({ _id: videoId, user: userId });
 
   if (!video) {
-    const error = new Error('Video not found or unauthorized');
+    const error = new Error('Video not found or not owned by user');
     error.statusCode = 404;
     throw error;
   }
 
-  const allowedUpdates = ['title', 'description', 'tags', 'visibility'];
-  allowedUpdates.forEach((field) => {
-    if (updateFields[field] !== undefined) {
-      video[field] = updateFields[field];
+  // Only allow updating certain fields
+  const allowedFields = ['title', 'description', 'tags', 'visibility'];
+  for (const field of allowedFields) {
+    if (updateData[field] !== undefined) {
+      video[field] = updateData[field];
     }
-  });
+  }
 
   await video.save();
   return video;
 };
 
+/**
+ * Delete video (remove from DB + optionally delete S3 objects)
+ */
 const deleteVideo = async (videoId, userId) => {
   const video = await Video.findOne({ _id: videoId, user: userId });
 
   if (!video) {
-    const error = new Error('Video not found or unauthorized');
+    const error = new Error('Video not found or not owned by user');
     error.statusCode = 404;
     throw error;
   }
 
-  // Attempt S3 cleanup if rawS3Key exists
+  // Delete raw video from S3 (best effort — don't fail if S3 delete fails)
   if (video.rawS3Key) {
     try {
-      await deleteS3Object(process.env.S3_RAW_BUCKET_NAME || 'vidshare-raw-bucket', video.rawS3Key);
+      await s3Service.deleteObject(process.env.S3_RAW_BUCKET_NAME, video.rawS3Key);
     } catch (err) {
-      console.warn(`[S3 Cleanup Warning] Could not delete raw video key ${video.rawS3Key}:`, err.message);
+      console.warn(`⚠️ Failed to delete S3 object: ${video.rawS3Key}`, err.message);
     }
   }
 
-  await video.deleteOne();
-  return { message: 'Video deleted successfully' };
+  await Video.findByIdAndDelete(videoId);
+  return video;
+};
+
+/**
+ * Increment view count by 1
+ */
+const incrementViews = async (videoId) => {
+  await Video.findByIdAndUpdate(videoId, { $inc: { views: 1 } });
 };
 
 module.exports = {
-  createVideoRecord,
-  confirmVideoUpload,
-  getAllReadyVideos,
+  getUploadUrl,
+  createVideo,
+  confirmUpload,
   getVideoById,
+  getAllVideos,
   getVideosByUser,
   updateVideo,
   deleteVideo,
+  incrementViews,
 };

@@ -16,40 +16,39 @@ const videoSchema = new mongoose.Schema(
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
-      required: true,
+      required: [true, 'Video must belong to a user'],
     },
     status: {
       type: String,
       enum: ['UPLOADING', 'PROCESSING', 'READY', 'ERROR'],
       default: 'UPLOADING',
     },
-    // S3 Paths & CloudFront Delivery
+
+    // S3 Paths
     rawS3Key: {
       type: String,
-      default: '',
     },
     hlsUrl: {
-      type: String,
-      default: '',
+      type: String, // CloudFront URL to master.m3u8
     },
     thumbnailUrl: {
-      type: String,
-      default: '',
+      type: String, // CloudFront URL to thumbnail
     },
-    // Video Properties
+
+    // Video Info (populated after transcoding by Fargate Container)
     duration: {
       type: Number,
-      default: 0,
+      default: 0, // Duration in seconds
     },
     fileSize: {
       type: Number,
-      default: 0,
+      default: 0, // File size in bytes
     },
     mimeType: {
       type: String,
-      default: '',
     },
-    // Metadata & Engagement
+
+    // Engagement
     views: {
       type: Number,
       default: 0,
@@ -69,11 +68,17 @@ const videoSchema = new mongoose.Schema(
   }
 );
 
-// Indexes
-videoSchema.index({ user: 1, createdAt: -1 });
-videoSchema.index({ status: 1 });
-videoSchema.index({ tags: 1 });
+// Indexes for query performance
+videoSchema.index({ user: 1, createdAt: -1 }); // Channel page: user's videos sorted by newest
+videoSchema.index({ status: 1 }); // Transcoder queries videos by status
+videoSchema.index({ tags: 1 }); // Search by tags
+videoSchema.index({ visibility: 1, status: 1, createdAt: -1 }); // Home page: public + READY, sorted by newest
 
-const Video = mongoose.model('Video', videoSchema);
+// Remove __v from JSON output
+videoSchema.methods.toJSON = function () {
+  const video = this.toObject();
+  delete video.__v;
+  return video;
+};
 
-module.exports = Video;
+module.exports = mongoose.model('Video', videoSchema);
