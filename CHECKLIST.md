@@ -7,7 +7,7 @@
 
 - [x] **Phase 0: Khởi tạo dự án & Cấu trúc Monorepo** `(Đã hoàn thành 100%)`
 - [x] **Phase 1: Xây dựng Backend API & Database** `(Đã hoàn thành 100%)`
-- [ ] **Phase 2: Xây dựng Frontend UI & HLS Player (React.js)** `(Chưa bắt đầu)`
+- [x] **Phase 2: Xây dựng Frontend UI & HLS Player (React.js)** `(Đã hoàn thành 100%)`
 - [ ] **Phase 3: Transcoder Engine (Docker + FFmpeg + SQS Handler)** `(Chưa bắt đầu)`
 - [ ] **Phase 4: Hạ tầng Terraform IaC & CI/CD Pipeline (GitHub Actions)** `(Chưa bắt đầu)`
 - [ ] **Phase 5: DevSecOps, Monitoring & Load Testing (k6)** `(Chưa bắt đầu)`
@@ -105,5 +105,64 @@
 
 ---
 
+## 🎨 PHASE 2: FRONTEND UI & HLS PLAYER (REACT.JS + VITE)
+
+> **Mục tiêu:** Xây dựng giao diện Dark Mode Premium hoàn chỉnh, tích hợp HLS.js Video Player, Upload trực tiếp lên S3 và hệ thống xác thực JWT trên Frontend.
+
+### Checklist công việc Phase 2:
+
+#### 1. Thiết kế & Cấu hình
+- [x] **`index.css`**: Design System với 75+ CSS Variables (Color palette, Typography Inter, Spacing, Shadows, Glassmorphism, Skeleton loading, Custom scrollbar).
+- [x] **`vite.config.js`**: Cấu hình API Proxy `/api` → `http://localhost:5000` (tránh CORS khi dev).
+- [x] Cài đặt dependency `react-icons` cho icon library.
+
+#### 2. API Client Layer (`api/`)
+- [x] **`axiosClient.js`**: Axios instance + Request Interceptor (auto-attach JWT Bearer Token) + Response Interceptor (401 → redirect login).
+- [x] **`authApi.js`**: Wrapper cho 6 Auth endpoints (register, login, getMe, forgot/reset/change password).
+- [x] **`videoApi.js`**: Wrapper cho 8 Video endpoints + `uploadToS3()` (PUT trực tiếp lên S3 với progress callback).
+
+#### 3. Auth State Management (`context/`)
+- [x] **`AuthContext.jsx`**: Global AuthProvider (login, register, logout), auto-validate token on app load, persist token trong localStorage.
+
+#### 4. Layout Components (`components/Layout/`)
+- [x] **`Navbar.jsx` + `Navbar.css`**: Navigation bar glassmorphism (Logo VidShare gradient, Search bar, Upload button, Avatar dropdown với animation, Responsive hamburger menu).
+- [x] **`MainLayout.jsx`**: Page wrapper với `<Outlet>` cho nested routing.
+
+#### 5. Auth Components (`components/Auth/`)
+- [x] **`LoginForm.jsx`**: Form đăng nhập glassmorphism card trên nền gradient, error handling inline, loading state.
+- [x] **`RegisterForm.jsx`**: Form đăng ký 4 fields + password confirmation validation.
+- [x] **`AuthForm.css`**: Shared styles (glassmorphism card, gradient background, fade-in animation).
+
+#### 6. Video Components (`components/Video/`)
+- [x] **`VideoPlayer.jsx` + `VideoPlayer.css`**: ★ Core HLS.js Player — ABR (Adaptive Bitrate), Quality Selector menu (Auto/360p/720p/1080p), Safari native fallback, spinning gear icon.
+- [x] **`VideoCard.jsx` + `VideoCard.css`**: Video thumbnail card (thumbnail/placeholder, duration badge, processing status, user avatar, view count, relative time, hover scale effect).
+- [x] **`VideoUpload.jsx` + `VideoUpload.css`**: 3-step upload flow (Drag & Drop → Fill form → S3 Upload with animated Progress Bar %).
+
+#### 7. Pages (`pages/`)
+- [x] **`HomePage.jsx`**: Responsive video grid (4/3/2/1 cột), skeleton loading animation, pagination, empty state.
+- [x] **`LoginPage.jsx`**: Full-screen login wrapper.
+- [x] **`RegisterPage.jsx`**: Full-screen register wrapper.
+- [x] **`UploadPage.jsx`**: Protected route wrapper.
+- [x] **`WatchPage.jsx`**: HLS Player + Video info (title, views, date, channel card, description, tags badges) + Share button (copy link) + status indicators (PROCESSING/READY/ERROR).
+- [x] **`ChannelPage.jsx`**: User profile header (avatar gradient, username, subscribers) + video grid + owner-only delete button.
+
+#### 8. Routing & App Entry
+- [x] **`App.jsx`**: BrowserRouter + 6 routes + ProtectedRoute (redirect to login) + GuestRoute (redirect to home) + 404 fallback.
+- [x] **`main.jsx`**: AuthProvider wrapper.
+
+### Kiểm thử E2E Browser (6/6 PASS ✅)
+
+| Bước | Kịch bản | Kết quả | Chi tiết |
+|------|---------|---------|----------|
+| 1 | Homepage (Guest) | ✅ PASS | Dark theme, VidShare logo, search bar, Đăng nhập/Đăng ký buttons, empty state |
+| 2 | Login | ✅ PASS | Nhập email + password → JWT token lưu localStorage → redirect home |
+| 3 | Homepage (Authenticated) | ✅ PASS | Navbar cập nhật: Upload button + Avatar "C" gradient circle |
+| 4 | Upload Page | ✅ PASS | Drag & drop zone hiển thị đúng, protected route hoạt động |
+| 5 | Channel Page | ✅ PASS | Profile header (cbzero, @cbzero, 0 người đăng ký) + "Video của bạn" |
+| 6 | Logout | ✅ PASS | Xóa token, navbar quay về guest state, redirect homepage |
+
+---
+
 > 📌 **Trạng thái Mã nguồn:** Đã commit và push toàn bộ lên GitHub Repository (`master` branch).
-> 📌 **Cập nhật lần cuối:** 22/07/2026
+> 📌 **Cập nhật lần cuối:** 28/07/2026
+
