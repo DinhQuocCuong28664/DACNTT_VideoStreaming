@@ -8,7 +8,7 @@
 - [x] **Phase 0: Khởi tạo dự án & Cấu trúc Monorepo** `(Đã hoàn thành 100%)`
 - [x] **Phase 1: Xây dựng Backend API & Database** `(Đã hoàn thành 100%)`
 - [x] **Phase 2: Xây dựng Frontend UI & HLS Player (React.js)** `(Đã hoàn thành 100%)`
-- [ ] **Phase 3: Transcoder Engine (Docker + FFmpeg + SQS Handler)** `(Chưa bắt đầu)`
+- [x] **Phase 3: Transcoder Engine (Docker + FFmpeg + SQS Handler)** `(Đã hoàn thành 100%)`
 - [ ] **Phase 4: Hạ tầng Terraform IaC & CI/CD Pipeline (GitHub Actions)** `(Chưa bắt đầu)`
 - [ ] **Phase 5: DevSecOps, Monitoring & Load Testing (k6)** `(Chưa bắt đầu)`
 
@@ -163,6 +163,39 @@
 
 ---
 
+## 🎬 PHASE 3: TRANSCODER ENGINE (DOCKER + FFMPEG + SQS HANDLER)
+
+> **Mục tiêu:** Xây dựng bộ công cụ chuyển mã video tự động với FFmpeg, đóng gói Docker Container Multi-stage, xử lý HLS Adaptive Bitrate (360p/720p/1080p), tích hợp SQS với Heartbeat Pattern và lưu trữ kết quả trên AWS S3.
+
+### Checklist công việc Phase 3:
+
+#### 1. FFmpeg Core & Transcoder Pipeline (`transcoder/src/`)
+- [x] **`transcoder.js`**: Core FFmpeg engine — tự động cắt HLS 6 giây, sinh 3 renditions (360p - 400k, 720p - 1500k, 1080p - 4000k), tạo `master.m3u8` và trích xuất thumbnail đại diện tại giây thứ 5.
+- [x] **`s3Handler.js`**: Tải file video gốc từ `vidshare-raw-bucket`, tải toàn bộ cây thư mục HLS output (`.m3u8`, `.ts`, `.jpg`) lên `vidshare-processed-bucket` với MIME Content-Type chuẩn (`application/vnd.apple.mpegurl`, `video/MP2T`).
+- [x] **`dbHandler.js`**: Kết nối MongoDB Atlas, tự động cập nhật trạng thái video (`PROCESSING` → `READY` hoặc `ERROR`), lưu thời lượng video (seconds), HLS Master URL và Thumbnail URL.
+- [x] **`sqsHandler.js`**: Long Polling SQS Queue, parse S3 ObjectCreated Event notification, triển khai **Heartbeat Pattern** (gia hạn `VisibilityTimeout` mỗi 3 phút tránh xử lý trùng lặp job), xóa message khỏi queue khi thành công.
+- [x] **`index.js`**: CLI Entry point hỗ trợ 3 chế độ vận hành: `manual` (dev testing), `worker` (SQS polling continuous), `batch` (AWS Batch / Fargate Serverless mode).
+
+#### 2. Containerization (Docker)
+- [x] **`Dockerfile`**: Multi-stage build (Stage 1: `node:18-slim` builder → Stage 2: runtime `node:18-slim` + FFmpeg qua `apt-get`). Tuân thủ quy định không dùng `alpine` (cần `glibc` cho FFmpeg) và không chạy bằng user `root`.
+- [x] **`.dockerignore`**: Loại bỏ `node_modules`, `.env`, `.git` giúp giảm kích thước Docker build context.
+
+#### 3. Cấu hình Hạ tầng S3 Storage & CORS Policy
+- [x] Tự động tạo và cấu hình S3 Buckets trên AWS AP-Southeast-1 (`vidshare-raw-bucket` và `vidshare-processed-bucket`).
+- [x] Cấu hình CORS Rules và Public Access Read Policy cho `vidshare-processed-bucket` để HLS.js Player truy xuất trực tiếp file `.m3u8` & `.ts`.
+
+### Kết quả kiểm thử End-to-End Transcoding (PASS ✅)
+
+| Tiêu chí | Kết quả | Chi tiết |
+|---|---|---|
+| **Thời gian nén (Transcode Speed)** | **2.1s** (tổng 8.0s end-to-end) | Xử lý nén đồng thời 3 độ phân giải (360p, 720p, 1080p) + thumbnail |
+| **Output HLS Files** | 8 files (4.5 MB) | `master.m3u8`, 3 media playlists (`360p/`, `720p/`, `1080p/`), các `.ts` segments, `thumbnail.jpg` |
+| **Cập nhật Database** | ✅ PASS | Status chuyển từ `PROCESSING` → `READY`, lưu đúng URL & duration |
+| **Phát HLS trên Frontend** | ✅ PASS | HLS.js Player tự động nhận diện 360p / 720p / 1080p và phát mượt mà |
+
+---
+
 > 📌 **Trạng thái Mã nguồn:** Đã commit và push toàn bộ lên GitHub Repository (`master` branch).
-> 📌 **Cập nhật lần cuối:** 28/07/2026
+> 📌 **Cập nhật lần cuối:** 30/07/2026
+
 
