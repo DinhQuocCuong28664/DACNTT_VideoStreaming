@@ -5,8 +5,11 @@
 name: Security Scan — DevSecOps Gate
 
 on:
+  workflow_dispatch:
+  push:
+    branches: [main, master, develop]
   pull_request:
-    branches: [main]
+    branches: [main, master]
 
 jobs:
   gitleaks:

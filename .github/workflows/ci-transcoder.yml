@@ -7,13 +7,14 @@
 name: CI — Transcoder
 
 on:
+  workflow_dispatch:
   push:
-    branches: [main, develop]
+    branches: [main, master, develop]
     paths:
       - 'transcoder/**'
       - '.github/workflows/ci-transcoder.yml'
   pull_request:
-    branches: [main]
+    branches: [main, master]
     paths:
       - 'transcoder/**'
 
