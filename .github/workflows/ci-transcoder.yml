@@ -104,6 +104,14 @@ jobs:
           exit-code: '0'
           format: 'table'
 
+      - name: Ensure ECR Repository Exists
+        run: |
+          aws ecr describe-repositories --repository-names ${{ env.ECR_REPOSITORY }} --region ${{ env.AWS_REGION }} || \
+          aws ecr create-repository \
+            --repository-name ${{ env.ECR_REPOSITORY }} \
+            --region ${{ env.AWS_REGION }} \
+            --image-scanning-configuration scanOnPush=true
+
       - name: Push image to ECR
         run: |
           docker push ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
