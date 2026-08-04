@@ -116,8 +116,28 @@
 .navbar-actions {
   display: flex;
   align-items: center;
-  gap: var(--space-sm);
+  gap: var(--space-md);
   flex-shrink: 0;
+}
+
+.nav-landing-link {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-weight: 600;
+  font-size: var(--font-size-sm);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  transition: all var(--transition-base);
+}
+
+.nav-landing-link:hover {
+  background: var(--hover-color);
+  color: var(--accent-color);
+  border-color: var(--accent-color);
 }
 
 .upload-btn {

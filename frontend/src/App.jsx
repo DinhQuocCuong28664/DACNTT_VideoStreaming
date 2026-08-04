@@ -7,6 +7,7 @@ import RegisterPage from './pages/RegisterPage';
 import UploadPage from './pages/UploadPage';
 import WatchPage from './pages/WatchPage';
 import ChannelPage from './pages/ChannelPage';
+import LandingPage from './pages/LandingPage';
 
 /**
  * Protected Route — redirects to /login if not authenticated
@@ -67,6 +68,7 @@ function App() {
         {/* Routes with Navbar (MainLayout) */}
         <Route element={<MainLayout />}>
           <Route path="/" element={<HomePage />} />
+          <Route path="/landing" element={<LandingPage />} />
           <Route path="/watch/:id" element={<WatchPage />} />
           <Route path="/channel/:userId" element={<ChannelPage />} />
           <Route

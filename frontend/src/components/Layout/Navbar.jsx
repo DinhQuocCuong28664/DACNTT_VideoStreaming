@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/useAuth';
 import { useTheme } from '../../context/useTheme';
-import { FiUpload, FiSearch, FiLogOut, FiVideo, FiMoon, FiSun } from 'react-icons/fi';
+import { FiUpload, FiSearch, FiLogOut, FiVideo, FiMoon, FiSun, FiInfo } from 'react-icons/fi';
 import './Navbar.css';
 
 const Navbar = () => {
@@ -64,6 +64,11 @@ const Navbar = () => {
 
         {/* Right Actions */}
         <div className="navbar-actions">
+          <Link to="/landing" className="nav-landing-link" title="Giới thiệu Nền tảng">
+            <FiInfo />
+            <span className="landing-text">Giới thiệu</span>
+          </Link>
+
           {isAuthenticated ? (
             <>
               <button
