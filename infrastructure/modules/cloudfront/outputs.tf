@@ -1,12 +1,12 @@
 output "distribution_id" {
-  value = aws_cloudfront_distribution.hls_cdn.id
+  value = length(aws_cloudfront_distribution.hls_cdn) > 0 ? aws_cloudfront_distribution.hls_cdn[0].id : null
 }
 
 output "distribution_domain_name" {
-  description = "CloudFront domain name (use this for HLS URLs)"
-  value       = aws_cloudfront_distribution.hls_cdn.domain_name
+  description = "CloudFront domain name (or fallback S3 regional domain if CloudFront disabled)"
+  value       = length(aws_cloudfront_distribution.hls_cdn) > 0 ? aws_cloudfront_distribution.hls_cdn[0].domain_name : var.processed_bucket_domain_name
 }
 
 output "distribution_arn" {
-  value = aws_cloudfront_distribution.hls_cdn.arn
+  value = length(aws_cloudfront_distribution.hls_cdn) > 0 ? aws_cloudfront_distribution.hls_cdn[0].arn : null
 }

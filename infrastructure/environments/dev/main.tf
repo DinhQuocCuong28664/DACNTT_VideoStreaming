@@ -95,6 +95,7 @@ module "cloudfront" {
   processed_bucket_arn         = module.s3.processed_bucket_arn
   price_class                  = "PriceClass_100" # Dev: cheapest
   cors_allowed_origins         = var.cors_allowed_origins
+  enable_cloudfront            = var.enable_cloudfront
   tags                         = local.common_tags
 }
 

@@ -36,6 +36,7 @@ resource "aws_cloudfront_cache_policy" "hls" {
 
 # ── CloudFront Distribution ──────────────────────
 resource "aws_cloudfront_distribution" "hls_cdn" {
+  count           = var.enable_cloudfront ? 1 : 0
   enabled         = true
   is_ipv6_enabled = true
   comment         = "${var.project_name} HLS Video CDN"
@@ -106,8 +107,9 @@ resource "aws_cloudfront_response_headers_policy" "cors" {
   }
 }
 
-# ── S3 Bucket Policy: Only CloudFront OAC can read ──
+# ── S3 Bucket Policy: Only CloudFront OAC can read when CloudFront enabled ──
 resource "aws_s3_bucket_policy" "processed_cf_only" {
+  count  = var.enable_cloudfront ? 1 : 0
   bucket = var.processed_bucket_name
 
   policy = jsonencode({
@@ -121,7 +123,7 @@ resource "aws_s3_bucket_policy" "processed_cf_only" {
         Resource  = "${var.processed_bucket_arn}/*"
         Condition = {
           StringEquals = {
-            "AWS:SourceArn" = aws_cloudfront_distribution.hls_cdn.arn
+            "AWS:SourceArn" = aws_cloudfront_distribution.hls_cdn[0].arn
           }
         }
       }

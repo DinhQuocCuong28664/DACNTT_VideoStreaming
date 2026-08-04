@@ -25,6 +25,12 @@ variable "cors_allowed_origins" {
   default = ["http://localhost:5173"]
 }
 
+variable "enable_cloudfront" {
+  description = "Enable CloudFront distribution creation (set to false if AWS account CloudFront restriction is pending verification)"
+  type        = bool
+  default     = false
+}
+
 variable "tags" {
   type    = map(string)
   default = {}
