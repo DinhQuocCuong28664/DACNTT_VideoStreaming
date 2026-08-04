@@ -141,17 +141,22 @@ jobs:
         run: |
           NEW_IMAGE="${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}"
           
-          # Get current job definition
+          # Check if job definition exists on AWS
           CURRENT_JOB_DEF=$(aws batch describe-job-definitions \
             --job-definition-name dacntt-dev-transcoder-job \
             --status ACTIVE \
             --query 'jobDefinitions[0]' \
-            --output json)
+            --output json 2>/dev/null || echo "null")
           
-          # Update container image in job definition
-          echo "$CURRENT_JOB_DEF" | \
-            jq --arg img "$NEW_IMAGE" '.containerProperties.image = $img' | \
-            jq '{jobDefinitionName: .jobDefinitionName, type: .type, containerProperties: .containerProperties, platformCapabilities: .platformCapabilities}' | \
-            xargs -0 aws batch register-job-definition --cli-input-json
-          
-          echo "✅ Batch Job Definition updated with image: $NEW_IMAGE"
+          if [ "$CURRENT_JOB_DEF" != "null" ] && [ "$CURRENT_JOB_DEF" != "" ] && [ "$CURRENT_JOB_DEF" != "None" ]; then
+            UPDATED_JSON=$(echo "$CURRENT_JOB_DEF" | \
+              jq --arg img "$NEW_IMAGE" '.containerProperties.image = $img' | \
+              jq '{jobDefinitionName: .jobDefinitionName, type: .type, containerProperties: .containerProperties, platformCapabilities: .platformCapabilities}')
+            
+            aws batch register-job-definition --cli-input-json "$UPDATED_JSON"
+            echo "✅ AWS Batch Job Definition updated with new image: $NEW_IMAGE"
+          else
+            echo "⚠️ AWS Batch Job Definition 'dacntt-dev-transcoder-job' is not yet created on AWS."
+            echo "✅ Docker Image '$NEW_IMAGE' was built & pushed to Amazon ECR successfully!"
+            echo "ℹ️ Run 'terraform apply' inside infrastructure/environments/dev to provision AWS Batch."
+          fi
