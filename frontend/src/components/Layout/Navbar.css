@@ -4,11 +4,13 @@
   left: 0;
   right: 0;
   height: var(--navbar-height);
-  background: rgba(15, 15, 26, 0.85);
+  background: var(--bg-secondary);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border-bottom: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
   z-index: 1000;
+  transition: background-color var(--transition-base), border-color var(--transition-base);
 }
 
 .navbar-inner {

@@ -1,42 +1,30 @@
 const videoService = require('../services/videoService');
 
 /**
- * @route   POST /api/videos/upload-url
- * @desc    Get Pre-signed URL for direct S3 upload
+ * @route   POST /api/videos/initiate-upload
+ * @desc    Creates DB record first (status: UPLOADING) to obtain videoId (_id)
+ *          and generates Pre-signed S3 upload URL.
  * @access  Private
  */
-const getUploadUrl = async (req, res, next) => {
+const initiateUpload = async (req, res, next) => {
   try {
-    const { filename, mimetype } = req.body;
+    const { title, description, category, filename, mimetype, fileSize, tags, visibility } = req.body;
 
-    const { uploadUrl, s3Key } = await videoService.getUploadUrl(
-      req.user._id,
+    const result = await videoService.initiateUpload(req.user._id, {
+      title,
+      description,
+      category,
       filename,
-      mimetype
-    );
-
-    res.status(200).json({
-      success: true,
-      data: { uploadUrl, s3Key },
+      mimeType: mimetype,
+      fileSize,
+      tags,
+      visibility,
     });
-  } catch (error) {
-    next(error);
-  }
-};
-
-/**
- * @route   POST /api/videos
- * @desc    Create a new video record in database
- * @access  Private
- */
-const createVideo = async (req, res, next) => {
-  try {
-    const video = await videoService.createVideo(req.user._id, req.body);
 
     res.status(201).json({
       success: true,
-      message: 'Video record created',
-      data: { video },
+      message: 'Upload initiated — DB record created and Pre-signed URL generated',
+      data: result,
     });
   } catch (error) {
     next(error);
@@ -64,15 +52,17 @@ const confirmUpload = async (req, res, next) => {
 
 /**
  * @route   GET /api/videos
- * @desc    Get all public READY videos (Home page)
+ * @desc    Get all public READY videos (Home page with optional category & search)
  * @access  Public
  */
 const getAllVideos = async (req, res, next) => {
   try {
     const page = parseInt(req.query.page, 10) || 1;
     const limit = parseInt(req.query.limit, 10) || 12;
+    const category = req.query.category || null;
+    const searchQuery = req.query.q || null;
 
-    const result = await videoService.getAllVideos(page, limit);
+    const result = await videoService.getAllVideos(page, limit, category, searchQuery);
 
     res.status(200).json({
       success: true,
@@ -86,18 +76,116 @@ const getAllVideos = async (req, res, next) => {
 /**
  * @route   GET /api/videos/:id
  * @desc    Get single video by ID (and increment views)
- * @access  Public
+ * @access  Public (Enforces visibility & READY status checks for non-owners)
  */
 const getVideoById = async (req, res, next) => {
   try {
-    const video = await videoService.getVideoById(req.params.id);
+    const video = await videoService.getVideoById(req.params.id, req.user);
 
-    // Increment views asynchronously (fire-and-forget)
+    // Increment views asynchronously
     videoService.incrementViews(req.params.id).catch(() => {});
 
     res.status(200).json({
       success: true,
       data: { video },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @route   POST /api/videos/:id/like
+ * @desc    Toggle like on video
+ * @access  Private
+ */
+const toggleLike = async (req, res, next) => {
+  try {
+    const result = await videoService.toggleLike(req.params.id, req.user._id);
+
+    res.status(200).json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @route   POST /api/videos/:id/dislike
+ * @desc    Toggle dislike on video
+ * @access  Private
+ */
+const toggleDislike = async (req, res, next) => {
+  try {
+    const result = await videoService.toggleDislike(req.params.id, req.user._id);
+
+    res.status(200).json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @route   GET /api/videos/:id/comments
+ * @desc    Get comments for video
+ * @access  Public
+ */
+const getComments = async (req, res, next) => {
+  try {
+    const page = parseInt(req.query.page, 10) || 1;
+    const limit = parseInt(req.query.limit, 10) || 20;
+
+    const result = await videoService.getComments(req.params.id, page, limit, req.user);
+
+    res.status(200).json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @route   POST /api/videos/:id/comments
+ * @desc    Add a comment to video
+ * @access  Private
+ */
+const addComment = async (req, res, next) => {
+  try {
+    const { content } = req.body;
+    if (!content || !content.trim()) {
+      return res.status(400).json({ success: false, message: 'Content is required' });
+    }
+
+    const comment = await videoService.addComment(req.params.id, req.user._id, content);
+
+    res.status(201).json({
+      success: true,
+      data: { comment },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @route   DELETE /api/videos/comments/:commentId
+ * @desc    Delete a comment
+ * @access  Private
+ */
+const deleteComment = async (req, res, next) => {
+  try {
+    await videoService.deleteComment(req.params.commentId, req.user._id);
+
+    res.status(200).json({
+      success: true,
+      message: 'Comment deleted',
     });
   } catch (error) {
     next(error);
@@ -114,7 +202,6 @@ const getUserVideos = async (req, res, next) => {
     const page = parseInt(req.query.page, 10) || 1;
     const limit = parseInt(req.query.limit, 10) || 12;
 
-    // Pass requester ID so owner can see all their videos
     const requesterId = req.user ? req.user._id : null;
 
     const result = await videoService.getVideosByUser(
@@ -158,7 +245,7 @@ const updateVideo = async (req, res, next) => {
 
 /**
  * @route   DELETE /api/videos/:id
- * @desc    Delete video (remove DB record + S3 objects)
+ * @desc    Delete video (remove DB record + S3 raw & processed objects)
  * @access  Private (Owner only)
  */
 const deleteVideo = async (req, res, next) => {
@@ -175,12 +262,16 @@ const deleteVideo = async (req, res, next) => {
 };
 
 module.exports = {
-  getUploadUrl,
-  createVideo,
+  initiateUpload,
   confirmUpload,
   getAllVideos,
   getVideoById,
   getUserVideos,
+  toggleLike,
+  toggleDislike,
+  getComments,
+  addComment,
+  deleteComment,
   updateVideo,
   deleteVideo,
 };

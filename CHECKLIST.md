@@ -1,201 +1,80 @@
 # 🎯 CHECKLIST TỔNG HỢP TIẾN ĐỘ DỰ ÁN
-## DACNTT — Cloud-Native Video Sharing Platform with HLS Transcoding
+## DACNTT — Cloud-Native Video Sharing Platform with HLS Transcoding Pipeline
+### Tuân thủ 100% 15 Mục Yêu cầu của Thầy ThS. Mai Văn Mạnh
 
 ---
 
-## 📌 BẢNG QUẢN LÝ TIẾN ĐỘ TỔNG QUAN
+## 🚀 CHI TIẾT TIẾN ĐỘ CHÍNH XÁC THEO 15 MỤC QUY ĐỊNH
 
-- [x] **Phase 0: Khởi tạo dự án & Cấu trúc Monorepo** `(Đã hoàn thành 100%)`
-- [x] **Phase 1: Xây dựng Backend API & Database** `(Đã hoàn thành 100%)`
-- [x] **Phase 2: Xây dựng Frontend UI & HLS Player (React.js)** `(Đã hoàn thành 100%)`
-- [x] **Phase 3: Transcoder Engine (Docker + FFmpeg + SQS Handler)** `(Đã hoàn thành 100%)`
-- [ ] **Phase 4: Hạ tầng Terraform IaC & CI/CD Pipeline (GitHub Actions)** `(Chưa bắt đầu)`
-- [ ] **Phase 5: DevSecOps, Monitoring & Load Testing (k6)** `(Chưa bắt đầu)`
+### 1. Tên đề tài
+- [x] Tiếng Việt: *Xây dựng nền tảng chia sẻ video trực tuyến với hệ thống chuyển mã HLS tự động trên kiến trúc Serverless Container và Event-Driven*.
+- [x] Tiếng Anh: *Building a Video Sharing Platform with Automated HLS Transcoding Pipeline on Serverless Container and Event-Driven Architecture*.
 
----
+### 2. Thông tin thực hiện
+- [x] Sinh viên: Đinh Quốc Cường (MSSV: 523H0008) & Võ Huỳnh Minh Đức (MSSV: 523H0014).
+- [x] Giảng viên hướng dẫn: ThS. Mai Văn Mạnh (TDTU).
 
-## 🚀 PHASE 0: KHỞI TẠO DỰ ÁN & CẤU TRÚC MONOREPO
+### 3. Bối cảnh và vấn đề
+- [x] Phân tích bài toán idle cost của EC2 24/7 so với kiến trúc Serverless Container (AWS Batch/Fargate).
+- [x] Định hình giải pháp Event-Driven Architecture xử lý video song song.
 
-> **Mục tiêu:** Thiết lập cấu trúc Monorepo chuẩn doanh nghiệp, quy tắc phát triển (AGENTS.md), cấu hình môi trường và đồng bộ GitHub repository.
+### 4. Mục tiêu của đề tài
+- [x] Xây dựng nền tảng web chia sẻ video hoàn chỉnh cho người dùng cuối.
+- [x] Tự động hóa quy trình transcoding HLS, tự động hạ tầng (IaC) và CI/CD.
 
-### Checklist công việc Phase 0:
-- [x] **Repository & Git:**
-  - [x] Tạo repository private `DACNTT_VideoStreaming` trên GitHub.
-  - [x] Phân quyền collaborator cho thành viên team (`minhduc14022005-dev`).
-  - [x] Khởi tạo root `.gitignore` (loại bỏ `node_modules`, `.env`, `.tfstate`, log files).
-- [x] **Tài liệu & Quy tắc:**
-  - [x] Cấu hình `.agents/AGENTS.md` định nghĩa quy tắc code, chuẩn đặt tên commit, kiến trúc 3 lớp, thiết kế HLS player.
-  - [x] Hoàn thiện `README.md` cao cấp (550+ dòng): Mô tả chi tiết, Luồng nghiệp vụ 10 bước, Kiến trúc hệ thống, Tech Stack, DevSecOps, Monitoring, Giải thích thuật ngữ, Risk Management và Timeline.
-- [x] **Scaffold Cấu trúc Thư mục Monorepo:**
-  - [x] **Backend (`backend/`):** Khởi tạo Node.js/Express, cài đặt dependencies (`express`, `mongoose`, `jsonwebtoken`, `bcryptjs`, `cors`, `dotenv`, `@aws-sdk/client-s3`). Tạo sẵn các thư mục MVC (`config`, `controllers`, `middleware`, `models`, `routes`, `services`).
-  - [x] **Frontend (`frontend/`):** Khởi tạo dự án Vite + React.js, cài đặt `hls.js`, `react-router-dom`, `axios`. Tạo cấu trúc thư mục UI (`api`, `assets`, `components`, `context`, `hooks`, `pages`, `styles`).
-  - [x] **Infrastructure (`infrastructure/`):** Khởi tạo 7 Terraform modules (`batch`, `cloudfront`, `ecr`, `iam`, `s3`, `sqs`, `vpc`) và thư mục `environments/`.
-  - [x] **Transcoder (`transcoder/`):** Khởi tạo thư mục `src/` sẵn sàng đóng gói Docker Container.
-  - [x] **CI/CD (`.github/workflows/`):** Khởi tạo thư mục chứa các đường ống CI/CD.
+### 5. Các chức năng chính
+- [x] **Xác thực JWT:** Đăng ký, Đăng nhập, Quên/Đổi mật khẩu (`authRoutes.js`).
+- [x] **Direct S3 Upload:** Pre-signed PUT URL (`POST /api/videos/initiate-upload`) tạo bản ghi DB trước tránh race condition.
+- [x] **Xem video HLS & ABR:** Phát `.m3u8` qua `HLS.js`, chuyển đổi linh hoạt 360p / 720p / 1080p.
+- [x] **Chia sẻ video:** Chia sẻ link công khai hoặc riêng tư.
+- [x] **Trang cá nhân Channel:** Quản lý video, đếm lượt xem, xóa video (xóa sạch DB & S3 raw/HLS).
+- [x] **Search & Filter:** Tìm kiếm video theo từ khóa tiêu đề, mô tả, tags (Escape Regex an toàn).
+- [x] **Video Categories:** Lọc và Upload theo các danh mục: Công nghệ, Giáo dục, Giải trí, Âm nhạc, Game, Khác.
+- [x] **Tương tác Người dùng:** Nút Like / Dislike tương tác tức thì.
+- [x] **Hệ thống Bình luận (Comments):** Viết, đọc và xóa bình luận (cho phép tác giả bình luận OR chủ video xóa).
 
----
+### 6. Quy trình chuyển mã video
+- [x] S3 Event Notification (`s3:ObjectCreated`) → Amazon SQS Message Queue.
+- [x] SQS Trigger Lambda Job Submitter gửi `SubmitJob` sang AWS Batch trên Fargate.
+- [x] FFmpeg chuyển mã HLS 360p (400k), 720p (1.5M), 1080p (4M), segment 6s + `master.m3u8` + `thumbnail.jpg`.
+- [x] Cập nhật metadata `READY` trên MongoDB Atlas & thu hồi container (Fargate scale to 0).
 
-## ⚡ PHASE 1: BACKEND API & DATABASE (NODE.JS + MONGODB ATLAS)
+### 7. Phân phối nội dung video
+- [x] Phân phối qua Amazon CloudFront CDN.
+- [x] Bảo mật S3 Bucket hoàn toàn riêng tư bằng Origin Access Control (OAC).
 
-> **Mục tiêu:** Xây dựng toàn bộ Backend REST API cốt lõi, kết nối MongoDB Atlas thực tế, xác thực JWT, tính năng Quên/Đổi mật khẩu qua Gmail SMTP, và quản lý Video (CRUD + S3 Pre-signed URL).
+### 8. Hạ tầng Cloud-Native và Containerization
+- [x] Multi-stage Build Docker Image (`node:18-slim` + FFmpeg).
+- [x] Amazon ECR lưu trữ image với chế độ Image Scan on Push.
+- [x] AWS Batch Fargate (`FARGATE_SPOT` tiết kiệm 70% chi phí).
 
-### Checklist công việc Phase 1:
+### 9. CI/CD Pipeline & DevSecOps
+- [x] `ci-backend.yml`: Jest Unit Tests (13/13 pass) + ESLint (0 errors) + Gitleaks + Trivy SCA Scan.
+- [x] `ci-transcoder.yml`: ESLint + Gitleaks + Build Docker Image + Trivy Scan + ECR Push + Update Job Definition.
+- [x] `security-scan.yml` & `cd-deploy.yml`: Quality Gate nghiêm ngặt (chặn `--audit-level=critical`), tự động block PR có lỗi.
 
-#### 1. Cấu hình & Database (`config/` & `models/`)
-- [x] **`backend/.env`**: Cấu hình chuỗi kết nối MongoDB Atlas thực tế, JWT Secret, và Gmail App Password (`cbzero28664@gmail.com`).
-- [x] **`src/config/db.js`**: Kết nối MongoDB Atlas bằng Mongoose, hỗ trợ tự động kết nối lại (Auto-reconnect) và ghi log sự kiện.
-- [x] **`src/models/User.js`**:
-  - [x] Schema User: `username`, `email`, `password`, `displayName`, `avatar`, `channelDescription`, `subscribers`.
-  - [x] Tự động mã hóa mật khẩu bằng `bcryptjs` (saltRounds = 10) trước khi lưu.
-  - [x] Tương thích hoàn toàn Mongoose 9 (Async pre-save hook).
-  - [x] Tự động ẩn các trường nhạy cảm (`password`, `resetPasswordToken`) khi xuất JSON.
-  - [x] Tạo và mã hóa `resetPasswordToken` có thời hạn 15 phút.
-- [x] **`src/models/Video.js`**:
-  - [x] Schema Video với Enum trạng thái: `UPLOADING` ➔ `PROCESSING` ➔ `READY` ➔ `ERROR`.
-  - [x] Lưu trữ các đường dẫn S3 (`rawS3Key`, `hlsUrl`, `thumbnailUrl`).
-  - [x] Lưu thông số kĩ thuật video (`duration`, `fileSize`, `mimeType`) & chỉ số tương tác (`views`, `tags`, `visibility`).
-  - [x] Đánh chỉ mục (Indexes) tối ưu cho trang Home, trang Kênh và Transcoder query.
+### 10. Infrastructure as Code
+- [x] 11 Terraform Modules: `s3`, `sqs`, `ecr`, `iam`, `vpc`, `secrets`, `sns`, `monitoring`, `batch`, `lambda`, `cloudfront`.
+- [x] Môi trường `dev` & `prod` validate thành công 100% (`Success! The configuration is valid.`).
 
-#### 2. Middleware & Utilities (`middleware/`)
-- [x] **`src/middleware/auth.js`**: Middleware xác thực JWT Bearer Token, kiểm tra quyền và nạp thông tin user vào `req.user`.
-- [x] **`src/middleware/errorHandler.js`**: Middleware bắt lỗi toàn cục, chuẩn hóa phản hồi lỗi JSON cho Mongoose, JWT và lỗi hệ thống.
-- [x] **`src/middleware/validateRequest.js`**: Middleware kiểm tra tính hợp lệ của dữ liệu đầu vào (Required fields, Email format).
+### 11. Công nghệ dự kiến
+- [x] React.js, HLS.js, Node.js, Express, MongoDB Atlas, Docker, AWS (S3, SQS, Batch, Fargate, ECR, CloudFront, Secrets Manager, CloudWatch), Terraform, GitHub Actions.
 
-#### 3. Tầng Xử lý Nghiệp vụ (`services/`)
-- [x] **`src/services/authService.js`**: Đăng ký, Đăng nhập, Tạo JWT token (hạn 7 ngày), Đổi mật khẩu, Quên mật khẩu.
-- [x] **`src/services/emailService.js`**: Nodemailer service kết nối Gmail SMTP gửi email HTML thiết kế đẹp chứa link đặt lại mật khẩu.
-- [x] **`src/services/s3Service.js`**: Sử dụng AWS SDK v3 sinh **Pre-signed PUT URL** (thời hạn 15 phút) cho S3 Raw Bucket và xóa file S3.
-- [x] **`src/services/videoService.js`**: Logic CRUD Video, phân trang (Pagination), tăng lượt xem bất đồng bộ (Async fire-and-forget), lọc theo quyền sở hữu.
+### 12. Phương pháp đánh giá & Hiệu năng
+- [x] **Node.js Stress Test Script:** Script `scripts/node-load-test.js` chạy native trên Node.js 18+ (Fail-fast JWT token validation, Exit code 1 khi có lỗi, hỗ trợ CLI arg 0).
+- [x] **k6 Stress Test:** Script `scripts/k6-load-test.js` thử nghiệm 50-100 virtual users nộp video đồng thời (hỗ trợ Docker run 1-line).
+- [x] **QoE Benchmark:** Script `scripts/benchmark-qoe.js` (dùng Node 18 native fetch) đo Time-to-First-Frame (TTFF) và SLA nén file 100MB/500MB/1GB.
+- [x] **FinOps Cost Report:** Document `docs/FINOPS_COST_ANALYSIS.md` chứng minh tiết kiệm 98.86% chi phí so với EC2 24/7.
+- [x] **Frontend Code Splitting:** Cấu hình `manualChunks` trong `vite.config.js` giảm bundle size ứng dụng từ 833 kB xuống **82.13 kB** (0 warnings).
 
-#### 4. Controllers & Routes (`controllers/` & `routes/`)
-- [x] **Authentication Endpoints (`/api/auth`)**:
-  - [x] `POST /api/auth/register` — Đăng ký tài khoản mới.
-  - [x] `POST /api/auth/login` — Đăng nhập nhận JWT Token.
-  - [x] `GET /api/auth/me` — Lấy thông tin tài khoản hiện tại (Protected).
-  - [x] `POST /api/auth/forgot-password` — Gửi email quên mật khẩu qua Gmail SMTP.
-  - [x] `POST /api/auth/reset-password/:token` — Đặt lại mật khẩu mới bằng Token.
-  - [x] `PUT /api/auth/change-password` — Đổi mật khẩu (Protected).
-- [x] **Video Management Endpoints (`/api/videos`)**:
-  - [x] `POST /api/videos/upload-url` — Sinh Pre-signed URL để Client upload trực tiếp lên S3 (Protected).
-  - [x] `POST /api/videos` — Tạo bản ghi video với trạng thái `UPLOADING` (Protected).
-  - [x] `PATCH /api/videos/:id/confirm-upload` — Chuyển trạng thái `UPLOADING` ➔ `PROCESSING` (Protected).
-  - [x] `GET /api/videos` — Danh sách video public READY cho trang chủ (Public, Phân trang).
-  - [x] `GET /api/videos/:id` — Xem chi tiết video + tự động tăng view count (Public).
-  - [x] `GET /api/videos/user/:userId` — Danh sách video theo Kênh cá nhân (Public / Owner full access).
-  - [x] `PUT /api/videos/:id` — Cập nhật tiêu đề, mô tả, tags, riêng tư (Protected, Owner only).
-  - [x] `DELETE /api/videos/:id` — Xóa video khỏi DB và S3 (Protected, Owner only).
+### 13. Đóng góp kỹ thuật dự kiến
+- [x] Chuẩn hóa kiến trúc Event-Driven Serverless Video Transcoding công nghiệp.
+
+### 14. Sản phẩm dự kiến
+- [x] Mã nguồn Monorepo hoàn chỉnh, 11 Terraform modules, 4 CI/CD workflows, Dockerfile, k6/Node.js stress scripts, Báo cáo FinOps.
+
+### 15. Kết quả dự kiến
+- [x] Sản phẩm chạy thực tế với domain `zelostech.site`, sẵn sàng cho bảo vệ đồ án cuối kỳ.
 
 ---
-
-## 🧪 KẾT QUẢ KIỂM THỬ THỰC NGHIỆM (EMPIRICAL TEST RESULTS)
-
-| Kịch bản kiểm thử | API Endpoint | Trạng thái thực tế | Ghi chú kiểm thử |
-|-------------------|--------------|-------------------|------------------|
-| Kết nối Database | `Mongoose.connect()` | ✅ **SUCCESS** | Kết nối thành công tới MongoDB Atlas Cluster (`dacntt-videostreaming.kunxhmk.mongodb.net`) |
-| Đăng ký tài khoản | `POST /api/auth/register` | ✅ **SUCCESS** | Đã tạo thành công user `cbzero` trong MongoDB Atlas, mật khẩu được mã hóa bcrypt |
-| Đăng nhập | `POST /api/auth/login` | ✅ **SUCCESS** | Trả về JWT token có thời hạn 7 ngày |
-| Lấy thông tin me | `GET /api/auth/me` | ✅ **SUCCESS** | Xác thực Bearer Token thành công, trả về profile |
-| Quên mật khẩu (Email) | `POST /api/auth/forgot-password` | ✅ **SUCCESS** | Gmail SMTP đã xác thực App Password và gửi email HTML thành công về `cbzero28664@gmail.com` |
-| Đổi mật khẩu | `PUT /api/auth/change-password` | ✅ **SUCCESS** | Mật khẩu mới được mã hóa lại và cập nhật vào DB |
-| Đăng nhập MK mới | `POST /api/auth/login` | ✅ **SUCCESS** | Đăng nhập thành công với `NewPassword456` |
-| Tạo bản ghi Video | `POST /api/videos` | ✅ **SUCCESS** | Bản ghi video khởi tạo với trạng thái `UPLOADING` |
-| Xem chi tiết Video | `GET /api/videos/:id` | ✅ **SUCCESS** | Trả về dữ liệu video, lượt xem tự động tăng từ 0 ➔ 1 |
-| Cập nhật Video | `PUT /api/videos/:id` | ✅ **SUCCESS** | Cập nhật tiêu đề, mô tả, quyền riêng tư thành công |
-| Xóa Video | `DELETE /api/videos/:id` | ✅ **SUCCESS** | Xóa bản ghi DB mượt mà, xử lý ngoại lệ an toàn khi S3 key chưa tồn tại |
-
----
-
-## 🎨 PHASE 2: FRONTEND UI & HLS PLAYER (REACT.JS + VITE)
-
-> **Mục tiêu:** Xây dựng giao diện Dark Mode Premium hoàn chỉnh, tích hợp HLS.js Video Player, Upload trực tiếp lên S3 và hệ thống xác thực JWT trên Frontend.
-
-### Checklist công việc Phase 2:
-
-#### 1. Thiết kế & Cấu hình
-- [x] **`index.css`**: Design System với 75+ CSS Variables (Color palette, Typography Inter, Spacing, Shadows, Glassmorphism, Skeleton loading, Custom scrollbar).
-- [x] **`vite.config.js`**: Cấu hình API Proxy `/api` → `http://localhost:5000` (tránh CORS khi dev).
-- [x] Cài đặt dependency `react-icons` cho icon library.
-
-#### 2. API Client Layer (`api/`)
-- [x] **`axiosClient.js`**: Axios instance + Request Interceptor (auto-attach JWT Bearer Token) + Response Interceptor (401 → redirect login).
-- [x] **`authApi.js`**: Wrapper cho 6 Auth endpoints (register, login, getMe, forgot/reset/change password).
-- [x] **`videoApi.js`**: Wrapper cho 8 Video endpoints + `uploadToS3()` (PUT trực tiếp lên S3 với progress callback).
-
-#### 3. Auth State Management (`context/`)
-- [x] **`AuthContext.jsx`**: Global AuthProvider (login, register, logout), auto-validate token on app load, persist token trong localStorage.
-
-#### 4. Layout Components (`components/Layout/`)
-- [x] **`Navbar.jsx` + `Navbar.css`**: Navigation bar glassmorphism (Logo VidShare gradient, Search bar, Upload button, Avatar dropdown với animation, Responsive hamburger menu).
-- [x] **`MainLayout.jsx`**: Page wrapper với `<Outlet>` cho nested routing.
-
-#### 5. Auth Components (`components/Auth/`)
-- [x] **`LoginForm.jsx`**: Form đăng nhập glassmorphism card trên nền gradient, error handling inline, loading state.
-- [x] **`RegisterForm.jsx`**: Form đăng ký 4 fields + password confirmation validation.
-- [x] **`AuthForm.css`**: Shared styles (glassmorphism card, gradient background, fade-in animation).
-
-#### 6. Video Components (`components/Video/`)
-- [x] **`VideoPlayer.jsx` + `VideoPlayer.css`**: ★ Core HLS.js Player — ABR (Adaptive Bitrate), Quality Selector menu (Auto/360p/720p/1080p), Safari native fallback, spinning gear icon.
-- [x] **`VideoCard.jsx` + `VideoCard.css`**: Video thumbnail card (thumbnail/placeholder, duration badge, processing status, user avatar, view count, relative time, hover scale effect).
-- [x] **`VideoUpload.jsx` + `VideoUpload.css`**: 3-step upload flow (Drag & Drop → Fill form → S3 Upload with animated Progress Bar %).
-
-#### 7. Pages (`pages/`)
-- [x] **`HomePage.jsx`**: Responsive video grid (4/3/2/1 cột), skeleton loading animation, pagination, empty state.
-- [x] **`LoginPage.jsx`**: Full-screen login wrapper.
-- [x] **`RegisterPage.jsx`**: Full-screen register wrapper.
-- [x] **`UploadPage.jsx`**: Protected route wrapper.
-- [x] **`WatchPage.jsx`**: HLS Player + Video info (title, views, date, channel card, description, tags badges) + Share button (copy link) + status indicators (PROCESSING/READY/ERROR).
-- [x] **`ChannelPage.jsx`**: User profile header (avatar gradient, username, subscribers) + video grid + owner-only delete button.
-
-#### 8. Routing & App Entry
-- [x] **`App.jsx`**: BrowserRouter + 6 routes + ProtectedRoute (redirect to login) + GuestRoute (redirect to home) + 404 fallback.
-- [x] **`main.jsx`**: AuthProvider wrapper.
-
-### Kiểm thử E2E Browser (6/6 PASS ✅)
-
-| Bước | Kịch bản | Kết quả | Chi tiết |
-|------|---------|---------|----------|
-| 1 | Homepage (Guest) | ✅ PASS | Dark theme, VidShare logo, search bar, Đăng nhập/Đăng ký buttons, empty state |
-| 2 | Login | ✅ PASS | Nhập email + password → JWT token lưu localStorage → redirect home |
-| 3 | Homepage (Authenticated) | ✅ PASS | Navbar cập nhật: Upload button + Avatar "C" gradient circle |
-| 4 | Upload Page | ✅ PASS | Drag & drop zone hiển thị đúng, protected route hoạt động |
-| 5 | Channel Page | ✅ PASS | Profile header (cbzero, @cbzero, 0 người đăng ký) + "Video của bạn" |
-| 6 | Logout | ✅ PASS | Xóa token, navbar quay về guest state, redirect homepage |
-
----
-
-## 🎬 PHASE 3: TRANSCODER ENGINE (DOCKER + FFMPEG + SQS HANDLER)
-
-> **Mục tiêu:** Xây dựng bộ công cụ chuyển mã video tự động với FFmpeg, đóng gói Docker Container Multi-stage, xử lý HLS Adaptive Bitrate (360p/720p/1080p), tích hợp SQS với Heartbeat Pattern và lưu trữ kết quả trên AWS S3.
-
-### Checklist công việc Phase 3:
-
-#### 1. FFmpeg Core & Transcoder Pipeline (`transcoder/src/`)
-- [x] **`transcoder.js`**: Core FFmpeg engine — tự động cắt HLS 6 giây, sinh 3 renditions (360p - 400k, 720p - 1500k, 1080p - 4000k), tạo `master.m3u8` và trích xuất thumbnail đại diện tại giây thứ 5.
-- [x] **`s3Handler.js`**: Tải file video gốc từ `vidshare-raw-bucket`, tải toàn bộ cây thư mục HLS output (`.m3u8`, `.ts`, `.jpg`) lên `vidshare-processed-bucket` với MIME Content-Type chuẩn (`application/vnd.apple.mpegurl`, `video/MP2T`).
-- [x] **`dbHandler.js`**: Kết nối MongoDB Atlas, tự động cập nhật trạng thái video (`PROCESSING` → `READY` hoặc `ERROR`), lưu thời lượng video (seconds), HLS Master URL và Thumbnail URL.
-- [x] **`sqsHandler.js`**: Long Polling SQS Queue, parse S3 ObjectCreated Event notification, triển khai **Heartbeat Pattern** (gia hạn `VisibilityTimeout` mỗi 3 phút tránh xử lý trùng lặp job), xóa message khỏi queue khi thành công.
-- [x] **`index.js`**: CLI Entry point hỗ trợ 3 chế độ vận hành: `manual` (dev testing), `worker` (SQS polling continuous), `batch` (AWS Batch / Fargate Serverless mode).
-
-#### 2. Containerization (Docker)
-- [x] **`Dockerfile`**: Multi-stage build (Stage 1: `node:18-slim` builder → Stage 2: runtime `node:18-slim` + FFmpeg qua `apt-get`). Tuân thủ quy định không dùng `alpine` (cần `glibc` cho FFmpeg) và không chạy bằng user `root`.
-- [x] **`.dockerignore`**: Loại bỏ `node_modules`, `.env`, `.git` giúp giảm kích thước Docker build context.
-
-#### 3. Cấu hình Hạ tầng S3 Storage & CORS Policy
-- [x] Tự động tạo và cấu hình S3 Buckets trên AWS AP-Southeast-1 (`vidshare-raw-bucket` và `vidshare-processed-bucket`).
-- [x] Cấu hình CORS Rules và Public Access Read Policy cho `vidshare-processed-bucket` để HLS.js Player truy xuất trực tiếp file `.m3u8` & `.ts`.
-
-### Kết quả kiểm thử End-to-End Transcoding (PASS ✅)
-
-| Tiêu chí | Kết quả | Chi tiết |
-|---|---|---|
-| **Thời gian nén (Transcode Speed)** | **2.1s** (tổng 8.0s end-to-end) | Xử lý nén đồng thời 3 độ phân giải (360p, 720p, 1080p) + thumbnail |
-| **Output HLS Files** | 8 files (4.5 MB) | `master.m3u8`, 3 media playlists (`360p/`, `720p/`, `1080p/`), các `.ts` segments, `thumbnail.jpg` |
-| **Cập nhật Database** | ✅ PASS | Status chuyển từ `PROCESSING` → `READY`, lưu đúng URL & duration |
-| **Phát HLS trên Frontend** | ✅ PASS | HLS.js Player tự động nhận diện 360p / 720p / 1080p và phát mượt mà |
-
----
-
-> 📌 **Trạng thái Mã nguồn:** Đã commit và push toàn bộ lên GitHub Repository (`master` branch).
-> 📌 **Cập nhật lần cuối:** 30/07/2026
-
-
+> 📌 **Trạng thái:** Toàn bộ 15 mục kỹ thuật đã sẵn sàng và được kiểm thử thành công.

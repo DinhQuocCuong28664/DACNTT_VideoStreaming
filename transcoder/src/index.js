@@ -113,7 +113,6 @@ const runWorker = async () => {
 
   console.log('👂 Listening for messages...\n');
 
-  // eslint-disable-next-line no-constant-condition
   while (true) {
     try {
       const messages = await pollMessages();

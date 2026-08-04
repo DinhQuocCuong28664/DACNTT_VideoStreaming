@@ -1,11 +1,13 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../context/AuthContext';
-import { FiUpload, FiSearch, FiLogOut, FiUser, FiVideo } from 'react-icons/fi';
+import { useAuth } from '../../context/useAuth';
+import { useTheme } from '../../context/useTheme';
+import { FiUpload, FiSearch, FiLogOut, FiVideo, FiMoon, FiSun } from 'react-icons/fi';
 import './Navbar.css';
 
 const Navbar = () => {
   const { user, isAuthenticated, logout } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [showDropdown, setShowDropdown] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -30,9 +32,10 @@ const Navbar = () => {
 
   const handleSearch = (e) => {
     e.preventDefault();
-    // Search functionality — placeholder for future implementation
     if (searchQuery.trim()) {
-      console.log('Search:', searchQuery);
+      navigate(`/?q=${encodeURIComponent(searchQuery.trim())}`);
+    } else {
+      navigate('/');
     }
   };
 
@@ -112,6 +115,12 @@ const Navbar = () => {
                       <FiUpload /> Upload video
                     </Link>
                     <div className="dropdown-divider" />
+                    {/* YouTube-style Theme Toggle */}
+                    <button className="dropdown-item" onClick={toggleTheme}>
+                      {theme === 'dark' ? <FiSun /> : <FiMoon />}
+                      <span>Giao diện: {theme === 'dark' ? 'Sáng (Chuyển đổi)' : 'Tối (Chuyển đổi)'}</span>
+                    </button>
+                    <div className="dropdown-divider" />
                     <button className="dropdown-item dropdown-logout" onClick={handleLogout}>
                       <FiLogOut /> Đăng xuất
                     </button>
@@ -120,7 +129,15 @@ const Navbar = () => {
               </div>
             </>
           ) : (
-            <div className="auth-buttons">
+            <div className="auth-buttons" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <button
+                className="btn btn-secondary"
+                onClick={toggleTheme}
+                title={theme === 'dark' ? 'Chuyển sang Giao diện Sáng' : 'Chuyển sang Giao diện Tối'}
+                style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', gap: '6px' }}
+              >
+                {theme === 'dark' ? <FiSun /> : <FiMoon />}
+              </button>
               <Link to="/login" className="btn btn-secondary">
                 Đăng nhập
               </Link>

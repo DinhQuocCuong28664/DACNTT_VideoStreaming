@@ -25,11 +25,18 @@ Thumbs.db
 *.swo
 
 # Terraform
-infrastructure/.terraform/
-infrastructure/*.tfstate
-infrastructure/*.tfstate.backup
-infrastructure/*.tfvars
-!infrastructure/*.tfvars.example
+**/.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfvars
+!*.tfvars.example
+infrastructure/modules/lambda/dist/
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraform.lock.hcl
 
 # Docker
 *.tar

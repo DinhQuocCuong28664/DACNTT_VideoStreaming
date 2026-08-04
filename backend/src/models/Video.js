@@ -18,6 +18,11 @@ const videoSchema = new mongoose.Schema(
       ref: 'User',
       required: [true, 'Video must belong to a user'],
     },
+    category: {
+      type: String,
+      default: 'Công nghệ',
+      enum: ['Tất cả', 'Công nghệ', 'Giáo dục', 'Giải trí', 'Âm nhạc', 'Game', 'Khác'],
+    },
     status: {
       type: String,
       enum: ['UPLOADING', 'PROCESSING', 'READY', 'ERROR'],
@@ -53,6 +58,18 @@ const videoSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    likes: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+      },
+    ],
+    dislikes: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+      },
+    ],
     tags: {
       type: [String],
       default: [],
@@ -69,10 +86,12 @@ const videoSchema = new mongoose.Schema(
 );
 
 // Indexes for query performance
-videoSchema.index({ user: 1, createdAt: -1 }); // Channel page: user's videos sorted by newest
-videoSchema.index({ status: 1 }); // Transcoder queries videos by status
-videoSchema.index({ tags: 1 }); // Search by tags
-videoSchema.index({ visibility: 1, status: 1, createdAt: -1 }); // Home page: public + READY, sorted by newest
+videoSchema.index({ user: 1, createdAt: -1 });
+videoSchema.index({ status: 1 });
+videoSchema.index({ category: 1 });
+videoSchema.index({ tags: 1 });
+videoSchema.index({ title: 'text', description: 'text' });
+videoSchema.index({ visibility: 1, status: 1, createdAt: -1 });
 
 // Remove __v from JSON output
 videoSchema.methods.toJSON = function () {

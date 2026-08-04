@@ -12,6 +12,7 @@ const VideoUpload = () => {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
+    category: 'Công nghệ',
     tags: '',
     visibility: 'public',
   });
@@ -65,37 +66,35 @@ const VideoUpload = () => {
     setError('');
 
     try {
-      // Step 1: Get Pre-signed URL from backend
-      const urlRes = await videoApi.getUploadUrl(file.name, file.type);
-      const { uploadUrl, s3Key } = urlRes.data.data;
-
-      // Step 2: Upload directly to S3
-      await videoApi.uploadToS3(uploadUrl, file, (progress) => {
-        setUploadProgress(progress);
-      });
-
-      // Step 3: Create video record in DB
       const tagsArray = formData.tags
         .split(',')
         .map((t) => t.trim())
         .filter((t) => t);
 
-      const videoRes = await videoApi.createVideo({
+      // Step 1: Initiate upload (Creates DB record FIRST with status UPLOADING to get videoId, returns uploadUrl)
+      const initRes = await videoApi.initiateUpload({
         title: formData.title,
         description: formData.description,
-        rawS3Key: s3Key,
-        mimeType: file.type,
+        category: formData.category,
+        filename: file.name,
+        mimetype: file.type,
         fileSize: file.size,
         tags: tagsArray,
         visibility: formData.visibility,
       });
 
-      const videoId = videoRes.data.data.video._id;
+      const { video, uploadUrl } = initRes.data.data;
+      const videoId = video._id;
 
-      // Step 4: Confirm upload → status PROCESSING
+      // Step 2: Upload file directly to S3 via Pre-signed URL
+      await videoApi.uploadToS3(uploadUrl, file, (progress) => {
+        setUploadProgress(progress);
+      });
+
+      // Step 3: Confirm upload complete → transition status UPLOADING → PROCESSING
       await videoApi.confirmUpload(videoId);
 
-      // Navigate to the video page
+      // Step 4: Navigate to WatchPage
       navigate(`/watch/${videoId}`);
     } catch (err) {
       setError(
@@ -111,7 +110,7 @@ const VideoUpload = () => {
     setStep(1);
     setUploadProgress(0);
     setError('');
-    setFormData({ title: '', description: '', tags: '', visibility: 'public' });
+    setFormData({ title: '', description: '', category: 'Công nghệ', tags: '', visibility: 'public' });
   };
 
   return (
@@ -198,6 +197,24 @@ const VideoUpload = () => {
               </div>
 
               <div className="form-group">
+                <label className="label" htmlFor="vid-cat">Danh mục Video</label>
+                <select
+                  id="vid-cat"
+                  name="category"
+                  className="input"
+                  value={formData.category}
+                  onChange={handleChange}
+                >
+                  <option value="Công nghệ">Công nghệ</option>
+                  <option value="Giáo dục">Giáo dục</option>
+                  <option value="Giải trí">Giải trí</option>
+                  <option value="Âm nhạc">Âm nhạc</option>
+                  <option value="Game">Game</option>
+                  <option value="Khác">Khác</option>
+                </select>
+              </div>
+
+              <div className="form-group">
                 <label className="label" htmlFor="vid-vis">Quyền riêng tư</label>
                 <select
                   id="vid-vis"
@@ -213,8 +230,8 @@ const VideoUpload = () => {
               </div>
             </div>
 
-            <button className="btn btn-primary upload-submit" onClick={handleUpload}>
-              <FiUploadCloud /> Bắt đầu Upload
+            <button className="btn btn-primary upload-submit" onClick={handleUpload} disabled={uploading}>
+              <FiUploadCloud /> {uploading ? 'Đang xử lý...' : 'Bắt đầu Upload'}
             </button>
           </div>
         </div>

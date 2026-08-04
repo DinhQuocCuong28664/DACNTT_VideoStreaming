@@ -1,0 +1,15 @@
+# Prod Environment — terraform.tfvars.example
+# Copy to terraform.tfvars and fill in real values
+# NEVER commit terraform.tfvars to Git!
+
+aws_region   = "ap-southeast-1"
+environment  = "prod"
+project_name = "dacntt"
+admin_email  = "523H0008@student.tdtu.edu.vn"
+
+# mongodb_uri = "mongodb+srv://..."
+# jwt_secret  = "your-production-jwt-secret"
+
+cors_allowed_origins = [
+  "https://zelostech.site"
+]

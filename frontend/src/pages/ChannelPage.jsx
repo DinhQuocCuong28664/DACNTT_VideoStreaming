@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { FiUser, FiTrash2, FiEdit3 } from 'react-icons/fi';
-import { useAuth } from '../context/AuthContext';
+import { FiUser, FiTrash2 } from 'react-icons/fi';
+import { useAuth } from '../context/useAuth';
 import videoApi from '../api/videoApi';
 import VideoCard from '../components/Video/VideoCard';
 

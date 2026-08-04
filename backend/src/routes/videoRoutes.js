@@ -1,27 +1,36 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
+const { optionalAuth } = require('../middleware/auth');
 const { validateRequest } = require('../middleware/validateRequest');
 const {
-  getUploadUrl,
-  createVideo,
+  initiateUpload,
   confirmUpload,
   getAllVideos,
   getVideoById,
   getUserVideos,
+  toggleLike,
+  toggleDislike,
+  getComments,
+  addComment,
+  deleteComment,
   updateVideo,
   deleteVideo,
 } = require('../controllers/videoController');
 
-// Public routes
+// Public routes (with optional auth to detect owner)
 router.get('/', getAllVideos);
-router.get('/user/:userId', getUserVideos);
-router.get('/:id', getVideoById);
+router.get('/user/:userId', optionalAuth, getUserVideos);
+router.get('/:id', optionalAuth, getVideoById);
+router.get('/:id/comments', optionalAuth, getComments);
 
 // Protected routes (require JWT)
-router.post('/upload-url', auth, validateRequest(['filename', 'mimetype']), getUploadUrl);
-router.post('/', auth, validateRequest(['title', 'rawS3Key']), createVideo);
+router.post('/initiate-upload', auth, validateRequest(['filename', 'mimetype']), initiateUpload);
 router.patch('/:id/confirm-upload', auth, confirmUpload);
+router.post('/:id/like', auth, toggleLike);
+router.post('/:id/dislike', auth, toggleDislike);
+router.post('/:id/comments', auth, addComment);
+router.delete('/comments/:commentId', auth, deleteComment);
 router.put('/:id', auth, updateVideo);
 router.delete('/:id', auth, deleteVideo);
 

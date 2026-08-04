@@ -140,7 +140,7 @@ const extractThumbnail = async (inputPath, outputDir) => {
     thumbnailPath,
   ];
 
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     const proc = spawn('ffmpeg', args);
     proc.on('close', (code) => {
       if (code === 0) {

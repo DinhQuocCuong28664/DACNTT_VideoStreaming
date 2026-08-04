@@ -1,18 +1,32 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import videoApi from '../api/videoApi';
 import VideoCard from '../components/Video/VideoCard';
 
+const CATEGORIES = ['Tất cả', 'Công nghệ', 'Giáo dục', 'Giải trí', 'Âm nhạc', 'Game', 'Khác'];
+
 const HomePage = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [videos, setVideos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState(null);
 
+  const selectedCategory = searchParams.get('category') || 'Tất cả';
+  const searchQuery = searchParams.get('q') || '';
+
   useEffect(() => {
     const fetchVideos = async () => {
       setLoading(true);
       try {
-        const res = await videoApi.getAllVideos(page, 12);
+        const params = {
+          page,
+          limit: 12,
+          category: selectedCategory !== 'Tất cả' ? selectedCategory : undefined,
+          q: searchQuery || undefined,
+        };
+
+        const res = await videoApi.getAllVideos(params);
         setVideos(res.data.data.videos);
         setPagination(res.data.data.pagination);
       } catch (err) {
@@ -23,12 +37,36 @@ const HomePage = () => {
     };
 
     fetchVideos();
-  }, [page]);
+  }, [page, selectedCategory, searchQuery]);
+
+  const handleCategorySelect = (cat) => {
+    setPage(1);
+    const newParams = new URLSearchParams(searchParams);
+    if (cat === 'Tất cả') {
+      newParams.delete('category');
+    } else {
+      newParams.set('category', cat);
+    }
+    setSearchParams(newParams);
+  };
 
   return (
     <div className="container" style={{ paddingTop: 'var(--space-xl)', paddingBottom: 'var(--space-2xl)' }}>
+      {/* Category Filter Pills */}
+      <div className="category-bar">
+        {CATEGORIES.map((cat) => (
+          <button
+            key={cat}
+            className={`category-pill ${selectedCategory === cat ? 'active' : ''}`}
+            onClick={() => handleCategorySelect(cat)}
+          >
+            {cat}
+          </button>
+        ))}
+      </div>
+
       <h2 style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 700, marginBottom: 'var(--space-xl)' }}>
-        🔥 Video mới nhất
+        {searchQuery ? `🔍 Kết quả tìm kiếm: "${searchQuery}"` : selectedCategory !== 'Tất cả' ? `📂 Danh mục: ${selectedCategory}` : '🔥 Video mới nhất'}
       </h2>
 
       {loading ? (
@@ -71,12 +109,44 @@ const HomePage = () => {
         </>
       ) : (
         <div style={{ textAlign: 'center', padding: 'var(--space-2xl)', color: 'var(--text-muted)' }}>
-          <p style={{ fontSize: 'var(--font-size-xl)', marginBottom: 'var(--space-sm)' }}>📭 Chưa có video nào</p>
-          <p>Hãy là người đầu tiên upload video!</p>
+          <p style={{ fontSize: 'var(--font-size-xl)', marginBottom: 'var(--space-sm)' }}>📭 Không tìm thấy video nào</p>
+          <p>Thử tìm kiếm với từ khóa hoặc chọn danh mục khác!</p>
         </div>
       )}
 
       <style>{`
+        .category-bar {
+          display: flex;
+          gap: 10px;
+          overflow-x: auto;
+          padding-bottom: 16px;
+          margin-bottom: 24px;
+          scrollbar-width: none;
+        }
+        .category-bar::-webkit-scrollbar {
+          display: none;
+        }
+        .category-pill {
+          padding: 8px 16px;
+          border-radius: 20px;
+          border: 1px solid var(--border-color, #333);
+          background: var(--card-bg, #1e1e1e);
+          color: var(--text-color, #fff);
+          font-size: 14px;
+          font-weight: 500;
+          cursor: pointer;
+          white-space: nowrap;
+          transition: all 0.2s ease;
+        }
+        .category-pill:hover {
+          background: rgba(255, 255, 255, 0.1);
+        }
+        .category-pill.active {
+          background: var(--primary-color, #3b82f6);
+          color: #fff;
+          border-color: var(--primary-color, #3b82f6);
+        }
+
         .video-grid {
           display: grid;
           grid-template-columns: repeat(4, 1fr);

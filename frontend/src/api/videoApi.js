@@ -2,23 +2,35 @@ import axios from 'axios';
 import axiosClient from './axiosClient';
 
 export const videoApi = {
-  getUploadUrl: (filename, mimetype) =>
-    axiosClient.post('/videos/upload-url', { filename, mimetype }),
-
-  createVideo: (videoData) =>
-    axiosClient.post('/videos', videoData),
+  initiateUpload: (uploadData) =>
+    axiosClient.post('/videos/initiate-upload', uploadData),
 
   confirmUpload: (videoId) =>
     axiosClient.patch(`/videos/${videoId}/confirm-upload`),
 
-  getAllVideos: (page = 1, limit = 12) =>
-    axiosClient.get('/videos', { params: { page, limit } }),
+  getAllVideos: (params = {}) =>
+    axiosClient.get('/videos', { params }),
 
   getVideoById: (id) =>
     axiosClient.get(`/videos/${id}`),
 
   getUserVideos: (userId, page = 1, limit = 12) =>
     axiosClient.get(`/videos/user/${userId}`, { params: { page, limit } }),
+
+  toggleLike: (id) =>
+    axiosClient.post(`/videos/${id}/like`),
+
+  toggleDislike: (id) =>
+    axiosClient.post(`/videos/${id}/dislike`),
+
+  getComments: (id, page = 1, limit = 20) =>
+    axiosClient.get(`/videos/${id}/comments`, { params: { page, limit } }),
+
+  addComment: (id, content) =>
+    axiosClient.post(`/videos/${id}/comments`, { content }),
+
+  deleteComment: (commentId) =>
+    axiosClient.delete(`/videos/comments/${commentId}`),
 
   updateVideo: (id, data) =>
     axiosClient.put(`/videos/${id}`, data),
