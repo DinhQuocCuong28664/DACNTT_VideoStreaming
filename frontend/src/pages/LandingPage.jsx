@@ -201,46 +201,139 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* ── 4. Interactive Pipeline Architecture ───────── */}
+      {/* ── 4. Interactive Pipeline Architecture Graphic Cards ─ */}
       <section className="landing-architecture" id="architecture">
         <div className="section-header">
           <h2 className="section-title">
             Kiến Trúc Hệ Thống <span className="gradient-text">Event-Driven &amp; Serverless</span>
           </h2>
           <p className="section-subtitle">
-            Quy trình tự động hóa 6 bước từ khi người dùng tải video lên S3 đến khi sẵn sàng phát trên Web.
+            Quy trình nén và phát video tự động 4 bước với các thành phần hạ tầng AWS Cloud tiên tiến.
           </p>
         </div>
 
-        <div className="arch-flow glass-panel">
-          <div className="flow-step">
-            <div className="step-badge">Step 1</div>
-            <h4>Direct S3 Upload</h4>
-            <p>Khởi tạo Pre-signed PUT URL, upload trực tiếp từ trình duyệt lên `vidshare-raw-bucket`.</p>
+        <div className="arch-cards-grid">
+          {/* Step 1 Graphic Card */}
+          <div className="arch-card glass-panel">
+            <div className="arch-card-header">
+              <span className="step-badge-tag">STEP 01</span>
+              <span className="tech-badge badge-s3">Amazon S3</span>
+            </div>
+
+            <div className="arch-card-graphic graphic-s3">
+              <div className="graphic-icon-wrap">
+                <FiUploadCloud className="graphic-icon" />
+              </div>
+              <div className="graphic-preview-box">
+                <div className="preview-row">
+                  <span className="preview-label">Direct Upload:</span>
+                  <span className="preview-val">Pre-signed PUT URL</span>
+                </div>
+                <div className="preview-progress">
+                  <div className="progress-bar-fill" style={{ width: '85%' }} />
+                </div>
+                <div className="preview-sub font-mono">vidshare-raw-bucket/video.mp4</div>
+              </div>
+            </div>
+
+            <h3 className="arch-card-title">1. Direct S3 Upload</h3>
+            <p className="arch-card-desc">
+              Tải trực tiếp video từ trình duyệt người dùng lên Amazon S3 qua Pre-signed URL, loại bỏ nút thắt nghẽn Server Backend.
+            </p>
           </div>
 
-          <div className="flow-connector"><FiArrowRight /></div>
+          <div className="arch-card-arrow"><FiArrowRight /></div>
 
-          <div className="flow-step">
-            <div className="step-badge">Step 2</div>
-            <h4>SQS &amp; Lambda Trigger</h4>
-            <p>S3 push sự kiện `ObjectCreated` sang SQS Queue, kích hoạt Lambda `SubmitJob` sang AWS Batch.</p>
+          {/* Step 2 Graphic Card */}
+          <div className="arch-card glass-panel">
+            <div className="arch-card-header">
+              <span className="step-badge-tag">STEP 02</span>
+              <span className="tech-badge badge-sqs">SQS &amp; Lambda</span>
+            </div>
+
+            <div className="arch-card-graphic graphic-sqs">
+              <div className="graphic-icon-wrap">
+                <FiLayers className="graphic-icon" />
+              </div>
+              <div className="graphic-preview-box">
+                <div className="preview-row">
+                  <span className="preview-label">Event Notification:</span>
+                  <span className="preview-val">ObjectCreated</span>
+                </div>
+                <div className="preview-tags font-mono">
+                  <span className="mini-tag">SQS Queue</span>
+                  <span className="mini-tag">Lambda Submit</span>
+                </div>
+              </div>
+            </div>
+
+            <h3 className="arch-card-title">2. Event Notification Queue</h3>
+            <p className="arch-card-desc">
+              S3 tự động gửi sự kiện sang Amazon SQS Queue, kích hoạt AWS Lambda khởi tạo Job chuyển mã bất đồng bộ.
+            </p>
           </div>
 
-          <div className="flow-connector"><FiArrowRight /></div>
+          <div className="arch-card-arrow"><FiArrowRight /></div>
 
-          <div className="flow-step">
-            <div className="step-badge">Step 3</div>
-            <h4>Fargate SPOT FFmpeg</h4>
-            <p>Container nén HLS 360p/720p/1080p, tạo `master.m3u8` &amp; đẩy kết quả lên Processed Bucket.</p>
+          {/* Step 3 Graphic Card */}
+          <div className="arch-card glass-panel">
+            <div className="arch-card-header">
+              <span className="step-badge-tag">STEP 03</span>
+              <span className="tech-badge badge-batch">AWS Batch SPOT</span>
+            </div>
+
+            <div className="arch-card-graphic graphic-batch">
+              <div className="graphic-icon-wrap">
+                <FiCpu className="graphic-icon" />
+              </div>
+              <div className="graphic-preview-box">
+                <div className="preview-row">
+                  <span className="preview-label">FFmpeg Transcoder:</span>
+                  <span className="preview-val val-green">Scale to 0</span>
+                </div>
+                <div className="preview-tags font-mono">
+                  <span className="mini-tag tag-abr">360p</span>
+                  <span className="mini-tag tag-abr">720p</span>
+                  <span className="mini-tag tag-abr">1080p</span>
+                </div>
+              </div>
+            </div>
+
+            <h3 className="arch-card-title">3. Fargate SPOT Container</h3>
+            <p className="arch-card-desc">
+              Container Docker FFmpeg tự động khởi tạo trên Fargate SPOT nén HLS m3u8 và tự giải phóng 100% tài nguyên sau khi làm xong.
+            </p>
           </div>
 
-          <div className="flow-connector"><FiArrowRight /></div>
+          <div className="arch-card-arrow"><FiArrowRight /></div>
 
-          <div className="flow-step">
-            <div className="step-badge">Step 4</div>
-            <h4>CloudFront &amp; React HLS</h4>
-            <p>Cập nhật trạng thái `READY` lên MongoDB Atlas. Phân phối HLS qua CloudFront CDN tới `HLS.js` Player.</p>
+          {/* Step 4 Graphic Card */}
+          <div className="arch-card glass-panel">
+            <div className="arch-card-header">
+              <span className="step-badge-tag">STEP 04</span>
+              <span className="tech-badge badge-cdn">CloudFront CDN</span>
+            </div>
+
+            <div className="arch-card-graphic graphic-cdn">
+              <div className="graphic-icon-wrap">
+                <FiGlobe className="graphic-icon" />
+              </div>
+              <div className="graphic-preview-box">
+                <div className="preview-row">
+                  <span className="preview-label">Origin Security:</span>
+                  <span className="preview-val">OAC Active</span>
+                </div>
+                <div className="preview-tags font-mono">
+                  <span className="mini-tag tag-ready"><FiCheckCircle /> READY</span>
+                  <span className="mini-tag">HLS.js Play</span>
+                </div>
+              </div>
+            </div>
+
+            <h3 className="arch-card-title">4. CloudFront &amp; HLS Player</h3>
+            <p className="arch-card-desc">
+              Phân phối luồng video HLS siêu mượt qua CloudFront CDN toàn cầu bảo mật OAC tới trình phát HLS.js trên Web UI.
+            </p>
           </div>
         </div>
       </section>
