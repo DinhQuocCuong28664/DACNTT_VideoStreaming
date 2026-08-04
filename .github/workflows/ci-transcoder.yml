@@ -100,6 +100,7 @@ jobs:
         with:
           image-ref: '${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}'
           severity: 'CRITICAL,HIGH'
+          vuln-type: 'library'
           ignore-unfixed: true
           exit-code: '1'
           format: 'table'

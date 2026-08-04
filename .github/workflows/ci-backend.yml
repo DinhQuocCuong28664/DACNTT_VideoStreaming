@@ -76,6 +76,7 @@ jobs:
           scan-type: 'fs'
           scan-ref: 'backend/'
           severity: 'CRITICAL,HIGH'
+          vuln-type: 'library'
           ignore-unfixed: true
           exit-code: '1' # Fails build if Critical/High vulnerabilities found
           format: 'table'

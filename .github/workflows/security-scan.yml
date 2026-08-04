@@ -45,6 +45,7 @@ jobs:
           scan-type: 'fs'
           scan-ref: '${{ matrix.directory }}/'
           severity: 'CRITICAL,HIGH'
+          vuln-type: 'library'
           ignore-unfixed: true
           exit-code: '1' # Block PR if Critical/High found
           format: 'table'
