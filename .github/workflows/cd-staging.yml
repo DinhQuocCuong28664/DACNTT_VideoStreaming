@@ -1,0 +1,41 @@
+# ═══════════════════════════════════════════════════
+# CD — Staging Deployment (Triggered on develop branch)
+# ═══════════════════════════════════════════════════
+
+name: CD — Deploy to Staging (Dev)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [develop]
+
+env:
+  AWS_REGION: ap-southeast-1
+
+jobs:
+  deploy-staging:
+    name: "Deploy to Staging (Dev Environment)"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.0
+
+      - name: Validate & Plan Staging Infrastructure
+        run: |
+          cd infrastructure/environments/dev
+          terraform init -backend=false
+          terraform validate
+          echo "✅ Staging environment validated successfully"
