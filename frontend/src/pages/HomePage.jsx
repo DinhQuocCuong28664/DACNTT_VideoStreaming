@@ -119,47 +119,48 @@ const HomePage = () => {
           display: flex;
           gap: 10px;
           overflow-x: auto;
-          padding-bottom: 16px;
+          padding-bottom: 12px;
           margin-bottom: 24px;
           scrollbar-width: none;
+          -webkit-overflow-scrolling: touch;
         }
         .category-bar::-webkit-scrollbar {
           display: none;
         }
         .category-pill {
-          padding: 8px 16px;
+          padding: 8px 18px;
           border-radius: 20px;
-          border: 1px solid var(--border-color, #333);
-          background: var(--card-bg, #1e1e1e);
-          color: var(--text-color, #fff);
+          border: 1px solid var(--border-color);
+          background: var(--bg-tertiary);
+          color: var(--text-primary);
           font-size: 14px;
-          font-weight: 500;
+          font-weight: 600;
           cursor: pointer;
           white-space: nowrap;
-          transition: all 0.2s ease;
+          transition: all var(--transition-fast);
+          flex-shrink: 0;
         }
         .category-pill:hover {
-          background: rgba(255, 255, 255, 0.1);
+          background: var(--bg-card-hover);
+          border-color: var(--border-hover);
         }
         .category-pill.active {
-          background: var(--primary-color, #3b82f6);
-          color: #fff;
-          border-color: var(--primary-color, #3b82f6);
+          background: var(--accent-gradient);
+          color: #ffffff;
+          border-color: transparent;
+          box-shadow: var(--shadow-sm);
         }
 
         .video-grid {
           display: grid;
-          grid-template-columns: repeat(4, 1fr);
+          grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
           gap: var(--space-lg);
         }
-        @media (max-width: 1200px) {
-          .video-grid { grid-template-columns: repeat(3, 1fr); }
-        }
-        @media (max-width: 768px) {
-          .video-grid { grid-template-columns: repeat(2, 1fr); }
-        }
-        @media (max-width: 480px) {
-          .video-grid { grid-template-columns: 1fr; }
+        @media (max-width: 576px) {
+          .video-grid {
+            grid-template-columns: 1fr;
+            gap: var(--space-md);
+          }
         }
       `}</style>
     </div>

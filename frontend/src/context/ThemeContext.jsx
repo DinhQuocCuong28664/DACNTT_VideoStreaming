@@ -3,12 +3,12 @@ import ThemeContext from './themeContextDef';
 
 export const ThemeProvider = ({ children }) => {
   const [theme, setTheme] = useState(() => {
-    return localStorage.getItem('theme') || 'dark';
+    return localStorage.getItem('theme_v2') || 'light';
   });
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('theme', theme);
+    localStorage.setItem('theme_v2', theme);
   }, [theme]);
 
   const toggleTheme = () => {

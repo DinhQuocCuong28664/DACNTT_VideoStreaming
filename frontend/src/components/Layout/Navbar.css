@@ -268,9 +268,186 @@
   color: var(--danger);
 }
 
-/* Responsive */
+/* Mobile Controls Default Hidden */
+.mobile-hamburger-btn,
+.mobile-search-toggle-btn {
+  display: none;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-size: 22px;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: var(--radius-md);
+  transition: background-color var(--transition-fast);
+}
+
+.mobile-hamburger-btn:hover,
+.mobile-search-toggle-btn:hover {
+  background: var(--bg-card-hover);
+}
+
+.mobile-search-bar {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-color);
+  padding: var(--space-sm) var(--space-md);
+  box-shadow: var(--shadow-md);
+  animation: slide-down 0.2s ease;
+  z-index: 999;
+}
+
+@keyframes slide-down {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Mobile Drawer Overlay & Sliding Panel */
+.mobile-drawer-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 2000;
+  animation: fade-in 0.2s ease;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.mobile-drawer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 280px;
+  height: 100%;
+  background: var(--bg-secondary);
+  border-right: 1px solid var(--border-color);
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  flex-direction: column;
+  animation: slide-left 0.25s ease;
+}
+
+@keyframes slide-left {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+
+.mobile-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-md) var(--space-lg);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.mobile-drawer-close {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 22px;
+  cursor: pointer;
+}
+
+.mobile-drawer-body {
+  padding: var(--space-lg);
+  flex: 1;
+  overflow-y: auto;
+}
+
+.mobile-user-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  background: var(--bg-tertiary);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-lg);
+  border: 1px solid var(--border-color);
+}
+
+.mobile-user-name {
+  font-weight: 700;
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+}
+
+.mobile-user-email {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+}
+
+.mobile-nav-links {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.mobile-nav-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-sm) var(--space-md);
+  color: var(--text-primary);
+  font-weight: 600;
+  font-size: var(--font-size-sm);
+  border-radius: var(--radius-md);
+  transition: background-color var(--transition-fast);
+  border: none;
+  background: transparent;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+}
+
+.mobile-nav-item:hover {
+  background: var(--bg-card-hover);
+  color: var(--accent-primary);
+}
+
+.theme-switch-item {
+  margin-top: var(--space-md);
+  border-top: 1px solid var(--border-color);
+  padding-top: var(--space-md);
+}
+
+.mobile-drawer-footer {
+  padding: var(--space-md) var(--space-lg);
+  border-top: 1px solid var(--border-color);
+}
+
+.mobile-logout-btn {
+  width: 100%;
+}
+
+/* Responsive Breakpoints */
 @media (max-width: 768px) {
+  .navbar-inner {
+    padding: 0 var(--space-md);
+    gap: var(--space-sm);
+  }
+
+  .mobile-hamburger-btn,
+  .mobile-search-toggle-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
   .navbar-search {
+    display: none;
+  }
+
+  .nav-landing-link {
     display: none;
   }
 
@@ -278,7 +455,13 @@
     display: none;
   }
 
-  .auth-buttons .btn-secondary {
+  .auth-buttons .nav-login-btn,
+  .auth-buttons .theme-toggle-btn {
     display: none;
+  }
+
+  .auth-buttons .nav-register-btn {
+    padding: 6px 12px;
+    font-size: var(--font-size-xs);
   }
 }
