@@ -4,13 +4,15 @@ const path = require('path');
 const { pipeline } = require('stream/promises');
 const config = require('./config');
 
-const s3Client = new S3Client({
-  region: config.awsRegion,
-  credentials: {
+const clientConfig = { region: config.awsRegion };
+if (config.awsAccessKeyId && config.awsSecretAccessKey) {
+  clientConfig.credentials = {
     accessKeyId: config.awsAccessKeyId,
     secretAccessKey: config.awsSecretAccessKey,
-  },
-});
+  };
+}
+
+const s3Client = new S3Client(clientConfig);
 
 /**
  * Download a file from S3 to local filesystem
