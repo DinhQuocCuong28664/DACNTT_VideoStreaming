@@ -28,3 +28,18 @@ provider "aws" {
     }
   }
 }
+
+# CloudFront requires ACM certificates to live in us-east-1,
+# regardless of which region the distribution itself targets.
+provider "aws" {
+  alias  = "us_east_1"
+  region = "us-east-1"
+
+  default_tags {
+    tags = {
+      Project     = "DACNTT"
+      Environment = var.environment
+      ManagedBy   = "Terraform"
+    }
+  }
+}
