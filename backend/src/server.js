@@ -12,7 +12,7 @@ const userRoutes = require('./routes/userRoutes');
 
 const app = express();
 
-// Connect to MongoDB Atlas
+// Connect to MongoDB Atlas-DQC
 connectDB();
 
 // Middleware
