@@ -242,7 +242,7 @@ const WatchPage = () => {
           <div>
             <p style={{ fontWeight: 600 }}>{user.displayName || user.username}</p>
             <p style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)' }}>
-              {user.subscribers || 0} người đăng ký
+              @{user.username}
             </p>
           </div>
         </Link>

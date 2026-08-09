@@ -167,6 +167,52 @@ resource "aws_iam_role_policy_attachment" "lambda_basic" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
+# ── EC2 Backend API Instance Role (read secrets from Secrets Manager) ──
+# Attach this role's instance profile to the EC2 instance running the
+# Express backend so scripts/ec2-userdata.sh can fetch MONGODB_URI and
+# JWT_SECRET at boot time instead of hardcoding them in the script.
+resource "aws_iam_role" "ec2_backend" {
+  name = "${var.project_name}-ec2-backend-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        }
+      }
+    ]
+  })
+
+  tags = merge(var.tags, { Name = "${var.project_name}-ec2-backend-role" })
+}
+
+resource "aws_iam_role_policy" "ec2_backend_secrets" {
+  name = "${var.project_name}-ec2-backend-secrets-policy"
+  role = aws_iam_role.ec2_backend.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "secretsmanager:GetSecretValue"
+        ]
+        Resource = "arn:aws:secretsmanager:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:secret:${var.project_name}/*"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_instance_profile" "ec2_backend" {
+  name = "${var.project_name}-ec2-backend-profile"
+  role = aws_iam_role.ec2_backend.name
+}
+
 resource "aws_iam_role_policy" "lambda_sqs_batch" {
   name = "${var.project_name}-lambda-sqs-batch-policy"
   role = aws_iam_role.lambda_job_submitter.id

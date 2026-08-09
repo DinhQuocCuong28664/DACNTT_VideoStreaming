@@ -8,6 +8,7 @@ const errorHandler = require('./middleware/errorHandler');
 // Route imports
 const authRoutes = require('./routes/authRoutes');
 const videoRoutes = require('./routes/videoRoutes');
+const userRoutes = require('./routes/userRoutes');
 
 const app = express();
 
@@ -31,6 +32,7 @@ app.get('/', (req, res) => {
 // Mount routes
 app.use('/api/auth', authRoutes);
 app.use('/api/videos', videoRoutes);
+app.use('/api/users', userRoutes);
 
 // Global error handler (must be AFTER routes)
 app.use(errorHandler);

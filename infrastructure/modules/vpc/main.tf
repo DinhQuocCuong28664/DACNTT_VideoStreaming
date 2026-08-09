@@ -67,13 +67,27 @@ resource "aws_security_group" "batch_containers" {
   description = "Security group for Batch/Fargate transcoder containers"
   vpc_id      = aws_vpc.main.id
 
-  # Outbound: Allow HTTPS (S3, ECR, SQS, MongoDB Atlas, Secrets Manager)
+  # Outbound: Allow HTTPS (S3, ECR, SQS, Secrets Manager)
   egress {
     from_port   = 443
     to_port     = 443
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
-    description = "HTTPS outbound (S3, ECR, SQS, MongoDB Atlas)"
+    description = "HTTPS outbound (S3, ECR, SQS, Secrets Manager)"
+  }
+
+  # Outbound: Allow MongoDB Atlas driver connections.
+  # mongodb+srv:// resolves via DNS/HTTPS, but the actual mongod wire
+  # protocol connection happens over TCP 27017 — without this rule the
+  # container hangs for the full 30s server-selection timeout and crashes
+  # with "Could not connect to any servers in your MongoDB Atlas cluster"
+  # before it ever gets a chance to write status=ERROR back to the DB.
+  egress {
+    from_port   = 27017
+    to_port     = 27017
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "MongoDB Atlas driver connections"
   }
 
   # Outbound: Allow DNS

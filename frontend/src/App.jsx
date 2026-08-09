@@ -4,6 +4,8 @@ import MainLayout from './components/Layout/MainLayout';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
+import ResetPasswordPage from './pages/ResetPasswordPage';
 import UploadPage from './pages/UploadPage';
 import WatchPage from './pages/WatchPage';
 import ChannelPage from './pages/ChannelPage';
@@ -95,6 +97,22 @@ function App() {
           element={
             <GuestRoute>
               <RegisterPage />
+            </GuestRoute>
+          }
+        />
+        <Route
+          path="/forgot-password"
+          element={
+            <GuestRoute>
+              <ForgotPasswordPage />
+            </GuestRoute>
+          }
+        />
+        <Route
+          path="/reset-password/:token"
+          element={
+            <GuestRoute>
+              <ResetPasswordPage />
             </GuestRoute>
           }
         />

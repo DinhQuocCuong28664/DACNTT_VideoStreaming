@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { FiUser, FiTrash2 } from 'react-icons/fi';
 import { useAuth } from '../context/useAuth';
 import videoApi from '../api/videoApi';
+import userApi from '../api/userApi';
 import VideoCard from '../components/Video/VideoCard';
 
 const ChannelPage = () => {
@@ -20,13 +21,18 @@ const ChannelPage = () => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const res = await videoApi.getUserVideos(userId, page, 12);
-        setVideos(res.data.data.videos);
-        setPagination(res.data.data.pagination);
+        const [videosRes, profileRes] = await Promise.all([
+          videoApi.getUserVideos(userId, page, 12),
+          userApi.getPublicProfile(userId).catch(() => null),
+        ]);
 
-        // Extract channel user from first video, or use current user if owner
-        if (res.data.data.videos.length > 0 && res.data.data.videos[0].user) {
-          setChannelUser(res.data.data.videos[0].user);
+        setVideos(videosRes.data.data.videos);
+        setPagination(videosRes.data.data.pagination);
+
+        // Public profile endpoint works even when the user has zero videos.
+        // Falls back to the current user's own data (owner) if the request fails.
+        if (profileRes) {
+          setChannelUser(profileRes.data.data.user);
         } else if (isOwner) {
           setChannelUser(currentUser);
         }
@@ -83,7 +89,7 @@ const ChannelPage = () => {
             {displayUser?.displayName || displayUser?.username || 'Channel'}
           </h1>
           <p style={{ color: 'var(--text-muted)', fontSize: 'var(--font-size-sm)', marginTop: 4 }}>
-            @{displayUser?.username} • {displayUser?.subscribers || 0} người đăng ký
+            @{displayUser?.username}
           </p>
           {displayUser?.channelDescription && (
             <p style={{ color: 'var(--text-secondary)', fontSize: 'var(--font-size-sm)', marginTop: 8 }}>

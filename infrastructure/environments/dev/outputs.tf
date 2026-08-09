@@ -38,3 +38,16 @@ output "lambda_function_name" {
 output "cloudwatch_dashboard" {
   value = module.monitoring.dashboard_name
 }
+
+output "ec2_backend_instance_profile_name" {
+  description = "Attach to the EC2 instance running the backend API (see scripts/ec2-userdata.sh) so it can fetch secrets from Secrets Manager instead of hardcoding them"
+  value       = module.iam.ec2_backend_instance_profile_name
+}
+
+output "mongodb_uri_secret_name" {
+  value = "${var.project_name}-${var.environment}/mongodb-uri"
+}
+
+output "jwt_secret_secret_name" {
+  value = "${var.project_name}-${var.environment}/jwt-secret"
+}

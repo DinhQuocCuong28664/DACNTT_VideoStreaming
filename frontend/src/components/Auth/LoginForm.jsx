@@ -72,6 +72,9 @@ const LoginForm = () => {
               required
               minLength={6}
             />
+            <Link to="/forgot-password" style={{ alignSelf: 'flex-end', fontSize: 'var(--font-size-xs)', color: 'var(--accent-primary)', marginTop: 4 }}>
+              Quên mật khẩu?
+            </Link>
           </div>
 
           <button type="submit" className="btn btn-primary" disabled={loading}>

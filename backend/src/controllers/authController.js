@@ -74,8 +74,9 @@ const forgotPassword = async (req, res, next) => {
 
     const { user, resetToken } = await authService.forgotPassword(email);
 
-    // Build reset URL (Frontend will handle this route)
-    const resetUrl = `${req.protocol}://${req.get('host')}/api/auth/reset-password/${resetToken}`;
+    // Build reset URL — must point to the FRONTEND page, not the backend API
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const resetUrl = `${frontendUrl}/reset-password/${resetToken}`;
 
     // Send email
     try {
