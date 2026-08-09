@@ -14,10 +14,12 @@
   background: #000;
 }
 
-/* Quality Controls */
+/* Quality Controls — pinned to top-right so it never overlaps the
+   browser's native bottom control bar (whose height varies by
+   browser/OS, making a fixed bottom offset unreliable). */
 .quality-controls {
   position: absolute;
-  bottom: 52px;
+  top: 12px;
   right: 12px;
   z-index: 10;
 }
@@ -25,36 +27,29 @@
 .quality-badge {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px 10px;
-  background: rgba(0, 0, 0, 0.7);
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: rgba(0, 0, 0, 0.55);
   backdrop-filter: blur(8px);
   border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: var(--radius-sm);
+  border-radius: 50%;
   color: #fff;
-  font-size: var(--font-size-xs);
-  font-weight: 600;
+  font-size: 16px;
   cursor: pointer;
   transition: all var(--transition-fast);
 }
 
 .quality-badge:hover {
-  background: rgba(0, 0, 0, 0.9);
+  background: rgba(0, 0, 0, 0.85);
   border-color: var(--accent-primary);
-}
-
-.spin-slow {
-  animation: spin-slow 3s linear infinite;
-}
-
-@keyframes spin-slow {
-  to { transform: rotate(360deg); }
 }
 
 /* Quality Menu */
 .quality-menu {
   position: absolute;
-  bottom: calc(100% + 8px);
+  top: calc(100% + 8px);
   right: 0;
   width: 200px;
   background: rgba(20, 20, 35, 0.95);
@@ -110,7 +105,7 @@
 
 @media (max-width: 768px) {
   .quality-controls {
-    bottom: 44px;
+    top: 8px;
     right: 8px;
   }
 }

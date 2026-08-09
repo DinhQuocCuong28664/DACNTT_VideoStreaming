@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import Hls from 'hls.js';
-import { FiSettings } from 'react-icons/fi';
+import { FiMoreVertical } from 'react-icons/fi';
 import './VideoPlayer.css';
 
 /**
@@ -18,7 +18,6 @@ const VideoPlayer = ({ src, poster }) => {
   const [levels, setLevels] = useState([]);
   const [currentLevel, setCurrentLevel] = useState(-1); // -1 = Auto
   const [showQuality, setShowQuality] = useState(false);
-  const [isPlaying, setIsPlaying] = useState(false);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -92,8 +91,6 @@ const VideoPlayer = ({ src, poster }) => {
         controls
         poster={poster}
         playsInline
-        onPlay={() => setIsPlaying(true)}
-        onPause={() => setIsPlaying(false)}
       />
 
       {/* Quality Controls Overlay */}
@@ -102,10 +99,10 @@ const VideoPlayer = ({ src, poster }) => {
           <button
             className="quality-badge"
             onClick={() => setShowQuality(!showQuality)}
-            title="Chọn chất lượng"
+            title={`Chất lượng: ${getCurrentQualityLabel()}`}
+            aria-label="Chọn chất lượng video"
           >
-            <FiSettings className={isPlaying ? 'spin-slow' : ''} />
-            <span>{getCurrentQualityLabel()}</span>
+            <FiMoreVertical />
           </button>
 
           {showQuality && (

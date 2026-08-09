@@ -7,8 +7,7 @@ import {
   FiCpu, 
   FiLayers, 
   FiGlobe, 
-  FiCheckCircle, 
-  FiHeart
+  FiCheckCircle
 } from 'react-icons/fi';
 import './Footer.css';
 

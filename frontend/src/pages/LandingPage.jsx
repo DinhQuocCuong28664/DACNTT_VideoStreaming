@@ -8,8 +8,7 @@ import {
   FiGlobe, 
   FiCheckCircle, 
   FiArrowRight, 
-  FiLayers, 
-  FiPieChart, 
+  FiLayers,
   FiActivity,
   FiMoon
 } from 'react-icons/fi';
