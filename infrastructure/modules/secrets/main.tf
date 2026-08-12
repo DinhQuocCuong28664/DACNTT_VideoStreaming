@@ -46,6 +46,8 @@ resource "aws_secretsmanager_secret" "email_app_password" {
 }
 
 resource "aws_secretsmanager_secret_version" "email_app_password" {
+  count = var.email_app_password != "" ? 1 : 0
+
   secret_id     = aws_secretsmanager_secret.email_app_password.id
   secret_string = var.email_app_password
 }
