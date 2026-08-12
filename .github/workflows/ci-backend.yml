@@ -19,7 +19,7 @@ on:
       - 'backend/**'
 
 env:
-  NODE_VERSION: '20'
+  NODE_VERSION: '24'
 
 jobs:
   # ── Stage 1: Code Quality ──────────────────────────

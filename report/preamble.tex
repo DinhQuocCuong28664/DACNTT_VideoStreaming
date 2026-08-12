@@ -1,0 +1,80 @@
+
+\usepackage{tabularx}
+\usepackage{plantuml}
+\usepackage{lipsum}  % For dummy text
+\usepackage{float}
+% ----- Encoding & Font -----
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+
+% --- Colors (bắt buộc trước listings) ---
+\usepackage[dvipsnames,table]{xcolor}
+% dvipsnames: thêm nhiều tên màu có sẵn; 'table' để màu trong bảng booktabs nếu cần.
+
+% ----- Vietnamese? -----
+% Nếu bạn cần tiếng Việt, thêm:
+\usepackage[vietnamese, english]{babel}
+
+% ----- Margin -----
+\usepackage[a4paper, margin=2.5cm]{geometry}
+
+% ----- Line spacing ~1.5 -----
+\usepackage{setspace}
+\onehalfspacing
+
+% ----- Graphics -----
+\usepackage{graphicx}  % Chèn hình
+\graphicspath{{../images/}}
+
+
+% ----- Caption formatting -----
+\usepackage[font=small]{caption}
+
+
+% ----- Table packages -----
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{longtable}  % Bảng trải dài nhiều trang (danh mục viết tắt)
+
+% ----- Math -----
+\usepackage{amsmath, amssymb}
+
+% ----- Hyperlinks -----
+\usepackage[hidelinks]{hyperref}
+
+% ----- Code -----
+\usepackage{listings}
+\lstset{
+  basicstyle=\ttfamily\small,
+  frame=none,
+  breaklines=true,
+  breakatwhitespace=true,
+  columns=fullflexible,
+  keepspaces=true,
+  captionpos=b,
+  xleftmargin=0.5cm,
+  xrightmargin=0.5cm
+}
+
+\lstdefinelanguage{JavaScript}{
+  keywords={break, case, catch, class, const, continue, debugger, default,
+    delete, do, else, export, extends, finally, for, function, if, import,
+    in, instanceof, let, new, return, super, switch, this, throw, try,
+    typeof, var, void, while, with, yield, async, await},
+  keywordstyle=\color{blue}\bfseries,
+  ndkeywords={true,false,null,undefined},
+  ndkeywordstyle=\color{magenta},
+  identifierstyle=\color{black},
+  sensitive=true,
+  comment=[l]{//},
+  morecomment=[s]{/*}{*/},
+  commentstyle=\color{gray}\ttfamily,
+  stringstyle=\color{red}\ttfamily,
+  morestring=[b]',
+  morestring=[b]"
+}
+
+
+% ----- Bibliography -----
+\usepackage{cite}

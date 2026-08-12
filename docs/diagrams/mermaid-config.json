@@ -1,0 +1,19 @@
+{
+  "theme": "default",
+  "themeVariables": {
+    "fontFamily": "Segoe UI, Arial, sans-serif",
+    "fontSize": "15px",
+    "primaryColor": "#f4f7fa",
+    "primaryTextColor": "#1a1a1a",
+    "primaryBorderColor": "#2c7a9e",
+    "lineColor": "#4a5568",
+    "textColor": "#1a1a1a"
+  },
+  "sequence": {
+    "useMaxWidth": false,
+    "showSequenceNumbers": false
+  },
+  "er": {
+    "useMaxWidth": false
+  }
+}

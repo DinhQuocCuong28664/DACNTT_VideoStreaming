@@ -134,13 +134,16 @@ sequenceDiagram
 - Hệ thống sử dụng **Amazon CloudFront** làm Content Delivery Network (CDN) và đặt phía trước S3 Processed Bucket.
 - CloudFront lưu các tệp segment `.ts` tại những Edge Location gần người xem, qua đó giảm độ trễ và giảm chi phí truy xuất trực tiếp từ Amazon S3.
 - Hệ thống cấu hình **Origin Access Control (OAC)** để S3 Bucket được đặt ở chế độ hoàn toàn riêng tư. Chỉ Amazon CloudFront được cấp quyền truy cập dữ liệu trong bucket (thông qua S3 Bucket Policy), qua đó ngăn chặn việc truy cập trực tiếp trái phép vào video.
+- Đối với video ở chế độ riêng tư, hệ thống bổ sung lớp bảo vệ thứ hai bằng **CloudFront Signed Cookies** kết hợp **Trusted Key Group**. Backend kiểm tra quyền truy cập rồi ký một Custom Policy giới hạn trong đúng thư mục của video, nhờ đó người không có quyền sẽ nhận HTTP 403 ngay tại Edge Location kể cả khi biết chính xác đường dẫn tệp `.m3u8`. Chi tiết thiết kế và hướng dẫn triển khai xem tại [`docs/PRIVATE_VIDEO_SIGNED_COOKIES.md`](docs/PRIVATE_VIDEO_SIGNED_COOKIES.md).
+
+> ⚠️ **Trạng thái triển khai thực tế (2026-08-10):** Toàn bộ mục trên mô tả đúng thiết kế và mã nguồn Terraform đã hoàn chỉnh (`terraform validate` pass cả hai môi trường), nhưng **chưa deploy được lên tài khoản AWS hiện tại** vì AWS yêu cầu xác minh tài khoản trước khi cấp phép tạo CloudFront Distribution mới (`AccessDenied: Your account must be verified`). Đã mở ticket AWS Support, đang chờ phản hồi. Trong lúc chờ, S3 Processed Bucket đang tạm để chế độ đọc công khai (được thêm thủ công trước đây) để video vẫn phát được qua URL S3 trực tiếp — nghĩa là **thuộc tính riêng tư của video hiện chưa được thực thi ở tầng lưu trữ**. Xem Chương 6 của báo cáo (`report/chapters/chap6.tex`) để biết phân tích đầy đủ.
 
 ---
 
 ## 8. HẠ TẦNG CLOUD-NATIVE VÀ CONTAINERIZATION
 
 - Môi trường xử lý video gồm FFmpeg và Node.js được đóng gói thành Docker Image.
-- Docker Image được tối ưu thông qua **Multi-stage Build** (Base image: `node:18-slim` trang bị FFmpeg qua apt) nhằm giảm kích thước image và hạn chế các thành phần không cần thiết trong môi trường thực thi.
+- Docker Image được tối ưu thông qua **Multi-stage Build** (Base image: `node:24-slim` trang bị FFmpeg qua apt) nhằm giảm kích thước image và hạn chế các thành phần không cần thiết trong môi trường thực thi. Phiên bản Node.js đã trải qua 2 lần nâng cấp: từ `node:18-slim` lên `node:20-slim` do Mongoose 9.x phụ thuộc vào Web Crypto API vốn chưa khả dụng đầy đủ trên Node.js 18; và từ `node:20-slim` lên `node:24-slim` (10/8/2026) vì Node.js 20 đã hết vòng đời hỗ trợ (EOL 30/4/2026, không còn nhận bản vá bảo mật). Chọn Node 24 vì đây là bản Active LTS (hỗ trợ đến 4/2028), ổn định hơn cho production so với bản Current (Node 26, chưa vào LTS tại thời điểm nâng cấp).
 - Sau khi được xây dựng, Docker Image được đưa lên **Amazon Elastic Container Registry (ECR)** để AWS Batch sử dụng khi khởi tạo các tác vụ chuyển mã.
 - AWS Batch chạy trên **AWS Fargate** (hỗ trợ `FARGATE_SPOT` ở môi trường Dev giúp tiết kiệm 70% chi phí) chịu trách nhiệm quản lý các tác vụ xử lý video. Hệ thống có khả năng tự động tạo thêm container khi số lượng nhiệm vụ tăng và kết thúc container khi nhiệm vụ hoàn thành.
 
@@ -148,14 +151,17 @@ sequenceDiagram
 
 ## 9. CI/CD PIPELINE
 
-CI/CD Pipeline được xây dựng bằng **GitHub Actions** với 4 Workflows tách biệt tuân thủ DevSecOps Quality Gate:
+CI/CD Pipeline được xây dựng bằng **GitHub Actions** với 7 Workflows tách biệt tuân thủ DevSecOps Quality Gate:
 
 ```mermaid
 graph TD
     A[Git Push / PR] --> B{Branch / Path Filter}
     B -->|backend/**| C[ci-backend.yml]
     B -->|transcoder/**| D[ci-transcoder.yml]
+    B -->|frontend/**| G[ci-frontend.yml]
+    B -->|infrastructure/**| I[ci-infra.yml]
     B -->|PR to main| E[security-scan.yml]
+    B -->|Push to develop| H[cd-staging.yml]
     B -->|Merge to main| F[cd-deploy.yml]
 
     C --> C1[Stage 1: Jest Tests + ESLint + npm audit]
@@ -166,15 +172,35 @@ graph TD
     D2 --> D3[Stage 3: Build Docker Image + Trivy Image Scan + Push ECR]
     D3 --> D4[Stage 4: Update AWS Batch Job Definition]
 
-    E --> E1[Gitleaks Secret Scan + Trivy Dependency Scan]
-    F --> F1[Invalidate CloudFront Cache + Summary Report]
+    G --> G1[Stage 1: oxlint Code Quality]
+    G1 --> G2[Stage 2: Build Vite + Deploy S3]
+
+    I --> I1[Stage 1: terraform fmt + validate dev/prod]
+    I1 --> I2[Stage 2: Trivy IaC Config Scan]
+
+    E --> E1[Gitleaks Secret Scan]
+    E1 --> E2[Trivy SCA: Báo cáo CRITICAL+HIGH]
+    E2 --> E3[Quality Gate: chặn khi có CRITICAL]
+    E3 --> E4[SAST: eslint-plugin-security]
+
+    H --> H1[Deploy Dev/Staging Environment]
+    F --> F1[Deploy Backend EC2 + Invalidate CloudFront Cache]
 ```
 
 ### Các Workflows Chính:
-1. `ci-backend.yml`: Chạy Jest Unit Tests (100% pass) → ESLint check (0 warnings) → Gitleaks secret detection → Trivy SCA scan.
+1. `ci-backend.yml`: Chạy Jest Unit Tests (71 test) → ESLint check → Gitleaks secret detection → Trivy SCA scan.
 2. `ci-transcoder.yml`: ESLint check → Gitleaks → Build Docker Multi-stage → Trivy Container Scan → Push ECR → Register AWS Batch Job Definition mới.
-3. `security-scan.yml`: DevSecOps Gate cho mọi Pull Request (tự động block nếu có lỗ hổng Critical/High).
-4. `cd-deploy.yml`: Tự động Invalidate CloudFront Cache khi merge vào `main`.
+3. `ci-frontend.yml`: oxlint Code Quality → Build Vite → Tự động deploy lên S3 Static Hosting khi merge vào `main`/`master`.
+4. `ci-infra.yml`: `terraform fmt -check` → `terraform validate` cho cả `dev` và `prod` → Trivy IaC Config Scan.
+5. `security-scan.yml`: DevSecOps Gate cho mọi Pull Request, gồm Gitleaks Secret Detection, Trivy Dependency Scan và SAST bằng `eslint-plugin-security`.
+6. `cd-staging.yml`: Triển khai môi trường Staging (Dev) khi có push vào nhánh `develop`.
+7. `cd-deploy.yml`: Triển khai Backend API lên Amazon EC2 qua SSH và Invalidate CloudFront Cache khi merge vào `main`.
+
+### Cơ chế Quality Gate hai lớp
+
+Mỗi bước quét bảo mật được tách thành hai lớp có vai trò khác nhau. Lớp **Báo cáo** quét ở mức `CRITICAL,HIGH` với `exit-code: 0`, có nhiệm vụ cung cấp bức tranh đầy đủ về hiện trạng lỗ hổng mà không làm gián đoạn quy trình phát triển. Lớp **Quality Gate** chỉ quét ở mức `CRITICAL` nhưng đặt `exit-code: 1`, khiến pipeline thất bại và Pull Request không thể được merge.
+
+Cách phân tách này xuất phát từ thực tế vận hành: phần lớn lỗ hổng mức `HIGH` nằm ở các thư viện phụ thuộc gián tiếp và thường chưa có bản vá, nếu chặn toàn bộ thì pipeline sẽ liên tục thất bại vì những nguyên nhân nhóm phát triển không thể xử lý. Ngược lại, lỗ hổng `CRITICAL` đã có bản vá (`--ignore-unfixed`) là thứ bắt buộc phải khắc phục trước khi đưa mã nguồn vào nhánh chính.
 
 ---
 

@@ -1,4 +1,5 @@
 const videoService = require('../services/videoService');
+const cloudfrontService = require('../services/cloudfrontService');
 
 /**
  * @route   POST /api/videos/initiate-upload
@@ -75,19 +76,75 @@ const getAllVideos = async (req, res, next) => {
 
 /**
  * @route   GET /api/videos/:id
- * @desc    Get single video by ID (and increment views)
+ * @desc    Get single video by ID
  * @access  Public (Enforces visibility & READY status checks for non-owners)
+ *
+ * Lưu ý: endpoint này KHÔNG còn tăng lượt xem. Việc đếm lượt xem được tách sang
+ * `POST /api/videos/:id/view`, do trình phát gọi sau khi video thực sự bắt đầu
+ * phát, nhằm tránh tình trạng mỗi lần tải lại trang lại cộng thêm một lượt.
  */
 const getVideoById = async (req, res, next) => {
   try {
     const video = await videoService.getVideoById(req.params.id, req.user);
 
-    // Increment views asynchronously
-    videoService.incrementViews(req.params.id).catch(() => {});
-
     res.status(200).json({
       success: true,
       data: { video },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @route   GET /api/videos/:id/playback-auth
+ * @desc    Cấp CloudFront Signed Cookie cho phép phát video
+ * @access  Public cho video công khai; video riêng tư chỉ chủ sở hữu được cấp
+ *
+ * Quyền truy cập được kiểm tra bằng chính `videoService.getVideoById`, tức là
+ * dùng lại đúng một nguồn quy tắc với endpoint xem chi tiết video. Nhờ vậy sẽ
+ * không xảy ra tình trạng API chặn nhưng CDN vẫn cho phép tải nội dung.
+ */
+const getPlaybackAuth = async (req, res, next) => {
+  try {
+    // Ném lỗi 404 nếu video riêng tư và người gọi không phải chủ sở hữu
+    await videoService.getVideoById(req.params.id, req.user);
+
+    if (!cloudfrontService.isSigningEnabled()) {
+      // Môi trường chưa bật cơ chế ký (ví dụ khi phát triển cục bộ):
+      // báo cho trình phát biết để tiếp tục phát bình thường.
+      return res.status(200).json({
+        success: true,
+        data: { signingEnabled: false },
+      });
+    }
+
+    const { expiresAt } = cloudfrontService.attachPlaybackCookies(res, req.params.id);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        signingEnabled: true,
+        expiresAt,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @route   POST /api/videos/:id/view
+ * @desc    Ghi nhận một lượt xem hợp lệ (có chống đếm trùng)
+ * @access  Public (nhận diện người dùng đăng nhập nếu có token)
+ */
+const registerView = async (req, res, next) => {
+  try {
+    const result = await videoService.registerView(req.params.id, req.user, req.ip);
+
+    res.status(200).json({
+      success: true,
+      data: result,
     });
   } catch (error) {
     next(error);
@@ -266,6 +323,8 @@ module.exports = {
   confirmUpload,
   getAllVideos,
   getVideoById,
+  getPlaybackAuth,
+  registerView,
   getUserVideos,
   toggleLike,
   toggleDislike,

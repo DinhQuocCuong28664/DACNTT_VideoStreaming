@@ -1,0 +1,44 @@
+graph TD
+    A["Git Push / Pull Request"] --> B{"Branch & Path Filter"}
+
+    B -->|"backend/**"| C["ci-backend.yml"]
+    B -->|"transcoder/**"| D["ci-transcoder.yml"]
+    B -->|"frontend/**"| E["ci-frontend.yml"]
+    B -->|"infrastructure/**"| I["ci-infra.yml"]
+    B -->|"Pull Request"| F["security-scan.yml"]
+    B -->|"push develop"| G["cd-staging.yml"]
+    B -->|"merge main"| H["cd-deploy.yml"]
+
+    C --> C1["Jest Unit Tests"]
+    C1 --> C2["ESLint"]
+    C2 --> C3["Gitleaks + Trivy SCA"]
+
+    D --> D1["ESLint + Gitleaks"]
+    D1 --> D2["Docker Multi-stage Build"]
+    D2 --> D3["Trivy Image Scan"]
+    D3 --> D4["Push Amazon ECR"]
+    D4 --> D5["Update Batch Job Definition"]
+
+    E --> E1["oxlint Code Quality"]
+    E1 --> E2["Vite Build"]
+    E2 --> E3["Deploy S3 Static Hosting"]
+
+    I --> I1["terraform fmt -check"]
+    I1 --> I2["terraform validate<br/>dev + prod"]
+    I2 --> I3["Trivy IaC Config Scan"]
+
+    F --> F1["Gitleaks Secret Scan"]
+    F1 --> F2["Trivy SCA: Báo cáo<br/>CRITICAL + HIGH"]
+    F2 --> F6["SAST: eslint-plugin-security"]
+    F6 --> F3{"Phát hiện lỗ hổng<br/>mức CRITICAL?"}
+    F3 -->|"Có"| F4["Chặn Pull Request"]
+    F3 -->|"Không"| F5["Cho phép Merge"]
+
+    G --> G1["Triển khai môi trường Dev"]
+    H --> H1["Deploy Backend EC2 qua SSH"]
+    H1 --> H2["Invalidate CloudFront Cache"]
+
+    classDef gate fill:#fdecea,stroke:#c0392b,color:#1a1a1a
+    classDef deploy fill:#eef7ee,stroke:#3d8b40,color:#1a1a1a
+    class F3,F4 gate
+    class E3,G1,H1,H2 deploy

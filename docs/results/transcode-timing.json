@@ -1,0 +1,308 @@
+[
+  {
+    "measuredAt": "2026-08-09T18:09:45.390Z",
+    "label": "100MB",
+    "file": {
+      "name": "video-100mb.mp4",
+      "sizeBytes": 100514431,
+      "sizeMB": 95.86
+    },
+    "videoId": "6a78c10f1c4541ef615cf01d",
+    "finalStatus": "READY",
+    "timings": {
+      "initiateUploadSec": 0.34,
+      "s3UploadSec": 2.9,
+      "uploadThroughputMBps": 33.09,
+      "transcodePipelineSec": 346.32,
+      "endToEndSec": 349.55
+    },
+    "statusTransitions": [
+      {
+        "status": "UPLOADING",
+        "elapsedSec": 0.18
+      },
+      {
+        "status": "READY",
+        "elapsedSec": 346.32
+      }
+    ],
+    "videoDurationSec": 120,
+    "realtimeFactor": 2.886
+  },
+  {
+    "measuredAt": "2026-08-09T18:22:41.866Z",
+    "label": "100MB",
+    "file": {
+      "name": "video-100mb.mp4",
+      "sizeBytes": 100514431,
+      "sizeMB": 95.86
+    },
+    "videoId": "6a78c3551c4541ef615cf01e",
+    "finalStatus": "READY",
+    "timings": {
+      "initiateUploadSec": 0.28,
+      "s3UploadSec": 3.33,
+      "uploadThroughputMBps": 28.8,
+      "transcodePipelineSec": 539.8,
+      "endToEndSec": 543.41
+    },
+    "statusTransitions": [
+      {
+        "status": "UPLOADING",
+        "elapsedSec": 0.23
+      },
+      {
+        "status": "READY",
+        "elapsedSec": 539.8
+      }
+    ],
+    "videoDurationSec": 120,
+    "realtimeFactor": 4.498
+  },
+  {
+    "measuredAt": "2026-08-09T18:31:58.223Z",
+    "label": "100MB",
+    "file": {
+      "name": "video-100mb.mp4",
+      "sizeBytes": 100514431,
+      "sizeMB": 95.86
+    },
+    "videoId": "6a78c5811c4541ef615cf01f",
+    "finalStatus": "READY",
+    "timings": {
+      "initiateUploadSec": 0.25,
+      "s3UploadSec": 3.15,
+      "uploadThroughputMBps": 30.44,
+      "transcodePipelineSec": 541.28,
+      "endToEndSec": 544.69
+    },
+    "statusTransitions": [
+      {
+        "status": "UPLOADING",
+        "elapsedSec": 0.21
+      },
+      {
+        "status": "READY",
+        "elapsedSec": 541.28
+      }
+    ],
+    "videoDurationSec": 120,
+    "realtimeFactor": 4.511
+  },
+  {
+    "measuredAt": "2026-08-09T19:59:20.241Z",
+    "label": "500MB",
+    "file": {
+      "name": "video-500mb.mp4",
+      "sizeBytes": 502677504,
+      "sizeMB": 479.4
+    },
+    "videoId": "6a78dc0a1c4541ef615cf021",
+    "finalStatus": "READY",
+    "timings": {
+      "initiateUploadSec": 0.24,
+      "s3UploadSec": 13.13,
+      "uploadThroughputMBps": 36.51,
+      "transcodePipelineSec": 2281.25,
+      "endToEndSec": 2294.62
+    },
+    "statusTransitions": [
+      {
+        "status": "UPLOADING",
+        "elapsedSec": 0
+      },
+      {
+        "status": "READY",
+        "elapsedSec": 2281.25
+      }
+    ],
+    "videoDurationSec": 600,
+    "realtimeFactor": 3.802,
+    "note": "Kịch bản đo tại chỗ dùng client polling (waitUntilReady) đã hết hạn ở mốc POLL_TIMEOUT_MS=30 phút cũ trong khi job vẫn đang chạy đúng trên AWS Batch. Bản ghi này được dựng lại thủ công từ dấu thời gian thật của job Batch (aws batch describe-jobs, CreatedAt/StoppedAt) và log CloudWatch của transcoder (dòng 'READY in 2228.8s'), không phải do script tự ghi. Đã sửa POLL_TIMEOUT_MS lên 180 phút (biến môi trường POLL_TIMEOUT_MINUTES) để các lần đo sau không gặp lại lỗi này."
+  },
+  {
+    "measuredAt": "2026-08-09T21:01:48.585Z",
+    "label": "1GB",
+    "file": {
+      "name": "video-1gb.mp4",
+      "sizeBytes": 1070630037,
+      "sizeMB": 1021
+    },
+    "videoId": "6a78ea721c4541ef615cf022",
+    "finalStatus": "READY",
+    "timings": {
+      "initiateUploadSec": 0.31,
+      "s3UploadSec": 72,
+      "uploadThroughputMBps": 14.18,
+      "transcodePipelineSec": 5917.03,
+      "endToEndSec": 5989.34
+    },
+    "statusTransitions": [
+      {
+        "status": "UPLOADING",
+        "elapsedSec": 0
+      },
+      {
+        "status": "PROCESSING",
+        "elapsedSec": 0.5
+      },
+      {
+        "status": "READY",
+        "elapsedSec": 5917.03
+      }
+    ],
+    "videoDurationSec": 1500,
+    "realtimeFactor": 3.945,
+    "note": "Máy đo mất kết nối WiFi khi script client đang poll trạng thái (sau khi log PROCESSING lúc 0.5s), làm script tự sập với lỗi 'fetch failed'. Job Batch trên AWS hoàn toàn không bị ảnh hưởng — vẫn chạy và SUCCEEDED bình thường (xác nhận qua aws batch describe-jobs và log CloudWatch dòng 'READY in 5862.9s'). Bản ghi này được dựng lại thủ công từ dấu thời gian job Batch thật (CreatedAt=2026-08-09T21:01:48.585Z dùng làm mốc 'upload hoàn tất' vì S3 Event Notification kích hoạt gần như tức thời sau khi client PUT xong, StoppedAt là lúc container kết thúc sau khi đã ghi READY vào MongoDB). Đã vá script (waitUntilReady) để tự thử lại khi mất mạng tạm thời thay vì sập toàn bộ phép đo, tối đa 20 lần lỗi liên tiếp mới thực sự dừng."
+  },
+  {
+    "measuredAt": "2026-08-10T00:08:47.590Z",
+    "label": "100MB-4vcpu",
+    "file": {
+      "name": "video-100mb.mp4",
+      "sizeBytes": 100514431,
+      "sizeMB": 95.86
+    },
+    "videoId": "6a7916081c4541ef615cf024",
+    "finalStatus": "READY",
+    "timings": {
+      "initiateUploadSec": 0.33,
+      "s3UploadSec": 4.88,
+      "uploadThroughputMBps": 19.65,
+      "transcodePipelineSec": 130.4,
+      "endToEndSec": 135.61
+    },
+    "statusTransitions": [
+      {
+        "status": "PROCESSING",
+        "elapsedSec": 0.51
+      },
+      {
+        "status": "READY",
+        "elapsedSec": 130.4
+      }
+    ],
+    "videoDurationSec": 120,
+    "realtimeFactor": 1.087
+  },
+  {
+    "measuredAt": "2026-08-10T00:11:12.362Z",
+    "label": "100MB-4vcpu",
+    "file": {
+      "name": "video-100mb.mp4",
+      "sizeBytes": 100514431,
+      "sizeMB": 95.86
+    },
+    "videoId": "6a7916ad1c4541ef615cf025",
+    "finalStatus": "READY",
+    "timings": {
+      "initiateUploadSec": 0.25,
+      "s3UploadSec": 3.19,
+      "uploadThroughputMBps": 30.08,
+      "transcodePipelineSec": 111.14,
+      "endToEndSec": 114.58
+    },
+    "statusTransitions": [
+      {
+        "status": "PROCESSING",
+        "elapsedSec": 0.38
+      },
+      {
+        "status": "READY",
+        "elapsedSec": 111.14
+      }
+    ],
+    "videoDurationSec": 120,
+    "realtimeFactor": 0.926
+  },
+  {
+    "measuredAt": "2026-08-10T00:13:03.375Z",
+    "label": "100MB-4vcpu",
+    "file": {
+      "name": "video-100mb.mp4",
+      "sizeBytes": 100514431,
+      "sizeMB": 95.86
+    },
+    "videoId": "6a7917231c4541ef615cf026",
+    "finalStatus": "READY",
+    "timings": {
+      "initiateUploadSec": 0.28,
+      "s3UploadSec": 2.94,
+      "uploadThroughputMBps": 32.59,
+      "transcodePipelineSec": 105.13,
+      "endToEndSec": 108.35
+    },
+    "statusTransitions": [
+      {
+        "status": "PROCESSING",
+        "elapsedSec": 0.38
+      },
+      {
+        "status": "READY",
+        "elapsedSec": 105.13
+      }
+    ],
+    "videoDurationSec": 120,
+    "realtimeFactor": 0.876
+  },
+  {
+    "measuredAt": "2026-08-10T00:33:04.883Z",
+    "label": "100MB-4vcpu",
+    "file": {
+      "name": "video-1gb.mp4",
+      "sizeBytes": 1070630037,
+      "sizeMB": 1021.03
+    },
+    "videoId": "6a7917ec1c4541ef615cf027",
+    "finalStatus": "READY",
+    "timings": {
+      "initiateUploadSec": 0.25,
+      "s3UploadSec": 27.86,
+      "uploadThroughputMBps": 36.66,
+      "transcodePipelineSec": 1080.29,
+      "endToEndSec": 1108.39
+    },
+    "statusTransitions": [
+      {
+        "status": "PROCESSING",
+        "elapsedSec": 0.42
+      },
+      {
+        "status": "READY",
+        "elapsedSec": 1080.29
+      }
+    ],
+    "videoDurationSec": 1600,
+    "realtimeFactor": 0.675
+  },
+  {
+    "measuredAt": "2026-08-10T01:26:09.363Z",
+    "label": "1gb-4vcpu",
+    "file": {
+      "name": "video-1gb.mp4",
+      "sizeBytes": 1070630037,
+      "sizeMB": 1021.03
+    },
+    "videoId": "6a79245e1c4541ef615cf028",
+    "finalStatus": "READY",
+    "timings": {
+      "initiateUploadSec": 0.25,
+      "s3UploadSec": 30.15,
+      "uploadThroughputMBps": 33.86,
+      "transcodePipelineSec": 1077.1,
+      "endToEndSec": 1107.51
+    },
+    "statusTransitions": [
+      {
+        "status": "PROCESSING",
+        "elapsedSec": 0.48
+      },
+      {
+        "status": "READY",
+        "elapsedSec": 1077.1
+      }
+    ],
+    "videoDurationSec": 1600,
+    "realtimeFactor": 0.673
+  }
+]

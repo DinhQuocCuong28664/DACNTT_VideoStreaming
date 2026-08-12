@@ -1,20 +1,24 @@
 # ═══════════════════════════════════════════════════════
 # DACNTT Video Transcoder — Multi-stage Dockerfile
-# Base: node:20-slim (NOT alpine — FFmpeg needs glibc)
+# Base: node:24-slim (NOT alpine — FFmpeg needs glibc)
 # Node 20+ required: the mongodb/mongoose driver needs the global
 # Web Crypto API (globalThis.crypto), which isn't available by default
 # on Node 18 and causes "crypto is not defined" at connect time.
+# Nâng từ node:20-slim lên node:24-slim (2026-08-10): Node 20 đã EOL từ
+# 30/4/2026, không còn nhận vá bảo mật. Node 24 là bản Active LTS hiện tại
+# (hỗ trợ tới 4/2028) — chọn LTS thay vì bản Current (26) để giữ ổn định
+# cho production.
 # ═══════════════════════════════════════════════════════
 
 # Stage 1: Builder — Install Node.js dependencies
-FROM node:20-slim AS builder
+FROM node:24-slim AS builder
 
 WORKDIR /app
 COPY package*.json ./
 RUN npm ci --production
 
 # Stage 2: Runtime — FFmpeg + Node.js runtime
-FROM node:20-slim AS runtime
+FROM node:24-slim AS runtime
 
 # Install FFmpeg
 RUN apt-get update && \

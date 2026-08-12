@@ -46,11 +46,20 @@ const PiPIcon = () => (
  * speed, Picture-in-Picture and HLS quality selection as one custom bar with
  * a single settings ("...") menu, similar to YouTube's player chrome.
  */
-const VideoPlayer = ({ src, poster }) => {
+const VideoPlayer = ({
+  src,
+  poster,
+  onViewThreshold,
+  viewThresholdSeconds = 5,
+  withCredentials = true,
+}) => {
   const wrapperRef = useRef(null);
   const videoRef = useRef(null);
   const hlsRef = useRef(null);
   const hideControlsTimer = useRef(null);
+  // Bảo đảm lượt xem chỉ được báo cáo một lần cho mỗi phiên phát
+  const viewReportedRef = useRef(false);
+  const onViewThresholdRef = useRef(onViewThreshold);
 
   const [levels, setLevels] = useState([]);
   const [currentLevel, setCurrentLevel] = useState(-1); // -1 = Auto
@@ -68,6 +77,18 @@ const VideoPlayer = ({ src, poster }) => {
   const [showControls, setShowControls] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
   const [settingsView, setSettingsView] = useState('main'); // 'main' | 'speed' | 'quality'
+  const [playbackError, setPlaybackError] = useState(null);
+
+  // Giữ tham chiếu callback luôn mới mà không phải gắn lại event listener
+  useEffect(() => {
+    onViewThresholdRef.current = onViewThreshold;
+  }, [onViewThreshold]);
+
+  // Đặt lại trạng thái khi chuyển sang video khác
+  useEffect(() => {
+    viewReportedRef.current = false;
+    setPlaybackError(null);
+  }, [src]);
 
   // ── HLS setup ──────────────────────────────────────
   useEffect(() => {
@@ -83,6 +104,12 @@ const VideoPlayer = ({ src, poster }) => {
       const hls = new Hls({
         startLevel: -1, // Auto
         capLevelToPlayerSize: true,
+        // Bắt buộc để trình duyệt đính kèm CloudFront Signed Cookie vào mọi
+        // yêu cầu tải manifest và segment. Thiếu thiết lập này, CloudFront sẽ
+        // trả về 403 với các video được bảo vệ.
+        xhrSetup: (xhr) => {
+          xhr.withCredentials = withCredentials;
+        },
       });
 
       hls.loadSource(src);
@@ -96,8 +123,42 @@ const VideoPlayer = ({ src, poster }) => {
         setCurrentLevel(data.level);
       });
 
+      /**
+       * Xử lý lỗi phát video.
+       *
+       * HLS.js phân biệt lỗi nghiêm trọng (fatal) và lỗi có thể bỏ qua. Với lỗi
+       * mạng, việc gọi lại startLoad() thường đủ để nối lại luồng khi kết nối
+       * chập chờn. Với lỗi giải mã, recoverMediaError() cho phép khôi phục mà
+       * không cần tải lại toàn bộ trang. Chỉ khi cả hai cách đều không áp dụng
+       * được thì mới hiển thị thông báo lỗi cho người dùng.
+       */
+      hls.on(Hls.Events.ERROR, (_, data) => {
+        if (!data.fatal) return;
+
+        switch (data.type) {
+          case Hls.ErrorTypes.NETWORK_ERROR:
+            setPlaybackError('Mất kết nối tới máy chủ video. Đang thử kết nối lại…');
+            hls.startLoad();
+            break;
+          case Hls.ErrorTypes.MEDIA_ERROR:
+            setPlaybackError('Lỗi giải mã video. Đang khôi phục…');
+            hls.recoverMediaError();
+            break;
+          default:
+            setPlaybackError('Không thể phát video này. Vui lòng tải lại trang.');
+            hls.destroy();
+            hlsRef.current = null;
+        }
+      });
+
       hlsRef.current = hls;
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      // Safari phát HLS bằng bộ giải mã sẵn có của hệ điều hành. Trong trường
+      // hợp này, cookie chỉ được gửi kèm khi phần tử <video> khai báo
+      // crossOrigin="use-credentials".
+      if (withCredentials) {
+        video.crossOrigin = 'use-credentials';
+      }
       video.src = src;
     }
 
@@ -107,14 +168,27 @@ const VideoPlayer = ({ src, poster }) => {
         hlsRef.current = null;
       }
     };
-  }, [src]);
+  }, [src, withCredentials]);
 
   // ── Video element event wiring ────────────────────
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
-    const onTimeUpdate = () => setCurrentTime(video.currentTime);
+    const onTimeUpdate = () => {
+      setCurrentTime(video.currentTime);
+
+      // Ghi nhận lượt xem sau khi người dùng đã thực sự xem đủ ngưỡng thời gian.
+      // Cách này tránh việc chỉ tải trang cũng được tính là một lượt xem.
+      if (
+        !viewReportedRef.current &&
+        video.currentTime >= viewThresholdSeconds &&
+        onViewThresholdRef.current
+      ) {
+        viewReportedRef.current = true;
+        onViewThresholdRef.current();
+      }
+    };
     const onLoadedMetadata = () => setDuration(video.duration || 0);
     const onDurationChange = () => setDuration(video.duration || 0);
     const onProgress = () => {
@@ -155,7 +229,7 @@ const VideoPlayer = ({ src, poster }) => {
       video.removeEventListener('enterpictureinpicture', onEnterPiP);
       video.removeEventListener('leavepictureinpicture', onLeavePiP);
     };
-  }, []);
+  }, [viewThresholdSeconds]);
 
   // ── Close settings menu on outside click ──────────
   useEffect(() => {
@@ -352,10 +426,16 @@ const VideoPlayer = ({ src, poster }) => {
         onClick={togglePlay}
       />
 
-      {!isPlaying && (
+      {!isPlaying && !playbackError && (
         <button className="center-play-btn" onClick={togglePlay} aria-label="Phát video">
           <FiPlay />
         </button>
+      )}
+
+      {playbackError && (
+        <div className="video-error-overlay" role="alert">
+          <p>{playbackError}</p>
+        </div>
       )}
 
       <div className="video-controls-bar" onClick={(e) => e.stopPropagation()}>

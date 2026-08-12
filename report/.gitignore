@@ -1,0 +1,18 @@
+# Tệp trung gian do LaTeX sinh ra khi biên dịch
+*.aux
+*.log
+*.out
+*.toc
+*.lof
+*.lot
+*.bbl
+*.blg
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.nav
+*.snm
+*.vrb
+
+# Giữ lại tệp PDF kết quả để nộp báo cáo
+!main.pdf

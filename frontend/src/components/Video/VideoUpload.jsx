@@ -4,6 +4,9 @@ import { FiUploadCloud, FiFile, FiX, FiCheck } from 'react-icons/fi';
 import videoApi from '../../api/videoApi';
 import './VideoUpload.css';
 
+/** Dung lượng tối đa mỗi video: 2 GB — phải khớp với giới hạn phía máy chủ */
+const MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024 * 1024;
+
 const VideoUpload = () => {
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
@@ -34,6 +37,17 @@ const VideoUpload = () => {
     const allowed = ['video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/x-matroska'];
     if (!allowed.includes(selected.type)) {
       setError('Định dạng không hỗ trợ. Vui lòng chọn file .mp4, .mov, .avi hoặc .mkv');
+      return;
+    }
+
+    // Ngưỡng này phải khớp với MAX_VIDEO_SIZE_BYTES ở phía máy chủ.
+    // Kiểm tra sớm tại trình duyệt giúp người dùng biết ngay, thay vì chờ tải
+    // xong hàng GB rồi mới nhận lỗi từ API.
+    if (selected.size > MAX_FILE_SIZE_BYTES) {
+      setError(
+        `File vượt quá dung lượng tối đa ${formatFileSize(MAX_FILE_SIZE_BYTES)}. ` +
+          `File bạn chọn có dung lượng ${formatFileSize(selected.size)}.`
+      );
       return;
     }
 

@@ -1,0 +1,48 @@
+\documentclass[12pt,a4paper]{report}
+\input{preamble.tex}
+\begin{document}
+
+
+\input{frontmatter/cover}
+
+
+% --- Frontmatter: đánh số la mã cho toàn bộ ---
+\cleardoublepage
+\pagenumbering{roman}
+% --- Acknowledgment ---
+\input{frontmatter/acknowledgment}
+\input{frontmatter/certification}
+\input{frontmatter/declaration}
+
+% --- Abstract ---
+\input{frontmatter/abstract}
+\input{frontmatter/abbreviations}
+
+
+
+\cleardoublepage
+\tableofcontents
+\listoffigures
+\listoftables
+
+\clearpage
+\pagenumbering{arabic}
+
+
+% -------------------Chapters---------------------------
+\include{chapters/chap1}
+\include{chapters/chap2}
+\include{chapters/chap3}
+\include{chapters/chap4}
+\include{chapters/chap5}
+\include{chapters/chap6}
+
+% % -------------------Bibliography-----------------------
+\bibliographystyle{ieeetr}
+\bibliography{references}
+
+% % -------------------Appendices-------------------------
+\appendix
+\include{appendices/appendixA}
+
+\end{document}

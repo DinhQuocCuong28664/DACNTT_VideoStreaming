@@ -1,0 +1,110 @@
+\chapter{Conclusion and Future Work}
+\label{chap:conclusion}
+
+\section{Summary of Achievements}
+\label{sec:summary}
+
+This project set out to build a video sharing platform whose transcoding subsystem runs on a
+serverless container and event-driven architecture, and to evaluate whether that choice
+delivers the cost and scalability benefits it promises.
+
+The functional platform was completed. Users can register, authenticate, upload videos directly
+to Amazon S3 through pre-signed URLs, watch them with adaptive bitrate playback across three
+renditions, control whether each video is public or private, manage their channel, search and
+filter the catalogue, and interact through likes and comments.
+
+The transcoding pipeline operates without manual intervention. An upload emits an S3 event that
+is buffered in Amazon SQS and dispatched by an AWS Lambda function to AWS Batch, where a
+container packaging FFmpeg produces the renditions, the master playlist, and a thumbnail before
+terminating. The heartbeat pattern prevents duplicate processing of long jobs, and failed jobs
+are retried and ultimately isolated in a dead letter queue rather than being lost silently.
+
+Content protection was implemented in two layers. Origin Access Control keeps the storage
+bucket entirely private, and CloudFront Signed Cookies ensure that private videos are rejected
+at the edge even when the exact manifest URL is known. This closes a gap that would otherwise
+have made the private visibility setting ineffective in practice, since the API can restrict its
+own responses but cannot restrict a content delivery network.
+
+The infrastructure is fully described as code in eleven Terraform modules across two
+environments, and seven GitHub Actions workflows automate linting, unit testing, static security
+analysis, container scanning, infrastructure validation, and deployment. The security gate
+blocks merges on fixable critical findings rather than merely reporting them.
+
+The automated test suite grew to 92 tests. Its practical value was demonstrated when it caught a
+defect in the cookie signing implementation that would have prevented every private video from
+playing once deployed.
+
+\section{Limitations}
+\label{sec:limitations}
+
+Several limitations should be stated plainly.
+
+The bitrate ladder is fixed at three rungs regardless of content. As the literature reviewed in
+Section~\ref{sec:core-models} shows, the optimal ladder is content-dependent, and a fixed ladder
+therefore wastes bandwidth on simple content while under-serving complex content. Netflix
+reported bitrate reductions between 28\% and 38\% at equivalent perceptual quality by optimising
+the ladder per shot \cite{netflix2018dynamic}, which indicates the magnitude of the opportunity
+forgone.
+
+Each video is transcoded by a single container, without the chunk-based parallelism that
+Netflix employs. Processing time consequently scales linearly with video duration, and a long
+video cannot be accelerated by adding capacity. This is acceptable at the scale of this project
+but would become the dominant constraint for longer content.
+
+Signed cookies remain valid for two hours after issuance. If an owner switches a video from
+public to private, viewers holding unexpired cookies retain access until those cookies lapse.
+Immediate revocation would require rotating the signing key or introducing an edge function that
+performs a per-request check.
+
+A more fundamental limitation surfaced during the preparation of the experimental results for
+this report. Verifying the deployed environment directly through the AWS command line interface
+revealed that no CloudFront distribution had ever been created in the development AWS account,
+and that the processed content bucket carried a manually added policy granting anonymous
+\texttt{s3:GetObject} access to any object. In other words, the content protection scheme
+described in Section~\ref{sec:content-protection} was fully implemented and validated in code
+but had never actually been deployed; every video, public or private, was directly retrievable
+from Amazon S3 without any authorisation check. Attempting to apply the Terraform configuration
+to correct this failed with an access-denied error, because AWS requires manual account
+verification before a new account may create CloudFront distributions, a restriction the project
+had encountered before and for which the \texttt{enable\_cloudfront} flag had originally been
+introduced as a workaround. A support request was filed with AWS to lift this restriction; at the
+time of writing the request remains pending. This episode is reported here in the interest of
+honesty rather than omitted, and it illustrates a broader lesson about serverless and managed
+cloud services: correctness of the Infrastructure as Code is necessary but not sufficient, since
+provisioning can still be blocked by account-level policy outside the application's control, and
+verifying claims against the live environment rather than against the source code alone is
+essential before a security control can be considered in effect.
+
+The system implements no digital rights management. An authorised viewer can capture the
+decrypted stream or share their cookies, and preventing this is outside the scope of the
+techniques used here.
+
+Finally, the rate limiting and view deduplication mechanisms hold their state in process memory.
+This is correct for the current single-instance deployment but would need to move to a shared
+store such as Redis before the backend could be scaled horizontally, since each instance would
+otherwise enforce its own independent limits.
+
+\section{Future Work}
+\label{sec:future-work}
+
+The most valuable extension would be per-title bitrate ladder optimisation driven by a
+perceptual quality metric such as VMAF. Encoding a short probe of the source at several
+operating points and selecting those on the convex hull of the quality-versus-bitrate curve
+would reduce delivery bandwidth at unchanged perceived quality, which lowers the largest
+remaining cost component of the system.
+
+Chunk-based parallel transcoding would address the linear scaling of processing time. Splitting
+the source at keyframe boundaries, encoding the segments concurrently across multiple
+containers, and concatenating the results would convert additional capacity into reduced
+latency. The main challenge is maintaining rate control consistency across chunk boundaries so
+that quality does not fluctuate visibly.
+
+Hardware acceleration offers a further avenue. Research on GPU-enabled serverless platforms for
+HEVC encoding \cite{gpuserverless2024} suggests substantial throughput gains, and adopting a
+more efficient codec such as HEVC or AV1 alongside H.264 would reduce bandwidth for clients that
+support it.
+
+Finally, moving the rate limiting and deduplication state into a shared store, and adding
+distributed tracing across the S3, SQS, Lambda, and Batch boundaries, would prepare the system
+for horizontal scaling and make failures in the asynchronous pipeline substantially easier to
+diagnose.

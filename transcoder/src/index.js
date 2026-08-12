@@ -4,8 +4,36 @@ const os = require('os');
 const config = require('./config');
 const { transcodeToHLS } = require('./transcoder');
 const { downloadFromS3, uploadDirectoryToS3 } = require('./s3Handler');
-const { connectDB, disconnectDB, updateVideoReady, updateVideoError, getVideo } = require('./dbHandler');
+const {
+  connectDB,
+  disconnectDB,
+  updateVideoReady,
+  updateVideoError,
+  getVideo,
+  getVideoWithUser,
+} = require('./dbHandler');
 const { pollMessages, parseS3Event, startHeartbeat, deleteMessage } = require('./sqsHandler');
+const { sendVideoReadyEmail, sendVideoFailedEmail } = require('./emailService');
+
+/**
+ * Gửi email thông báo mà không bao giờ làm crash job chính.
+ *
+ * Việc transcode/ghi DB đã hoàn tất (thành công hay thất bại) tại thời điểm
+ * gọi hàm này — một lỗi SMTP (sai mật khẩu app, mất mạng...) không được phép
+ * biến một job transcode ĐÃ THÀNH CÔNG thành một job bị coi là lỗi.
+ */
+const notifySafely = async (sendFn, to, payload, label) => {
+  if (!to) {
+    console.warn(`⚠️  Không gửi được email ${label}: video không có email người nhận hợp lệ.`);
+    return;
+  }
+  try {
+    await sendFn(to, payload);
+    console.log(`📧 Đã gửi email ${label} tới ${to}`);
+  } catch (err) {
+    console.error(`⚠️  Gửi email ${label} thất bại (không ảnh hưởng kết quả transcode):`, err.message);
+  }
+};
 
 /**
  * ════════════════════════════════════════
@@ -34,6 +62,20 @@ const processVideo = async (videoId, rawS3Key) => {
   console.log(`   S3 Key: ${rawS3Key}`);
   console.log(`════════════════════════════════════════\n`);
 
+  // Kiểm tra sớm: nếu video đã READY (ví dụ do một job trùng lặp trước đó đã
+  // xử lý xong — có thể do SQS redeliver message sau khi deleteMessage() thất
+  // bại, hoặc do heartbeat trễ), bỏ qua ngay để không tải + transcode lại vô
+  // ích. Đây chỉ là tối ưu "best-effort" (vẫn có khoảng hở race condition nếu
+  // 2 job cùng vượt qua bước kiểm tra này gần như đồng thời) — lớp phòng vệ
+  // triệt để nằm ở updateVideoReady/updateVideoError (ghi có điều kiện).
+  const existingVideo = await getVideo(videoId);
+  if (existingVideo && existingVideo.status === 'READY') {
+    console.warn(
+      `⚠️  Video ${videoId} đã ở trạng thái READY — bỏ qua xử lý trùng lặp, không tải/transcode lại.`
+    );
+    return;
+  }
+
   try {
     // Step 1: Create work directories
     fs.mkdirSync(path.join(workDir, 'input'), { recursive: true });
@@ -53,16 +95,47 @@ const processVideo = async (videoId, rawS3Key) => {
     const hlsUrl = config.getPublicUrl(`${s3Prefix}/master.m3u8`);
     const thumbnailUrl = config.getPublicUrl(`${s3Prefix}/thumbnail.jpg`);
 
-    await updateVideoReady(videoId, { hlsUrl, thumbnailUrl, duration });
+    const { updated } = await updateVideoReady(videoId, { hlsUrl, thumbnailUrl, duration });
 
     const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
     console.log(`\n🎉 ════════════════════════════════════════`);
     console.log(`   Video ${videoId} READY in ${totalTime}s`);
     console.log(`   HLS URL: ${hlsUrl}`);
     console.log(`════════════════════════════════════════\n`);
+
+    // Chỉ gửi email khi CHÍNH job này thắng cuộc ghi READY — nếu đây là job
+    // trùng lặp bị chặn ghi (updated=false), job thắng cuộc đã/sẽ tự gửi rồi,
+    // gửi thêm ở đây sẽ khiến người dùng nhận email trùng.
+    if (updated) {
+      const videoWithUser = await getVideoWithUser(videoId);
+      await notifySafely(
+        sendVideoReadyEmail,
+        videoWithUser?.user?.email,
+        {
+          title: videoWithUser?.title,
+          videoId,
+          displayName: videoWithUser?.user?.displayName || videoWithUser?.user?.username,
+        },
+        'video sẵn sàng'
+      );
+    }
   } catch (err) {
     console.error(`❌ Transcoding failed for ${videoId}:`, err.message);
-    await updateVideoError(videoId, err.message);
+    const { updated } = await updateVideoError(videoId, err.message);
+
+    if (updated) {
+      const videoWithUser = await getVideoWithUser(videoId);
+      await notifySafely(
+        sendVideoFailedEmail,
+        videoWithUser?.user?.email,
+        {
+          title: videoWithUser?.title,
+          displayName: videoWithUser?.user?.displayName || videoWithUser?.user?.username,
+        },
+        'video thất bại'
+      );
+    }
+
     throw err;
   } finally {
     // Cleanup temp files

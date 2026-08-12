@@ -83,3 +83,74 @@ export default function () {
 
   sleep(1);
 }
+
+/**
+ * Xuất kết quả kiểm thử ra tệp để đưa vào báo cáo.
+ *
+ * Mặc định k6 chỉ in bảng tổng hợp ra màn hình rồi kết thúc, nghĩa là số liệu
+ * biến mất ngay sau khi tiến trình dừng. Hàm `handleSummary` cho phép giữ lại
+ * toàn bộ chỉ số dưới dạng JSON, phục vụ việc trích dẫn trong Chương 5 và bảo
+ * đảm kết quả có thể đối chiếu lại về sau.
+ */
+export function handleSummary(data) {
+  const m = data.metrics;
+  const get = (name, field) => (m[name] && m[name].values ? m[name].values[field] : null);
+
+  const report = {
+    measuredAt: new Date().toISOString(),
+    target: BASE_URL,
+    stages: options.stages,
+    thresholds: options.thresholds,
+    summary: {
+      totalRequests: get('http_reqs', 'count'),
+      requestsPerSecond: get('http_reqs', 'rate'),
+      failedRate: get('http_req_failed', 'rate'),
+      iterations: get('iterations', 'count'),
+      maxVirtualUsers: get('vus_max', 'value'),
+      httpReqDurationMs: {
+        avg: get('http_req_duration', 'avg'),
+        med: get('http_req_duration', 'med'),
+        p90: get('http_req_duration', 'p(90)'),
+        p95: get('http_req_duration', 'p(95)'),
+        max: get('http_req_duration', 'max'),
+      },
+      checks: {
+        passes: get('checks', 'passes'),
+        fails: get('checks', 'fails'),
+        rate: get('checks', 'rate'),
+      },
+    },
+  };
+
+  return {
+    'docs/results/k6-summary.json': JSON.stringify(report, null, 2),
+    // Giữ nguyên bảng tổng hợp mặc định trên màn hình
+    stdout: textSummary(data),
+  };
+}
+
+/** Bảng tổng hợp dạng văn bản, viết thủ công để không phụ thuộc module ngoài */
+function textSummary(data) {
+  const m = data.metrics;
+  const val = (name, field) => {
+    const v = m[name] && m[name].values ? m[name].values[field] : null;
+    return v === null || v === undefined ? 'n/a' : Number(v).toFixed(2);
+  };
+
+  return [
+    '',
+    '===================================================================',
+    '                  KẾT QUẢ KIỂM THỬ CHỊU TẢI (k6)',
+    '===================================================================',
+    ` Tổng số request      : ${val('http_reqs', 'count')}`,
+    ` Throughput           : ${val('http_reqs', 'rate')} req/s`,
+    ` Tỷ lệ lỗi            : ${val('http_req_failed', 'rate')}`,
+    ` Số VU tối đa         : ${val('vus_max', 'value')}`,
+    ` Thời gian TB         : ${val('http_req_duration', 'avg')} ms`,
+    ` Trung vị             : ${val('http_req_duration', 'med')} ms`,
+    ` Phân vị 95           : ${val('http_req_duration', 'p(95)')} ms`,
+    ` Lớn nhất             : ${val('http_req_duration', 'max')} ms`,
+    '===================================================================',
+    '',
+  ].join('\n');
+}

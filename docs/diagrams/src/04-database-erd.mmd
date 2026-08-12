@@ -1,0 +1,50 @@
+erDiagram
+    USER ||--o{ VIDEO : "tải lên"
+    USER ||--o{ COMMENT : "viết"
+    VIDEO ||--o{ COMMENT : "chứa"
+
+    USER {
+        ObjectId _id PK
+        string username UK
+        string email UK
+        string password "bcrypt hash, select false"
+        string displayName
+        string avatar
+        string channelDescription
+        number subscribers
+        string resetPasswordToken
+        Date resetPasswordExpire
+        Date createdAt
+        Date updatedAt
+    }
+
+    VIDEO {
+        ObjectId _id PK
+        ObjectId user FK
+        string title
+        string description
+        string category "enum 7 danh muc"
+        string status "UPLOADING PROCESSING READY ERROR"
+        string visibility "public private unlisted"
+        string rawS3Key
+        string hlsUrl "CloudFront master m3u8"
+        string thumbnailUrl
+        number duration "giay"
+        number fileSize "bytes"
+        string mimeType
+        number views
+        ObjectId_array likes FK
+        ObjectId_array dislikes FK
+        string_array tags
+        Date createdAt
+        Date updatedAt
+    }
+
+    COMMENT {
+        ObjectId _id PK
+        ObjectId video FK
+        ObjectId user FK
+        string content
+        Date createdAt
+        Date updatedAt
+    }

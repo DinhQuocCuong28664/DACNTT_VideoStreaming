@@ -39,7 +39,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Trivy SCA Scan (${{ matrix.directory }})
+      # Bước cảnh báo: liệt kê toàn bộ lỗ hổng CRITICAL và HIGH để nhóm nắm được
+      # hiện trạng, nhưng không chặn pipeline vì nhiều lỗ hổng HIGH nằm ở
+      # dependency gián tiếp và chưa có bản vá.
+      - name: "Trivy SCA — Báo cáo (CRITICAL + HIGH)"
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: 'fs'
@@ -49,20 +52,44 @@ jobs:
           exit-code: '0'
           format: 'table'
 
-  # NOTE: SonarQube SAST integration — requires SonarQube server setup
-  # Uncomment when SonarQube is configured:
-  # sonarqube:
-  #   name: "SonarQube — SAST + Quality Gate"
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #       with:
-  #         fetch-depth: 0
-  #     - uses: SonarSource/sonarqube-scan-action@master
-  #       env:
-  #         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-  #         SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
-  #     - uses: SonarSource/sonarqube-quality-gate-action@master
-  #       timeout-minutes: 5
-  #       env:
-  #         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      # Quality Gate thực sự: chỉ lỗ hổng CRITICAL đã có bản vá mới chặn pipeline.
+      # Đây là bước khiến Pull Request bị đánh dấu thất bại và không thể merge.
+      - name: "Trivy SCA — Quality Gate (chặn khi có CRITICAL)"
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '${{ matrix.directory }}/'
+          severity: 'CRITICAL'
+          trivy-options: '--pkg-types library --ignore-unfixed'
+          exit-code: '1'
+          format: 'table'
+
+  # ── SAST: Phân tích tĩnh mã nguồn tìm mẫu code dễ sinh lỗ hổng ──
+  # Sử dụng eslint-plugin-security thay vì SonarQube: không cần dựng và duy trì
+  # một SonarQube Server riêng, đồng thời vẫn chạy thực sự trong pipeline và
+  # chặn được pipeline khi phát hiện lỗi ở mức `error`.
+  sast:
+    name: "SAST — Phân tích tĩnh bảo mật mã nguồn"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: backend
+        run: npm ci
+
+      # Cờ --max-warnings=0 khiến mọi cảnh báo bảo mật chưa được xem xét đều
+      # làm pipeline thất bại, buộc nhóm phải xử lý hoặc giải trình bằng chú
+      # thích eslint-disable kèm lý do trước khi merge.
+      - name: "Chạy phân tích bảo mật (eslint-plugin-security)"
+        working-directory: backend
+        run: npx eslint src/ tests/ --max-warnings=0

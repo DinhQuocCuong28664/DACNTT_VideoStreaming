@@ -1,0 +1,326 @@
+\chapter{Implementation and Experimental Results}
+\label{chap:implementation}
+
+\section{Backend Implementation}
+\label{sec:backend-impl}
+
+The backend follows a layered structure in which routes delegate to controllers, controllers
+delegate to services, and only services interact with the data models. Business logic is kept
+out of route handlers so that it can be unit tested without an HTTP server.
+
+Authorisation for video access is concentrated in a single service function. Every path that
+exposes a video, whether the detail endpoint, the like and comment endpoints, or the playback
+authorisation endpoint, calls that same function. This is a deliberate choice: duplicating the
+permission check across endpoints is the most common way for an access control gap to appear,
+because a later change updates one copy and not the others.
+
+The upload flow validates metadata on the server before issuing a pre-signed URL. Client-side
+validation alone is insufficient, since a user can call the API directly and obtain a URL for
+an arbitrary file, effectively turning the project's storage bucket into free hosting for
+unrelated content. The server therefore checks the declared MIME type against an allow-list of
+video formats and rejects files exceeding two gigabytes.
+
+Several protective measures were added at the HTTP layer. Security headers are applied through
+Helmet. Cross-origin requests are restricted to an explicit allow-list rather than being
+accepted from any origin, which is also a prerequisite for signed cookies to work, because the
+CORS specification forbids credentials in combination with a wildcard origin. Authentication
+endpoints are rate limited to ten attempts per fifteen minutes per address, which makes
+password guessing impractical without affecting legitimate users. Finally, the process
+validates its required environment variables at startup and refuses to start if the token
+signing secret is missing, converting a dangerous runtime failure into an immediate and obvious
+one.
+
+\section{Transcoder Implementation}
+\label{sec:transcoder-impl}
+
+The transcoder is a Node.js worker packaged with FFmpeg in a Docker image built through a
+multi-stage build. The base image went through two upgrades over the course of the project.
+Node 18 was used initially but had to be abandoned because Mongoose 9 depends on the Web Crypto
+API, which is not fully available in that version, causing the container to fail when connecting
+to MongoDB Atlas. Node 20 was then adopted, and later replaced with \texttt{node:24-slim} once
+Node 20 reached end-of-life on 30 April 2026 and stopped receiving security patches; Node 24 was
+chosen over the newer Node 26 because it is the current Active LTS release, supported until April
+2028, whereas Node 26 had not yet entered its LTS phase at the time of the upgrade. The Alpine
+variant was avoided throughout because FFmpeg requires glibc.
+
+The heartbeat mechanism described in Section~\ref{sec:pipeline-design} is, in effect, a lease in
+the sense introduced by Burrows for the Chubby lock service \cite{burrows2006chubby}: a holder
+retains a resource by periodically renewing it before a timeout expires, and Burrows already
+identified the classical failure mode of that pattern — a lease can expire while its holder is
+merely stalled rather than dead, so a second holder may be granted the same resource while the
+first is still alive and will eventually act on it. A defect matching exactly this failure mode
+surfaced during a literature-driven review of the pipeline's reliability guarantees, discussed
+further in Section~\ref{sec:testing}: neither \texttt{updateVideoReady} nor
+\texttt{updateVideoError} checked the video's current status before writing, so a duplicate job
+triggered by an SQS redelivery could silently overwrite a successful result, and in the worst
+case could revert an already-\texttt{READY} video back to \texttt{ERROR}. Both functions were
+changed to a conditional \texttt{findOneAndUpdate} that only writes when the current status is
+not already \texttt{READY}, and \texttt{processVideo} now checks the video's status before
+downloading anything, so a duplicate delivery that arrives after the first job has already
+finished is rejected immediately instead of re-downloading and re-transcoding the source.
+
+A single FFmpeg invocation produces all three renditions, which is more efficient than three
+separate invocations because the source is decoded only once. The command emits segments of six
+seconds, generates the per-rendition playlists, and the worker then writes the master playlist
+that lists the available bandwidths and resolutions. A thumbnail is extracted in a separate
+pass.
+
+Failure handling is deliberate. When FFmpeg exits with a non-zero status, the error propagates
+to the top-level handler, which records the \texttt{ERROR} status in the database and, crucially,
+does \emph{not} delete the SQS message. Leaving the message in flight allows the visibility
+timeout to lapse so that the job is retried, and after the configured number of failed attempts
+the message is moved to the dead letter queue where it can be inspected rather than lost.
+
+\section{Infrastructure as Code}
+\label{sec:iac}
+
+The AWS environment is described by eleven Terraform modules, summarised in
+Table~\ref{tab:terraform-modules}, and is instantiated separately for the development and
+production environments.
+
+\begin{table}[H]
+\centering
+\caption{Terraform modules and their responsibilities}
+\label{tab:terraform-modules}
+\small
+\begin{tabularx}{\textwidth}{p{0.14\textwidth} X}
+\toprule
+\textbf{MODULE} & \textbf{RESPONSIBILITY} \\
+\midrule
+\texttt{s3}         & Raw and processed buckets, CORS configuration, Glacier lifecycle transition, event notification \\
+\texttt{sqs}        & Transcode queue, dead letter queue with a redrive policy, queue access policy \\
+\texttt{ecr}        & Container registry with image scanning on push and a lifecycle policy retaining recent images \\
+\texttt{iam}        & Execution roles for AWS Batch, the ECS task, the transcoder task, and the Lambda submitter \\
+\texttt{vpc}        & Virtual network, public subnets, internet gateway, security groups, S3 gateway endpoint \\
+\texttt{secrets}    & AWS Secrets Manager entries for the database connection string and the token signing secret \\
+\texttt{sns}        & Notification topics for transcode completion and dead letter queue alerts \\
+\texttt{monitoring} & CloudWatch log groups, alarms, and dashboard \\
+\texttt{batch}      & Fargate compute environment, job queue, and job definition \\
+\texttt{lambda}     & Job submitter function and its SQS event source mapping \\
+\texttt{cloudfront} & Distribution, Origin Access Control, cache policy, and the trusted key group used for signed cookies \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Two configuration details are worth highlighting. The S3 lifecycle policy transitions raw
+source files to Glacier after thirty days, since they are never read again once transcoding has
+succeeded but must be retained in case a re-encode becomes necessary. The cache policy assigns
+a long time-to-live to segments, which are immutable once produced, and a short one to
+manifests, which may change if the set of renditions changes.
+
+\section{CI/CD Pipeline and DevSecOps}
+\label{sec:cicd}
+
+Seven GitHub Actions workflows automate verification and deployment, as shown in
+Figure~\ref{fig:cicd}.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{images/03-cicd-pipeline.png}
+\caption{\textit{CI/CD workflows and the two-tier DevSecOps quality gate}}
+\label{fig:cicd}
+\end{figure}
+
+The security gate is structured in two tiers, and the reason is practical. Scanning at the
+combined critical and high severity levels and failing the build on any finding sounds
+rigorous, but in practice most high-severity findings originate in transitive dependencies for
+which no patch yet exists. A gate configured that way fails continuously for reasons the team
+cannot act upon, and the predictable result is that developers begin ignoring it. The pipeline
+therefore reports critical and high findings for visibility without blocking, and blocks only
+on critical findings for which a fix is available. This keeps the gate meaningful, because a
+failure now always corresponds to an action the team can actually take.
+
+Static application security testing is performed with \texttt{eslint-plugin-security} rather
+than SonarQube. The rule set detects patterns such as command execution built from user input,
+regular expressions vulnerable to catastrophic backtracking, and cryptographically unsafe
+random number generation. The choice avoids operating a separate analysis server while still
+executing genuinely within the pipeline. Where a finding is a false positive, it is suppressed
+with an inline annotation that documents why, which forces each suppression to be justified
+rather than silently ignored.
+
+Infrastructure code is validated in its own workflow, which checks formatting, initialises
+without a remote backend so that no credentials are required, validates both environments, and
+scans the configuration for insecure settings.
+
+\section{Testing}
+\label{sec:testing}
+
+The automated test suite comprises 98 tests across eight suites, summarised in
+Table~\ref{tab:test-coverage}.
+
+\begin{table}[H]
+\centering
+\caption{Automated test coverage by area}
+\label{tab:test-coverage}
+\small
+\begin{tabularx}{\textwidth}{p{0.28\textwidth} p{0.10\textwidth} X}
+\toprule
+\textbf{SUITE} & \textbf{TESTS} & \textbf{FOCUS} \\
+\midrule
+\texttt{videoService}       & 11 & Upload initiation, ownership checks, deletion cascade \\
+\texttt{s3Service}          & 2  & Key generation and pre-signed URL creation \\
+\texttt{authService}        & 17 & Registration conflicts, login failures, token claims, password reset \\
+\texttt{authMiddleware}     & 9  & Missing, malformed, forged, and expired tokens \\
+\texttt{visibility}         & 21 & Privacy enforcement across every query path, view deduplication \\
+\texttt{uploadValidation}   & 11 & HTTP-level validation of file type and size \\
+\texttt{cloudfrontService}  & 21 & Cookie signing, policy scope, cookie attributes \\
+\texttt{transcoder/dbHandler} & 6 & Conditional writes preventing duplicate-job overwrites \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+The visibility suite is the most important from a security standpoint, since it asserts that a
+private video is absent from the public listing, returns a not-found response rather than a
+forbidden one to non-owners, and remains accessible to its owner. Returning not-found is
+deliberate: a forbidden response would confirm that a video with that identifier exists, which
+leaks information.
+
+The value of testing was demonstrated concretely during development of the signing service.
+An initial implementation produced a canned policy, which the test suite immediately flagged
+because the resulting cookie set contained an expiry field instead of a policy field. Since
+canned policies do not support wildcard resources, that implementation would have failed for
+every video once deployed. The defect was caught before any infrastructure was provisioned.
+
+Testing caught a second defect in a similar way, this time surfaced not by writing a test first
+but by a literature review of the reliability guarantees the pipeline was implicitly assuming
+(Section~\ref{sec:transcoder-impl}). Once the conditional-write fix was implemented, six tests
+were written to pin down the exact contract: a normal write succeeds when the video is not yet
+\texttt{READY}; a write that loses the race to an earlier successful write is rejected and the
+function returns the winning record rather than throwing; and a late failure from a duplicate job
+can never revert an already-\texttt{READY} video to \texttt{ERROR}. As a falsifiability check, the
+same six tests were run against the original, unconditional implementation: four of the six
+failed, either because it never calls \texttt{findOneAndUpdate} at all or because it crashes
+outright when handed a plain record with no \texttt{save} method, which is exactly the shape a
+conditional read would have to return. The two that still passed were the not-found cases, which
+neither version distinguishes from a duplicate write. The result confirms both that the new tests
+are actually exercising the fixed code path and that the original implementation could not have
+satisfied the contract by construction, not merely by accident of the test data chosen.
+
+\section{Quality of Experience Evaluation}
+\label{sec:qoe-evaluation}
+
+Time-to-First-Frame is measured by an instrumentation script that fetches the master playlist,
+parses it to locate a rendition playlist, fetches that playlist, and finally downloads the first
+media segment, recording the elapsed time for each stage. The measurement is repeated so that
+mean, median, and 95th percentile values can be reported, because a single sample is
+meaningless when network latency varies and the first request is typically an edge cache miss.
+
+\begin{table}[H]
+\centering
+\caption{Time-to-First-Frame measurement results}
+\label{tab:ttff-results}
+\small
+\begin{tabularx}{\textwidth}{X r r r r r}
+\toprule
+\textbf{STAGE} & \textbf{MEAN} & \textbf{MEDIAN} & \textbf{P95} & \textbf{MIN} & \textbf{MAX} \\
+\midrule
+Master playlist    & & & & & \\
+Rendition playlist & & & & & \\
+First segment      & & & & & \\
+\midrule
+\textbf{Total TTFF} & & & & & \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\noindent\textit{Note: the values in Table~\ref{tab:ttff-results} are populated from
+\texttt{docs/results/qoe-ttff.json}, produced by \texttt{scripts/benchmark-qoe.js}. The
+measurement conditions --- AWS region, client location, and cache hit ratio --- must be stated
+alongside the figures.}
+
+\section{Transcoding Pipeline Performance}
+\label{sec:pipeline-evaluation}
+
+Pipeline latency is measured from the completion of the upload to the moment the record reaches
+the \texttt{READY} state, which corresponds to the interval a user actually waits. This
+interval encompasses the S3 event delay, the time spent queued in SQS, container startup on
+Fargate, FFmpeg execution, and the upload of results.
+
+\begin{table}[H]
+\centering
+\caption{Transcoding pipeline latency by input size}
+\label{tab:transcode-results}
+\small
+\begin{tabularx}{\textwidth}{p{0.12\textwidth} X r r r}
+\toprule
+\textbf{SIZE} & \textbf{VIDEO DURATION} & \textbf{UPLOAD (S)} & \textbf{PIPELINE (S)} & \textbf{REALTIME FACTOR} \\
+\midrule
+100 MB & & & & \\
+500 MB & & & & \\
+1 GB   & & & & \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\noindent\textit{Note: populated from \texttt{docs/results/transcode-timing.json}. Each size
+should be measured at least three times, and the first run reported separately, because it
+includes the cost of pulling the container image and is therefore substantially slower than the
+steady state.}
+
+\section{Load Testing}
+\label{sec:load-testing}
+
+Scalability is assessed by submitting concurrent uploads with a virtual user count ramping to
+one hundred, verifying that the queue retains all work and that AWS Batch scales to process it.
+
+\begin{table}[H]
+\centering
+\caption{Concurrent upload stress test results}
+\label{tab:load-results}
+\small
+\begin{tabularx}{\textwidth}{X r}
+\toprule
+\textbf{METRIC} & \textbf{VALUE} \\
+\midrule
+Total requests            & \\
+Throughput (requests/s)   & \\
+Failure rate              & \\
+Mean response time (ms)   & \\
+95th percentile (ms)      & \\
+Peak virtual users        & \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\noindent\textit{Note: populated from \texttt{docs/results/k6-summary.json}.}
+
+\section{Cost Analysis}
+\label{sec:cost-analysis}
+
+The cost comparison contrasts a traditional deployment, in which an Amazon EC2 instance runs
+FFmpeg continuously, against the serverless container architecture. The workload assumption is
+three hundred videos per month averaging five minutes each, with a mean transcoding time of
+forty-five seconds, giving 3.75 hours of actual processing per month.
+
+\begin{table}[H]
+\centering
+\caption{Monthly operating cost comparison (ap-southeast-1)}
+\label{tab:cost-comparison}
+\small
+\begin{tabularx}{\textwidth}{p{0.20\textwidth} X X r}
+\toprule
+\textbf{COMPONENT} & \textbf{EC2 (ALWAYS ON)} & \textbf{SERVERLESS} & \textbf{SAVING} \\
+\midrule
+Compute & \texttt{c5.xlarge} for 730 h: \$124.10 & Fargate Spot for 3.75 h: \$0.05 & 99.96\% \\
+Storage & EBS 100 GB plus S3 50 GB: \$9.25 & S3 with Glacier lifecycle: \$1.45 & 84.32\% \\
+Queueing & Self-hosted broker & SQS and Lambda: \$0.01 & --- \\
+\midrule
+\textbf{Total} & \textbf{\$133.35} & \textbf{\$1.51} & \textbf{98.87\%} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Content delivery cost is excluded from Table~\ref{tab:cost-comparison} because it is neutral
+with respect to the architectural choice: the volume of data served to viewers is identical
+whichever compute model produces the renditions. Attributing a CloudFront charge to the EC2
+column while crediting the serverless column with the free tier would overstate the saving. When
+delivery is included on both sides at post-free-tier rates, the total becomes \$145.35 against
+\$13.51, a saving of approximately 90.7\%, which is the more conservative figure and the one
+that should be quoted for total cost of ownership at scale.
+
+The saving originates entirely in the elimination of idle capacity. Under the stated
+assumptions the always-on instance is billed for 730 hours while performing useful work for only
+3.75 of them, a utilisation of roughly 0.5\%. It follows that the advantage is not universal:
+as sustained utilisation rises, per-second Fargate billing approaches and eventually exceeds the
+cost of a reserved instance. The architecture is therefore best suited to workloads that are
+genuinely bursty, which is the case for user-generated video uploads.

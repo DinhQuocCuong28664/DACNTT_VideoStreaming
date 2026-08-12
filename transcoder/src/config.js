@@ -19,6 +19,18 @@ const config = {
   // SQS
   sqsQueueUrl: process.env.SQS_QUEUE_URL || '',
 
+  // Frontend — dùng để dựng link xem video trong email thông báo
+  frontendUrl: process.env.FRONTEND_URL || 'http://localhost:5173',
+
+  // Email (Gmail SMTP) — thông báo video sẵn sàng/thất bại
+  email: {
+    host: process.env.EMAIL_HOST || 'smtp.gmail.com',
+    port: parseInt(process.env.EMAIL_PORT, 10) || 587,
+    user: process.env.EMAIL_USER,
+    appPassword: process.env.EMAIL_APP_PASSWORD,
+    from: process.env.EMAIL_FROM || 'DACNTT Video Platform <noreply@zelostech.site>',
+  },
+
   // FFmpeg Settings
   ffmpeg: {
     segmentDuration: 6, // seconds per HLS segment

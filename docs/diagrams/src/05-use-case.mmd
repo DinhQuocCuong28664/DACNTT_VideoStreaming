@@ -1,0 +1,49 @@
+graph LR
+    Guest(("Khách<br/>vãng lai"))
+    User(("Người dùng<br/>đã đăng nhập"))
+    System(("Hệ thống<br/>Transcoding"))
+
+    subgraph UC["Nền tảng chia sẻ video"]
+        UC1["Xem danh sách video công khai"]
+        UC2["Tìm kiếm và lọc theo danh mục"]
+        UC3["Xem video HLS với ABR"]
+        UC4["Đăng ký tài khoản"]
+        UC5["Đăng nhập"]
+        UC6["Quên và đặt lại mật khẩu"]
+        UC7["Tải video lên qua Pre-signed URL"]
+        UC8["Chọn chế độ công khai / riêng tư"]
+        UC9["Quản lý video trên kênh cá nhân"]
+        UC10["Xóa video"]
+        UC11["Thích / Không thích video"]
+        UC12["Bình luận video"]
+        UC13["Chia sẻ liên kết video"]
+        UC14["Chuyển mã HLS tự động"]
+        UC15["Sinh thumbnail và metadata"]
+    end
+
+    Guest --> UC1
+    Guest --> UC2
+    Guest --> UC3
+    Guest --> UC4
+    Guest --> UC5
+
+    User --> UC1
+    User --> UC2
+    User --> UC3
+    User --> UC6
+    User --> UC7
+    User --> UC9
+    User --> UC11
+    User --> UC12
+    User --> UC13
+
+    UC7 -.->|"include"| UC8
+    UC9 -.->|"include"| UC10
+    UC7 -.->|"trigger"| UC14
+
+    System --> UC14
+    System --> UC15
+    UC14 -.->|"include"| UC15
+
+    classDef actor fill:#fff4e6,stroke:#d98324,color:#1a1a1a
+    class Guest,User,System actor

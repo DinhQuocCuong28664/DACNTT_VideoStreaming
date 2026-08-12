@@ -40,3 +40,9 @@ override.tf.json
 
 # Docker
 *.tar
+
+# Video mẫu dùng để đo hiệu năng transcoding, không commit vào git
+samples/
+
+# Claude Code local settings (per-máy, không chia sẻ qua git)
+.claude/settings.local.json

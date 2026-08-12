@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { FiEye, FiClock, FiShare2, FiUser, FiThumbsUp, FiThumbsDown, FiMessageSquare, FiTrash2 } from 'react-icons/fi';
 import { useAuth } from '../context/useAuth';
@@ -11,6 +11,9 @@ const WatchPage = () => {
   const [video, setVideo] = useState(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  // Chỉ dựng trình phát sau khi đã xin xong quyền phát (Signed Cookie)
+  const [playbackReady, setPlaybackReady] = useState(false);
+  const [playbackDenied, setPlaybackDenied] = useState(false);
 
   // Engagement state
   const [likesCount, setLikesCount] = useState(0);
@@ -43,6 +46,20 @@ const WatchPage = () => {
         }
 
         setComments(commentsRes.data.data.comments || []);
+
+        // Xin CloudFront Signed Cookie TRƯỚC khi dựng trình phát. Nếu khởi tạo
+        // HLS.js trước, các yêu cầu tải manifest đầu tiên sẽ bị CloudFront từ
+        // chối với mã 403 vì trình duyệt chưa có cookie hợp lệ.
+        if (v.status === 'READY') {
+          try {
+            await videoApi.getPlaybackAuth(id);
+          } catch (authErr) {
+            console.error('Failed to obtain playback authorization:', authErr);
+            setPlaybackDenied(true);
+          }
+        }
+
+        setPlaybackReady(true);
       } catch (err) {
         console.error('Failed to load video or comments:', err);
       } finally {
@@ -52,6 +69,22 @@ const WatchPage = () => {
 
     fetchVideoAndComments();
   }, [id, currentUser]);
+
+  /**
+   * Được trình phát gọi một lần sau khi video đã phát đủ ngưỡng thời gian.
+   * Lỗi ở đây không cần hiển thị cho người dùng vì việc đếm lượt xem
+   * không ảnh hưởng tới trải nghiệm xem video.
+   */
+  const handleViewThreshold = useCallback(async () => {
+    try {
+      const res = await videoApi.registerView(id);
+      if (res.data?.data?.counted) {
+        setVideo((prev) => (prev ? { ...prev, views: res.data.data.views } : prev));
+      }
+    } catch (err) {
+      console.error('Failed to register view:', err);
+    }
+  }, [id]);
 
   const handleLike = async () => {
     if (!isAuthenticated) return alert('Vui lòng đăng nhập để thích video');
@@ -147,13 +180,34 @@ const WatchPage = () => {
 
   const user = video.user || {};
   const videoSrc = video.hlsUrl || null;
-  const isReady = video.status === 'READY' && videoSrc;
+  const isReady = video.status === 'READY' && videoSrc && playbackReady;
 
   return (
     <div className="container" style={{ paddingTop: 'var(--space-xl)', paddingBottom: 'var(--space-2xl)', maxWidth: 960 }}>
       {/* Video Player */}
-      {isReady ? (
-        <VideoPlayer src={videoSrc} poster={video.thumbnailUrl} />
+      {playbackDenied ? (
+        <div style={{
+          aspectRatio: '16/9',
+          background: 'var(--bg-secondary)',
+          borderRadius: 'var(--radius-lg)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexDirection: 'column',
+          gap: 'var(--space-md)',
+          textAlign: 'center',
+          padding: 'var(--space-xl)',
+        }}>
+          <p style={{ color: 'var(--text-muted)' }}>
+            Bạn không có quyền phát video này.
+          </p>
+        </div>
+      ) : isReady ? (
+        <VideoPlayer
+          src={videoSrc}
+          poster={video.thumbnailUrl}
+          onViewThreshold={handleViewThreshold}
+        />
       ) : (
         <div style={{
           aspectRatio: '16/9',
