@@ -1,5 +1,7 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from './context/useAuth';
+import { registerNavigator } from './api/axiosClient';
 import MainLayout from './components/Layout/MainLayout';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
@@ -53,6 +55,23 @@ const GuestRoute = ({ children }) => {
   return children;
 };
 
+/**
+ * Đăng ký hàm điều hướng của React Router cho lớp gọi API.
+ * Nhờ đó khi phiên đăng nhập hết hạn (HTTP 401), ứng dụng chuyển về trang đăng
+ * nhập bằng cơ chế điều hướng nội bộ thay vì tải lại toàn bộ trang.
+ * Component này phải nằm bên trong <BrowserRouter> mới dùng được useNavigate.
+ */
+const NavigatorRegistrar = () => {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    registerNavigator(navigate);
+    return () => registerNavigator(null);
+  }, [navigate]);
+
+  return null;
+};
+
 function App() {
   const { loading } = useAuth();
 
@@ -66,6 +85,7 @@ function App() {
 
   return (
     <BrowserRouter>
+      <NavigatorRegistrar />
       <Routes>
         {/* Routes with Navbar (MainLayout) */}
         <Route element={<MainLayout />}>

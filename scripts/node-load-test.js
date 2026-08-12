@@ -12,6 +12,8 @@
  */
 
 const { performance } = require('perf_hooks');
+const fs = require('fs');
+const path = require('path');
 
 const API_URL = process.env.API_URL || 'http://localhost:5000/api';
 const JWT_TOKEN = process.env.JWT_TOKEN || 'dummy-jwt-token';
@@ -146,7 +148,15 @@ To run a real load test against backend:
   const durations = successful.map((r) => r.duration);
 
   const avgDuration = durations.length ? durations.reduce((a, b) => a + b, 0) / durations.length : 0;
-  const p95Duration = durations.length ? durations.sort((a, b) => a - b)[Math.floor(durations.length * 0.95)] || 0 : 0;
+  // Sao chép trước khi sắp xếp: `sort` biến đổi mảng gốc, nếu tính trung bình
+  // sau bước này thì thứ tự đã bị thay đổi và dễ gây nhầm lẫn khi mở rộng script.
+  const sortedDurations = [...durations].sort((a, b) => a - b);
+  const p95Duration = sortedDurations.length
+    ? sortedDurations[Math.min(sortedDurations.length - 1, Math.floor(sortedDurations.length * 0.95))]
+    : 0;
+  const medianDuration = sortedDurations.length
+    ? sortedDurations[Math.floor(sortedDurations.length * 0.5)]
+    : 0;
   const rps = totalDurationSec > 0 ? (TOTAL_REQUESTS / totalDurationSec).toFixed(2) : 0;
 
   const successRate = ((successful.length / TOTAL_REQUESTS) * 100).toFixed(1);
@@ -164,6 +174,40 @@ To run a real load test against backend:
  95th Percentile (p95) : ${p95Duration.toFixed(2)} ms
 ===================================================================================
 `);
+
+  // Ghi kết quả ra tệp để đưa vào báo cáo thay vì chỉ hiển thị trên màn hình
+  const report = {
+    measuredAt: new Date().toISOString(),
+    target: API_URL,
+    concurrency: CONCURRENCY,
+    totalRequests: TOTAL_REQUESTS,
+    successfulRequests: successful.length,
+    failedRequests: failed.length,
+    successRatePercent: Number(successRate),
+    totalDurationSec: Number(totalDurationSec.toFixed(2)),
+    throughputRps: Number(rps),
+    latencyMs: {
+      meanMs: Number(avgDuration.toFixed(2)),
+      medianMs: Number(medianDuration.toFixed(2)),
+      p95Ms: Number(p95Duration.toFixed(2)),
+      minMs: sortedDurations.length ? Number(sortedDurations[0].toFixed(2)) : 0,
+      maxMs: sortedDurations.length
+        ? Number(sortedDurations[sortedDurations.length - 1].toFixed(2))
+        : 0,
+    },
+    // Gom nhóm lỗi theo nội dung để thấy ngay nguyên nhân thất bại phổ biến nhất
+    errorSummary: failed.reduce((acc, r) => {
+      const key = r.error || 'unknown';
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {}),
+  };
+
+  const resultsDir = path.join(__dirname, '..', 'docs', 'results');
+  fs.mkdirSync(resultsDir, { recursive: true });
+  const outputPath = path.join(resultsDir, 'node-load-test.json');
+  fs.writeFileSync(outputPath, JSON.stringify(report, null, 2), 'utf8');
+  console.log(`✅ Đã ghi kết quả vào ${path.relative(process.cwd(), outputPath)}\n`);
 
   // Set exit code 1 if any requests failed
   if (failed.length > 0) {

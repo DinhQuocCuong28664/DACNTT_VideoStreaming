@@ -12,6 +12,13 @@ variable "jwt_secret" {
   sensitive = true
 }
 
+variable "email_app_password" {
+  description = "Gmail App Password dùng để Transcoder gửi email thông báo trạng thái video"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 variable "recovery_window_in_days" {
   type    = number
   default = 7

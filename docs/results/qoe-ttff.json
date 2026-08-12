@@ -1,0 +1,128 @@
+{
+  "measuredAt": "2026-08-09T19:00:54.491Z",
+  "source": "https://dacntt-dev-processed-bucket.s3.ap-southeast-1.amazonaws.com/videos/6a78c5811c4541ef615cf01f/master.m3u8",
+  "iterations": 20,
+  "successfulSamples": 20,
+  "failedSamples": 0,
+  "ttff": {
+    "count": 20,
+    "minMs": 242.23,
+    "maxMs": 884.54,
+    "meanMs": 292.93,
+    "medianMs": 251.52,
+    "p95Ms": 884.54
+  },
+  "breakdown": {
+    "masterPlaylist": {
+      "count": 20,
+      "minMs": 76.61,
+      "maxMs": 355.02,
+      "meanMs": 95.55,
+      "medianMs": 82.49,
+      "p95Ms": 355.02
+    },
+    "subPlaylist": {
+      "count": 20,
+      "minMs": 77.62,
+      "maxMs": 207.32,
+      "meanMs": 88.62,
+      "medianMs": 82.4,
+      "p95Ms": 207.32
+    },
+    "firstSegment": {
+      "count": 20,
+      "minMs": 78.41,
+      "maxMs": 322.2,
+      "meanMs": 108.76,
+      "medianMs": 87.04,
+      "p95Ms": 322.2
+    }
+  },
+  "firstSegmentBytes": 217516,
+  "cacheStatuses": {
+    "unknown": 20
+  },
+  "errors": [],
+  "samples": [
+    {
+      "totalTtffMs": 884.54,
+      "cacheStatus": "unknown"
+    },
+    {
+      "totalTtffMs": 421.75,
+      "cacheStatus": "unknown"
+    },
+    {
+      "totalTtffMs": 246.89,
+      "cacheStatus": "unknown"
+    },
+    {
+      "totalTtffMs": 299.21,
+      "cacheStatus": "unknown"
+    },
+    {
+      "totalTtffMs": 243.38,
+      "cacheStatus": "unknown"
+    },
+    {
+      "totalTtffMs": 255.94,
+      "cacheStatus": "unknown"
+    },
+    {
+      "totalTtffMs": 245.79,
+      "cacheStatus": "unknown"
+    },
+    {
+      "totalTtffMs": 268.35,
+      "cacheStatus": "unknown"
+    },
+    {
+      "totalTtffMs": 251.73,
+      "cacheStatus": "unknown"
+    },
+    {
+      "totalTtffMs": 244.68,
+      "cacheStatus": "unknown"
+    },
+    {
+      "totalTtffMs": 250.35,
+      "cacheStatus": "unknown"
+    },
+    {
+      "totalTtffMs": 255.74,
+      "cacheStatus": "unknown"
+    },
+    {
+      "totalTtffMs": 251.52,
+      "cacheStatus": "unknown"
+    },
+    {
+      "totalTtffMs": 245.29,
+      "cacheStatus": "unknown"
+    },
+    {
+      "totalTtffMs": 254.61,
+      "cacheStatus": "unknown"
+    },
+    {
+      "totalTtffMs": 250.74,
+      "cacheStatus": "unknown"
+    },
+    {
+      "totalTtffMs": 252.98,
+      "cacheStatus": "unknown"
+    },
+    {
+      "totalTtffMs": 244.37,
+      "cacheStatus": "unknown"
+    },
+    {
+      "totalTtffMs": 248.6,
+      "cacheStatus": "unknown"
+    },
+    {
+      "totalTtffMs": 242.23,
+      "cacheStatus": "unknown"
+    }
+  ]
+}

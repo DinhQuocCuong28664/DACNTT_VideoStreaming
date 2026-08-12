@@ -52,6 +52,7 @@ module "secrets" {
   project_name            = "${var.project_name}-${var.environment}"
   mongodb_uri             = var.mongodb_uri
   jwt_secret              = var.jwt_secret
+  email_app_password      = var.email_app_password
   recovery_window_in_days = 0 # Dev: immediate delete (no recovery period)
   tags                    = local.common_tags
 }
@@ -96,6 +97,10 @@ module "cloudfront" {
   price_class                  = "PriceClass_100" # Dev: cheapest
   cors_allowed_origins         = var.cors_allowed_origins
   enable_cloudfront            = var.enable_cloudfront
+  enable_signed_urls           = var.enable_signed_urls
+  signing_public_key_pem       = var.signing_public_key_pem
+  aliases                      = var.cdn_aliases
+  acm_certificate_arn          = var.cdn_acm_certificate_arn
   tags                         = local.common_tags
 }
 
@@ -116,11 +121,24 @@ module "batch" {
   cloudfront_domain           = module.cloudfront.distribution_domain_name
   mongodb_uri_secret_arn      = module.secrets.mongodb_uri_secret_arn
   transcoder_log_group        = module.monitoring.transcoder_log_group_name
-  use_spot                    = true # Dev: use FARGATE_SPOT (70% cheaper)
-  max_vcpus                   = 4
-  job_vcpu                    = 1
-  job_memory                  = 2048
-  tags                        = local.common_tags
+  # Email thông báo trạng thái video — để trống email_user/email_from/
+  # email_app_password (mặc định "") thì Terraform vẫn apply được bình
+  # thường, chỉ là Batch Job Definition sẽ không có EMAIL_APP_PASSWORD secret
+  # và transcoder tự bỏ qua bước gửi email (xem notifySafely trong index.js).
+  email_user                    = var.email_user
+  email_from                    = var.email_from
+  frontend_url                  = var.frontend_url
+  email_app_password_secret_arn = module.secrets.email_app_password_secret_arn
+  use_spot                      = true # Dev: use FARGATE_SPOT (70% cheaper)
+  max_vcpus                     = 4
+  # Thử nghiệm tối ưu hiệu năng transcode (2026-08-10): tăng từ 1 vCPU/2GB lên
+  # 4 vCPU/8GB để x264 tự nhận nhiều luồng hơn khi encode song song 3 rendition.
+  # PHẢI trả lại job_vcpu=1 trước khi chạy k6 load test — ở 4 vCPU, quota Fargate
+  # Spot của tài khoản (8 vCPU) chỉ cho phép tối đa 2 job chạy song song, không
+  # đủ để kiểm chứng khả năng scale nhiều video đồng thời như thiết kế.
+  job_vcpu   = 4
+  job_memory = 8192
+  tags       = local.common_tags
 }
 
 # ── 11. Lambda Job Submitter ──────────────────────

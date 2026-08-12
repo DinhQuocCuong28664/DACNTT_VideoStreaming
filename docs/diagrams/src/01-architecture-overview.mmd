@@ -1,0 +1,46 @@
+graph TB
+    subgraph Client["Người dùng"]
+        Browser["Trình duyệt<br/>React SPA + HLS.js"]
+    end
+
+    subgraph Edge["Tầng phân phối"]
+        CF["Amazon CloudFront<br/>CDN + OAC"]
+        S3Web["Amazon S3<br/>Static Web Hosting"]
+    end
+
+    subgraph App["Tầng ứng dụng"]
+        API["Backend API<br/>Node.js + Express<br/>trên Amazon EC2"]
+        DB[("MongoDB Atlas<br/>Users, Videos, Comments")]
+    end
+
+    subgraph Pipeline["Tầng xử lý video (Event-Driven)"]
+        S3Raw[("S3 Raw Bucket")]
+        SQS["Amazon SQS<br/>Transcode Queue + DLQ"]
+        Lambda["AWS Lambda<br/>Job Submitter"]
+        Batch["AWS Batch on Fargate<br/>FFmpeg Container"]
+        ECR["Amazon ECR<br/>Docker Image"]
+        S3Proc[("S3 Processed Bucket<br/>HLS Segments")]
+    end
+
+    Browser -->|"1 - Tải giao diện"| CF
+    CF --> S3Web
+    Browser -->|"2 - Gọi REST API"| API
+    API <--> DB
+    API -->|"3 - Cấp Pre-signed URL"| Browser
+    Browser -->|"4 - Upload trực tiếp"| S3Raw
+    S3Raw -->|"5 - Event Notification"| SQS
+    SQS -->|"6 - Trigger"| Lambda
+    Lambda -->|"7 - SubmitJob"| Batch
+    ECR -.->|"Pull Image"| Batch
+    S3Raw -->|"8 - Tải video gốc"| Batch
+    Batch -->|"9 - Upload HLS"| S3Proc
+    Batch -->|"10 - Cập nhật READY"| DB
+    S3Proc -->|"Origin"| CF
+    CF -->|"11 - Phát HLS"| Browser
+
+    classDef storage fill:#e8f4f8,stroke:#2c7a9e,color:#1a1a1a
+    classDef compute fill:#fff4e6,stroke:#d98324,color:#1a1a1a
+    classDef network fill:#eef7ee,stroke:#3d8b40,color:#1a1a1a
+    class S3Raw,S3Proc,S3Web,DB storage
+    class Batch,Lambda,API compute
+    class CF,SQS,ECR network

@@ -68,20 +68,39 @@ resource "aws_batch_job_definition" "transcoder" {
       }
     }
 
-    environment = [
-      { name = "AWS_REGION", value = var.region },
-      { name = "S3_RAW_BUCKET_NAME", value = var.raw_bucket_name },
-      { name = "S3_PROCESSED_BUCKET_NAME", value = var.processed_bucket_name },
-      { name = "SQS_QUEUE_URL", value = var.sqs_queue_url },
-      { name = "CLOUDFRONT_DOMAIN", value = var.cloudfront_domain }
-    ]
+    environment = concat(
+      [
+        { name = "AWS_REGION", value = var.region },
+        { name = "S3_RAW_BUCKET_NAME", value = var.raw_bucket_name },
+        { name = "S3_PROCESSED_BUCKET_NAME", value = var.processed_bucket_name },
+        { name = "SQS_QUEUE_URL", value = var.sqs_queue_url },
+        { name = "CLOUDFRONT_DOMAIN", value = var.cloudfront_domain },
+        { name = "EMAIL_HOST", value = var.email_host },
+        { name = "EMAIL_PORT", value = var.email_port }
+      ],
+      var.email_user != "" ? [{ name = "EMAIL_USER", value = var.email_user }] : [],
+      var.email_from != "" ? [{ name = "EMAIL_FROM", value = var.email_from }] : [],
+      var.frontend_url != "" ? [{ name = "FRONTEND_URL", value = var.frontend_url }] : []
+    )
 
-    secrets = [
-      {
-        name      = "MONGODB_URI"
-        valueFrom = var.mongodb_uri_secret_arn
-      }
-    ]
+    # EMAIL_APP_PASSWORD chỉ được thêm khi đã có secret thật (email_app_password_secret_arn
+    # khác rỗng) — tránh đăng ký Job Definition với ARN rỗng khiến AWS Batch từ
+    # chối cấu hình. Khi chưa cấu hình email, transcoder vẫn chạy bình thường,
+    # chỉ là bước gửi email sẽ tự bỏ qua (xem notifySafely trong index.js).
+    secrets = concat(
+      [
+        {
+          name      = "MONGODB_URI"
+          valueFrom = var.mongodb_uri_secret_arn
+        }
+      ],
+      var.email_app_password_secret_arn != "" ? [
+        {
+          name      = "EMAIL_APP_PASSWORD"
+          valueFrom = var.email_app_password_secret_arn
+        }
+      ] : []
+    )
 
     command = ["node", "src/index.js", "batch"]
   })

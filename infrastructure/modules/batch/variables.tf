@@ -52,6 +52,39 @@ variable "mongodb_uri_secret_arn" {
   type = string
 }
 
+# ── Email thông báo trạng thái video (biến không nhạy cảm) ──
+variable "email_host" {
+  type    = string
+  default = "smtp.gmail.com"
+}
+
+variable "email_port" {
+  type    = string
+  default = "587"
+}
+
+variable "email_user" {
+  type    = string
+  default = ""
+}
+
+variable "email_from" {
+  type    = string
+  default = ""
+}
+
+variable "frontend_url" {
+  description = "Dùng để dựng link xem video trong email thông báo"
+  type        = string
+  default     = ""
+}
+
+variable "email_app_password_secret_arn" {
+  description = "ARN của Secrets Manager secret chứa Gmail App Password"
+  type        = string
+  default     = ""
+}
+
 variable "transcoder_log_group" {
   type = string
 }

@@ -109,6 +109,9 @@ const getAllVideos = async (page = 1, limit = 12, category = null, searchQuery =
 
   if (searchQuery && searchQuery.trim() !== '') {
     const escapedQuery = searchQuery.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    // Chuỗi tìm kiếm đã được thoát toàn bộ ký tự đặc biệt ở dòng trên nên không
+    // thể chèn cú pháp biểu thức chính quy độc hại (ReDoS / NoSQL regex injection).
+    // eslint-disable-next-line security/detect-non-literal-regexp
     const regex = new RegExp(escapedQuery, 'i');
     filter.$or = [{ title: regex }, { description: regex }, { tags: regex }];
   }
@@ -330,10 +333,77 @@ const deleteVideo = async (videoId, userId) => {
 };
 
 /**
- * Increment view count by 1
+ * Bộ nhớ tạm chống đếm trùng lượt xem.
+ * Khóa có dạng `<videoId>:<danh tính người xem>`, giá trị là thời điểm ghi nhận
+ * gần nhất. Dùng bộ nhớ tiến trình vì mô hình triển khai hiện tại chỉ có một
+ * instance backend; khi mở rộng nhiều instance cần chuyển sang Redis để cơ chế
+ * chống trùng có hiệu lực trên toàn cụm.
  */
-const incrementViews = async (videoId) => {
-  await Video.findByIdAndUpdate(videoId, { $inc: { views: 1 } });
+const viewDedupeCache = new Map();
+
+/** Khoảng thời gian một người xem chỉ được tính một lượt xem cho cùng video */
+const VIEW_DEDUPE_WINDOW_MS = 30 * 60 * 1000; // 30 phút
+
+/** Dọn các mục đã hết hạn để bộ nhớ không phình vô hạn */
+const pruneViewCache = (now) => {
+  for (const [key, timestamp] of viewDedupeCache) {
+    if (now - timestamp > VIEW_DEDUPE_WINDOW_MS) {
+      viewDedupeCache.delete(key);
+    }
+  }
+};
+
+/**
+ * Ghi nhận một lượt xem.
+ *
+ * Lượt xem chỉ được cộng khi thỏa mãn đồng thời các điều kiện: video tồn tại và
+ * ở trạng thái READY, người xem không phải chủ video, và cùng một người xem chưa
+ * ghi nhận lượt xem cho video này trong cửa sổ thời gian quy định. Cách làm này
+ * ngăn việc tải lại trang liên tục để thổi phồng số lượt xem.
+ *
+ * @param {string} videoId - ID video
+ * @param {object|null} requesterUser - Người dùng đã đăng nhập (nếu có)
+ * @param {string} clientIp - Địa chỉ IP dùng để định danh khách vãng lai
+ * @returns {Promise<{counted: boolean, views: number}>}
+ */
+const registerView = async (videoId, requesterUser, clientIp) => {
+  const video = await Video.findById(videoId).select('user status views');
+
+  if (!video) {
+    const error = new Error('Video not found');
+    error.statusCode = 404;
+    throw error;
+  }
+
+  if (video.status !== 'READY') {
+    return { counted: false, views: video.views };
+  }
+
+  // Không tính lượt xem của chính chủ video
+  if (requesterUser && requesterUser._id.toString() === video.user.toString()) {
+    return { counted: false, views: video.views };
+  }
+
+  const viewerId = requesterUser ? `u:${requesterUser._id}` : `ip:${clientIp || 'unknown'}`;
+  const cacheKey = `${videoId}:${viewerId}`;
+  const now = Date.now();
+
+  pruneViewCache(now);
+
+  const lastViewedAt = viewDedupeCache.get(cacheKey);
+  if (lastViewedAt && now - lastViewedAt < VIEW_DEDUPE_WINDOW_MS) {
+    return { counted: false, views: video.views };
+  }
+
+  viewDedupeCache.set(cacheKey, now);
+
+  const updated = await Video.findByIdAndUpdate(
+    videoId,
+    { $inc: { views: 1 } },
+    { new: true, select: 'views' }
+  );
+
+  return { counted: true, views: updated.views };
 };
 
 module.exports = {
@@ -349,5 +419,6 @@ module.exports = {
   deleteComment,
   updateVideo,
   deleteVideo,
-  incrementViews,
+  registerView,
+  VIEW_DEDUPE_WINDOW_MS,
 };

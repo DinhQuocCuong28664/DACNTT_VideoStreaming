@@ -1,0 +1,29 @@
+sequenceDiagram
+    autonumber
+    actor User as Người dùng (Browser)
+    participant API as Backend API
+    participant S3Raw as S3 Raw Bucket
+    participant SQS as Amazon SQS
+    participant Lambda as Lambda Submitter
+    participant Batch as AWS Batch (Fargate)
+    participant S3Proc as S3 Processed Bucket
+    participant DB as MongoDB Atlas
+
+    User->>API: POST /api/videos/initiate-upload
+    API->>DB: Tạo bản ghi (status = UPLOADING)
+    API-->>User: Trả về Pre-signed URL (TTL 15 phút)
+    User->>S3Raw: PUT video gốc trực tiếp
+    S3Raw-->>SQS: Event Notification (s3:ObjectCreated)
+    SQS-->>Lambda: Poll message và kích hoạt
+    Lambda->>Batch: SubmitJob (VIDEO_ID, RAW_S3_KEY)
+    activate Batch
+    Batch->>DB: Cập nhật status = PROCESSING
+    Batch->>S3Raw: Tải video gốc về container
+    Batch->>Batch: FFmpeg chuyển mã 360p / 720p / 1080p
+    Batch->>Batch: Sinh master.m3u8 + thumbnail.jpg
+    Note over Batch,SQS: Heartbeat gia hạn VisibilityTimeout mỗi 3 phút
+    Batch->>S3Proc: Upload toàn bộ segment .ts và manifest
+    Batch->>DB: Cập nhật status = READY, duration, hlsUrl
+    deactivate Batch
+    Batch-->>SQS: DeleteMessage (hoàn tất)
+    Note over Batch: Container tự hủy, Fargate scale về 0

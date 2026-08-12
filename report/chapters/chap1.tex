@@ -1,0 +1,100 @@
+\chapter{Introduction}
+\label{chap:introduction}
+
+\section{Background and Rationale}
+\label{sec:background}
+
+Video has become the dominant form of content on the Internet, and platforms such as
+YouTube, Vimeo, and TikTok have made uploading and sharing video an everyday activity. Behind
+that apparent simplicity lies a demanding engineering problem. When a user uploads a source
+file, that file may use any container format, any codec, and any resolution, yet the platform
+must deliver a stream that plays smoothly on every device and adapts to whatever bandwidth the
+viewer happens to have at that moment.
+
+The industry solution to this problem is HTTP Live Streaming (HLS), a protocol that splits a
+video into short segments, typically between two and ten seconds long, and produces several
+quality renditions of the same content. A playlist file written in the \texttt{.m3u8} format
+enumerates the available renditions, and the player selects among them in real time according
+to measured network throughput. This mechanism, known as Adaptive Bitrate Streaming (ABR),
+is what allows playback to degrade gracefully rather than stall when a connection weakens.
+
+Producing those renditions is computationally expensive, and this is where the architectural
+difficulty arises. Transcoding is a bursty workload: it consumes a large amount of CPU while a
+video is being processed and nothing at all when no one is uploading. A platform that keeps a
+dedicated server cluster or a Kubernetes system running continuously simply to wait for work
+therefore pays for a substantial amount of idle capacity. The alternative failure mode is
+equally undesirable: a system provisioned only for the average case cannot absorb a sudden
+burst when many users upload at the same time, and uploads either queue for a long time or are
+dropped altogether.
+
+This tension between idle cost and burst capacity motivates the present project. Rather than
+maintaining permanently allocated compute, the system proposed here starts a container only
+when there is a video to process and destroys it immediately afterwards, so that cost accrues
+only for the seconds during which transcoding actually runs.
+
+\section{Project Objectives}
+\label{sec:objectives}
+
+The project aims to build a complete video sharing platform for end users, together with the
+automated transcoding subsystem that supports it. Specifically, the objectives are:
+
+\begin{enumerate}
+    \item To build a web platform that allows users to register an account, upload videos,
+          watch them at multiple quality levels, and share them through either public or
+          private links.
+    \item To automate the entire processing pipeline, from the moment a source file lands in
+          Amazon S3 through transcoding, storage, and delivery via a content delivery network,
+          until the video becomes ready for playback in a browser.
+    \item To perform transcoding with FFmpeg inside a Docker container running on AWS Batch and
+          AWS Fargate, such that containers are created on demand and terminate automatically,
+          thereby eliminating the cost of idle resources.
+    \item To automate software deployment and infrastructure management through a CI/CD pipeline
+          and Infrastructure as Code.
+    \item To evaluate the resulting system empirically in terms of quality of experience,
+          transcoding performance, scalability under load, and operating cost.
+\end{enumerate}
+
+\section{Scope and Deliverables}
+\label{sec:scope}
+
+The scope of this project covers the full vertical slice of a video sharing service: the
+browser-based user interface, the backend API, the transcoding engine, the cloud
+infrastructure that hosts them, and the automation that deploys them.
+
+Several areas are deliberately placed outside the scope. The project does not implement
+digital rights management systems such as Widevine or FairPlay, which would be required to
+prevent an authorised viewer from redistributing content they can legitimately access. It does
+not implement live streaming, since the architecture is designed around video on demand. It
+also does not attempt per-title bitrate ladder optimisation, using instead a fixed ladder of
+three renditions; the rationale and the trade-off involved are discussed in
+Chapter~\ref{chap:conclusion}.
+
+\section{Main Contributions}
+\label{sec:contributions}
+
+The principal contribution of this work is an end-to-end demonstration that a serverless
+container architecture can serve as the transcoding backbone of a video platform, together
+with an empirical assessment of what that choice costs and what it saves.
+
+More concretely, the work contributes an event-driven pipeline in which an upload event
+propagates through Amazon S3, Amazon SQS, and AWS Lambda to AWS Batch without any polling
+service in between; a containerised FFmpeg worker that implements the heartbeat pattern to
+extend the SQS visibility timeout during long transcoding jobs, thereby preventing duplicate
+processing; a two-layer content protection scheme combining Origin Access Control with
+CloudFront Signed Cookies so that private videos remain inaccessible even to a viewer holding
+the exact manifest URL; a complete Infrastructure as Code description of the AWS environment
+in eleven Terraform modules; and a DevSecOps pipeline whose security gate genuinely blocks
+merges rather than merely reporting findings.
+
+\section{Structure of the Report}
+\label{sec:structure}
+
+The remainder of this report is organised as follows. Chapter~\ref{chap:literature} reviews
+how comparable platforms solve the transcoding problem and justifies the technology choices
+made here. Chapter~\ref{chap:requirements} analyses the functional and non-functional
+requirements of the system and presents the use case model. Chapter~\ref{chap:design}
+describes the architecture, the data model, and the interaction design.
+Chapter~\ref{chap:implementation} details the implementation of each subsystem together with
+the infrastructure automation and the experimental results.
+Chapter~\ref{chap:conclusion} summarises what was achieved, states the limitations honestly,
+and outlines directions for future work.

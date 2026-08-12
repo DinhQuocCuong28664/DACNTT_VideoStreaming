@@ -1,0 +1,36 @@
+\chapter*{Abstract}
+\addcontentsline{toc}{chapter}{Abstract}
+
+Modern video sharing platforms must solve a common core problem: when a user uploads a
+source file in an arbitrary format, codec, or resolution, the system has to transcode it
+automatically into HTTP Live Streaming (HLS) so that browsers can play it with adaptive
+quality. Provisioning a dedicated server cluster or a Kubernetes system that runs
+continuously purely to wait for transcoding work is wasteful, because upload traffic is
+inherently bursty and the infrastructure sits idle most of the time. Conversely, when many
+users upload simultaneously, the system must scale out to process hundreds of videos in
+parallel.
+
+This project presents the design, implementation, and evaluation of a complete video
+sharing platform whose transcoding subsystem is built on a \textbf{Serverless Container}
+and \textbf{Event-Driven} architecture. Uploading a file to Amazon S3 emits an event that
+is buffered in Amazon SQS and dispatched by an AWS Lambda job submitter to AWS Batch
+running on AWS Fargate. A container packaging FFmpeg is created only when there is work to
+do, produces three renditions at 360p, 720p, and 1080p together with a master playlist and
+a thumbnail, uploads the result to a processed bucket, updates the metadata in MongoDB
+Atlas, and then terminates. Content is delivered through Amazon CloudFront with Origin
+Access Control, while private videos are additionally protected by CloudFront Signed
+Cookies so that unauthorised viewers are rejected at the edge even when they know the exact
+manifest URL.
+
+The entire AWS infrastructure is described as code using eleven independent Terraform
+modules and can be provisioned with a single command. Seven GitHub Actions workflows
+automate linting, unit testing, static security analysis, container image scanning,
+infrastructure validation, and deployment, with a two-tier quality gate that blocks a pull
+request whenever a fixable critical vulnerability is detected.
+
+The system is evaluated along four dimensions: quality of experience measured through
+Time-to-First-Frame, transcoding pipeline latency across 100~MB, 500~MB, and 1~GB inputs,
+scalability under a concurrent upload stress test, and operating cost compared against a
+traditional always-on Amazon EC2 deployment. The cost analysis shows that, for the
+architecture-dependent portion of the bill, the serverless approach removes almost all idle
+resource waste, although this advantage narrows as sustained utilisation increases.

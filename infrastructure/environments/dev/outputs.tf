@@ -23,6 +23,16 @@ output "cloudfront_domain" {
   value       = module.cloudfront.distribution_domain_name
 }
 
+output "cloudfront_signing_key_pair_id" {
+  description = "Giá trị cần đặt vào biến môi trường CLOUDFRONT_KEY_PAIR_ID của Backend"
+  value       = module.cloudfront.signing_key_pair_id
+}
+
+output "cloudfront_signed_urls_enabled" {
+  description = "CloudFront có đang yêu cầu Signed Cookie hay không"
+  value       = module.cloudfront.signed_urls_enabled
+}
+
 output "batch_job_queue" {
   value = module.batch.job_queue_name
 }

@@ -20,7 +20,12 @@ on:
 
 env:
   AWS_REGION: ap-southeast-1
-  ECR_REPOSITORY: dacntt-transcoder
+  # Phải khớp đúng tên repo ECR do Terraform tạo ra: "${project_name}-${environment}-transcoder"
+  # (module.ecr trong infrastructure/environments/dev/main.tf). Trước đây thiếu
+  # tiền tố môi trường "-dev-", khiến CI/CD đẩy image vào repo "dacntt-transcoder"
+  # trong khi Batch Job Definition (Terraform) lại đọc từ "dacntt-dev-transcoder"
+  # — hai repo khác nhau không bao giờ khớp, phải vá tay bằng script copy ECR.
+  ECR_REPOSITORY: dacntt-dev-transcoder
 
 jobs:
   # ── Stage 1: Code Quality ──────────────────────────
@@ -38,12 +43,15 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm'
           cache-dependency-path: transcoder/package-lock.json
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Run unit tests
+        run: npm test
 
       - name: Lint check
         run: npx eslint src/ --max-warnings 0
@@ -95,13 +103,25 @@ jobs:
             -t ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest \
             .
 
-      - name: Trivy — Scan Docker Image
+      # Báo cáo đầy đủ CRITICAL + HIGH để nắm hiện trạng image
+      - name: "Trivy — Quét Image (Báo cáo)"
         uses: aquasecurity/trivy-action@master
         with:
           image-ref: '${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}'
           severity: 'CRITICAL,HIGH'
           trivy-options: '--pkg-types library --ignore-unfixed'
           exit-code: '0'
+          format: 'table'
+
+      # Quality Gate: chặn không cho đẩy image có lỗ hổng CRITICAL đã có bản vá
+      # lên Amazon ECR, tránh đưa image chứa lỗ hổng nghiêm trọng vào môi trường chạy.
+      - name: "Trivy — Quality Gate (chặn khi có CRITICAL)"
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: '${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}'
+          severity: 'CRITICAL'
+          trivy-options: '--pkg-types library --ignore-unfixed'
+          exit-code: '1'
           format: 'table'
 
       - name: Ensure ECR Repository Exists
@@ -156,7 +176,20 @@ jobs:
             aws batch register-job-definition --cli-input-json "$UPDATED_JSON"
             echo "✅ AWS Batch Job Definition updated with new image: $NEW_IMAGE"
           else
-            echo "⚠️ AWS Batch Job Definition 'dacntt-dev-transcoder-job' is not yet created on AWS."
-            echo "✅ Docker Image '$NEW_IMAGE' was built & pushed to Amazon ECR successfully!"
-            echo "ℹ️ Run 'terraform apply' inside infrastructure/environments/dev to provision AWS Batch."
+            echo "::error::AWS Batch Job Definition 'dacntt-dev-transcoder-job' chưa tồn tại trên AWS."
+            echo "Docker Image '$NEW_IMAGE' đã được build và đẩy lên Amazon ECR thành công,"
+            echo "nhưng bước triển khai KHÔNG thực hiện được vì thiếu hạ tầng AWS Batch."
+            echo "Hãy chạy 'terraform apply' trong infrastructure/environments/dev để khởi tạo AWS Batch,"
+            echo "hoặc đặt biến repository REQUIRE_BATCH_UPDATE=false nếu chấp nhận bỏ qua bước này."
+
+            if [ "${REQUIRE_BATCH_UPDATE:-true}" = "false" ]; then
+              echo "::warning::Bỏ qua bước cập nhật Job Definition theo cấu hình REQUIRE_BATCH_UPDATE=false."
+              exit 0
+            fi
+
+            exit 1
           fi
+        env:
+          # Mặc định bắt buộc bước triển khai phải thành công, để pipeline không
+          # báo xanh giả trong khi thực tế không có gì được triển khai.
+          REQUIRE_BATCH_UPDATE: ${{ vars.REQUIRE_BATCH_UPDATE || 'true' }}

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { FiUser, FiTrash2 } from 'react-icons/fi';
+import { FiUser, FiTrash2, FiGlobe, FiLock } from 'react-icons/fi';
 import { useAuth } from '../context/useAuth';
 import videoApi from '../api/videoApi';
 import userApi from '../api/userApi';
@@ -53,6 +53,28 @@ const ChannelPage = () => {
       setVideos(videos.filter((v) => v._id !== videoId));
     } catch (err) {
       alert('Xóa video thất bại: ' + (err.response?.data?.message || err.message));
+    }
+  };
+
+  /**
+   * Chuyển đổi chế độ hiển thị giữa công khai và riêng tư.
+   * Cập nhật lạc quan (optimistic update) để giao diện phản hồi tức thì,
+   * và khôi phục trạng thái cũ nếu máy chủ trả về lỗi.
+   */
+  const handleToggleVisibility = async (video) => {
+    const next = video.visibility === 'public' ? 'private' : 'public';
+
+    setVideos((prev) =>
+      prev.map((v) => (v._id === video._id ? { ...v, visibility: next } : v))
+    );
+
+    try {
+      await videoApi.updateVideo(video._id, { visibility: next });
+    } catch (err) {
+      setVideos((prev) =>
+        prev.map((v) => (v._id === video._id ? { ...v, visibility: video.visibility } : v))
+      );
+      alert('Đổi chế độ hiển thị thất bại: ' + (err.response?.data?.message || err.message));
     }
   };
 
@@ -130,12 +152,34 @@ const ChannelPage = () => {
                     <button
                       className="btn-icon"
                       style={{ background: 'rgba(0,0,0,0.7)', color: '#fff', width: 32, height: 32 }}
+                      onClick={(e) => { e.preventDefault(); handleToggleVisibility(video); }}
+                      title={
+                        video.visibility === 'public'
+                          ? 'Đang công khai — nhấn để chuyển sang riêng tư'
+                          : 'Đang riêng tư — nhấn để chuyển sang công khai'
+                      }
+                    >
+                      {video.visibility === 'public' ? <FiGlobe size={14} /> : <FiLock size={14} />}
+                    </button>
+                    <button
+                      className="btn-icon"
+                      style={{ background: 'rgba(0,0,0,0.7)', color: '#fff', width: 32, height: 32 }}
                       onClick={(e) => { e.preventDefault(); handleDelete(video._id); }}
                       title="Xóa video"
                     >
                       <FiTrash2 size={14} />
                     </button>
                   </div>
+                )}
+                {isOwner && video.visibility !== 'public' && (
+                  <span style={{
+                    position: 'absolute', top: 8, left: 8, zIndex: 5,
+                    background: 'rgba(0,0,0,0.7)', color: '#fff',
+                    fontSize: 11, padding: '3px 8px', borderRadius: 'var(--radius-sm)',
+                    display: 'inline-flex', alignItems: 'center', gap: 4,
+                  }}>
+                    <FiLock size={11} /> Riêng tư
+                  </span>
                 )}
               </div>
             ))}

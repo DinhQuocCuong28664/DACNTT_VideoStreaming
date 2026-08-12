@@ -1,0 +1,102 @@
+\chapter{Supplementary Material}
+\label{app:supplementary}
+
+\section{Repository Structure}
+\label{app:repo-structure}
+
+The source code is organised as a monorepo with the following top-level layout.
+
+\begin{lstlisting}
+DACNTT_VideoStreaming/
+  frontend/            React single page application (Vite, HLS.js)
+  backend/             Node.js Express API and test suite
+  transcoder/          FFmpeg worker and Docker image
+  infrastructure/
+    modules/           Eleven reusable Terraform modules
+    environments/      dev and prod instantiations
+  .github/workflows/   Seven CI/CD workflows
+  scripts/             Benchmarking and load testing scripts
+  docs/                Architecture diagrams, cost analysis, measured results
+  report/              LaTeX sources of this report
+\end{lstlisting}
+
+\section{FFmpeg Transcoding Command}
+\label{app:ffmpeg}
+
+The following invocation produces all three renditions in a single pass, decoding the source
+only once. The parameters shown are abbreviated for readability.
+
+\begin{lstlisting}[language=bash]
+ffmpeg -i input.mp4 \
+  -filter_complex "[0:v]split=3[v1][v2][v3]; \
+     [v1]scale=w=640:h=360[v1out]; \
+     [v2]scale=w=1280:h=720[v2out]; \
+     [v3]scale=w=1920:h=1080[v3out]" \
+  -map "[v1out]" -c:v:0 libx264 -b:v:0 400k  \
+  -map "[v2out]" -c:v:1 libx264 -b:v:1 1500k \
+  -map "[v3out]" -c:v:2 libx264 -b:v:2 4000k \
+  -map a:0 -map a:0 -map a:0 -c:a aac \
+  -f hls -hls_time 6 -hls_playlist_type vod \
+  -master_pl_name master.m3u8 \
+  -var_stream_map "v:0,a:0 v:1,a:1 v:2,a:2" \
+  output/stream_%v/playlist.m3u8
+\end{lstlisting}
+
+\section{Signed Cookie Custom Policy}
+\label{app:signed-policy}
+
+The policy signed by the backend before issuing playback cookies. The wildcard in the resource
+path covers the manifest and every segment of one specific video, and nothing beyond it.
+
+\begin{lstlisting}[language=JavaScript]
+{
+  "Statement": [
+    {
+      "Resource": "https://cdn.zelostech.site/videos/*/<videoId>/*",
+      "Condition": {
+        "DateLessThan": { "AWS:EpochTime": 1786300347 }
+      }
+    }
+  ]
+}
+\end{lstlisting}
+
+\section{Reproducing the Measurements}
+\label{app:reproduce}
+
+The experimental results reported in Chapter~\ref{chap:implementation} are produced by the
+scripts listed below. Detailed instructions, including the environment variables required and
+the order in which the measurements must be taken, are given in
+\texttt{docs/results/README.md} within the repository.
+
+\begin{table}[H]
+\centering
+\caption{Measurement scripts and their output artefacts}
+\small
+\begin{tabularx}{\textwidth}{p{0.34\textwidth} X}
+\toprule
+\textbf{SCRIPT} & \textbf{OUTPUT} \\
+\midrule
+\texttt{scripts/measure-transcode.js} & \texttt{docs/results/transcode-timing.json} \\
+\texttt{scripts/benchmark-qoe.js}     & \texttt{docs/results/qoe-ttff.json} \\
+\texttt{scripts/k6-load-test.js}      & \texttt{docs/results/k6-summary.json} \\
+\texttt{scripts/node-load-test.js}    & \texttt{docs/results/node-load-test.json} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Deploying the Infrastructure}
+\label{app:deploy}
+
+The complete AWS environment is provisioned from a single directory.
+
+\begin{lstlisting}[language=bash]
+cd infrastructure/environments/dev
+terraform init
+terraform apply
+\end{lstlisting}
+
+Enabling signed cookies additionally requires generating an RSA key pair, supplying the public
+key to Terraform, and configuring the backend with the corresponding private key and the key
+pair identifier reported by \texttt{terraform output}. The full procedure is documented in
+\texttt{docs/PRIVATE\_VIDEO\_SIGNED\_COOKIES.md}.
