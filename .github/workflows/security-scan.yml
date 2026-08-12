@@ -48,7 +48,8 @@ jobs:
           scan-type: 'fs'
           scan-ref: '${{ matrix.directory }}/'
           severity: 'CRITICAL,HIGH'
-          trivy-options: '--pkg-types library --ignore-unfixed'
+          vuln-type: 'library'
+          ignore-unfixed: true
           exit-code: '0'
           format: 'table'
 
@@ -60,7 +61,8 @@ jobs:
           scan-type: 'fs'
           scan-ref: '${{ matrix.directory }}/'
           severity: 'CRITICAL'
-          trivy-options: '--pkg-types library --ignore-unfixed'
+          vuln-type: 'library'
+          ignore-unfixed: true
           exit-code: '1'
           format: 'table'
 

@@ -75,7 +75,8 @@ jobs:
           scan-type: 'fs'
           scan-ref: 'frontend/'
           severity: 'CRITICAL,HIGH'
-          trivy-options: '--pkg-types library --ignore-unfixed'
+          vuln-type: 'library'
+          ignore-unfixed: true
           exit-code: '0'
           format: 'table'
 

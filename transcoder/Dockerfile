@@ -26,6 +26,13 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
+# node:24-slim bundles an npm CLI whose vendored node-tar has a known CRITICAL
+# CVE (gzip bomb DoS, fixed upstream in tar 7.5.19). Update the global npm CLI
+# to pull in the patched dependency — the app's own node_modules (installed
+# via `npm ci` in the builder stage) are unaffected, this only touches the
+# CLI tool baked into the base image.
+RUN npm install -g npm@latest
+
 # Create app user (security: don't run as root)
 RUN useradd --create-home --shell /bin/bash appuser
 

@@ -109,7 +109,8 @@ jobs:
         with:
           image-ref: '${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}'
           severity: 'CRITICAL,HIGH'
-          trivy-options: '--pkg-types library --ignore-unfixed'
+          vuln-type: 'library'
+          ignore-unfixed: true
           exit-code: '0'
           format: 'table'
 
@@ -120,7 +121,8 @@ jobs:
         with:
           image-ref: '${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}'
           severity: 'CRITICAL'
-          trivy-options: '--pkg-types library --ignore-unfixed'
+          vuln-type: 'library'
+          ignore-unfixed: true
           exit-code: '1'
           format: 'table'
 
