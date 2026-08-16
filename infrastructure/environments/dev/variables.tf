@@ -100,3 +100,21 @@ variable "cdn_acm_certificate_arn" {
   type        = string
   default     = ""
 }
+
+# ── Tài nguyên container chuyển mã (dùng cho thí nghiệm hiệu năng) ──
+# Tách thành biến thay vì hard-code để có thể đổi cấu hình giữa các lần đo
+# bằng `terraform apply -var="job_vcpu=4" -var="job_memory=8192"`, phục vụ
+# thí nghiệm so sánh 1 vCPU và 4 vCPU theo thiết kế xen kẽ (xem
+# scripts/run-benchmark-suite.js). Fargate chỉ chấp nhận một tập giá trị
+# vCPU/bộ nhớ cố định, nên hai biến này phải khớp nhau theo đúng bảng của AWS.
+variable "job_vcpu" {
+  description = "Số vCPU cấp cho mỗi job chuyển mã (Fargate: 0.25/0.5/1/2/4/8/16)"
+  type        = number
+  default     = 1
+}
+
+variable "job_memory" {
+  description = "Bộ nhớ (MiB) cấp cho mỗi job chuyển mã, phải khớp với job_vcpu theo bảng Fargate"
+  type        = number
+  default     = 2048
+}

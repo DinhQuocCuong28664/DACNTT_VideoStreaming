@@ -214,19 +214,23 @@ meaningless when network latency varies and the first request is typically an ed
 \toprule
 \textbf{STAGE} & \textbf{MEAN} & \textbf{MEDIAN} & \textbf{P95} & \textbf{MIN} & \textbf{MAX} \\
 \midrule
-Master playlist    & & & & & \\
-Rendition playlist & & & & & \\
-First segment      & & & & & \\
+Master playlist    & 95.55  & 82.49  & 355.02 & 76.61 & 355.02 \\
+Rendition playlist & 88.62  & 82.40  & 207.32 & 77.62 & 207.32 \\
+First segment      & 108.76 & 87.04  & 322.20 & 78.41 & 322.20 \\
 \midrule
-\textbf{Total TTFF} & & & & & \\
+\textbf{Total TTFF} & \textbf{292.93} & \textbf{251.52} & \textbf{884.54} & \textbf{242.23} & \textbf{884.54} \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
-\noindent\textit{Note: the values in Table~\ref{tab:ttff-results} are populated from
-\texttt{docs/results/qoe-ttff.json}, produced by \texttt{scripts/benchmark-qoe.js}. The
-measurement conditions --- AWS region, client location, and cache hit ratio --- must be stated
-alongside the figures.}
+\noindent\textit{Note: values in milliseconds, from Table~\ref{tab:ttff-results}, $n=20$ samples,
+populated from \texttt{docs/results/qoe-ttff.json}, produced by \texttt{scripts/benchmark-qoe.js}
+against a video served directly from the S3 bucket (source URL recorded in the result file), since
+CloudFront was not yet provisioned at measurement time (Section~\ref{sec:limitations}) --- these
+figures therefore represent origin latency without CDN edge caching, and would be expected to
+improve once CloudFront is enabled. The mean (292.93~ms) exceeds the median (251.52~ms) because one
+outlier sample (884.54~ms) inflates both the mean and the P95/max columns, which coincide with the
+single-sample maximum at this sample size.}
 
 \section{Transcoding Pipeline Performance}
 \label{sec:pipeline-evaluation}
@@ -245,12 +249,72 @@ Fargate, FFmpeg execution, and the upload of results.
 \toprule
 \textbf{SIZE} & \textbf{VIDEO DURATION} & \textbf{UPLOAD (S)} & \textbf{PIPELINE (S)} & \textbf{REALTIME FACTOR} \\
 \midrule
-100 MB & & & & \\
-500 MB & & & & \\
-1 GB   & & & & \\
+100 MB ($n{=}3$) & 120 s  & 3.13  & 475.80  & 3.97 \\
+500 MB ($n{=}1$) & 600 s  & 13.13 & 2281.25 & 3.80 \\
+1 GB   ($n{=}1$) & 1600 s & 72.00 & 5917.03 & 3.70 \\
 \bottomrule
 \end{tabularx}
 \end{table}
+
+\noindent\textit{Note: measured at the 1~vCPU / 2~GB job configuration, populated from
+\texttt{docs/results/transcode-timing.json}. The vCPU allocation of every run in this section was
+confirmed after the fact by querying \texttt{aws batch describe-jobs} for the job definition
+revision each job actually executed against, rather than relying on the labels recorded by the
+measurement script; all rows in this table resolved to revision~4 (1~vCPU / 2~GB) and all rows in
+the comparison below to revision~5 (4~vCPU / 8~GB). Pipeline and upload columns are the arithmetic
+mean across replications. Realtime factor is pipeline time divided by video duration, so a value
+above 1.0 means transcoding took longer than the video's own runtime; the three sizes fall in a
+narrow band of 3.70--3.97$\times$ real time at 1~vCPU, which indicates the pipeline scales
+essentially linearly with content duration at fixed compute. The 500~MB and 1~GB rows have only a single replication each
+because a full run at these sizes takes 30--100 minutes of AWS Batch time, which made repeated
+sampling costly within the project's time and budget; this is a threat to the precision of those
+two rows that Chapter~\ref{chap:conclusion} returns to. For the 100~MB size, the three individual
+runs (346.32~s, 539.80~s, 541.28~s) did not show the monotonic cold-start slowdown the measurement
+protocol anticipated --- the first run was in fact the fastest of the three --- which suggests that
+Fargate Spot capacity variability dominates over container image pull cost at this scale, rather
+than a first-run-specific effect.}
+
+A separate experiment raised the container allocation from 1~vCPU / 2~GB to 4~vCPU / 8~GB and
+repeated the measurement on the same two inputs. Pipeline time fell from a mean of 475.80~s to a
+mean of 115.56~s for the 100~MB input (3 runs each), and from 5917.03~s (1 run) to a mean of
+1078.70~s for the 1~GB input (2 runs: 1080.29~s and 1077.10~s). Taken at face value these are
+speedups of 4.12$\times$ and 5.49$\times$ respectively.
+
+Both figures exceed the 4$\times$ that the change in vCPU count alone could account for, and that
+observation deserves scepticism rather than celebration. Amdahl's Law bounds the achievable
+speedup \emph{below} the resource ratio, because the serial portion of an encoder --- entropy
+coding and rate control among others --- does not parallelise; the multi-threaded H.264 literature
+reports exactly this sub-linear pattern, with Sankaraiah~\textit{et al.} measuring
+1.97$\times$/3.96$\times$/7.71$\times$ at 2/4/8 threads~\cite{sankaraiah2014macroblock} and
+Chen~\textit{et al.} 4.7--8.6$\times$ across six Cell SPEs~\cite{chen2011taskbased}. A measured
+result above the resource ratio therefore indicates that something other than thread-level
+parallelism is contributing, and two confounds are visible in the data.
+
+The first is that the experiment did not vary vCPU count in isolation: memory was raised from 2~GB
+to 8~GB at the same time, so any benefit from reduced memory pressure during the concurrent
+encoding of three renditions is folded into the same measurement. The second, and more serious, is
+the instability of the 1~vCPU baseline. The three 100~MB runs at 1~vCPU span 346.32~s to 541.28~s,
+a spread of 56.3\%, whereas the corresponding 4~vCPU runs span only 24.0\%. The speedup estimate is
+consequently very sensitive to which baseline statistic is chosen: 3.29$\times$ comparing the
+fastest run of each configuration, 4.12$\times$ comparing means, 4.15$\times$ comparing slowest
+runs, and 4.86$\times$ comparing medians. Only the first of these is consistent with the sub-linear
+bound the theory predicts. The 1~GB comparison rests on a single 1~vCPU observation and so admits
+no variance estimate at all.
+
+The honest conclusion is therefore narrower than the headline numbers suggest: raising the
+allocation from 1 to 4~vCPU reduced pipeline latency by roughly a factor of four on this workload,
+but the present sample is too small and too noisy to establish whether the true scaling is
+sub-linear as theory requires, and the simultaneous memory change means the experiment does not
+isolate the effect of vCPU count. Establishing the scaling behaviour properly would require
+repeated 1~vCPU baselines --- the variance there, not the 4~vCPU measurements, is what limits the
+conclusion --- and a separate arm that varies memory alone. This is recorded as future work in
+Section~\ref{sec:future-work} rather than presented as a settled result.
+
+Cost per video, by contrast, is robust to this uncertainty: AWS Batch on Fargate bills per
+vCPU-second, so roughly four times the hourly rate for roughly one quarter of the duration leaves
+the total charge per video essentially unchanged. The practical implication is that the 4~vCPU
+configuration buys a substantially lower waiting time for the user at close to no additional cost,
+which holds regardless of whether the exact speedup is 3.3$\times$ or 4.9$\times$.
 
 \noindent\textit{Note: populated from \texttt{docs/results/transcode-timing.json}. Each size
 should be measured at least three times, and the first run reported separately, because it
@@ -262,27 +326,118 @@ steady state.}
 
 Scalability is assessed by submitting concurrent uploads with a virtual user count ramping to
 one hundred, verifying that the queue retains all work and that AWS Batch scales to process it.
+Upload payloads in this test are synthetic (a small fixed byte string rather than a real video
+file), because the object here is to exercise the upload API, S3 event notification, SQS queue,
+and Batch job submission path under concurrent load, not to measure transcoding quality. Job
+outcome is therefore not the metric of interest; queue behaviour is.
+
+One caveat must be stated before the results, because it bounds what they can be taken to show.
+Inspecting the failure reasons of the submitted jobs afterwards revealed that they terminated at
+container initialisation with \texttt{ResourceInitializationError}, not at the FFmpeg stage as the
+synthetic payload would have caused. The cause was a defect in the Terraform configuration: the
+Secrets Manager entry holding the notification e-mail password was created as an empty container
+without a value whenever e-mail was left unconfigured, while the Batch job definition still
+declared that secret, so every task failed before its entrypoint ran. The defect is described and
+its correction recorded in Section~\ref{sec:limitations}. Its consequence for this experiment is
+specific: the control-plane observations below --- that Amazon SQS retained and forwarded every
+message, and that AWS Batch admitted exactly its configured number of concurrent tasks --- are
+unaffected, because those mechanisms operate before and independently of the container's
+entrypoint. The \emph{rate} at which the backlog cleared, however, reflects how quickly Fargate
+provisions and fails a task, not how quickly it completes real transcoding work, and must not be
+read as a throughput figure for production load. A genuine throughput measurement under concurrency
+is identified as future work in Section~\ref{sec:future-work}.
 
 \begin{table}[H]
 \centering
-\caption{Concurrent upload stress test results}
+\caption{Concurrent upload stress test results (API layer)}
 \label{tab:load-results}
 \small
 \begin{tabularx}{\textwidth}{X r}
 \toprule
 \textbf{METRIC} & \textbf{VALUE} \\
 \midrule
-Total requests            & \\
-Throughput (requests/s)   & \\
-Failure rate              & \\
-Mean response time (ms)   & \\
-95th percentile (ms)      & \\
-Peak virtual users        & \\
+Total requests            & 100 \\
+Throughput (requests/s)   & 15.52 \\
+Failure rate              & 0\% \\
+Mean response time (ms)   & 2388.52 \\
+95th percentile (ms)      & 3317.79 \\
+Peak virtual users        & 50 \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
-\noindent\textit{Note: populated from \texttt{docs/results/k6-summary.json}.}
+\noindent\textit{Note: populated from \texttt{docs/results/node-load-test.json}, produced by
+\texttt{scripts/node-load-test.js}, a native-fetch Node.js load generator. All 100 uploads
+(initiate, direct-to-S3 PUT, confirm) succeeded at the API layer.}
+
+\subsection{Cross-Validation with an Independent Tool}
+\label{sec:load-cross-validation}
+
+A single load generator can produce a misleading result if the generator itself, rather than the
+system under test, is the bottleneck. The experiment was therefore repeated with k6, an
+industry-standard load testing tool implemented in Go, driving the same three-step upload sequence
+against the same deployed endpoint at the same concurrency (50 virtual users, 100 total
+iterations). The k6 scenario uses the \texttt{shared-iterations} executor rather than the
+time-based ramp that the script originally specified, so that the total unit of work is fixed at
+exactly 100 uploads and is therefore directly comparable rather than merely similar.
+
+\begin{table}[H]
+\centering
+\caption{Cross-validation of the load test across two independent tools}
+\label{tab:load-crossvalidation}
+\small
+\begin{tabularx}{\textwidth}{X r r}
+\toprule
+\textbf{METRIC} & \textbf{NODE.JS} & \textbf{K6} \\
+\midrule
+Upload cycles completed        & 100    & 100 \\
+Failure rate                   & 0\%    & 0\% \\
+Batch jobs queued (RUNNABLE)   & 92     & 92 \\
+Batch jobs admitted (STARTING) & 8      & 8 \\
+SQS messages remaining         & 0      & 0 \\
+Queue drain, 76 jobs (s)       & 416    & 417 \\
+Consumption rate (jobs/min)    & 10.96  & 10.94 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+The two tools agree exactly on every infrastructure-level observation. Immediately after each
+burst the queue held 92 jobs waiting with 8 admitted for execution, and Amazon SQS reported zero
+messages outstanding. The drain rate agrees to within 0.24\%: measuring from the common reference
+point at which 76 jobs remained queued until the queue emptied took 416~s in the Node.js run and
+417~s in the k6 run, a consumption rate of 10.96 against 10.94 jobs per minute. Reproducing both
+the 92/8 split and the drain rate across two independently implemented generators running on
+different runtimes is considerably stronger evidence than either run alone that the eight-job
+ceiling and the resulting throughput are properties of the compute environment's configuration
+--- \texttt{max\_vcpus}~$=$~8 divided by \texttt{job\_vcpu}~$=$~1 --- rather than artefacts of how
+one particular client paced its requests.
+
+The latency figures, by contrast, are \emph{not} directly comparable, and reporting them side by
+side without qualification would be an error. The Node.js script times each complete upload cycle,
+so its mean of 2388.52~ms covers all three HTTP requests together; k6's \texttt{http\_req\_duration}
+times each HTTP request individually, giving a mean of 670.03~ms per request across 300 requests.
+Scaling the latter by the three requests per cycle yields 2010.09~ms, within 15.8\% of the Node.js
+figure --- close enough to corroborate it, and the residual gap is consistent with k6 running
+inside a Docker container with an additional network hop that the natively executed Node.js script
+did not incur. Throughput agrees on the same basis once k6's virtual-user initialisation is
+accounted for: the raw 100 cycles over 9.83~s understates the steady-state rate, because no
+iteration completed during the first four seconds, whereas the 100 cycles that completed in the
+remaining 5.8~s correspond to 17.24 cycles per second against the Node.js script's 15.53.
+
+The queue and compute layer were observed separately by polling the AWS Batch job queue every 25
+seconds after the 100 uploads completed. Two data points anchor this observation: immediately
+after the burst, 92 jobs were queued in the \texttt{RUNNABLE} state with 8 already
+\texttt{STARTING}, and the Amazon SQS queue itself reported zero messages remaining, meaning the
+Lambda job submitter had already drained every event into AWS Batch within seconds of the S3
+notifications firing. The \texttt{STARTING} count held at 7--8 throughout the drain, matching
+\texttt{max\_vcpus}~$=$~8 divided by \texttt{job\_vcpu}~$=$~1 exactly, which confirms the compute
+environment enforced its configured concurrency ceiling rather than either exceeding it or
+under-utilising it. The backlog of 92 queued jobs reached zero 456 seconds after the burst, and no
+message was lost or left stuck; the full sample sequence is recorded in
+\texttt{docs/results/stress-test-concurrency.json}. Subject to the caveat stated above, this is
+the direct evidence for the claim that opened this section: Amazon SQS retained every unit of work
+submitted faster than the compute layer could consume it, and AWS Batch admitted work strictly at,
+and never above, its configured limit while consuming that backlog.
 
 \section{Cost Analysis}
 \label{sec:cost-analysis}

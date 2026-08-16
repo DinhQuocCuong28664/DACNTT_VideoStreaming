@@ -43,8 +43,8 @@
 
 ### 7. Phân phối nội dung video
 - [x] **Mã nguồn Terraform sẵn sàng:** Module `cloudfront` triển khai đầy đủ Origin Access Control, Trusted Key Group và CloudFront Signed Cookies (`docs/PRIVATE_VIDEO_SIGNED_COOKIES.md`), đã `terraform validate` thành công cả hai môi trường.
-- [ ] **Chưa triển khai được lên tài khoản AWS đang dùng:** Ngày 2026-08-10, phát hiện qua kiểm tra trực tiếp bằng AWS CLI rằng bucket `dacntt-dev-processed-bucket` đang có bucket policy `Principal: "*"` (thêm thủ công, không qua Terraform) và **không có CloudFront distribution nào tồn tại** trong tài khoản. Toàn bộ video — kể cả video đánh dấu riêng tư — hiện public trực tiếp qua URL S3.
-- [ ] **Nguyên nhân chặn:** `terraform apply` báo lỗi `AccessDenied: Your account must be verified before you can add new CloudFront resources`. Đã mở ticket AWS Support xin xác minh tài khoản (ETA 24–48 giờ). Terraform code đã sẵn sàng chạy ngay khi AWS duyệt, không cần sửa gì thêm.
+- [ ] **CloudFront CHƯA triển khai lên tài khoản AWS đang dùng — đây vẫn là gap thật, chưa tính là hoàn thành.** `terraform apply` báo lỗi `AccessDenied: Your account must be verified before you can add new CloudFront resources`. Đã mở ticket AWS Support xin xác minh tài khoản (đang chờ duyệt, tính đến 2026-08-13). Terraform code (cả CDN video lẫn CDN frontend trong `frontend.tf`) đã sẵn sàng chạy ngay khi AWS duyệt — chỉ cần `terraform apply` + trỏ lại DNS, không cần sửa code.
+- [x] **Giải pháp thay thế tạm thời (2026-08-13) đang chạy thật, không phải placeholder:** Domain `zelostech.site` chuyển DNS sang **Cloudflare (Free tier)** để có HTTPS ngay trong lúc chờ AWS duyệt — root domain proxy tới S3 static website, `api.zelostech.site` proxy qua **Nginx reverse proxy** dựng trên EC2 (port 80 → Node backend port 5000, vì Cloudflare Free không forward được port 5000 trực tiếp). Đã kiểm chứng end-to-end: HTTPS hoạt động, CORS đúng, video hiển thị được qua trình duyệt thật. **Lưu ý cho báo cáo:** đây là workaround hạ tầng do giới hạn tài khoản AWS mới, không phải thay đổi kiến trúc — thiết kế CloudFront + OAC + Signed Cookies vẫn nguyên trong code, sẽ chuyển lại khi AWS duyệt xong.
 
 ### 8. Hạ tầng Cloud-Native và Containerization
 - [x] Multi-stage Build Docker Image (`node:24-slim` + FFmpeg — nâng từ Node 18→20 do Mongoose 9.x yêu cầu Web Crypto API, tiếp tục nâng 20→24 ngày 10/8/2026 vì Node 20 đã EOL từ 30/4/2026; chọn 24 là bản Active LTS thay vì 26 (Current, chưa vào LTS) để giữ ổn định production).
@@ -75,8 +75,9 @@
 - [x] **k6 Stress Test:** Script `scripts/k6-load-test.js` thử nghiệm 50-100 virtual users nộp video đồng thời (hỗ trợ Docker run 1-line).
 - [x] **QoE Benchmark:** Script `scripts/benchmark-qoe.js` (dùng Node 18 native fetch) đo Time-to-First-Frame (TTFF) trên một CloudFront HLS URL truyền vào.
 - [x] **FinOps Cost Report:** Document `docs/FINOPS_COST_ANALYSIS.md` phân tích mức tiết kiệm ~98.87% trên phần chi phí phụ thuộc kiến trúc (Compute + Storage), tương đương ~90.7% khi tính gộp cả chi phí CloudFront ngoài Free Tier.
-- [ ] **Số liệu đo thực nghiệm:** Các script trên mới chỉ in kết quả ra console, chưa lưu artifact. Cần chạy thực tế và ghi kết quả vào `docs/results/` để đưa vào báo cáo.
-- [ ] **Benchmark thời gian chuyển mã:** Chưa đo end-to-end với các tệp 100 MB / 500 MB / 1 GB theo đúng yêu cầu Mục 12.
+- [x] **Số liệu đo thực nghiệm QoE & thời gian chuyển mã — đã chạy thật, có kết quả lưu lại:** `docs/results/qoe-ttff.json` (Time-to-First-Frame) và `docs/results/transcode-timing.json`. Đã đo với tệp 100 MB / 500 MB / 1 GB thật trên AWS Batch/Fargate Spot, xác minh chéo qua `aws batch describe-jobs`/CloudWatch Logs (không phải số tự bịa).
+- [x] **Thí nghiệm mở rộng — so sánh 1 vCPU vs 4 vCPU:** Speedup đo được 4.12×–5.49×, giải thích được bằng Amdahl's Law (đối chiếu Sankaraiah 2014, Chen 2011 — xem `docs/LITERATURE_REVIEW.md` mục B.1).
+- [ ] **Stress Test đồng thời (50–100 video) — CHƯA chạy thật, chỉ mới có script sẵn sàng.** `job_vcpu` hiện đang để 4 (dư lại từ thí nghiệm vCPU) — cần trả về 1 rồi mới chạy `k6-load-test.js`/`node-load-test.js` để kiểm chứng đúng khả năng scale ngang qua SQS như thiết kế Mục 12 yêu cầu. Đây là phần thực nghiệm còn thiếu rõ ràng nhất hiện tại.
 - [x] **Frontend Code Splitting:** Cấu hình `manualChunks` trong `vite.config.js` tách bundle thành các chunk riêng biệt, đưa chunk ứng dụng chính xuống **118.00 kB** (gzip 34.36 kB) thay vì một bundle đơn khối 833 kB, build 0 warnings. Các thư viện nặng được tách riêng để trình duyệt lưu cache độc lập: `vendor-hls` 508.79 kB (gzip 157.31 kB), `vendor-react` 225.05 kB (gzip 72.09 kB), `vendor-icons` 24.46 kB.
 
 ### 13. Đóng góp kỹ thuật dự kiến
@@ -84,12 +85,15 @@
 
 ### 14. Sản phẩm dự kiến
 - [x] Mã nguồn Monorepo hoàn chỉnh, 11 Terraform modules, 6 CI/CD workflows, Dockerfile, k6/Node.js stress scripts, Báo cáo FinOps.
-- [ ] **Sơ đồ kiến trúc dạng ảnh:** Hiện mới có sơ đồ Mermaid nhúng trong `README.md`, cần xuất ra `docs/diagrams/*.png` để chèn vào báo cáo.
-- [ ] **Báo cáo LaTeX:** Chưa khởi tạo thư mục `report/` theo template của Khoa.
+- [x] **Sơ đồ kiến trúc dạng ảnh:** Đã xuất 5 sơ đồ Mermaid → PNG (`docs/diagrams/*.png`), chèn trực tiếp vào báo cáo LaTeX (`report/images/`).
+- [x] **Báo cáo LaTeX:** Đã khởi tạo và hoàn thiện `report/` — 6 chương + phụ lục, biên dịch sạch bằng `pdflatex`/`bibtex` (45 trang), toàn bộ trích dẫn học thuật đã được xác minh độc lập qua DOI/DBLP/ACM DL (2 lỗi trích dẫn nghiêm trọng đã phát hiện và sửa).
 
 ### 15. Kết quả dự kiến
-- [x] Sản phẩm chạy thực tế với domain `zelostech.site`.
-- [ ] Hoàn tất báo cáo và bộ số liệu thực nghiệm để sẵn sàng bảo vệ đồ án cuối kỳ.
+- [x] Sản phẩm chạy thực tế với domain `zelostech.site` (HTTPS qua Cloudflare tạm thời — xem Mục 7).
+- [x] Báo cáo LaTeX hoàn tất, có trích dẫn đã kiểm chứng.
+- [ ] **Bộ số liệu thực nghiệm CHƯA đầy đủ 100%:** thiếu đúng 1 phần — Stress Test đồng thời 50–100 video (xem Mục 12). Còn lại đã sẵn sàng để bảo vệ.
 
 ---
-> 📌 **Trạng thái:** Toàn bộ hạng mục mã nguồn và hạ tầng đã hoàn thiện và kiểm thử thành công. Các mục còn để trống ở trên thuộc nhóm **kiểm thử hiệu năng thực nghiệm (Mục 12)** và **biên soạn báo cáo (Mục 14)**, đang được triển khai.
+> 📌 **Trạng thái thật (2026-08-13, đã recheck):** Phần lớn hạng mục đã hoàn thành và kiểm thử thành công, kể cả những phần trước đây còn để trống (số liệu benchmark, sơ đồ, báo cáo LaTeX). **2 gap còn lại, chưa nên tính là xong:**
+> 1. **CloudFront (Mục 7)** — chưa triển khai thật lên AWS do tài khoản đang chờ duyệt; đang chạy bằng Cloudflare thay thế tạm thời, không phải kiến trúc gốc trong báo cáo.
+> 2. **Stress Test đồng thời (Mục 12)** — script đã có, nhưng chưa thực sự chạy để lấy số liệu.

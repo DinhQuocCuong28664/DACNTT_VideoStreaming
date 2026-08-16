@@ -1,0 +1,19 @@
+{
+  "measuredAt": "2026-08-14T18:46:33.826Z",
+  "target": "https://api.zelostech.site/api",
+  "concurrency": 50,
+  "totalRequests": 100,
+  "successfulRequests": 100,
+  "failedRequests": 0,
+  "successRatePercent": 100,
+  "totalDurationSec": 6.44,
+  "throughputRps": 15.52,
+  "latencyMs": {
+    "meanMs": 2388.52,
+    "medianMs": 2305.56,
+    "p95Ms": 3317.79,
+    "minMs": 1186.6,
+    "maxMs": 3384.13
+  },
+  "errorSummary": {}
+}
