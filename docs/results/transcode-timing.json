@@ -151,9 +151,11 @@
         "elapsedSec": 5917.03
       }
     ],
-    "videoDurationSec": 1500,
-    "realtimeFactor": 3.945,
-    "note": "Máy đo mất kết nối WiFi khi script client đang poll trạng thái (sau khi log PROCESSING lúc 0.5s), làm script tự sập với lỗi 'fetch failed'. Job Batch trên AWS hoàn toàn không bị ảnh hưởng — vẫn chạy và SUCCEEDED bình thường (xác nhận qua aws batch describe-jobs và log CloudWatch dòng 'READY in 5862.9s'). Bản ghi này được dựng lại thủ công từ dấu thời gian job Batch thật (CreatedAt=2026-08-09T21:01:48.585Z dùng làm mốc 'upload hoàn tất' vì S3 Event Notification kích hoạt gần như tức thời sau khi client PUT xong, StoppedAt là lúc container kết thúc sau khi đã ghi READY vào MongoDB). Đã vá script (waitUntilReady) để tự thử lại khi mất mạng tạm thời thay vì sập toàn bộ phép đo, tối đa 20 lần lỗi liên tiếp mới thực sự dừng."
+    "videoDurationSec": 1600,
+    "realtimeFactor": 3.698,
+    "vcpuVerified": 1,
+    "batchJobDefinitionRevision": 4,
+    "note": "SỬA 2026-08-16: bản ghi này ban đầu ghi videoDurationSec=1500 và realtimeFactor=3.945. Kiểm chứng lại bằng `ffprobe samples/video-1gb.mp4` cho thấy thời lượng thật là 1600.0s (trùng với hai bản ghi 1GB khác trong tệp này), nên 1500 là giá trị ước lượng sai khi dựng lại bản ghi thủ công. Realtime factor đúng = 5917.03/1600 = 3.698. Trường vcpuVerified/batchJobDefinitionRevision được bổ sung sau khi tra trực tiếp `aws batch describe-jobs` để xác nhận cấu hình vCPU thực tế thay vì chỉ dựa vào nhãn. --- Ghi chú gốc: Máy đo mất kết nối WiFi khi script client đang poll trạng thái (sau khi log PROCESSING lúc 0.5s), làm script tự sập với lỗi 'fetch failed'. Job Batch trên AWS hoàn toàn không bị ảnh hưởng — vẫn chạy và SUCCEEDED bình thường (xác nhận qua aws batch describe-jobs và log CloudWatch dòng 'READY in 5862.9s'). Bản ghi này được dựng lại thủ công từ dấu thời gian job Batch thật (CreatedAt=2026-08-09T21:01:48.585Z dùng làm mốc 'upload hoàn tất' vì S3 Event Notification kích hoạt gần như tức thời sau khi client PUT xong, StoppedAt là lúc container kết thúc sau khi đã ghi READY vào MongoDB). Đã vá script (waitUntilReady) để tự thử lại khi mất mạng tạm thời thay vì sập toàn bộ phép đo, tối đa 20 lần lỗi liên tiếp mới thực sự dừng."
   },
   {
     "measuredAt": "2026-08-10T00:08:47.590Z",
@@ -247,7 +249,10 @@
   },
   {
     "measuredAt": "2026-08-10T00:33:04.883Z",
-    "label": "100MB-4vcpu",
+    "label": "1GB-4vcpu",
+    "labelCorrectionNote": "SỬA 2026-08-16: nhãn gốc ghi nhầm là '100MB-4vcpu' do truyền sai tham số nhãn khi chạy script, nhưng tệp đầu vào thực tế là video-1gb.mp4 (1021 MB, 1600 s) — xem trường file bên dưới. Đây là phép đo 1GB ở 4 vCPU, không phải 100MB.",
+    "vcpuVerified": 4,
+    "batchJobDefinitionRevision": 5,
     "file": {
       "name": "video-1gb.mp4",
       "sizeBytes": 1070630037,

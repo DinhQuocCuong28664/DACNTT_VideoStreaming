@@ -1,5 +1,5 @@
 import http from 'k6/http';
-import { check, sleep } from 'k6';
+import { check } from 'k6';
 
 /**
  * ═══════════════════════════════════════════════════
@@ -10,12 +10,18 @@ import { check, sleep } from 'k6';
  */
 
 export const options = {
-  stages: [
-    { duration: '30s', target: 20 },  // Ramp up to 20 virtual users
-    { duration: '1m', target: 50 },   // Ramp up to 50 concurrent users
-    { duration: '1m', target: 100 },  // Peak stress test: 100 concurrent users
-    { duration: '30s', target: 0 },   // Ramp down to 0
-  ],
+  // shared-iterations: khoá cứng tổng số lần chạy = 100 (chia đều cho 50 VU),
+  // thay vì stages ramp theo thời gian (có thể tạo ra hàng trăm/nghìn request
+  // thật tuỳ thời lượng mỗi VU lặp lại) — để so sánh công bằng 1-1 với kết quả
+  // đã có từ scripts/node-load-test.js (concurrency=50, total=100).
+  scenarios: {
+    upload_burst: {
+      executor: 'shared-iterations',
+      vus: 50,
+      iterations: 100,
+      maxDuration: '5m',
+    },
+  },
   thresholds: {
     http_req_duration: ['p(95)<3000'], // 95% of requests should complete in < 3s
     http_req_failed: ['rate<0.05'],    // Error rate should be under 5%
@@ -80,8 +86,6 @@ export default function () {
       'confirmUpload status is 200': (r) => r.status === 200,
     });
   }
-
-  sleep(1);
 }
 
 /**
@@ -99,7 +103,7 @@ export function handleSummary(data) {
   const report = {
     measuredAt: new Date().toISOString(),
     target: BASE_URL,
-    stages: options.stages,
+    scenarios: options.scenarios,
     thresholds: options.thresholds,
     summary: {
       totalRequests: get('http_reqs', 'count'),

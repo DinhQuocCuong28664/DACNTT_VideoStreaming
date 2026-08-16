@@ -1,0 +1,80 @@
+{
+  "testName": "Concurrent Upload Stress Test (SQS backlog + AWS Batch auto-scaling)",
+  "measuredAt": "2026-08-14T18:44:21.000Z",
+  "purpose": "Kiểm chứng khả năng lưu giữ nhiệm vụ chờ xử lý của Amazon SQS và khả năng tự động mở rộng của AWS Batch khi 100 video được tải lên gần như đồng thời (Mục 12, yêu cầu 50-100 video đồng thời).",
+  "config": {
+    "concurrency": 50,
+    "totalUploads": 100,
+    "batchComputeEnvironment": {
+      "maxVcpus": 8,
+      "jobVcpu": 1,
+      "jobMemoryMb": 2048,
+      "useSpot": true
+    },
+    "note": "Payload upload là dữ liệu giả (dummy, không phải video thật) — mục đích bài test này là đo khả năng scale của tầng hạ tầng (API -> S3 -> SQS -> Lambda -> Batch), không đo chất lượng transcode. Mọi job vì vậy đều FAILED ở bước FFmpeg (input không hợp lệ), đúng như dự kiến; đây không phải lỗi hệ thống."
+  },
+  "apiLayerResult": {
+    "source": "scripts/node-load-test.js output, docs/results/node-load-test.json",
+    "totalRequests": 100,
+    "successfulUploads": 100,
+    "successRatePercent": 100.0,
+    "totalDurationSec": 6.44,
+    "throughputRps": 15.52,
+    "latencyMs": { "meanMs": 2388.52, "p95Ms": 3317.79 }
+  },
+  "batchQueueDrainCurve": {
+    "description": "Số lượng job ở trạng thái RUNNABLE (đang chờ trong hàng đợi Batch) đo theo thời gian sau khi 100 job được nộp gần như đồng thời. STARTING duy trì ổn định quanh 8 trong suốt quá trình — đúng bằng max_vcpus/job_vcpu = 8/1, xác nhận compute environment giữ đúng giới hạn song song đã cấu hình thay vì chạy tràn.",
+    "samples": [
+      { "tSec": 0,   "runnable": 92, "starting": 8, "running": 0 },
+      { "tSec": 40,  "runnable": 76, "starting": 8, "running": 0 },
+      { "tSec": 72,  "runnable": 76, "starting": 6, "running": 0 },
+      { "tSec": 104, "runnable": 68, "starting": 8, "running": 0 },
+      { "tSec": 136, "runnable": 60, "starting": 8, "running": 0 },
+      { "tSec": 168, "runnable": 52, "starting": 8, "running": 0 },
+      { "tSec": 200, "runnable": 45, "starting": 8, "running": 0 },
+      { "tSec": 232, "runnable": 37, "starting": 8, "running": 0 },
+      { "tSec": 264, "runnable": 30, "starting": 7, "running": 0 },
+      { "tSec": 296, "runnable": 22, "starting": 8, "running": 0 },
+      { "tSec": 328, "runnable": 15, "starting": 8, "running": 0 },
+      { "tSec": 360, "runnable": 10, "starting": 8, "running": 0 },
+      { "tSec": 392, "runnable": 2,  "starting": 8, "running": 0 },
+      { "tSec": 424, "runnable": 0,  "starting": 2, "running": 0 },
+      { "tSec": 456, "runnable": 0,  "starting": 0, "running": 0 }
+    ]
+  },
+  "outcome": {
+    "sqsMessagesLostOrStuck": 0,
+    "note": "SQS trả về ApproximateNumberOfMessages=0 ngay sau khi burst 100 upload hoàn tất — Lambda job submitter đã kéo hết message ra khỏi queue gần như tức thời và chuyển toàn bộ 100 job vào AWS Batch (RUNNABLE), không có message nào bị kẹt hoặc rơi vào DLQ.",
+    "wallClockDrainSeconds": 456,
+    "concurrencyLimitRespected": true
+  },
+  "crossValidationWithK6": {
+    "measuredAt": "2026-08-16T13:41:28.829Z",
+    "purpose": "Lặp lại đúng thí nghiệm bằng một công cụ đo độc lập (k6, viết bằng Go) để loại trừ khả năng kết quả bị chi phối bởi chính bộ sinh tải thay vì bởi hệ thống được đo.",
+    "tool": "k6 (grafana/k6 Docker image), scenario shared-iterations: 50 VUs, 100 iterations",
+    "resultFile": "docs/results/k6-summary.json",
+    "apiLayer": {
+      "iterations": 100,
+      "totalHttpRequests": 300,
+      "failedRate": 0,
+      "checksPassed": 400,
+      "checksFailed": 0,
+      "httpReqDurationMs": { "avg": 670.03, "med": 383.69, "p95": 1849.76, "max": 3078.75 }
+    },
+    "infrastructureObservation": {
+      "runnableRightAfterBurst": 92,
+      "startingRightAfterBurst": 8,
+      "sqsMessagesRemaining": 0,
+      "note": "Trùng khớp CHÍNH XÁC với lần chạy node-load-test.js (92/8/0)."
+    },
+    "drainRateComparison": {
+      "referencePoint": "Đo từ thời điểm runnable=76 tới lúc hàng đợi rỗng, dùng chung một mốc cho cả hai lần chạy để so sánh công bằng (thời điểm bắt đầu quan sát của hai lần không trùng nhau tuyệt đối).",
+      "nodeLoadTestSeconds": 416,
+      "k6Seconds": 417,
+      "differencePercent": 0.24,
+      "nodeJobsPerMinute": 10.96,
+      "k6JobsPerMinute": 10.94
+    },
+    "conclusion": "Hai bộ sinh tải được cài đặt độc lập, chạy trên hai runtime khác nhau (Node.js native fetch vs Go), cho ra cùng một hành vi hạ tầng: cùng số job xếp hàng (92), cùng trần song song (8), cùng tốc độ tiêu thụ hàng đợi (lệch 0.24%). Điều này xác nhận trần 8 job song song là thuộc tính của cấu hình compute environment (max_vcpus=8 / job_vcpu=1) chứ không phải hệ quả của cách một client cụ thể điều tiết request."
+  }
+}

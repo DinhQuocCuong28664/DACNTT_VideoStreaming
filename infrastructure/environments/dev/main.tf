@@ -130,14 +130,18 @@ module "batch" {
   frontend_url                  = var.frontend_url
   email_app_password_secret_arn = module.secrets.email_app_password_secret_arn
   use_spot                      = true # Dev: use FARGATE_SPOT (70% cheaper)
-  max_vcpus                     = 4
-  # Thử nghiệm tối ưu hiệu năng transcode (2026-08-10): tăng từ 1 vCPU/2GB lên
-  # 4 vCPU/8GB để x264 tự nhận nhiều luồng hơn khi encode song song 3 rendition.
-  # PHẢI trả lại job_vcpu=1 trước khi chạy k6 load test — ở 4 vCPU, quota Fargate
-  # Spot của tài khoản (8 vCPU) chỉ cho phép tối đa 2 job chạy song song, không
-  # đủ để kiểm chứng khả năng scale nhiều video đồng thời như thiết kế.
-  job_vcpu   = 4
-  job_memory = 8192
+  # max_vcpus nâng lên 8 (khớp đúng quota Fargate Spot hiện có của tài khoản)
+  # để compute environment không tự giới hạn thấp hơn khả năng thật khi chạy
+  # stress test nhiều job đồng thời.
+  max_vcpus = 8
+  # Mặc định 1 vCPU / 2 GB (giá trị gốc của hệ thống). Thí nghiệm so sánh
+  # hiệu năng đổi sang 4 vCPU / 8 GB bằng cách truyền biến lúc chạy:
+  #   terraform apply -var="job_vcpu=4" -var="job_memory=8192"
+  # Cách này cho phép xen kẽ hai cấu hình giữa các lần đo (xem
+  # scripts/run-benchmark-suite.js) để khử ảnh hưởng của biến thiên năng lực
+  # Fargate Spot theo thời gian, thay vì đo dồn từng cấu hình thành hai khối.
+  job_vcpu   = var.job_vcpu
+  job_memory = var.job_memory
   tags       = local.common_tags
 }
 

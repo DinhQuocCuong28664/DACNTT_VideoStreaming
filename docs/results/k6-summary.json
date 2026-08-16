@@ -1,0 +1,27 @@
+{
+  "measuredAt": "2026-08-16T13:41:28.829Z",
+  "target": "https://api.zelostech.site/api",
+  "thresholds": {
+    "http_req_duration": ["p(95)<3000"],
+    "http_req_failed": ["rate<0.05"]
+  },
+  "summary": {
+    "totalRequests": 300,
+    "requestsPerSecond": 30.506367841667924,
+    "failedRate": 0,
+    "iterations": 100,
+    "maxVirtualUsers": 50,
+    "httpReqDurationMs": {
+      "avg": 670.0282474700001,
+      "med": 383.6947825,
+      "p90": 1173.6912510000002,
+      "p95": 1849.76492455,
+      "max": 3078.748402
+    },
+    "checks": {
+      "passes": 400,
+      "fails": 0,
+      "rate": 1
+    }
+  }
+}

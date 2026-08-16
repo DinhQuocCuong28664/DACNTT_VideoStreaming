@@ -68,12 +68,29 @@ to correct this failed with an access-denied error, because AWS requires manual 
 verification before a new account may create CloudFront distributions, a restriction the project
 had encountered before and for which the \texttt{enable\_cloudfront} flag had originally been
 introduced as a workaround. A support request was filed with AWS to lift this restriction; at the
-time of writing the request remains pending. This episode is reported here in the interest of
-honesty rather than omitted, and it illustrates a broader lesson about serverless and managed
-cloud services: correctness of the Infrastructure as Code is necessary but not sufficient, since
-provisioning can still be blocked by account-level policy outside the application's control, and
-verifying claims against the live environment rather than against the source code alone is
-essential before a security control can be considered in effect.
+time of writing, several days later, it remains pending, and repeated attempts to re-apply the
+Terraform configuration continue to return the identical access-denied error, confirming the
+restriction is still in effect rather than merely slow to propagate. This episode is reported here
+in the interest of honesty rather than omitted, and it illustrates a broader lesson about
+serverless and managed cloud services: correctness of the Infrastructure as Code is necessary but
+not sufficient, since provisioning can still be blocked by account-level policy outside the
+application's control, and verifying claims against the live environment rather than against the
+source code alone is essential before a security control can be considered in effect.
+
+Because the wait for account verification could not be bounded, a temporary substitute was put in
+place so the deployed system would not be left serving plain HTTP indefinitely. Cloudflare's free
+tier was configured as an interim DNS and TLS-terminating proxy in front of the same S3-hosted
+frontend, and a small Nginx reverse proxy was added on the backend's EC2 instance so the API could
+also be reached over HTTPS, since Cloudflare's free tier only forwards a fixed set of ports and the
+API's port was not among them. This restores end-to-end HTTPS for users immediately, but it is
+explicitly a stopgap rather than a substitute for the evaluated design: it protects the connection
+in transit, not the content itself, so the manually added public bucket policy described above
+still leaves every object directly fetchable from S3 by anyone who obtains its URL, and the
+CloudFront Signed Cookie mechanism evaluated in Section~\ref{sec:content-protection} remains
+unenforced until the real CloudFront distribution can be created. The Terraform configuration for
+that distribution needs no changes once AWS lifts the restriction; the only remaining step is to
+re-point DNS from the interim S3 target to the CloudFront domain name, which is expected to take
+minutes rather than days.
 
 The system implements no digital rights management. An authorised viewer can capture the
 decrypted stream or share their cookies, and preventing this is outside the scope of the
@@ -84,10 +101,41 @@ This is correct for the current single-instance deployment but would need to mov
 store such as Redis before the backend could be scaled horizontally, since each instance would
 otherwise enforce its own independent limits.
 
+A defect found late in the evaluation deserves recording, both because it invalidated part of a
+measurement and because the way it evaded detection is instructive. The Terraform module for
+Secrets Manager created the entry holding the notification e-mail password unconditionally, but
+populated its value only when an e-mail password had actually been configured. Leaving e-mail
+unconfigured therefore produced an empty secret: a container with no version carrying the
+\texttt{AWSCURRENT} label. The Batch module, meanwhile, decided whether to declare that secret in
+the job definition by testing whether its ARN was non-empty --- and the ARN of an empty secret is
+perfectly non-empty. Every transcoding task consequently failed at
+\texttt{ResourceInitializationError} before its entrypoint ran, and the transcoding pipeline was
+inoperative for as long as that job definition revision was active. The fix was to make the secret
+itself conditional so that the unconfigured state is internally consistent: no secret, an empty
+ARN, and no declaration in the job definition.
+
+What makes this worth reporting is why it went unnoticed. The only jobs submitted while the defect
+was live were those of the concurrency stress test, whose synthetic payloads were \emph{expected}
+to fail; a wall of failed jobs was precisely what the experiment predicted, so the failures were
+read as confirmation rather than as a symptom. The lesson generalises beyond this project: when an
+experiment is designed such that failure is the anticipated outcome, failure carries no
+information, and the reason for each failure must be inspected rather than assumed. Verifying the
+\emph{cause} recorded in \texttt{statusReason}, not merely the terminal state, would have surfaced
+the defect within minutes instead of hours.
+
 \section{Future Work}
 \label{sec:future-work}
 
-The most valuable extension would be per-title bitrate ladder optimisation driven by a
+Two measurements should be repeated before the experimental results are considered settled. The
+concurrency test should be re-run with genuine video payloads now that the initialisation defect
+is corrected, so that the queue drain rate reflects real transcoding throughput rather than the
+speed at which Fargate provisions and fails a task; using short clips would keep the cost of such
+a run modest while still exercising the full data plane. The vCPU scaling comparison should also
+be repeated with more replications of the 1~vCPU baseline and with memory held constant, since
+Section~\ref{sec:pipeline-evaluation} showed the present estimate to be dominated by baseline
+variance and confounded by a simultaneous change in memory allocation.
+
+The most valuable functional extension would be per-title bitrate ladder optimisation driven by a
 perceptual quality metric such as VMAF. Encoding a short probe of the source at several
 operating points and selecting those on the convex hull of the quality-versus-bitrate curve
 would reduce delivery bandwidth at unchanged perceived quality, which lowers the largest
