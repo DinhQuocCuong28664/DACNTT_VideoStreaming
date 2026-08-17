@@ -83,24 +83,112 @@ jobs:
     environment: production
 
     steps:
-      - name: Deploy over SSH (git pull + npm install + pm2 restart)
-        uses: appleboy/ssh-action@v1.0.3
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
-          key: ${{ secrets.EC2_SSH_KEY }}
-          script: |
-            set -e
-            cd /home/ubuntu/app
-            git fetch origin
-            git reset --hard origin/${{ github.ref_name }}
-            cd backend
-            npm install --production
-            pm2 restart backend-api || pm2 start src/server.js --name backend-api
-            pm2 save
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # Triển khai qua AWS Systems Manager thay vì SSH.
+      #
+      # Máy chủ backend không gắn key pair nào, nên không thể SSH vào — cách làm
+      # cũ (appleboy/ssh-action) chắc chắn thất bại. SSM chạy lệnh thông qua
+      # agent sẵn có trên máy, dùng chính quyền IAM đã cấp cho instance, nên
+      # không phải mở thêm cổng, không phải lưu khoá riêng trong GitHub Secrets,
+      # và mọi lệnh đều được ghi vết trong CloudTrail.
+      #
+      # Instance được tìm theo tag Name thay vì ghi cứng instance ID, để khi
+      # Terraform thay máy (ví dụ đổi user_data) workflow không cần sửa theo.
+      - name: Find backend instance
+        id: find
+        run: |
+          INSTANCE_ID=$(aws ec2 describe-instances \
+            --filters "Name=tag:Name,Values=dacntt-dev-backend-api" \
+                      "Name=instance-state-name,Values=running" \
+            --query "Reservations[0].Instances[0].InstanceId" \
+            --output text)
+
+          if [ -z "$INSTANCE_ID" ] || [ "$INSTANCE_ID" = "None" ]; then
+            echo "::error::Khong tim thay EC2 dang chay voi tag Name=dacntt-dev-backend-api"
+            exit 1
+          fi
+
+          echo "instance_id=$INSTANCE_ID" >> "$GITHUB_OUTPUT"
+          echo "Deploy toi: $INSTANCE_ID"
+
+      - name: Deploy via SSM (git pull + npm install + pm2 restart)
+        run: |
+          set -e
+          # Chay toan bo duoi quyen 'ubuntu', khong phai root.
+          #
+          # SSM thuc thi lenh bang root. Repo /home/ubuntu/app thuoc ve ubuntu,
+          # nen git tu choi voi loi "detected dubious ownership" va deploy hong
+          # ngay tu buoc dau. Ngoai ra neu chay npm install bang root thi
+          # node_modules se thuoc root, trong khi pm2 chay bang ubuntu — lan
+          # khoi dong sau se loi quyen truy cap.
+          #
+          # Dung 'bash -lc' de nap PATH day du cho ubuntu (can cho pm2).
+          COMMAND_ID=$(aws ssm send-command \
+            --instance-ids "${{ steps.find.outputs.instance_id }}" \
+            --document-name "AWS-RunShellScript" \
+            --comment "CD deploy ${{ github.sha }}" \
+            --parameters commands="[\"sudo -u ubuntu bash -lc 'set -e; cd /home/ubuntu/app; git fetch origin; git reset --hard origin/${{ github.ref_name }}; cd backend; npm install --omit=dev; (pm2 restart backend-api --update-env || pm2 start src/server.js --name backend-api); pm2 save'\"]" \
+            --query "Command.CommandId" --output text)
+
+          echo "CommandId: $COMMAND_ID"
+
+          # send-command tra ve ngay lap tuc; phai tu doi ket qua, neu khong
+          # workflow se bao xanh du lenh tren may chu that bai.
+          aws ssm wait command-executed \
+            --command-id "$COMMAND_ID" \
+            --instance-id "${{ steps.find.outputs.instance_id }}" || true
+
+          STATUS=$(aws ssm get-command-invocation \
+            --command-id "$COMMAND_ID" \
+            --instance-id "${{ steps.find.outputs.instance_id }}" \
+            --query "Status" --output text)
+
+          echo "--- stdout ---"
+          aws ssm get-command-invocation \
+            --command-id "$COMMAND_ID" \
+            --instance-id "${{ steps.find.outputs.instance_id }}" \
+            --query "StandardOutputContent" --output text | tail -30
+
+          if [ "$STATUS" != "Success" ]; then
+            echo "--- stderr ---"
+            aws ssm get-command-invocation \
+              --command-id "$COMMAND_ID" \
+              --instance-id "${{ steps.find.outputs.instance_id }}" \
+              --query "StandardErrorContent" --output text | tail -30
+            echo "::error::Deploy that bai, trang thai SSM: $STATUS"
+            exit 1
+          fi
+
+      # Kiem chung that su thay vi tin vao viec lenh chay xong: pm2 co the khoi
+      # dong lai roi tien trinh sap ngay sau do, luc do SSM van bao Success.
+      - name: Verify API responds
+        run: |
+          IP=$(aws ec2 describe-instances \
+            --instance-ids "${{ steps.find.outputs.instance_id }}" \
+            --query "Reservations[0].Instances[0].PublicIpAddress" --output text)
+
+          for i in $(seq 1 10); do
+            CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "http://$IP/" || echo 000)
+            if [ "$CODE" = "200" ]; then
+              echo "API phan hoi OK (HTTP $CODE)"
+              exit 0
+            fi
+            echo "cho API... (HTTP $CODE)"
+            sleep 6
+          done
+
+          echo "::error::API khong phan hoi sau khi deploy"
+          exit 1
 
       - name: Deploy Summary
         run: |
-          echo "## 🚀 Backend Deployed to EC2" >> $GITHUB_STEP_SUMMARY
+          echo "## 🚀 Backend Deployed to EC2 (via SSM)" >> $GITHUB_STEP_SUMMARY
           echo "- **Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Instance:** ${{ steps.find.outputs.instance_id }}" >> $GITHUB_STEP_SUMMARY
