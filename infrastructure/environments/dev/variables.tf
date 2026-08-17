@@ -118,3 +118,10 @@ variable "job_memory" {
   type        = number
   default     = 2048
 }
+
+# ── Máy chủ Backend API ────────────────────────────
+variable "backend_instance_type" {
+  description = "Loại EC2 chạy Backend API. t3.micro thuộc diện Free Tier 12 tháng của tài khoản mới; nâng lên t3.small nếu cần thêm RAM."
+  type        = string
+  default     = "t3.micro"
+}
