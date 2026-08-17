@@ -242,3 +242,61 @@ bật versioning nên phải xoá cả object version lẫn delete marker (dùng
 - **Cloudflare** — DNS, HTTPS, cấu hình proxy
 - **Bản sao lưu cục bộ** `backup-aws/` — Terraform state cũ (tham khảo) và video
   demo dạng HLS (17 MB)
+
+---
+
+# Hiện trạng sau khi dựng lại — 2026-08-18
+
+Tài khoản mới: `749680934725`. Dựng lại từ đúng repository này, không khôi phục
+từ bản sao lưu nào.
+
+## Đã chạy được, có kiểm chứng thực tế
+
+| Thành phần | Bằng chứng |
+|---|---|
+| 66 tài nguyên Terraform | `terraform apply` thành công, `terraform plan` sạch |
+| Trang chủ HTTPS | `https://zelostech.site` trả HTTP 200 qua Cloudflare |
+| Backend API HTTPS | `https://api.zelostech.site` trả 200, CORS phản chiếu đúng origin |
+| Đăng ký / đăng nhập | Tạo được tài khoản mới → backend nối được MongoDB Atlas |
+| Pipeline chuyển mã đầu-cuối | Video 100MB: READY sau 437.65 s, hệ số thời gian thực 3.647× |
+| Kết quả HLS | 65 tệp (42.8 MB) trong bucket processed: đủ 360p/720p/1080p + master + thumbnail |
+
+Hệ số 3.647× nằm đúng trong dải 3.70–3.97× đo được trên tài khoản cũ ở cùng
+cấu hình 1 vCPU, cho thấy hạ tầng dựng lại tương đương chứ không chỉ "chạy được".
+
+## Chưa chạy được — và vì sao chấp nhận
+
+**Phát video từ trình duyệt.** Bucket processed đang private hoàn toàn (không có
+bucket policy nào). Đây là trạng thái đúng theo thiết kế: đường truy cập duy
+nhất lẽ ra là CloudFront + Origin Access Control. Vì tài khoản mới chưa được
+AWS cho phép tạo CloudFront, hiện không có đường hợp lệ nào để phát video, và
+mọi yêu cầu tới tệp `.m3u8` trả về HTTP 403.
+
+Đã cân nhắc mở public tạm thời cho bucket để demo phát được ngay, nhưng **quyết
+định không làm**: đó chính là lỗ hổng mà Chương 6 của báo cáo phân tích và phê
+phán (tài khoản cũ từng có policy public thêm tay khiến mọi video, kể cả video
+riêng tư, tải trực tiếp được từ S3). Tái lập nó để demo cho đẹp sẽ mâu thuẫn
+với chính luận điểm của đồ án.
+
+Khi AWS duyệt CloudFront: đặt `enable_cloudfront = true` trong `terraform.tfvars`
+rồi `terraform apply`. Module cloudfront sẽ tự tạo bucket policy cho OAC, và
+việc phát video hoạt động mà không cần mở public bất cứ thứ gì.
+
+## Khác biệt so với hệ thống cũ (đều là cải thiện)
+
+1. **Máy chủ backend nay nằm trong Terraform** (`backend-ec2.tf`). Trước đây tạo
+   tay qua Console — chính vì vậy mà khi mất tài khoản cũ, mọi thứ khác dựng lại
+   bằng một lệnh còn riêng máy chủ phải làm lại thủ công.
+2. **Quản trị máy chủ qua AWS Systems Manager**, không cần khoá SSH. Instance cũ
+   không gắn key pair nào nên khi sự cố chỉ vào được bằng EC2 Instance Connect
+   thao tác tay trên Console.
+3. **Backend dùng IAM Role thay cho khoá AWS tĩnh.** Không còn `AWS_ACCESS_KEY_ID`
+   và `AWS_SECRET_ACCESS_KEY` nằm trong tệp `.env` trên máy chủ.
+
+## Việc còn lại
+
+- [ ] Gửi ticket xin AWS mở quyền CloudFront (bản nháp: `backup-aws/aws-support-ticket-new-account-cloudfront.md`)
+- [ ] Sau khi được duyệt: `enable_cloudfront = true` → `terraform apply` → trỏ
+      bản ghi `zelostech.site` trên Cloudflare sang tên miền CloudFront
+- [ ] Cập nhật GitHub Secrets (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`,
+      `EC2_HOST`) sang tài khoản/máy chủ mới để CI/CD chạy lại được
