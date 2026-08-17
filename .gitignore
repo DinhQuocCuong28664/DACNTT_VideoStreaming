@@ -46,3 +46,8 @@ samples/
 
 # Claude Code local settings (per-máy, không chia sẻ qua git)
 .claude/settings.local.json
+
+# Bản sao lưu lấy từ AWS trước khi tài khoản bị khoá (state + video demo).
+# Không commit: chứa terraform state (có thể lộ giá trị nhạy cảm) và dữ liệu
+# nhị phân lớn. Giữ ngoài git, sao lưu riêng.
+backup-aws/
