@@ -8,13 +8,26 @@ const {
 const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 
 // Initialize S3 Client (AWS SDK v3)
-const s3Client = new S3Client({
-  region: process.env.AWS_REGION,
-  credentials: {
+//
+// Chỉ truyền `credentials` khi thực sự có khoá tĩnh trong biến môi trường.
+// Truyền vô điều kiện sẽ đưa cho SDK một object {accessKeyId: undefined,
+// secretAccessKey: undefined} khi máy chủ dùng IAM Role thay cho khoá tĩnh, và
+// SDK từ chối với lỗi "Resolved credential object is not valid" — mọi yêu cầu
+// xin pre-signed URL trả về HTTP 500. Bỏ trống trường này để SDK tự dò theo
+// chuỗi mặc định (biến môi trường → hồ sơ chung → IAM Role qua IMDS), nhờ đó
+// chạy được cả ở máy phát triển lẫn trên EC2 gắn instance profile.
+//
+// Transcoder đã áp dụng đúng cách này từ trước (xem transcoder/src/s3Handler.js);
+// backend giữ nguyên lỗi cũ cho tới khi triển khai trên EC2 dùng IAM Role.
+const s3ClientConfig = { region: process.env.AWS_REGION };
+if (process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) {
+  s3ClientConfig.credentials = {
     accessKeyId: process.env.AWS_ACCESS_KEY_ID,
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-  },
-});
+  };
+}
+
+const s3Client = new S3Client(s3ClientConfig);
 
 /**
  * Generate a unique S3 key for video upload
