@@ -21,7 +21,7 @@
 }
 
 .glass-panel:hover {
-  border-color: var(--accent-color);
+  border-color: var(--accent-primary);
   box-shadow: var(--shadow-lg);
 }
 
@@ -50,7 +50,7 @@
   border-radius: 50px;
   background: rgba(99, 102, 241, 0.1);
   border: 1px solid rgba(99, 102, 241, 0.3);
-  color: var(--accent-color);
+  color: var(--accent-primary);
   font-size: 0.875rem;
   font-weight: 600;
   margin-bottom: 1.5rem;
@@ -61,8 +61,8 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background-color: var(--accent-color);
-  box-shadow: 0 0 10px var(--accent-color);
+  background-color: var(--accent-primary);
+  box-shadow: 0 0 10px var(--accent-primary);
   animation: pulse-glow 2s infinite;
 }
 
@@ -133,9 +133,9 @@
 }
 
 .btn-hero-secondary:hover {
-  background: var(--hover-color);
+  background: var(--bg-card-hover);
   transform: translateY(-2px);
-  border-color: var(--accent-color);
+  border-color: var(--accent-primary);
 }
 
 /* Hero Showcase Mockup */
@@ -198,7 +198,7 @@
 
 .status-live {
   background: rgba(99, 102, 241, 0.15);
-  color: var(--accent-color);
+  color: var(--accent-primary);
   border: 1px solid rgba(99, 102, 241, 0.3);
 }
 
@@ -297,11 +297,11 @@
   border-radius: 4px;
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
-  color: var(--accent-color);
+  color: var(--accent-primary);
 }
 
 .active-tag {
-  color: var(--accent-color);
+  color: var(--accent-primary);
 }
 
 .step-arrow {
@@ -475,7 +475,7 @@
   align-items: center;
   justify-content: center;
   font-size: 1.5rem;
-  color: var(--accent-color);
+  color: var(--accent-primary);
   box-shadow: var(--shadow-sm);
 }
 
@@ -558,7 +558,7 @@
 
 .arch-card-arrow {
   font-size: 1.5rem;
-  color: var(--accent-color);
+  color: var(--accent-primary);
   display: flex;
   align-items: center;
   justify-content: center;

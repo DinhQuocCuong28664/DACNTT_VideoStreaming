@@ -1,9 +1,13 @@
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
+import { FiInbox, FiUploadCloud } from 'react-icons/fi';
 import videoApi from '../api/videoApi';
 import VideoCard from '../components/Video/VideoCard';
+import './HomePage.css';
 
 const CATEGORIES = ['Tất cả', 'Công nghệ', 'Giáo dục', 'Giải trí', 'Âm nhạc', 'Game', 'Khác'];
+
+const SKELETON_COUNT = 8;
 
 const HomePage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -50,13 +54,28 @@ const HomePage = () => {
     setSearchParams(newParams);
   };
 
+  const sectionTitle = searchQuery
+    ? `Kết quả cho “${searchQuery}”`
+    : selectedCategory !== 'Tất cả'
+      ? selectedCategory
+      : 'Video mới nhất';
+
+  /**
+   * Trạng thái rỗng nói đúng nguyên nhân thay vì một câu chung chung.
+   * Khi người dùng vừa tìm kiếm mà không ra kết quả, gợi ý "thử từ khóa khác"
+   * mới có ích; còn khi thư viện thật sự chưa có video nào thì lời khuyên đó
+   * vô nghĩa, cái họ cần là nút tải video lên.
+   */
+  const isFiltered = Boolean(searchQuery) || selectedCategory !== 'Tất cả';
+
   return (
-    <div className="container" style={{ paddingTop: 'var(--space-xl)', paddingBottom: 'var(--space-2xl)' }}>
-      {/* Category Filter Pills */}
-      <div className="category-bar">
+    <div className="container home-page">
+      <div className="category-bar" role="tablist" aria-label="Lọc theo danh mục">
         {CATEGORIES.map((cat) => (
           <button
             key={cat}
+            role="tab"
+            aria-selected={selectedCategory === cat}
             className={`category-pill ${selectedCategory === cat ? 'active' : ''}`}
             onClick={() => handleCategorySelect(cat)}
           >
@@ -65,20 +84,26 @@ const HomePage = () => {
         ))}
       </div>
 
-      <h2 style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 700, marginBottom: 'var(--space-xl)' }}>
-        {searchQuery ? `🔍 Kết quả tìm kiếm: "${searchQuery}"` : selectedCategory !== 'Tất cả' ? `📂 Danh mục: ${selectedCategory}` : '🔥 Video mới nhất'}
-      </h2>
+      <div className="section-header">
+        <h2 className="section-title">{sectionTitle}</h2>
+        {!loading && pagination?.total > 0 && (
+          <span className="section-count">{pagination.total} video</span>
+        )}
+      </div>
 
       {loading ? (
         <div className="video-grid">
-          {Array.from({ length: 8 }).map((_, i) => (
+          {Array.from({ length: SKELETON_COUNT }).map((_, i) => (
             <div key={i} className="skeleton-card">
-              <div className="skeleton" style={{ aspectRatio: '16/9', borderRadius: 'var(--radius-lg)' }} />
-              <div style={{ padding: '8px 0', display: 'flex', gap: '8px' }}>
-                <div className="skeleton" style={{ width: 36, height: 36, borderRadius: '50%', flexShrink: 0 }} />
-                <div style={{ flex: 1 }}>
-                  <div className="skeleton" style={{ height: 14, marginBottom: 6, borderRadius: 4 }} />
-                  <div className="skeleton" style={{ height: 12, width: '60%', borderRadius: 4 }} />
+              <div
+                className="skeleton"
+                style={{ aspectRatio: '16 / 9', borderRadius: 'var(--radius-lg)' }}
+              />
+              <div className="skeleton-card-body">
+                <div className="skeleton skeleton-avatar" />
+                <div className="skeleton-lines">
+                  <div className="skeleton skeleton-line" />
+                  <div className="skeleton skeleton-line short" />
                 </div>
               </div>
             </div>
@@ -93,76 +118,40 @@ const HomePage = () => {
           </div>
 
           {pagination && pagination.pages > 1 && (
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginTop: 'var(--space-2xl)' }}>
+            <nav className="pagination" aria-label="Phân trang">
               {Array.from({ length: pagination.pages }).map((_, i) => (
                 <button
                   key={i}
                   className={`btn ${page === i + 1 ? 'btn-primary' : 'btn-secondary'}`}
+                  aria-current={page === i + 1 ? 'page' : undefined}
                   onClick={() => setPage(i + 1)}
-                  style={{ minWidth: 40, padding: '8px 12px' }}
                 >
                   {i + 1}
                 </button>
               ))}
-            </div>
+            </nav>
           )}
         </>
       ) : (
-        <div style={{ textAlign: 'center', padding: 'var(--space-2xl)', color: 'var(--text-muted)' }}>
-          <p style={{ fontSize: 'var(--font-size-xl)', marginBottom: 'var(--space-sm)' }}>📭 Không tìm thấy video nào</p>
-          <p>Thử tìm kiếm với từ khóa hoặc chọn danh mục khác!</p>
+        <div className="empty-state">
+          <div className="empty-state-icon">
+            <FiInbox />
+          </div>
+          <p className="empty-state-title">
+            {isFiltered ? 'Không tìm thấy video phù hợp' : 'Chưa có video nào'}
+          </p>
+          <p className="empty-state-desc">
+            {isFiltered
+              ? 'Thử từ khóa khác hoặc chọn một danh mục khác để xem thêm nội dung.'
+              : 'Hãy là người đầu tiên chia sẻ một video lên nền tảng.'}
+          </p>
+          {!isFiltered && (
+            <Link to="/upload" className="btn btn-primary empty-state-action">
+              <FiUploadCloud /> Tải video lên
+            </Link>
+          )}
         </div>
       )}
-
-      <style>{`
-        .category-bar {
-          display: flex;
-          gap: 10px;
-          overflow-x: auto;
-          padding-bottom: 12px;
-          margin-bottom: 24px;
-          scrollbar-width: none;
-          -webkit-overflow-scrolling: touch;
-        }
-        .category-bar::-webkit-scrollbar {
-          display: none;
-        }
-        .category-pill {
-          padding: 8px 18px;
-          border-radius: 20px;
-          border: 1px solid var(--border-color);
-          background: var(--bg-tertiary);
-          color: var(--text-primary);
-          font-size: 14px;
-          font-weight: 600;
-          cursor: pointer;
-          white-space: nowrap;
-          transition: all var(--transition-fast);
-          flex-shrink: 0;
-        }
-        .category-pill:hover {
-          background: var(--bg-card-hover);
-          border-color: var(--border-hover);
-        }
-        .category-pill.active {
-          background: var(--accent-gradient);
-          color: #ffffff;
-          border-color: transparent;
-          box-shadow: var(--shadow-sm);
-        }
-
-        .video-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-          gap: var(--space-lg);
-        }
-        @media (max-width: 576px) {
-          .video-grid {
-            grid-template-columns: 1fr;
-            gap: var(--space-md);
-          }
-        }
-      `}</style>
     </div>
   );
 };

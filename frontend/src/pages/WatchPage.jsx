@@ -4,6 +4,7 @@ import { FiEye, FiClock, FiShare2, FiUser, FiThumbsUp, FiThumbsDown, FiMessageSq
 import { useAuth } from '../context/useAuth';
 import videoApi from '../api/videoApi';
 import VideoPlayer from '../components/Video/VideoPlayer';
+import './WatchPage.css';
 
 const WatchPage = () => {
   const { id } = useParams();
@@ -161,19 +162,24 @@ const WatchPage = () => {
 
   if (loading) {
     return (
-      <div className="container" style={{ paddingTop: 'var(--space-xl)', maxWidth: 960 }}>
-        <div className="skeleton" style={{ aspectRatio: '16/9', borderRadius: 'var(--radius-lg)', marginBottom: 'var(--space-lg)' }} />
-        <div className="skeleton" style={{ height: 28, width: '70%', borderRadius: 4, marginBottom: 12 }} />
-        <div className="skeleton" style={{ height: 16, width: '40%', borderRadius: 4 }} />
+      <div className="container watch-page">
+        <div
+          className="skeleton"
+          style={{ aspectRatio: '16 / 9', borderRadius: 'var(--radius-lg)', marginBottom: 'var(--space-lg)' }}
+        />
+        <div className="skeleton watch-skeleton-title" />
+        <div className="skeleton watch-skeleton-meta" />
       </div>
     );
   }
 
   if (!video) {
     return (
-      <div className="container flex-center" style={{ minHeight: '50vh', flexDirection: 'column', gap: 'var(--space-md)' }}>
-        <p style={{ fontSize: 'var(--font-size-xl)', color: 'var(--text-muted)' }}>Video không tồn tại hoặc đã bị xóa</p>
-        <Link to="/" className="btn btn-primary">← Về trang chủ</Link>
+      <div className="container flex-center watch-notfound">
+        <p>Video không tồn tại hoặc đã bị xóa</p>
+        <Link to="/" className="btn btn-primary">
+          Về trang chủ
+        </Link>
       </div>
     );
   }
@@ -183,24 +189,11 @@ const WatchPage = () => {
   const isReady = video.status === 'READY' && videoSrc && playbackReady;
 
   return (
-    <div className="container" style={{ paddingTop: 'var(--space-xl)', paddingBottom: 'var(--space-2xl)', maxWidth: 960 }}>
-      {/* Video Player */}
+    <div className="container watch-page">
+      {/* Trình phát */}
       {playbackDenied ? (
-        <div style={{
-          aspectRatio: '16/9',
-          background: 'var(--bg-secondary)',
-          borderRadius: 'var(--radius-lg)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          flexDirection: 'column',
-          gap: 'var(--space-md)',
-          textAlign: 'center',
-          padding: 'var(--space-xl)',
-        }}>
-          <p style={{ color: 'var(--text-muted)' }}>
-            Bạn không có quyền phát video này.
-          </p>
+        <div className="player-placeholder">
+          <p>Bạn không có quyền phát video này.</p>
         </div>
       ) : isReady ? (
         <VideoPlayer
@@ -209,167 +202,139 @@ const WatchPage = () => {
           onViewThreshold={handleViewThreshold}
         />
       ) : (
-        <div style={{
-          aspectRatio: '16/9',
-          background: 'var(--bg-secondary)',
-          borderRadius: 'var(--radius-lg)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          flexDirection: 'column',
-          gap: 'var(--space-md)',
-        }}>
+        <div className="player-placeholder">
           {video.status === 'PROCESSING' ? (
             <>
-              <div className="spinner" style={{ width: 48, height: 48 }} />
-              <p style={{ color: 'var(--text-muted)' }}>Video đang được xử lý (Transcoding)...</p>
+              <div className="spinner" />
+              <p>Video đang được chuyển mã…</p>
               <span className="badge badge-processing">PROCESSING</span>
             </>
           ) : video.status === 'ERROR' ? (
             <>
-              <p style={{ color: 'var(--danger)', fontSize: 'var(--font-size-lg)' }}>❌ Xử lý video thất bại</p>
+              <p className="player-placeholder-error">Xử lý video thất bại</p>
               <span className="badge badge-error">ERROR</span>
             </>
           ) : (
             <>
-              <p style={{ color: 'var(--text-muted)' }}>⏳ Video đang chờ xử lý...</p>
+              <p>Video đang chờ xử lý…</p>
               <span className="badge badge-processing">UPLOADING</span>
             </>
           )}
         </div>
       )}
 
-      {/* Video Info */}
-      <div style={{ marginTop: 'var(--space-lg)' }}>
-        <h1 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 700, marginBottom: 'var(--space-sm)' }}>
-          {video.title}
-        </h1>
+      {/* Thông tin video */}
+      <div className="watch-info">
+        <h1 className="watch-title">{video.title}</h1>
 
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 'var(--space-md)', marginBottom: 'var(--space-lg)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-sm)', color: 'var(--text-muted)', fontSize: 'var(--font-size-sm)' }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><FiEye /> {formatViews(video.views)} lượt xem</span>
-            <span>•</span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}><FiClock /> {formatDate(video.createdAt)}</span>
+        <div className="watch-meta-row">
+          <div className="watch-stats">
+            <span>
+              <FiEye /> {formatViews(video.views)} lượt xem
+            </span>
+            <span aria-hidden="true">•</span>
+            <span>
+              <FiClock /> {formatDate(video.createdAt)}
+            </span>
           </div>
 
-          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-            <button className={`btn ${hasLiked ? 'btn-primary' : 'btn-secondary'}`} onClick={handleLike}>
+          <div className="watch-actions">
+            <button
+              className={`btn ${hasLiked ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={handleLike}
+              aria-pressed={hasLiked}
+            >
               <FiThumbsUp /> {likesCount}
             </button>
-            <button className={`btn ${hasDisliked ? 'btn-primary' : 'btn-secondary'}`} onClick={handleDislike}>
+            <button
+              className={`btn ${hasDisliked ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={handleDislike}
+              aria-pressed={hasDisliked}
+            >
               <FiThumbsDown /> {dislikesCount}
             </button>
             <button className="btn btn-secondary" onClick={handleShare}>
-              <FiShare2 /> {copied ? 'Đã sao chép link!' : 'Chia sẻ'}
+              <FiShare2 /> {copied ? 'Đã sao chép' : 'Chia sẻ'}
             </button>
           </div>
         </div>
 
-        {/* Channel Info */}
-        <Link
-          to={`/channel/${user._id}`}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 'var(--space-md)',
-            padding: 'var(--space-md)',
-            background: 'var(--bg-card)',
-            borderRadius: 'var(--radius-lg)',
-            border: '1px solid var(--border-color)',
-            color: 'var(--text-primary)',
-            marginBottom: 'var(--space-lg)',
-            transition: 'all var(--transition-fast)',
-          }}
-        >
+        {/* Kênh */}
+        <Link to={`/channel/${user._id}`} className="channel-card">
           {user.avatar ? (
-            <img src={user.avatar} alt="" style={{ width: 44, height: 44, borderRadius: '50%' }} />
+            <img src={user.avatar} alt="" className="channel-avatar" />
           ) : (
-            <div style={{
-              width: 44, height: 44, borderRadius: '50%',
-              background: 'var(--accent-gradient)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: '#fff', fontWeight: 700, fontSize: 'var(--font-size-lg)',
-            }}>
+            <div className="channel-avatar channel-avatar-fallback">
               {user.username?.charAt(0).toUpperCase() || <FiUser />}
             </div>
           )}
           <div>
-            <p style={{ fontWeight: 600 }}>{user.displayName || user.username}</p>
-            <p style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)' }}>
-              @{user.username}
-            </p>
+            <p className="channel-name">{user.displayName || user.username}</p>
+            <p className="channel-handle">@{user.username}</p>
           </div>
         </Link>
 
-        {/* Description */}
+        {/* Mô tả */}
         {video.description && (
-          <div style={{
-            padding: 'var(--space-md)',
-            background: 'var(--bg-card)',
-            borderRadius: 'var(--radius-lg)',
-            border: '1px solid var(--border-color)',
-            fontSize: 'var(--font-size-sm)',
-            color: 'var(--text-secondary)',
-            whiteSpace: 'pre-wrap',
-            lineHeight: 1.7,
-            marginBottom: 'var(--space-lg)',
-          }}>
-            {video.description}
-          </div>
+          <div className="watch-description">{video.description}</div>
         )}
 
-        {/* Comments Section */}
-        <div style={{ marginTop: 'var(--space-2xl)', paddingTop: 'var(--space-lg)', borderTop: '1px solid var(--border-color)' }}>
-          <h3 style={{ fontSize: 'var(--font-size-lg)', fontWeight: 600, marginBottom: 'var(--space-lg)', display: 'flex', alignItems: 'center', gap: 8 }}>
+        {/* Bình luận */}
+        <section className="comments-section">
+          <h3 className="comments-heading">
             <FiMessageSquare /> Bình luận ({comments.length})
           </h3>
 
-          {/* Add Comment Form */}
           {isAuthenticated ? (
-            <form onSubmit={handleAddComment} style={{ marginBottom: 'var(--space-xl)', display: 'flex', gap: 12 }}>
+            <form onSubmit={handleAddComment} className="comment-form">
               <input
                 type="text"
                 className="form-control"
-                placeholder="Viết bình luận của bạn..."
+                placeholder="Viết bình luận của bạn…"
                 value={newComment}
                 onChange={(e) => setNewComment(e.target.value)}
-                style={{ flex: 1 }}
+                aria-label="Nội dung bình luận"
               />
               <button type="submit" className="btn btn-primary" disabled={postingComment}>
-                {postingComment ? 'Đang gửi...' : 'Gửi'}
+                {postingComment ? 'Đang gửi…' : 'Gửi'}
               </button>
             </form>
           ) : (
-            <p style={{ color: 'var(--text-muted)', marginBottom: 'var(--space-lg)' }}>
-              <Link to="/login" style={{ color: 'var(--primary-color)' }}>Đăng nhập</Link> để viết bình luận.
+            <p className="comment-login-hint">
+              <Link to="/login">Đăng nhập</Link> để viết bình luận.
             </p>
           )}
 
-          {/* Comment List */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div className="comment-list">
             {comments.map((c) => (
-              <div key={c._id} style={{ display: 'flex', gap: 12, padding: 12, background: 'var(--bg-card)', borderRadius: 8 }}>
-                <div style={{
-                  width: 36, height: 36, borderRadius: '50%', background: 'var(--accent-gradient)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 600,
-                }}>
+              <article key={c._id} className="comment-item">
+                <div className="comment-avatar">
                   {c.user?.username?.charAt(0).toUpperCase() || 'U'}
                 </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontWeight: 600, fontSize: 14 }}>{c.user?.displayName || c.user?.username}</span>
-                    {currentUser && (currentUser._id === c.user?._id || currentUser._id === user._id) && (
-                      <button onClick={() => handleDeleteComment(c._id)} style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer' }}>
-                        <FiTrash2 size={14} />
-                      </button>
-                    )}
+                <div className="comment-body">
+                  <div className="comment-head">
+                    <span className="comment-author">
+                      {c.user?.displayName || c.user?.username}
+                    </span>
+                    {currentUser &&
+                      (currentUser._id === c.user?._id || currentUser._id === user._id) && (
+                        <button
+                          type="button"
+                          className="comment-delete"
+                          onClick={() => handleDeleteComment(c._id)}
+                          title="Xoá bình luận"
+                          aria-label="Xoá bình luận"
+                        >
+                          <FiTrash2 size={14} />
+                        </button>
+                      )}
                   </div>
-                  <p style={{ fontSize: 14, color: 'var(--text-secondary)', marginTop: 4 }}>{c.content}</p>
+                  <p className="comment-text">{c.content}</p>
                 </div>
-              </div>
+              </article>
             ))}
           </div>
-        </div>
+        </section>
       </div>
     </div>
   );
