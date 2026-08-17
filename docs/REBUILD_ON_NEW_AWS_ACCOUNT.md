@@ -6,15 +6,24 @@
 
 ## Điều quan trọng nhất phải biết trước
 
-**Tên S3 bucket là duy nhất trên toàn cầu, không chỉ trong một tài khoản.** Các
-bucket của tài khoản cũ (`dacntt-terraform-state`, `dacntt-dev-raw-bucket`,
-`dacntt-dev-processed-bucket`, `zelostech.site`) **vẫn đang giữ chỗ tên đó** cho
-tới khi AWS thực sự xoá dữ liệu của tài khoản đã đóng — thường mất tới khoảng 90
-ngày. Nếu dùng lại nguyên tên cũ, `terraform apply` sẽ báo
+**Tên S3 bucket là duy nhất trên toàn cầu, không chỉ trong một tài khoản.** Nếu
+bucket cũ vẫn tồn tại thì `terraform apply` trên tài khoản mới sẽ báo
 `BucketAlreadyExists` và dừng.
 
-→ **Bắt buộc đổi tiền tố tên** khi dựng lại. Cách gọn nhất là đổi `project_name`,
-vì hầu hết tên bucket đều sinh ra từ biến này.
+**Ngày 2026-08-18 đã chủ động xoá toàn bộ bucket của tài khoản cũ** (xem phần
+"Hiện trạng đã xoá" ở cuối tài liệu), nên các tên sau **đã được giải phóng và
+dùng lại được ngay**:
+
+- `dacntt-terraform-state`
+- `dacntt-dev-raw-bucket`
+- `dacntt-dev-processed-bucket`
+- `zelostech.site`
+
+→ **Không cần đổi `project_name`.** Giữ nguyên `dacntt` để mọi thứ khớp với báo
+cáo, tài liệu và tên tài nguyên đã mô tả trong đồ án.
+
+*(Nếu không xoá trước, sẽ phải chờ AWS purge tài khoản đã đóng — thường tới
+khoảng 90 ngày — rồi mới lấy lại được tên.)*
 
 ## Những gì KHÔNG mất, không phải làm lại
 
@@ -36,30 +45,20 @@ aws configure
 aws sts get-caller-identity   # xác nhận đúng account mới trước khi làm tiếp
 ```
 
-### 2. Đổi tên project để tránh trùng bucket
+### 2. Giữ nguyên tên — không cần sửa gì
 
-Sửa `infrastructure/environments/dev/terraform.tfvars`:
+Vì bucket cũ đã được xoá, tất cả tên đều dùng lại được. **Không sửa**
+`project_name`, `backend.tf`, `bootstrap-terraform-state.sh` hay `frontend.tf`.
 
-```hcl
-project_name = "dacntt2"   # hoặc tên bất kỳ chưa ai dùng
-```
-
-Sửa `infrastructure/environments/dev/backend.tf` (tên hard-code, không đọc biến):
+Chỉ kiểm tra lại `infrastructure/environments/dev/terraform.tfvars` có đủ các
+giá trị nhạy cảm (tệp này không nằm trong git):
 
 ```hcl
-bucket = "dacntt2-terraform-state"
+mongodb_uri = "mongodb+srv://<user>:<pass>@..."   # Atlas cũ vẫn dùng được
+jwt_secret  = "<chuỗi ngẫu nhiên >= 32 ký tự>"
+enable_cloudfront = false   # giữ false cho tới khi chắc chắn tài khoản mới
+                            # được phép tạo CloudFront (tài khoản cũ bị chặn)
 ```
-
-Sửa `scripts/bootstrap-terraform-state.sh`:
-
-```bash
-STATE_BUCKET="dacntt2-terraform-state"
-```
-
-Bucket frontend trong `frontend.tf` đang hard-code là `zelostech.site`. Tên này
-phải trùng tên miền **chỉ khi** dùng S3 static website hosting trực tiếp. Vì hiện
-tại Cloudflare đứng trước làm proxy, có thể đổi thành tên bất kỳ (ví dụ
-`dacntt2-frontend`) rồi trỏ Cloudflare tới endpoint mới — xem bước 6.
 
 ### 3. Tạo backend lưu Terraform state
 
@@ -71,13 +70,26 @@ bash scripts/bootstrap-terraform-state.sh
 
 ```bash
 cd infrastructure/environments/dev
-terraform init -reconfigure    # -reconfigure vì backend đã đổi bucket
+# -reconfigure để Terraform quên bản ghi backend đã cache trong .terraform/ của
+# tài khoản cũ; tên bucket không đổi nhưng tài khoản thì đổi.
+terraform init -reconfigure
 terraform apply
 ```
 
-Nếu tài khoản mới **được phép tạo CloudFront** (tài khoản cũ bị chặn, phải chờ
-xác minh), thì đặt `enable_cloudfront = true` trong `terraform.tfvars` để chạy
-đúng kiến trúc gốc mô tả trong báo cáo, thay cho phương án Cloudflare tạm thời.
+**Về CloudFront:** giữ `enable_cloudfront = false` (mặc định hiện tại) cho lần
+apply đầu tiên. Tài khoản cũ bị AWS chặn tạo CloudFront với lỗi
+`AccessDenied: Your account must be verified before you can add new CloudFront
+resources`, và chưa rõ tài khoản mới có bị chặn tương tự không. Cách kiểm tra rẻ
+nhất là dựng xong phần còn lại trước, rồi thử riêng:
+
+```bash
+terraform apply -target=aws_cloudfront_distribution.frontend
+```
+
+Nếu lệnh trên chạy được thì bật `enable_cloudfront = true` và apply lại để có
+đúng kiến trúc gốc trong báo cáo. Nếu vẫn bị chặn thì tiếp tục dùng Cloudflare
+làm lớp HTTPS tạm thời như hiện nay — hệ thống vẫn chạy đầy đủ, chỉ khác ở lớp
+CDN (xem Chương 6 của báo cáo).
 
 ### 5. Build và đẩy Docker image transcoder
 
@@ -142,3 +154,91 @@ node scripts/measure-transcode.js samples/video-100mb.mp4 verify-rebuild
 3. **Kiểm tra `statusReason` của job Batch khi thất bại**, đừng chỉ nhìn trạng
    thái FAILED. Một lỗi cấu hình từng làm mọi container chết trước khi chạy, và
    nó bị bỏ sót vì lúc đó đang chạy thí nghiệm mà job vốn dĩ được dự kiến sẽ fail.
+
+---
+
+# Hiện trạng đã xoá — bản ghi ngày 2026-08-18
+
+Tài khoản cũ: `881415010110` (đã bị AWS đóng). Toàn bộ tài nguyên được chủ động
+xoá để **giải phóng tên S3 bucket** cho tài khoản mới, thay vì chờ AWS purge.
+
+## Danh sách dịch vụ đã xoá — dùng để đối chiếu khi dựng lại
+
+Cột "Dựng lại bằng" cho biết sau này khôi phục bằng cách nào.
+
+| # | Dịch vụ / Tài nguyên | Tên | Dựng lại bằng |
+|---|---|---|---|
+| 1 | S3 bucket (video gốc) | `dacntt-dev-raw-bucket` | `terraform apply` (module `s3`) |
+| 2 | S3 bucket (HLS đã chuyển mã) | `dacntt-dev-processed-bucket` | `terraform apply` (module `s3`) |
+| 3 | S3 bucket (frontend) | `zelostech.site` | `terraform apply` (`frontend.tf`) |
+| 4 | S3 bucket (Terraform state) | `dacntt-terraform-state` | `scripts/bootstrap-terraform-state.sh` |
+| 5 | DynamoDB (khoá state) | `dacntt-terraform-locks` | `scripts/bootstrap-terraform-state.sh` |
+| 6 | SQS queue chính | `dacntt-dev-transcode-queue` | `terraform apply` (module `sqs`) |
+| 7 | SQS dead-letter queue | `dacntt-dev-transcode-dlq` | `terraform apply` (module `sqs`) |
+| 8 | ECR repository | `dacntt-dev-transcoder` | `terraform apply` (module `ecr`) + `docker push` |
+| 9 | ECR repository (thừa) | `dacntt-transcoder` | **KHÔNG dựng lại** — xem ghi chú (a) |
+| 10 | Batch job queue | `dacntt-dev-transcode-queue` | `terraform apply` (module `batch`) |
+| 11 | Batch job definition | `dacntt-dev-transcoder-job` | `terraform apply` (module `batch`) |
+| 12 | Lambda job submitter | `dacntt-dev-job-submitter` | `terraform apply` (module `lambda`) — xem ghi chú (b) |
+| 13 | EC2 backend API | `i-00e3512648190a36c` | Tạo mới + `scripts/ec2-userdata.sh`, xem bước 7 |
+| 14 | Secrets Manager | `dacntt-dev/mongodb-uri`, `dacntt-dev/jwt-secret` | `terraform apply` (module `secrets`) |
+| 15 | SNS topic | `dacntt-dev-dlq-alert` | `terraform apply` (module `sns`) |
+| 16 | CloudWatch log groups | `/ecs/dacntt-dev/*`, `/aws/batch/job`, `/aws/lambda/*` | Tự tạo lại khi dịch vụ chạy |
+| 17 | CloudWatch dashboard | `dacntt-dev-overview` | `terraform apply` (module `monitoring`) |
+| 18 | IAM roles + policies | 6 role `dacntt-dev-*` | `terraform apply` (module `iam`) |
+| 19 | ACM certificate | `zelostech.site` (us-east-1) | `terraform apply` — chỉ khi bật CloudFront |
+| 20 | S3 bucket cũ (trước Terraform) | `vidshare-raw-bucket`, `vidshare-processed-bucket` | **KHÔNG dựng lại** — di sản giai đoạn đầu |
+
+### Kiểm chứng sau khi xoá (chạy lúc 2026-08-18)
+
+```
+S3 buckets          : 0
+SQS queues          : 0
+ECR repos           : 0
+Batch job queues    : 0
+EC2 (chưa terminate): 0
+Secrets             : 0
+SNS topics          : 0
+Log groups          : 0
+DynamoDB tables     : 0
+ACM certificates    : 0
+```
+
+## Hai tài nguyên KHÔNG xoá được (đều miễn phí)
+
+| Tài nguyên | Lý do |
+|---|---|
+| Batch compute environment `dacntt-dev-fargate-ce` | Kẹt ở trạng thái `INVALID`. AWS đã thu hồi quyền `ecs:ListClusters` của chính service role mà Batch dùng để dọn ECS cluster, nên nó không tự xoá được. Đã thử cấp lại quyền tạm thời nhưng không gỡ được. |
+| VPC `dacntt-dev-vpc` + 2 subnet + security group | Bị compute environment ở trên giữ tham chiếu nên không xoá theo được. |
+
+Cả hai **không phát sinh chi phí** (VPC, subnet, security group, IAM role đều
+miễn phí) và sẽ bị AWS xoá khi purge tài khoản. Không ảnh hưởng tới việc dựng lại
+trên tài khoản mới, vì chúng nằm ở tài khoản cũ và không chiếm tên toàn cục.
+
+## Ghi chú
+
+**(a) `dacntt-transcoder` là repository thừa.** Nó sinh ra từ một lỗi cũ: biến
+`ECR_REPOSITORY` trong `.github/workflows/ci-transcoder.yml` từng thiếu tiền tố
+môi trường, khiến CI đẩy image vào `dacntt-transcoder` trong khi Batch lại đọc từ
+`dacntt-dev-transcoder`. Lỗi đã sửa; khi dựng lại **chỉ cần đúng một repository**
+là `dacntt-dev-transcoder`.
+
+**(b) Lambda phải xoá khỏi Terraform state thủ công.** Lúc dọn dẹp, AWS đã chặn
+API Lambda (403 `AccessDeniedException`) trước các dịch vụ khác, khiến
+`terraform destroy` không refresh được state và dừng giữa chừng. Đã gỡ bằng
+`terraform state rm` cho `aws_lambda_function.job_submitter` và
+`aws_lambda_event_source_mapping.sqs_trigger` rồi mới destroy tiếp. Trên tài
+khoản mới không gặp vấn đề này.
+
+**(c) Thứ tự xoá quan trọng.** Bucket `zelostech.site` có `force_destroy = false`
+nên phải xoá sạch object trước khi xoá bucket. Bucket `dacntt-terraform-state`
+bật versioning nên phải xoá cả object version lẫn delete marker (dùng
+`list-object-versions` + `delete-objects`), xoá object thường là chưa đủ.
+
+## Còn nguyên vẹn ngoài AWS — không phải dựng lại
+
+- **MongoDB Atlas** — toàn bộ user, video metadata, comment
+- **Tên miền** `zelostech.site` (Hostinger)
+- **Cloudflare** — DNS, HTTPS, cấu hình proxy
+- **Bản sao lưu cục bộ** `backup-aws/` — Terraform state cũ (tham khảo) và video
+  demo dạng HLS (17 MB)
