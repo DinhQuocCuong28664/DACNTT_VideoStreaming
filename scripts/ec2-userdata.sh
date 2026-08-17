@@ -19,9 +19,49 @@ REPO_URL="https://github.com/DinhQuocCuong28664/DACNTT_VideoStreaming.git"
 # cổng cố định và KHÔNG có cổng 5000, nên nếu để trình duyệt gọi thẳng
 # api.zelostech.site:5000 thì Cloudflare trả lỗi 521. Nginx nhận cổng 80 rồi
 # chuyển tiếp nội bộ sang Node ở cổng 5000.
+# Chờ cloud-init giải phóng khoá dpkg/apt trước khi cài gì.
+#
+# Ubuntu chạy unattended-upgrades và apt của chính cloud-init ngay lúc khởi
+# động. Nếu userdata gọi apt-get vào đúng lúc đó, lệnh chết với
+# "Could not get lock /var/lib/dpkg/lock-frontend" và toàn bộ phần sau của
+# script không chạy — Nginx không được cài, cổng 80 từ chối kết nối, máy chủ
+# trông như treo dù OS hoàn toàn khoẻ. Đây là lỗi đã thực sự xảy ra ngày
+# 2026-08-18 khi dựng lại trên tài khoản AWS mới.
+wait_for_apt() {
+  local i
+  for i in $(seq 1 60); do
+    if ! fuser /var/lib/dpkg/lock-frontend /var/lib/apt/lists/lock \
+         /var/cache/apt/archives/lock >/dev/null 2>&1; then
+      return 0
+    fi
+    echo "apt dang bi khoa boi tien trinh khac, cho 10s (lan $i)..."
+    sleep 10
+  done
+  echo "CANH BAO: van con khoa apt sau 10 phut, van thu tiep tuc."
+}
+
+wait_for_apt
+# DPkg::Lock::Timeout để apt tự chờ thay vì thất bại ngay nếu vẫn còn tranh khoá
+APT_OPTS="-y -o DPkg::Lock::Timeout=600"
+
 curl -fsSL https://deb.nodesource.com/setup_24.x | bash -
-apt-get update -y
-apt-get install -y nodejs git build-essential awscli nginx
+wait_for_apt
+apt-get update $APT_OPTS
+wait_for_apt
+apt-get install $APT_OPTS nodejs git build-essential nginx
+
+# awscli cài riêng: gói này không phải lúc nào cũng có trong repo mặc định của
+# mọi bản Ubuntu, và nếu nó thiếu thì cả dòng apt-get install ở trên sẽ hỏng
+# theo, kéo sập luôn việc cài Nginx.
+wait_for_apt
+apt-get install $APT_OPTS awscli || {
+  echo "awscli khong co trong apt, cai qua bo cai chinh thuc cua AWS"
+  curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /tmp/awscliv2.zip
+  apt-get install $APT_OPTS unzip
+  unzip -q /tmp/awscliv2.zip -d /tmp
+  /tmp/aws/install
+  ln -sf /usr/local/bin/aws /usr/bin/aws
+}
 
 npm install -g pm2
 

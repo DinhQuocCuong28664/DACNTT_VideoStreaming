@@ -208,6 +208,19 @@ resource "aws_iam_role_policy" "ec2_backend_secrets" {
   })
 }
 
+# Cho phép quản trị máy chủ qua AWS Systems Manager (Session Manager) thay vì
+# SSH bằng khoá riêng.
+#
+# Lý do thêm: khi máy chủ backend không phản hồi, cách duy nhất để đọc
+# /var/log/user-data.log là vào được máy. Instance trước đây không gắn key pair
+# nào nên không SSH được, phải phụ thuộc EC2 Instance Connect thao tác tay trên
+# Console. Có SSM thì đọc log và chạy lệnh chẩn đoán được từ dòng lệnh, không
+# cần mở thêm cổng hay quản lý khoá SSH.
+resource "aws_iam_role_policy_attachment" "ec2_backend_ssm" {
+  role       = aws_iam_role.ec2_backend.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
 resource "aws_iam_instance_profile" "ec2_backend" {
   name = "${var.project_name}-ec2-backend-profile"
   role = aws_iam_role.ec2_backend.name
