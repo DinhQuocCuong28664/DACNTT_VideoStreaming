@@ -1,8 +1,19 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { FiEye, FiClock } from 'react-icons/fi';
 import './VideoCard.css';
 
 const VideoCard = ({ video }) => {
+  /**
+   * Ảnh đại diện có thể tồn tại trong cơ sở dữ liệu nhưng không tải được:
+   * tệp bị xoá khỏi kho lưu trữ, đường dẫn trỏ tới bucket cũ, hoặc quyền truy
+   * cập đã đổi. Trước đây chỉ có phương án dự phòng cho trường hợp *thiếu*
+   * thumbnailUrl, nên khi liên kết có mà hỏng, trình duyệt hiển thị biểu tượng
+   * ảnh vỡ kèm nguyên tên tệp — nhìn như trang bị lỗi. Theo dõi sự kiện lỗi để
+   * quay về đúng khối dự phòng vốn đã có.
+   */
+  const [thumbnailFailed, setThumbnailFailed] = useState(false);
+  const showThumbnail = Boolean(video.thumbnailUrl) && !thumbnailFailed;
   const formatViews = (views) => {
     if (views >= 1000000) return `${(views / 1000000).toFixed(1)}M`;
     if (views >= 1000) return `${(views / 1000).toFixed(1)}K`;
@@ -27,8 +38,13 @@ const VideoCard = ({ video }) => {
   return (
     <Link to={`/watch/${video._id}`} className="video-card">
       <div className="video-card-thumbnail">
-        {video.thumbnailUrl ? (
-          <img src={video.thumbnailUrl} alt={video.title} />
+        {showThumbnail ? (
+          <img
+            src={video.thumbnailUrl}
+            alt=""
+            loading="lazy"
+            onError={() => setThumbnailFailed(true)}
+          />
         ) : (
           <div className="thumbnail-placeholder">
             <span>▶</span>

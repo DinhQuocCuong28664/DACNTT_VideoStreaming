@@ -58,7 +58,7 @@
 }
 
 /* ── Tiêu đề khu vực ── */
-.section-header {
+.home-section-header {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
@@ -67,13 +67,13 @@
   flex-wrap: wrap;
 }
 
-.section-title {
+.home-section-title {
   font-size: var(--font-size-2xl);
   font-weight: 700;
   letter-spacing: -0.02em;
 }
 
-.section-count {
+.home-section-count {
   font-size: var(--font-size-sm);
   color: var(--text-muted);
 }

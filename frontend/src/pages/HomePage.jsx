@@ -84,10 +84,10 @@ const HomePage = () => {
         ))}
       </div>
 
-      <div className="section-header">
-        <h2 className="section-title">{sectionTitle}</h2>
+      <div className="home-section-header">
+        <h2 className="home-section-title">{sectionTitle}</h2>
         {!loading && pagination?.total > 0 && (
-          <span className="section-count">{pagination.total} video</span>
+          <span className="home-section-count">{pagination.total} video</span>
         )}
       </div>
 
