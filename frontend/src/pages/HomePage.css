@@ -1,0 +1,178 @@
+/* ── Trang chủ ──────────────────────────────────────────────
+   Tách khỏi thẻ <style> nhúng trong HomePage.jsx. Cách cũ tiêm CSS vào DOM
+   mỗi lần component render, không tận dụng được cache của trình duyệt và
+   lệch với mọi component khác trong dự án vốn dùng tệp .css riêng.
+   ──────────────────────────────────────────────────────────── */
+
+.home-page {
+  padding-top: var(--space-xl);
+  padding-bottom: var(--space-2xl);
+}
+
+/* ── Thanh lọc danh mục ── */
+.category-bar {
+  display: flex;
+  gap: var(--space-sm);
+  overflow-x: auto;
+  padding-bottom: var(--space-sm);
+  margin-bottom: var(--space-lg);
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.category-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.category-pill {
+  padding: 0.5rem 1.1rem;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border-color);
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.category-pill:hover {
+  background: var(--bg-card-hover);
+  border-color: var(--border-hover);
+}
+
+.category-pill.active {
+  background: var(--accent-gradient);
+  color: #ffffff;
+  border-color: transparent;
+  box-shadow: var(--shadow-sm);
+}
+
+/* Bàn phím phải thấy được đang focus ở đâu — trước đây chỉ có :hover nên
+   người dùng điều hướng bằng Tab không biết mình đang ở nút nào. */
+.category-pill:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
+/* ── Tiêu đề khu vực ── */
+.section-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-md);
+  margin-bottom: var(--space-lg);
+  flex-wrap: wrap;
+}
+
+.section-title {
+  font-size: var(--font-size-2xl);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.section-count {
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+}
+
+/* ── Lưới video ── */
+.video-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--space-lg) var(--space-md);
+}
+
+/* ── Trạng thái rỗng ── */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--space-sm);
+  padding: var(--space-2xl) var(--space-lg);
+  border: 1px dashed var(--border-color);
+  border-radius: var(--radius-lg);
+  background: var(--bg-card);
+}
+
+.empty-state-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  margin-bottom: var(--space-xs);
+  border-radius: var(--radius-full);
+  background: var(--bg-tertiary);
+  color: var(--text-muted);
+  font-size: var(--font-size-2xl);
+}
+
+.empty-state-title {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.empty-state-desc {
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+  max-width: 42ch;
+}
+
+.empty-state-action {
+  margin-top: var(--space-md);
+}
+
+/* ── Phân trang ── */
+.pagination {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  margin-top: var(--space-2xl);
+}
+
+.pagination .btn {
+  min-width: 40px;
+}
+
+/* ── Khung xương khi tải ── */
+.skeleton-card-body {
+  display: flex;
+  gap: var(--space-sm);
+  padding: var(--space-sm) 0;
+}
+
+.skeleton-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+}
+
+.skeleton-lines {
+  flex: 1;
+}
+
+.skeleton-line {
+  height: 14px;
+  margin-bottom: 6px;
+  border-radius: 4px;
+}
+
+.skeleton-line.short {
+  height: 12px;
+  width: 60%;
+  margin-bottom: 0;
+}
+
+@media (max-width: 576px) {
+  .video-grid {
+    grid-template-columns: 1fr;
+    gap: var(--space-md);
+  }
+}

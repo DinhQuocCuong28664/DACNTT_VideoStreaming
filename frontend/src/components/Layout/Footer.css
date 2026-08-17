@@ -5,7 +5,9 @@
   background: var(--bg-secondary);
   border-top: 1px solid var(--border-color);
   margin-top: auto;
-  padding: 4rem 1.5rem 2rem;
+  /* Giảm từ 4rem xuống: chân trang trước đây cao gần bằng phần nội dung chính,
+     khiến trang trông nặng đáy khi danh sách video còn ít. */
+  padding: var(--space-2xl) var(--space-lg) var(--space-xl);
   transition: background-color var(--transition-base), border-color var(--transition-base);
 }
 
@@ -16,9 +18,11 @@
 
 .footer-grid {
   display: grid;
-  grid-template-columns: 2fr repeat(3, 1fr);
-  gap: 3rem;
-  margin-bottom: 3rem;
+  /* Ba cột thay vì bốn — cột "dịch vụ AWS" cũ chỉ là văn bản tĩnh nên đã gộp
+     vào phần "Công nghệ sử dụng" dạng thẻ. */
+  grid-template-columns: 2fr 1fr 1.4fr;
+  gap: var(--space-2xl);
+  margin-bottom: var(--space-xl);
 }
 
 .footer-col {
@@ -98,14 +102,31 @@
 }
 
 .footer-links a:hover {
-  color: var(--accent-color);
+  color: var(--accent-primary);
   transform: translateX(4px);
 }
 
-.footer-static-item {
-  font-size: 0.875rem;
-  color: var(--text-muted);
-  display: inline-block;
+/* Thẻ công nghệ — thông tin, không phải liên kết, nên không có trạng thái
+   hover hay con trỏ bấm được. Trình bày đúng bản chất để người xem không
+   tưởng nhầm là bấm được rồi thất vọng. */
+.footer-chips {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs) var(--space-sm);
+}
+
+.footer-chip {
+  padding: 0.25rem 0.6rem;
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  white-space: nowrap;
 }
 
 .footer-divider {
@@ -138,12 +159,6 @@
   color: var(--text-primary);
 }
 
-.footer-socials {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
 .social-btn {
   width: 40px;
   height: 40px;
@@ -168,12 +183,17 @@
 /* Responsive Footer */
 @media (max-width: 992px) {
   .app-footer {
-    padding: 3rem 1.5rem 2rem;
+    padding: var(--space-xl) var(--space-lg) var(--space-lg);
   }
 
   .footer-grid {
+    /* Khối thương hiệu chiếm trọn hàng đầu, hai cột còn lại chia đôi bên dưới */
     grid-template-columns: 1fr 1fr;
-    gap: 2.5rem;
+    gap: var(--space-xl);
+  }
+
+  .footer-brand {
+    grid-column: 1 / -1;
   }
 }
 
