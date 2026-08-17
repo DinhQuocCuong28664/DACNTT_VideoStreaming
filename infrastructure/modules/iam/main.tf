@@ -208,6 +208,49 @@ resource "aws_iam_role_policy" "ec2_backend_secrets" {
   })
 }
 
+# Quyền S3 cho Backend API.
+#
+# Backend không tự tải tệp lên: nó ký sẵn pre-signed URL để trình duyệt PUT
+# thẳng lên S3 (kiến trúc mô tả ở Mục 5 của đề tài). Nhưng để ký được URL,
+# tiến trình vẫn phải có quyền s3:PutObject trên đúng đối tượng đó — chữ ký chỉ
+# hợp lệ trong phạm vi quyền của thực thể đã ký. Thiếu policy này, mọi yêu cầu
+# initiate-upload trả về lỗi quyền dù mã nguồn hoàn toàn đúng.
+#
+# DeleteObject cần cho chức năng xoá video (xoá cả tệp gốc lẫn các tệp HLS đã
+# chuyển mã); ListBucket cần để liệt kê rồi xoá theo tiền tố thư mục.
+resource "aws_iam_role_policy" "ec2_backend_s3" {
+  name = "${var.project_name}-ec2-backend-s3-policy"
+  role = aws_iam_role.ec2_backend.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:PutObject",
+          "s3:GetObject",
+          "s3:DeleteObject"
+        ]
+        Resource = [
+          "${var.raw_bucket_arn}/*",
+          "${var.processed_bucket_arn}/*"
+        ]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:ListBucket"
+        ]
+        Resource = [
+          var.raw_bucket_arn,
+          var.processed_bucket_arn
+        ]
+      }
+    ]
+  })
+}
+
 # Cho phép quản trị máy chủ qua AWS Systems Manager (Session Manager) thay vì
 # SSH bằng khoá riêng.
 #
