@@ -300,3 +300,82 @@ việc phát video hoạt động mà không cần mở public bất cứ thứ 
       bản ghi `zelostech.site` trên Cloudflare sang tên miền CloudFront
 - [ ] Cập nhật GitHub Secrets (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`,
       `EC2_HOST`) sang tài khoản/máy chủ mới để CI/CD chạy lại được
+
+---
+
+# Bật/tắt máy chủ để tiết kiệm chi phí
+
+Hệ thống không cần chạy 24/7. Chỉ **máy chủ Backend API (EC2)** mới phát sinh chi
+phí theo giờ; mọi thành phần còn lại (S3, SQS, Lambda, Batch/Fargate) đều tính
+theo lượt dùng nên tắt máy không tiết kiệm thêm được gì ở đó.
+
+## Chi phí ước tính (ap-southeast-1)
+
+| Khoản | Chạy 24/7 | Khi đã tắt |
+|---|---|---|
+| EC2 `t3.micro` | ~$9.3/tháng | **$0** |
+| Địa chỉ IPv4 công khai | ~$3.6/tháng | **$0** (bị thu hồi) |
+| Ổ đĩa EBS 20 GB gp3 | ~$1.9/tháng | ~$1.9/tháng — **vẫn tính** |
+| Secrets Manager (2 secret) | $0.8/tháng | $0.8/tháng |
+| ECR (ảnh Docker ~0.5 GB) | ~$0.05/tháng | ~$0.05/tháng |
+
+Tắt máy tiết kiệm khoảng **$13/tháng**. Ổ đĩa vẫn bị tính vì dữ liệu được giữ
+lại — chỉ khi `terraform destroy` mới hết hẳn, nhưng khi đó phải dựng lại từ đầu.
+
+## Tắt máy
+
+```bash
+aws ec2 stop-instances --instance-ids <INSTANCE_ID>
+```
+
+Không cần chuẩn bị gì trước. pm2 đã lưu danh sách tiến trình (`pm2 save`) nên
+Backend API tự khởi động lại khi máy bật lên.
+
+## Bật lại — BẮT BUỘC cập nhật DNS
+
+Máy dùng **IP tự động cấp**, không phải Elastic IP. AWS thu hồi IP khi tắt và cấp
+IP **khác** khi bật lại, nên bản ghi DNS cũ sẽ trỏ vào hư không và toàn bộ API
+ngừng hoạt động dù máy chạy bình thường.
+
+```bash
+# 1. Bật máy
+aws ec2 start-instances --instance-ids <INSTANCE_ID>
+
+# 2. Lấy IP mới (chờ vài chục giây cho máy khởi động xong)
+aws ec2 describe-instances --instance-ids <INSTANCE_ID> \
+  --query "Reservations[0].Instances[0].PublicIpAddress" --output text
+
+# 3. Kiểm tra API đã sống chưa
+curl -s -o /dev/null -w "%{http_code}\n" http://<IP_MOI>/
+```
+
+**Chỉ cần sửa đúng một bản ghi trên Cloudflare:**
+
+| Bản ghi | Sửa? | Trỏ tới |
+|---|---|---|
+| `api` (A) | ✅ **Có** | IP mới của EC2 |
+| `zelostech.site` (CNAME) | ❌ Không | Endpoint S3 website — không liên quan EC2 |
+| `www` (CNAME) | ❌ Không | `zelostech.site` |
+| `_272aca68…` (CNAME) | ❌ Không | Xác thực chứng chỉ ACM — **đừng xoá**, cần cho CloudFront sau này |
+
+Giữ nguyên Proxy (đám mây cam) và SSL/TLS ở chế độ **Flexible**.
+
+## Muốn khỏi phải sửa DNS mỗi lần?
+
+Hai hướng, mỗi hướng một đánh đổi:
+
+- **Cấp Elastic IP** — IP cố định, không phải đụng DNS nữa. Nhưng AWS tính phí
+  Elastic IP kể cả khi máy đang tắt (~$3.6/tháng), nên chỉ còn tiết kiệm ~$9
+  thay vì ~$13.
+- **Script tự cập nhật DNS** — dùng Cloudflare API để tự sửa bản ghi `api` sau
+  khi máy khởi động. Cần một API token của Cloudflare có quyền sửa DNS của vùng
+  `zelostech.site`.
+
+## Khi máy tắt thì cái gì còn chạy?
+
+| Thành phần | Trạng thái |
+|---|---|
+| Giao diện web (S3 + Cloudflare) | ✅ Vẫn tải được |
+| S3, SQS, Lambda, Batch/Fargate | ✅ Nguyên vẹn |
+| MongoDB Atlas | ✅ Không liên quan AWS |
+| Đăng nhập, danh sách video, tải lên | ❌ Ngừng — đều đi qua Backend API |
