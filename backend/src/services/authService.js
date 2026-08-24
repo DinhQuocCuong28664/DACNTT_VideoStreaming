@@ -101,7 +101,7 @@ const buildUniqueUsername = async (base) => {
  * gộp 2 tài khoản khiến kẻ tấn công có sẵn mật khẩu để chiếm tài khoản đó.
  * Xem docs/LITERATURE_REVIEW.md mục "Xác thực & Account Linking".
  */
-const loginWithGoogle = async (idToken) => {
+const verifyGoogleIdToken = async (idToken) => {
   let payload;
   try {
     const ticket = await googleClient.verifyIdToken({
@@ -120,6 +120,12 @@ const loginWithGoogle = async (idToken) => {
     error.statusCode = 401;
     throw error;
   }
+
+  return payload;
+};
+
+const loginWithGoogle = async (idToken) => {
+  const payload = await verifyGoogleIdToken(idToken);
 
   // Tài khoản Google đã từng đăng nhập trước đây — nhận diện qua googleId.
   const existingGoogleUser = await User.findOne({ googleId: payload.sub });
@@ -150,6 +156,51 @@ const loginWithGoogle = async (idToken) => {
   });
 
   return { user, token: generateToken(user._id) };
+};
+
+/**
+ * Liên kết Google vào tài khoản đang đăng nhập (gọi từ Settings, sau khi
+ * người dùng đã tự chứng minh quyền sở hữu tài khoản bằng JWT — khác hẳn
+ * loginWithGoogle vốn cố tình từ chối tự gộp khi chưa xác thực danh tính).
+ *
+ * Chỉ cho liên kết nếu email Google trùng đúng email tài khoản hiện tại —
+ * không cho gắn một Google account bất kỳ vào tài khoản đang dùng, tránh mở
+ * rộng phạm vi thành "nhiều danh tính bất kỳ" ngoài đúng use-case cần giải
+ * quyết (email đã có tài khoản local, muốn thêm Google làm cách đăng nhập
+ * thay thế cho CHÍNH email đó).
+ */
+const linkGoogleAccount = async (userId, idToken) => {
+  const payload = await verifyGoogleIdToken(idToken);
+
+  const currentUser = await User.findById(userId);
+  if (!currentUser) {
+    const error = new Error('User not found');
+    error.statusCode = 404;
+    throw error;
+  }
+
+  if (payload.email !== currentUser.email) {
+    const error = new Error(
+      'This Google account email does not match your account email.'
+    );
+    error.statusCode = 409;
+    error.code = 'EMAIL_MISMATCH';
+    throw error;
+  }
+
+  // googleId đã gắn cho MỘT user khác — không cho gắn thêm vào user hiện tại.
+  const googleIdOwner = await User.findOne({ googleId: payload.sub });
+  if (googleIdOwner && String(googleIdOwner._id) !== String(currentUser._id)) {
+    const error = new Error('This Google account is already linked to another user.');
+    error.statusCode = 409;
+    error.code = 'GOOGLE_ALREADY_LINKED';
+    throw error;
+  }
+
+  currentUser.googleId = payload.sub;
+  await currentUser.save();
+
+  return { user: currentUser };
 };
 
 /**
@@ -237,6 +288,7 @@ module.exports = {
   register,
   login,
   loginWithGoogle,
+  linkGoogleAccount,
   forgotPassword,
   resetPassword,
   changePassword,

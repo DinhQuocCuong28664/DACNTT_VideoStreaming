@@ -10,6 +10,9 @@ export const authApi = {
   googleLogin: (credential) =>
     axiosClient.post('/auth/google', { credential }),
 
+  linkGoogle: (credential) =>
+    axiosClient.post('/auth/link-google', { credential }),
+
   getMe: () => axiosClient.get('/auth/me'),
 
   forgotPassword: (email) =>

@@ -5,7 +5,7 @@ import GoogleSignInButton from './GoogleSignInButton';
 import './AuthForm.css';
 
 const RegisterForm = () => {
-  const { register } = useAuth();
+  const { register, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     username: '',
@@ -122,7 +122,13 @@ const RegisterForm = () => {
         </form>
 
         <div className="auth-divider"><span>hoặc</span></div>
-        <GoogleSignInButton onError={setError} />
+        <GoogleSignInButton
+          onCredential={async (credential) => {
+            await loginWithGoogle(credential);
+            navigate('/');
+          }}
+          onError={setError}
+        />
 
         <p className="auth-footer">
           Đã có tài khoản? <Link to="/login">Đăng nhập</Link>

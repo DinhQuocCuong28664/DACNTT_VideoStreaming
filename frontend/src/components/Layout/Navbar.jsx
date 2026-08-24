@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/useAuth';
 import { useTheme } from '../../context/useTheme';
-import { FiUpload, FiSearch, FiLogOut, FiVideo, FiMoon, FiSun, FiInfo, FiMenu, FiX } from 'react-icons/fi';
+import { FiUpload, FiSearch, FiLogOut, FiVideo, FiMoon, FiSun, FiInfo, FiMenu, FiX, FiSettings } from 'react-icons/fi';
 import './Navbar.css';
 
 const Navbar = () => {
@@ -152,6 +152,13 @@ const Navbar = () => {
                       >
                         <FiUpload /> Upload video
                       </Link>
+                      <Link
+                        to="/settings"
+                        className="dropdown-item"
+                        onClick={() => setShowDropdown(false)}
+                      >
+                        <FiSettings /> Cài đặt
+                      </Link>
                       <div className="dropdown-divider" />
                       <button className="dropdown-item" onClick={toggleTheme}>
                         {theme === 'dark' ? <FiSun /> : <FiMoon />}
@@ -248,6 +255,9 @@ const Navbar = () => {
                     </Link>
                     <Link to="/upload" className="mobile-nav-item" onClick={() => setShowMobileDrawer(false)}>
                       <FiUpload /> Upload video
+                    </Link>
+                    <Link to="/settings" className="mobile-nav-item" onClick={() => setShowMobileDrawer(false)}>
+                      <FiSettings /> Cài đặt
                     </Link>
                   </>
                 ) : (

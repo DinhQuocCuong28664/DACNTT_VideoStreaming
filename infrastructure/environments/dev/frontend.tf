@@ -30,6 +30,22 @@ resource "aws_s3_bucket_website_configuration" "frontend" {
   }
 }
 
+# CORS cho việc tải ảnh đại diện thẳng từ trình duyệt (Pre-signed PUT URL) —
+# bucket này vốn chỉ phục vụ GET (host static site), giờ tái dùng thêm cho
+# avatar nên cần mở PUT. Không mở "*" cho allowed_origins, giữ đúng danh sách
+# origin đã dùng cho 2 bucket video (raw/processed) để nhất quán.
+resource "aws_s3_bucket_cors_configuration" "frontend" {
+  bucket = aws_s3_bucket.frontend.id
+
+  cors_rule {
+    allowed_headers = ["*"]
+    allowed_methods = ["PUT"]
+    allowed_origins = var.cors_allowed_origins
+    expose_headers  = ["ETag"]
+    max_age_seconds = 3000
+  }
+}
+
 resource "aws_s3_bucket_public_access_block" "frontend" {
   bucket = aws_s3_bucket.frontend.id
 

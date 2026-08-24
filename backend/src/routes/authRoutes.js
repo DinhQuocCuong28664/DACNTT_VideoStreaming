@@ -7,6 +7,7 @@ const {
   registerUser,
   loginUser,
   googleAuth,
+  linkGoogle,
   getMe,
   forgotPassword,
   resetPassword,
@@ -23,5 +24,6 @@ router.post('/reset-password/:token', authLimiter, validateRequest(['password'])
 // Protected routes (require JWT)
 router.get('/me', auth, getMe);
 router.put('/change-password', auth, validateRequest(['currentPassword', 'newPassword']), changePassword);
+router.post('/link-google', auth, validateRequest(['credential']), linkGoogle);
 
 module.exports = router;

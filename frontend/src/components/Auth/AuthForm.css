@@ -170,6 +170,11 @@
 .google-signin-button {
   display: flex;
   justify-content: center;
+  /* Google Identity Services chỉ cho chọn vài shape cố định, không có shape
+     nào khớp đúng --radius-md (10px) mà input/nút chính đang dùng — crop
+     bằng overflow:hidden để ép đúng bo góc, không phụ thuộc Google vẽ gì. */
+  border-radius: var(--radius-md);
+  overflow: hidden;
 }
 
 .auth-footer {
