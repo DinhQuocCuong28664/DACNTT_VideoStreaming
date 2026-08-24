@@ -48,6 +48,27 @@ const loginUser = async (req, res, next) => {
 };
 
 /**
+ * @route   POST /api/auth/google
+ * @desc    Login or register via Google Sign-In (Google Identity Services)
+ * @access  Public
+ */
+const googleAuth = async (req, res, next) => {
+  try {
+    const { credential } = req.body;
+
+    const { user, token } = await authService.loginWithGoogle(credential);
+
+    res.status(200).json({
+      success: true,
+      message: 'Google login successful',
+      data: { user, token },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
  * @route   GET /api/auth/me
  * @desc    Get current logged-in user profile
  * @access  Private
@@ -155,6 +176,7 @@ const changePassword = async (req, res, next) => {
 module.exports = {
   registerUser,
   loginUser,
+  googleAuth,
   getMe,
   forgotPassword,
   resetPassword,

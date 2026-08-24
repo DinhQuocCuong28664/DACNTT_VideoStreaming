@@ -97,6 +97,37 @@
   gap: var(--space-xs);
 }
 
+/* .input / .label chỉ dùng trong các form Auth (Login/Register/Forgot/Reset) —
+   trước đây các class này chưa từng được định nghĩa ở đâu cả, nên input rơi về
+   style mặc định của trình duyệt (viền vuông, không nền, không focus ring). */
+.label {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.input {
+  width: 100%;
+  padding: 11px 14px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: var(--font-size-base);
+  font-family: inherit;
+  outline: none;
+  transition: all var(--transition-fast);
+}
+
+.input:focus {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.12);
+}
+
+.input::placeholder {
+  color: var(--text-muted);
+}
+
 .auth-error {
   padding: 10px 14px;
   background: rgba(255, 107, 107, 0.1);
@@ -117,6 +148,28 @@
 .auth-form .btn-primary:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin: var(--space-lg) 0;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border-color);
+}
+
+.google-signin-button {
+  display: flex;
+  justify-content: center;
 }
 
 .auth-footer {

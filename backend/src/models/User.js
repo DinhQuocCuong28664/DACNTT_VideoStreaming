@@ -22,9 +22,22 @@ const userSchema = new mongoose.Schema(
     },
     password: {
       type: String,
-      required: [true, 'Password is required'],
+      // Tài khoản đăng nhập qua Google không có mật khẩu cục bộ.
+      required: [
+        function () {
+          return !this.googleId;
+        },
+        'Password is required',
+      ],
       minlength: [6, 'Password must be at least 6 characters'],
       select: false, // Do not return password by default in queries
+    },
+    // ID định danh (sub claim) từ Google ID token — dùng để nhận diện tài
+    // khoản đăng nhập qua Google mà không phụ thuộc vào email.
+    googleId: {
+      type: String,
+      unique: true,
+      sparse: true, // cho phép nhiều user có googleId = null/undefined
     },
     displayName: {
       type: String,

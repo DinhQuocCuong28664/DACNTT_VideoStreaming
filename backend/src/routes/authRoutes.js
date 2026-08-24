@@ -6,6 +6,7 @@ const { authLimiter } = require('../middleware/rateLimiter');
 const {
   registerUser,
   loginUser,
+  googleAuth,
   getMe,
   forgotPassword,
   resetPassword,
@@ -15,6 +16,7 @@ const {
 // Public routes — áp dụng rate limit nghiêm ngặt để chống brute-force
 router.post('/register', authLimiter, validateRequest(['username', 'email', 'password']), validateEmail, registerUser);
 router.post('/login', authLimiter, validateRequest(['email', 'password']), validateEmail, loginUser);
+router.post('/google', authLimiter, validateRequest(['credential']), googleAuth);
 router.post('/forgot-password', authLimiter, validateRequest(['email']), validateEmail, forgotPassword);
 router.post('/reset-password/:token', authLimiter, validateRequest(['password']), resetPassword);
 

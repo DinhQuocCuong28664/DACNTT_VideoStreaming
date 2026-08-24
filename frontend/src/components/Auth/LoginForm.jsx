@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/useAuth';
+import GoogleSignInButton from './GoogleSignInButton';
 import './AuthForm.css';
 
 const LoginForm = () => {
@@ -81,6 +82,9 @@ const LoginForm = () => {
             {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
           </button>
         </form>
+
+        <div className="auth-divider"><span>hoặc</span></div>
+        <GoogleSignInButton onError={setError} />
 
         <p className="auth-footer">
           Chưa có tài khoản? <Link to="/register">Đăng ký ngay</Link>
