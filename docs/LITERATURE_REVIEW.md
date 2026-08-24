@@ -2,7 +2,8 @@
 
 > Tài liệu nền cho Chương 2 (Cơ sở lý thuyết & Công trình liên quan) và Chương 6 (Hạn chế & Hướng phát triển) của Đồ án
 > **Xây dựng nền tảng chia sẻ video trực tuyến với hệ thống chuyển mã HLS tự động trên kiến trúc Serverless Container và Event-Driven**
-> Cập nhật: 10/08/2026 — biên soạn theo chuẩn phân loại nguồn của `docs/RESEARCH_REFERENCES.md` (đồ án tham chiếu)
+> Cập nhật: 22/08/2026 — bổ sung mục L (Google Sign-In & Account Linking) và liên kết truy cập cho toàn bộ trích dẫn
+> Biên soạn theo chuẩn phân loại nguồn của `docs/RESEARCH_REFERENCES.md` (đồ án tham chiếu)
 
 ---
 
@@ -15,6 +16,8 @@
 | 🔴 **Tier 3** | Blog kỹ thuật, tài liệu vendor (kể cả blog Netflix) | ❌ Không trích dẫn như "nghiên cứu"; chỉ dùng minh chứng thực tiễn công nghiệp |
 
 > **Lưu ý:** Toàn bộ nguồn 🟢 dưới đây đã được xác minh trực tiếp (DOI, trang hội nghị/tạp chí chính thức). Các mục ghi "chưa xác minh đầy đủ" là do agent nghiên cứu không lấy được đủ metadata (tên tác giả/DOI) qua các nguồn tra cứu khả dụng — **không trích dẫn cho tới khi tự kiểm tra lại trực tiếp**.
+
+> **Xác minh liên kết (2026-08-22):** Mọi trích dẫn trong tài liệu này đã được bổ sung liên kết truy cập trực tiếp. Toàn bộ **22 DOI** đã được đối chiếu tự động với **Crossref API** — cả 22 đều phân giải thành công và tiêu đề/năm trả về khớp với thông tin ghi ở đây. Các nguồn không có DOI (kỷ yếu USENIX, sách, arXiv, blog vendor) dùng liên kết tới trang chính thức của hội nghị/nhà xuất bản/tác giả, đã kiểm tra thủ công. Định dạng `https://doi.org/<DOI>` được dùng thay vì URL riêng của từng nhà xuất bản vì đây là bộ phân giải chính thức, không phụ thuộc việc nhà xuất bản đổi cấu trúc website.
 
 ---
 
@@ -31,6 +34,7 @@
 - [I. Công trình liên quan trực tiếp (Related Work)](#i-công-trình-liên-quan-trực-tiếp)
 - [J. Khoảng trống trong thiết kế hiện tại](#j-khoảng-trống-trong-thiết-kế-hiện-tại) ⭐
 - [K. Đề xuất đóng góp khoa học](#k-đề-xuất-đóng-góp-khoa-học)
+- [L. Xác thực người dùng: Google Sign-In & Account Linking](#l-xác-thực-người-dùng-google-sign-in--account-linking)
 
 ---
 
@@ -67,7 +71,7 @@
 
 ### A.4 — Review bối cảnh, xác định khoảng trống nghiên cứu 🟢
 
-**"Cloud media video encoding: review and challenges."** **Multimedia Tools and Applications (Springer), 2024.** DOI: `10.1007/s11042-024-18763-2`
+**Moina-Rivera, W., Garcia-Pineda, M., Gutiérrez-Aguado, J., Alcaraz-Calero, J.M. (2024).** *Cloud media video encoding: review and challenges.* **Multimedia Tools and Applications (Springer), 83(34), 81231-81278.** DOI: `10.1007/s11042-024-18763-2`
 🔗 https://link.springer.com/article/10.1007/s11042-024-18763-2
 
 **Kết luận cốt lõi:** Chưa có review nào đi sâu chi tiết kỹ thuật encoding/transcoding trong bối cảnh cloud — nêu cold-start latency, vendor lock-in, execution constraints là thách thức chính.
@@ -87,6 +91,7 @@
 🔗 https://doi.org/10.1186/1687-6180-2014-145
 
 **Chen, C.-Y., Cheng, S.-C. et al. (2011).** *Task-based parallel H.264 video encoding for explicit communication architectures.* **Proc. IEEE SAMOS.** DOI: `10.1109/SAMOS.2011.6045464`
+🔗 https://doi.org/10.1109/SAMOS.2011.6045464
 
 **Kết luận cốt lõi:** Chen et al. (2011) đo speedup **4.7×-8.6×** trên 6 lõi SPE (kiến trúc Cell) cho bộ mã hoá task-based c264. Sankaraiah et al. (2014) đo speedup **1.97×/3.96×/7.71×** với 2/4/8 luồng cho thiết kế song song mức macroblock riêng của họ. Cả hai đều cho thấy chung một quy luật: speedup bão hoà dần theo số luồng do phần tuần tự (entropy coding, rate control) không song song hoá được — đúng định luật Amdahl, dù con số cụ thể khác nhau do khác kiến trúc phần cứng và thiết kế song song hoá.
 
@@ -95,6 +100,7 @@
 ### B.2 — Chunk-based parallel transcoding: kỹ thuật Netflix Cosmos, có cơ sở học thuật 🟢
 
 **Zakerinasab, M.R., Wang, M. (2015).** *Does chunk size matter in distributed video transcoding?* **IEEE IWQoS 2015.** DOI: `10.1109/IWQoS.2015.7404710`
+🔗 https://doi.org/10.1109/IWQoS.2015.7404710
 
 **Kết luận cốt lõi:** Chunk lớn → nén tốt hơn nhưng chậm hơn; chunk nhỏ → transcode nhanh hơn (song song tốt hơn) nhưng chất lượng nén giảm do mất ngữ cảnh rate-control liên đoạn và tăng I-frame ép buộc tại biên chunk (**boundary effect**).
 
@@ -105,8 +111,10 @@
 ### B.3 — Scale ngang (nhiều container) bổ sung cho scale dọc (nhiều vCPU) 🟢
 
 **Gutiérrez-Aguado, J., Peña-Ortiz, R., Garcia-Pineda, M., Claver, J.M. (2020).** *A Cloud-Based Distributed Architecture to Accelerate Video Encoders.* **Applied Sciences (MDPI), 10(15), 5070.** DOI: `10.3390/app10155070`
+🔗 https://doi.org/10.3390/app10155070
 
 **Gutiérrez-Aguado, J. et al. (2020).** *Cloud-based elastic architecture for distributed video encoding: Evaluating H.265, VP9, and AV1.* **Journal of Network and Computer Applications (Elsevier), 176.** DOI: `10.1016/j.jnca.2020.102782`
+🔗 https://doi.org/10.1016/j.jnca.2020.102782
 
 **Kết luận cốt lõi:** Kiến trúc chunk-based dùng elastic worker pool đạt speedup gần lý tưởng (**efficiency &gt;80%**) đến 9 worker song song, sau đó giảm dần (≥70% ở 12 worker, ≥60% ở 15 worker) — thể hiện điểm bão hoà Amdahl khi scale **ngang** qua nhiều container, khác với scale **dọc** (tăng vCPU/container) mà đồ án đo. Chất lượng nén khi chunk-split gần tương đương encode nguyên khối, tổng thời gian giảm **&gt;90%**.
 
@@ -115,10 +123,12 @@
 ### B.4 — GPU vs CPU: định lượng hướng phát triển 🟢 ⭐
 
 **Salcedo-Navarro, A., Peña-Ortiz, R., Claver, J.M., Garcia-Pineda, M. (2025).** *Towards GPU-enabled serverless cloud edge platforms for accelerating HEVC video coding.* **Cluster Computing, 28, Article 68.** DOI: `10.1007/s10586-024-04692-0`
+🔗 https://doi.org/10.1007/s10586-024-04692-0
 
 **Kết luận cốt lõi (số liệu quan trọng nhất tìm được):** So sánh `hevc_nvenc` (GPU) với `libx265` (CPU-only) trên nền tảng serverless Knative. GPU nhanh hơn CPU **8.33 lần**; trong kịch bản **multi-resolution encoding** (mã hoá đồng thời nhiều độ phân giải cho HAS — **gần giống hệt pipeline 360p/720p/1080p của đồ án**), GPU giảm thời gian trung bình mỗi segment tới **12.43 lần**.
 
 **Nghiên cứu bổ trợ:** *"UHD Video Encoding in CPU Versus GPU: Quality and Performance Trade-Offs"*, **IEEE Access, 2025**, DOI: `10.1109/ACCESS.2025.3553634` — CPU cần trung bình **hơn 20% bitrate cao hơn** GPU để đạt cùng chất lượng (PSNR/VMAF).
+🔗 https://doi.org/10.1109/ACCESS.2025.3553634
 
 **→ Ứng dụng:** Nguồn định lượng mạnh nhất cho Chương 6 Hướng phát triển. So với speedup 4.1-5.5× đồ án đạt được chỉ bằng tăng vCPU CPU-only, GPU có tiềm năng nhanh hơn **12.43×** cho đúng use-case multi-resolution HLS — nhưng đánh đổi bằng ~20% bitrate cao hơn ở cùng chất lượng (ảnh hưởng chi phí CloudFront/S3) và Fargate hiện không hỗ trợ GPU (cần chuyển sang EC2/ECS với instance G4dn/G5, thay đổi kiến trúc serverless container).
 
@@ -128,6 +138,7 @@
 🔗 https://www.usenix.org/conference/nsdi17/technical-sessions/presentation/fouladi
 
 **Ao, L., Izhikevich, L., Voelker, G.M., Porter, G. (2018).** *Sprocket: A Serverless Video Processing Framework.* **ACM SoCC '18.** DOI: `10.1145/3267809.3267815`
+🔗 https://doi.org/10.1145/3267809.3267815
 
 **Kết luận cốt lõi:** ExCamera (Fouladi) dùng hàng nghìn Lambda thread cực nhỏ song song để encode — đối lập hoàn toàn với cách tiếp cận của đồ án (ít container lớn). Sprocket (Ao) chứng minh mô hình tính phí serverless theo tài nguyên sử dụng thực tế khiến việc tăng song song hoá **không nhất thiết** làm tăng chi phí.
 
@@ -146,7 +157,7 @@
 
 **→ Ứng dụng:** Baseline so sánh của bài này gần giống hệ thống hiện tại — đây là bằng chứng định lượng mạnh nhất, trực tiếp nhất để đưa vào Chương 6 Hạn chế: dùng con số 16-27% cụ thể thay vì nói chung chung "ladder cố định chưa tối ưu".
 
-> **Lưu ý quan trọng:** 2 bài blog Netflix "Per-Title Encode Optimization" (2015) và "Dynamic Optimizer" (2018) đã trích trong `report/references.bib` là 🔴 **Tier 3** (blog vendor, không peer-review) — chỉ nên dùng ở phần Mở đầu tạo động lực nghiên cứu, **không** dùng làm căn cứ khoa học chính trong Related Work. Dùng Menon et al. (2022) và De Cock et al. (2016, dưới đây) thay thế cho vai trò đó.
+> **Lưu ý quan trọng:** 2 bài blog Netflix — [Per-Title Encode Optimization (2015)](https://netflixtechblog.com/per-title-encode-optimization-7e99442b62a2) và [Dynamic Optimizer (2018)](https://netflixtechblog.com/dynamic-optimizer-a-perceptual-video-encoding-optimization-framework-e19f1e3a277f) — đã trích trong `report/references.bib` là 🔴 **Tier 3** (blog vendor, không peer-review) — chỉ nên dùng ở phần Mở đầu tạo động lực nghiên cứu, **không** dùng làm căn cứ khoa học chính trong Related Work. Dùng Menon et al. (2022) và De Cock et al. (2016, dưới đây) thay thế cho vai trò đó.
 
 ### C.2 — Nguồn gốc học thuật của "content-aware encoding" (thay thế blog Netflix) 🟢
 
@@ -160,6 +171,7 @@
 ### C.3 — Convex hull bitrate ladder construction: khảo sát toàn diện 🟢
 
 **Telili, A., Hamidouche, W., Amirpour, H., Fezza, S.A., Timmerer, C., Morin, L. (2025).** *Convex Hull Prediction Methods for Bitrate Ladder Construction.* **ACM TOMM, 21(7), 1-23.** DOI: `10.1145/3723006`
+🔗 https://doi.org/10.1145/3723006
 
 **Katsenou, A.V., Sole, J., Bull, D.R. (2021).** *Efficient Bitrate Ladder Construction for Content-Optimized Adaptive Video Streaming.* **IEEE Open Journal of Signal Processing.**
 🔗 https://arxiv.org/abs/2102.04550
@@ -171,10 +183,13 @@
 ### C.4 — Cơ sở lý thuyết ABR client-side (HLS.js) 🟢
 
 **Huang, T.-Y., Johari, R., McKeown, N., Trunnell, M., Watson, M. (2014).** *A Buffer-Based Approach to Rate Adaptation.* **ACM SIGCOMM 2014.** DOI: `10.1145/2619239.2626296`
+🔗 https://doi.org/10.1145/2619239.2626296
 
 **Yin, X., Jindal, A., Sekar, V., Sinopoli, B. (2015).** *A Control-Theoretic Approach for Dynamic Adaptive Video Streaming over HTTP (MPC).* **ACM SIGCOMM CCR, 45(4).** DOI: `10.1145/2785956.2787486`
+🔗 https://doi.org/10.1145/2785956.2787486
 
 **Mao, H., Netravali, R., Alizadeh, M. (2017).** *Neural Adaptive Video Streaming with Pensieve.* **ACM SIGCOMM 2017.** DOI: `10.1145/3098822.3098843`
+🔗 https://doi.org/10.1145/3098822.3098843
 
 **Kết luận cốt lõi:** 3 thế hệ thuật toán ABR: buffer-based (BBA), control-theoretic (MPC — kết hợp throughput + buffer), và reinforcement learning (Pensieve) — mỗi thế hệ vượt trội thế hệ trước.
 
@@ -183,8 +198,10 @@
 ### C.5 — Khung QoE học thuật chuẩn 🟢
 
 **Xu, Y., Zhou, Y., Chiu, D.-M. (2014).** *Analytical QoE Models for Bit-Rate Switching in Dynamic Adaptive Streaming Systems.* **IEEE Trans. Mobile Computing, 13(12), 2734-2748.**
+🔗 https://ieeexplore.ieee.org/document/6748041/ | dblp: https://dblp.org/rec/journals/tmc/XuZC14.html
 
 **Barman, N., Martini, M.G. (2019).** *QoE Modeling for HTTP Adaptive Video Streaming — A Survey and Open Challenges.* **IEEE Access, 7, 30831-30859.** DOI: `10.1109/ACCESS.2019.2901778`
+🔗 https://doi.org/10.1109/ACCESS.2019.2901778
 
 **Kết luận cốt lõi:** Công thức QoE chuẩn trong literature: `QoE = Σbitrate − μ·Σrebuffer_time − Σ|bitrate_switch|` (tổng bitrate trung bình, trừ phạt rebuffering có trọng số, trừ phạt dao động bitrate). Chuẩn ITU-T P.1203 được công nghiệp/học thuật công nhận.
 
@@ -192,7 +209,9 @@
 
 ### C.6 — Biện minh lựa chọn HLS thay vì DASH 🟢
 
-**"Comparative Analysis of MPEG-DASH and HLS Protocols."** **Journal of The Institution of Engineers (India): Series B, Springer, 2025.** DOI: `10.1007/s40031-025-01244-x`
+**Saini, S.S., Sharma, L.S. (2025).** *Comparative Analysis of MPEG-DASH and HLS Protocols: Performance, Adaptation, and Future Directions in Adaptive Streaming.* **Journal of The Institution of Engineers (India): Series B, 107(1), 335-344.** DOI: `10.1007/s40031-025-01244-x`
+*(Xuất bản online 06/06/2025; số in tháng 02/2026 — trích dẫn năm 2025 theo ngày online.)*
+🔗 https://doi.org/10.1007/s40031-025-01244-x
 
 **Kết luận cốt lõi:** MPEG-DASH có tần suất lỗi/restart thấp hơn (phù hợp mạng không ổn định); HLS phản hồi nhanh hơn (phù hợp mạng ổn định, đặc biệt thiết bị Apple).
 
@@ -201,6 +220,7 @@
 ### C.7 — Trade-off segment duration 6 giây 🟢
 
 **Schwarzmann, S., Sieber, C. et al. (2020).** *Comparing Fixed and Variable Segment Durations for Adaptive Video Streaming.* **ACM MMSys 2020** (Giải **Excellence in DASH Award 2020**). DOI: `10.1145/3339825.3391858`
+🔗 https://doi.org/10.1145/3339825.3391858
 
 **Kết luận cốt lõi (số liệu):** Segment biến đổi (variable, theo I-frame tự nhiên) thay vì cố định: tăng QoE ở **54%** số phiên, giảm bitrate trung bình **7%** so với segment cố định.
 
@@ -214,10 +234,12 @@
 ### D.1 — Mô hình hình thức hoá visibility timeout 🟢
 
 **Li, J., Cui, Y., Ma, Y. (2015).** *Modeling Message Queueing Services with Reliability Guarantee in Cloud Computing Environment Using Colored Petri Nets.* **Mathematical Problems in Engineering, 2015, Article 383846.** DOI: `10.1155/2015/383846`
+🔗 https://doi.org/10.1155/2015/383846
 
 **Kết luận cốt lõi:** Mô hình hoá cơ chế visibility timeout bằng Colored Petri Nets: message có trạng thái visible/invisible, hoạt động như một "lock" tạm thời — đúng bản chất cơ chế SQS.
 
-**Zhang, Z. et al. (2011).** *A cloud queuing service with strong consistency and high availability.* **IBM Journal of Research and Development, 55(6).**
+**Zhang, Z., Wang, Y., Chen, H., Kim, M., Xu, J., Lei, H. (2011).** *A cloud queuing service with strong consistency and high availability.* **IBM Journal of Research and Development, 55(6).**
+🔗 https://ieeexplore.ieee.org/document/6097171/
 
 **Kết luận cốt lõi:** Xác nhận dịch vụ hàng đợi cloud kiểu SQS cung cấp **at-least-once delivery** (không đảm bảo exactly-once) — có thể giao message lặp trong khoảng thời gian visibility timeout.
 
@@ -225,7 +247,8 @@
 
 ### D.2 — Nguồn gốc lý thuyết của Heartbeat Pattern 🟢
 
-**Burrows, M. (2006).** *The Chubby lock service for loosely-coupled distributed systems.* **Proc. 7th USENIX OSDI.**
+**Burrows, M. (2006).** *The Chubby lock service for loosely-coupled distributed systems.* **Proc. 7th USENIX OSDI, Seattle, WA.** ACM DL: `10.5555/1298455.1298487`
+🔗 https://www.usenix.org/conference/osdi-06/chubby-lock-service-loosely-coupled-distributed-systems | Google Research: https://research.google/pubs/the-chubby-lock-service-for-loosely-coupled-distributed-systems/
 
 **Kết luận cốt lõi:** Bài kinh điển giới thiệu cơ chế **lease** (khoá có TTL): client giữ session bằng gia hạn định kỳ (KeepAlive/heartbeat); nếu không gia hạn kịp (crash, network partition), lease tự hết hạn, tài nguyên được giải phóng. Đây là nguồn gốc học thuật của mọi "lease renewal pattern" hiện đại (Kubernetes lease, Redis lock renewal, Kafka session timeout).
 
@@ -281,12 +304,14 @@ const updateVideoReady = async (videoId, data) => {
 ### E.1 — Cold start: nâng cấp trích dẫn lên bản đã xuất bản 🟢
 
 **Golec, M., Walia, G.K., Kumar, M., Cuadrado, F., Gill, S.S., Uhlig, S. (2025).** *Cold Start Latency in Serverless Computing: A Systematic Review, Taxonomy, and Future Directions.* **ACM Computing Surveys, 57(3).** DOI: `10.1145/3700875`
+🔗 https://doi.org/10.1145/3700875
 
 > **Đã sửa `report/references.bib`:** bài này trước đó trích dẫn dưới dạng arXiv preprint (2310.08437, Tier 2) — nay đã xuất bản chính thức tại ACM Computing Surveys (tạp chí review hàng đầu ngành CNTT), nâng cấp lên **Tier 1**. Đã cập nhật BibTeX.
 
 ### E.2 — Tại sao Lambda không phù hợp cho bước FFmpeg (data-intensive) 🟢
 
-**Shillaker, S., Pietzuch, P. (2020).** *Faasm: Lightweight Isolation for Efficient Stateful Serverless Computing.* **USENIX ATC 2020.**
+**Shillaker, S., Pietzuch, P. (2020).** *Faasm: Lightweight Isolation for Efficient Stateful Serverless Computing.* **USENIX ATC 2020, pp. 419-433.**
+🔗 https://www.usenix.org/conference/atc20/presentation/shillaker
 
 **Kết luận cốt lõi:** Mô hình FaaS truyền thống (cô lập bằng container ephemeral/stateless) gây overhead truy cập dữ liệu, giới hạn footprint tài nguyên — bất lợi cho ứng dụng data-intensive như xử lý video.
 
@@ -301,6 +326,7 @@ const updateVideoReady = async (videoId, data) => {
 ### F.1 — CDN Security: khảo sát toàn diện đầu tiên 🟢
 
 **Ghaznavi, M., Jalalpour, E., Salahuddin, M.A., Boutaba, R., Migault, D., Preda, S. (2021).** *Content Delivery Network Security: A Survey.* **IEEE Communications Surveys & Tutorials, 23(4), 2166-2190.** DOI: `10.1109/COMST.2021.3093492`
+🔗 https://doi.org/10.1109/COMST.2021.3093492
 
 **Kết luận cốt lõi:** Khảo sát học thuật đầu tiên hệ thống hoá lỗ hổng CDN theo 3 tầng: edge server, request routing, origin server.
 
@@ -309,6 +335,7 @@ const updateVideoReady = async (videoId, data) => {
 ### F.2 — Phân biệt bản chất Signed Cookie (access control) vs DRM (usage control) 🟢
 
 **Usmani, Shannigrahi, Zink (2025).** *Secure the Stream, Not the Hosts: Attribute-Based Encryption for DRM Enabled Video Streaming.* **ACM MMSys '25, pp. 190-200.** DOI: `10.1145/3712676.3714450`
+🔗 https://doi.org/10.1145/3712676.3714450
 
 **Kết luận cốt lõi:** Signed URL/cookie chỉ bảo vệ **đường truyền/quyền truy cập** — một khi client tải được segment, dữ liệu không còn được bảo vệ nếu không có DRM/mã hoá nội dung.
 
@@ -327,18 +354,21 @@ const updateVideoReady = async (videoId, data) => {
 ### G.1 — Biện minh Gitleaks 🟢 (đã dùng, xác nhận đúng 100%)
 
 **Meli, M., McNiece, M.R., Reaves, B. (2019).** *How Bad Can It Git? Characterizing Secret Leakage in Public GitHub Repositories.* **NDSS 2019.** DOI: `10.14722/ndss.2019.23418`
+🔗 https://doi.org/10.14722/ndss.2019.23418
 
 **Số liệu xác nhận:** &gt;100.000 repository bị ảnh hưởng, hàng nghìn secret mới rò rỉ mỗi ngày.
 
 ### G.2 — Biện minh Trivy IaC scan (Terraform) 🟢 (đã dùng, xác nhận đúng 100%)
 
 **Rahman, A., Parnin, C., Williams, L. (2019).** *The Seven Sins: Security Smells in Infrastructure as Code Scripts.* **ICSE 2019.** DOI: `10.1109/ICSE.2019.00033`
+🔗 https://doi.org/10.1109/ICSE.2019.00033
 
 **Số liệu xác nhận + bổ sung:** 1.726 script phân tích, 7 loại security smell, validate trên 15.232 script; **secret hard-coded tồn tại trung vị 20 tháng, tối đa 98 tháng** trước khi bị phát hiện. Con số "20 tháng" này rất đáng trích dẫn — biện minh mạnh cho việc quét tự động thay vì trông chờ review thủ công.
 
 ### G.3 — Tỷ lệ áp dụng DevSecOps thực tế trong ngành 🟢
 
 **Cheenepalli et al. (2025).** *Advancing DevSecOps in SMEs: Challenges and Best Practices for Secure CI/CD Pipelines.* **IEEE ISDFS 2025.** arXiv: `2503.22612`
+🔗 https://arxiv.org/abs/2503.22612
 
 **Số liệu xác nhận:** 68% SME đã triển khai DevSecOps, nhưng **chỉ 12% quét bảo mật mỗi commit**.
 
@@ -347,6 +377,7 @@ const updateVideoReady = async (videoId, data) => {
 ### G.4 — Quy mô rủi ro CI/CD thực tế 🟢 (nguồn mới, mạnh)
 
 **Pan et al. (2023).** *Ambush from All Sides: Understanding Security Threats in Open-Source Software CI/CD Pipelines.* **IEEE Transactions on Dependable and Secure Computing.** DOI: `10.1109/TDSC.2023.3253572`
+🔗 https://doi.org/10.1109/TDSC.2023.3253572
 
 **Kết luận cốt lõi:** Đo lường trên **&gt;320.000 repository** có cấu hình CI/CD, phát hiện nhiều lớp rủi ro (code hiding, script lỗi thời, phụ thuộc single-point-of-failure).
 
@@ -358,7 +389,8 @@ const updateVideoReady = async (videoId, data) => {
 
 ### H.1 — Sách nền tảng kinh điển 🟢
 
-**Jain, R. (1991).** *The Art of Computer Systems Performance Analysis.* John Wiley & Sons. ISBN 0-471-50336-3.
+**Jain, R. (1991).** *The Art of Computer Systems Performance Analysis: Techniques for Experimental Design, Measurement, Simulation, and Modeling.* Wiley-Interscience. ISBN 0-471-50336-3. *(Sách — không có DOI.)*
+🔗 Trang chính thức của tác giả: https://www.cse.wustl.edu/~jain/books/perfbook.htm | Mục lục: https://www.cse.wustl.edu/~jain/books/perf_toc.htm | Slide gốc: https://www.cse.wustl.edu/~jain/books/perf_sli.htm
 
 **Nguyên tắc áp dụng bắt buộc (đã xác minh qua slide gốc + mục lục chính thức của tác giả):**
 - Chạy **nhiều lần lặp**, báo cáo **mean + confidence interval/độ lệch chuẩn** — không lấy 1 lần đo.
@@ -373,10 +405,18 @@ const updateVideoReady = async (videoId, data) => {
 
 ## I. Công trình liên quan trực tiếp
 
-### I.1 — AWS Video on Demand (đã có trong `references.bib`)
+### I.1 — AWS Video on Demand 🔴 (đã có trong `references.bib`, khoá `awsvod`)
+
+**Amazon Web Services (2025).** *Video on Demand on AWS — Implementation Guide.*
+🔗 https://docs.aws.amazon.com/solutions/latest/video-on-demand-on-aws/
+
 So sánh: đồ án khác biệt bằng cách tự đóng gói FFmpeg trên Batch/Fargate thay vì dùng MediaConvert managed — đánh đổi chi phí thấp hơn lấy công sức vận hành cao hơn.
 
-### I.2 — Netflix Cosmos (đã có trong `references.bib`, đúng Tier 3 — chỉ dùng minh hoạ)
+### I.2 — Netflix Cosmos 🔴 (đã có trong `references.bib`, khoá `netflix2021ves` — đúng Tier 3, chỉ dùng minh hoạ)
+
+**Netflix Technology Blog (2024).** *The Making of VES: the Cosmos Microservice for Netflix Video Encoding.*
+🔗 https://netflixtechblog.com/the-making-of-ves-the-cosmos-microservice-for-netflix-video-encoding-946b9b3cd300
+
 Chunk-based distributed encoding ở quy mô công nghiệp — dùng làm động lực cho Chương 6, không phải căn cứ khoa học chính (xem mục B.2-B.3 cho phiên bản học thuật của cùng ý tưởng).
 
 ### I.3 — Bảng so sánh đề xuất cho Related Work
@@ -431,6 +471,34 @@ Câu hỏi bắt buộc phải trả lời khi bảo vệ: ***"Cái gì trong đ
 ### K.4 ⭐ — Định lượng chi phí cơ hội của thiết kế đơn giản hoá (fixed bitrate ladder, CPU-only, 1 container/job)
 
 **Luận điểm:** Thay vì chỉ nói "đây là hạn chế", đồ án có thể **trích dẫn số liệu cụ thể** từ literature để lượng hoá chính xác cái giá phải trả cho từng lựa chọn đơn giản hoá: 16-27% bitrate (không per-title, theo Menon 2022), tới 12.43× tốc độ (không GPU, theo Salcedo-Navarro 2025), ~90% thời gian (không chunk-parallel, theo Gutiérrez-Aguado 2020). Đây là cách viết "Hạn chế" có chiều sâu học thuật, không phải liệt kê chung chung.
+
+---
+
+## L. Xác thực người dùng: Google Sign-In & Account Linking
+
+### ⭐ Research trước khi code phát hiện lỗ hổng thật (CVE) mà cách làm "hiển nhiên" sẽ mắc phải — đã đổi hướng thiết kế trước khi viết code, không phải sửa sau
+
+### L.1 — Cách verify ID token đúng chuẩn 🔴
+
+**Google for Developers.** *Verify the Google ID token on your server side.* 🔗 https://developers.google.com/identity/gsi/web/guides/verify-google-id-token
+
+**Kết luận cốt lõi:** Không tự parse/giải mã JWT thủ công ở backend — phải dùng thư viện chính thức (`google-auth-library` cho Node.js), gọi `verifyIdToken()` với `audience` = Client ID, để thư viện tự kiểm tra chữ ký, `iss`, `aud`, `exp` đúng chuẩn.
+
+**→ Ứng dụng:** Cơ sở cho `backend/src/services/authService.js` (`loginWithGoogle`) — dùng `OAuth2Client.verifyIdToken()`, không tự decode token.
+
+### L.2 🔴⚠️ — Lỗ hổng account takeover qua auto-link theo email (đã tránh được TRƯỚC khi code, không phải phát hiện sau)
+
+**GitHub Security Advisory GHSA-g38m-r43w-p2q7 / CVE-2026-53516 (Better Auth, high severity 8.3).** 🔗 https://github.com/advisories/GHSA-g38m-r43w-p2q7 — vá tại PR #9578: https://github.com/better-auth/better-auth/pull/9578
+
+**GitLab Advisory Database — Authorizer, CVE-2026-35511** (cùng dạng lỗ hổng). 🔗 https://advisories.gitlab.com/golang/github.com/authorizerdev/authorizer/CVE-2026-35511/
+
+**Kết luận cốt lõi:** Nếu backend tự động "link" (gộp) một identity Google mới vào tài khoản local có sẵn chỉ dựa trên **email trùng khớp**, mà không kiểm tra tài khoản local đó đã verify email hay chưa, sẽ mở ra kịch bản: kẻ tấn công đăng ký trước bằng email nạn nhân (không cần verify) → nạn nhân đăng nhập Google thật bằng đúng email đó → hệ thống tự gộp 2 tài khoản → kẻ tấn công có sẵn mật khẩu để đăng nhập vào tài khoản nạn nhân bất cứ lúc nào.
+
+**Đối chiếu 2 hệ thống production khác đã tự chọn 2 mức phòng vệ khác nhau:**
+- **NextAuth.js/Auth.js**: mặc định **tắt hẳn** auto-link (cờ cấu hình tên thẳng là `allowDangerousEmailAccountLinking`, mặc định `false`). 🔗 https://next-auth.js.org/configuration/providers/oauth
+- **Supabase Auth**: cho phép auto-link nhưng **chỉ tính email đã verify**, và khi link thành công sẽ tự xoá mọi identity khác chưa verify đang gắn với email đó. 🔗 https://supabase.com/docs/guides/auth/auth-identity-linking
+
+**→ Ứng dụng:** Dự án hiện **chưa có cơ chế verify email khi đăng ký** (`backend/src/models/User.js` không có field `isVerified`/`emailVerified`). Vì vậy `loginWithGoogle` trong `authService.js` chọn mức phòng vệ giống NextAuth mặc định — **không auto-link theo email**: nếu email Google trùng tài khoản local sẵn có, trả lỗi 409 (`EMAIL_IN_USE`) yêu cầu người dùng tự đăng nhập bằng mật khẩu, thay vì âm thầm gộp tài khoản. Đây là quyết định thiết kế đưa ra **trước khi viết code** nhờ research, không phải một lỗi tìm thấy sau khi đã triển khai sai — khác với gap D.3 (được phát hiện a posteriori qua code review).
 
 ---
 
