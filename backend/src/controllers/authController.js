@@ -69,6 +69,27 @@ const googleAuth = async (req, res, next) => {
 };
 
 /**
+ * @route   POST /api/auth/link-google
+ * @desc    Link Google sign-in to the currently authenticated account
+ * @access  Private
+ */
+const linkGoogle = async (req, res, next) => {
+  try {
+    const { credential } = req.body;
+
+    const { user } = await authService.linkGoogleAccount(req.user._id, credential);
+
+    res.status(200).json({
+      success: true,
+      message: 'Google account linked successfully',
+      data: { user },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
  * @route   GET /api/auth/me
  * @desc    Get current logged-in user profile
  * @access  Private
@@ -177,6 +198,7 @@ module.exports = {
   registerUser,
   loginUser,
   googleAuth,
+  linkGoogle,
   getMe,
   forgotPassword,
   resetPassword,

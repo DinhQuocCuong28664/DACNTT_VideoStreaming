@@ -107,10 +107,57 @@ const validateUploadMetadata = (req, res, next) => {
   next();
 };
 
+/**
+ * Danh sách định dạng ảnh được chấp nhận cho ảnh đại diện — cùng lý do bắt
+ * buộc kiểm tra ở máy chủ như ALLOWED_VIDEO_MIME_TYPES ở trên.
+ */
+const ALLOWED_AVATAR_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+
+/** Dung lượng tối đa ảnh đại diện: 5 MB — đủ cho ảnh chân dung, không cần nén trước */
+const MAX_AVATAR_SIZE_BYTES = 5 * 1024 * 1024;
+
+/**
+ * Kiểm tra metadata của ảnh đại diện trước khi cấp Pre-signed URL.
+ */
+const validateAvatarMetadata = (req, res, next) => {
+  const { fileSize } = req.body;
+  const mimeType = req.body.mimetype || req.body.mimeType;
+
+  if (!ALLOWED_AVATAR_MIME_TYPES.includes(mimeType)) {
+    return res.status(400).json({
+      success: false,
+      message: `Định dạng ảnh không được hỗ trợ. Chỉ chấp nhận: ${ALLOWED_AVATAR_MIME_TYPES.join(', ')}`,
+    });
+  }
+
+  if (fileSize !== undefined && fileSize !== null) {
+    const size = Number(fileSize);
+
+    if (!Number.isFinite(size) || size <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Dung lượng tệp không hợp lệ',
+      });
+    }
+
+    if (size > MAX_AVATAR_SIZE_BYTES) {
+      return res.status(400).json({
+        success: false,
+        message: `Ảnh vượt quá dung lượng tối đa cho phép (${MAX_AVATAR_SIZE_BYTES / (1024 * 1024)} MB)`,
+      });
+    }
+  }
+
+  next();
+};
+
 module.exports = {
   validateRequest,
   validateEmail,
   validateUploadMetadata,
+  validateAvatarMetadata,
   ALLOWED_VIDEO_MIME_TYPES,
   MAX_VIDEO_SIZE_BYTES,
+  ALLOWED_AVATAR_MIME_TYPES,
+  MAX_AVATAR_SIZE_BYTES,
 };

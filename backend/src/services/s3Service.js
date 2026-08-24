@@ -58,6 +58,49 @@ const generatePresignedUploadUrl = async (key, contentType) => {
 };
 
 /**
+ * Sinh S3 key cho ảnh đại diện: avatars/{userId}/{timestamp}.{ext}
+ * Timestamp làm phần tên file để mỗi lần đổi ảnh là một object mới — tránh
+ * cache trình duyệt/CDN giữ ảnh cũ do URL không đổi khi ghi đè cùng key.
+ */
+const generateAvatarKey = (userId, filename) => {
+  const ext = (filename.split('.').pop() || 'jpg').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+  return `avatars/${userId}/${Date.now()}.${ext}`;
+};
+
+/**
+ * Pre-signed PUT URL để tải ảnh đại diện thẳng lên bucket tĩnh công khai
+ * (cùng bucket đang host frontend qua zelostech.site) — KHÁC với
+ * S3_RAW_BUCKET_NAME của video, vì bucket video bị chặn public truy cập
+ * hoàn toàn (BlockPublicAcls/RestrictPublicBuckets đều bật) theo đúng quyết
+ * định giữ private đã ghi trong docs/REBUILD_ON_NEW_AWS_ACCOUNT.md, còn ảnh
+ * đại diện cần hiển thị công khai ngay lập tức, không qua transcode/CDN ký.
+ * Bucket tĩnh này đã có policy public GetObject sẵn từ trước (phục vụ host
+ * frontend), nên tái dùng chứ không tạo bucket/hạ tầng mới.
+ */
+const generateAvatarUploadUrl = async (key, contentType) => {
+  const command = new PutObjectCommand({
+    Bucket: process.env.S3_STATIC_BUCKET_NAME,
+    Key: key,
+    ContentType: contentType,
+  });
+
+  return await getSignedUrl(s3Client, command, { expiresIn: 15 * 60 });
+};
+
+/**
+ * URL công khai để hiển thị ảnh đại diện sau khi tải lên.
+ *
+ * Dùng path-style (s3.{region}.amazonaws.com/{bucket}/{key}) thay vì
+ * virtual-hosted-style ({bucket}.s3.{region}.amazonaws.com/{key}): tên bucket
+ * "zelostech.site" chứa dấu chấm, khiến virtual-hosted-style tạo ra một tên
+ * miền phụ 2 cấp không khớp chứng chỉ TLS wildcard *.s3.amazonaws.com của
+ * AWS — trình duyệt sẽ từ chối tải ảnh vì lỗi chứng chỉ. Đây là giới hạn đã
+ * biết của S3 với bucket có dấu chấm trong tên, không phải lỗi cấu hình.
+ */
+const getAvatarPublicUrl = (key) =>
+  `https://s3.${process.env.AWS_REGION}.amazonaws.com/${process.env.S3_STATIC_BUCKET_NAME}/${key}`;
+
+/**
  * Delete a single object from S3
  */
 const deleteObject = async (bucket, key) => {
@@ -105,6 +148,9 @@ const deleteDirectory = async (bucket, prefix) => {
 module.exports = {
   generateS3Key,
   generatePresignedUploadUrl,
+  generateAvatarKey,
+  generateAvatarUploadUrl,
+  getAvatarPublicUrl,
   deleteObject,
   deleteDirectory,
 };

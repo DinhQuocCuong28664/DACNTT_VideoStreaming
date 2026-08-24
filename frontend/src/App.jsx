@@ -12,6 +12,7 @@ import UploadPage from './pages/UploadPage';
 import WatchPage from './pages/WatchPage';
 import ChannelPage from './pages/ChannelPage';
 import LandingPage from './pages/LandingPage';
+import SettingsPage from './pages/SettingsPage';
 
 /**
  * Protected Route — redirects to /login if not authenticated
@@ -98,6 +99,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <UploadPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/settings"
+            element={
+              <ProtectedRoute>
+                <SettingsPage />
               </ProtectedRoute>
             }
           />
