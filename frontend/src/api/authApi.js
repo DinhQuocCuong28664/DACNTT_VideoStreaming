@@ -7,6 +7,9 @@ export const authApi = {
   login: (email, password) =>
     axiosClient.post('/auth/login', { email, password }),
 
+  googleLogin: (credential) =>
+    axiosClient.post('/auth/google', { credential }),
+
   getMe: () => axiosClient.get('/auth/me'),
 
   forgotPassword: (email) =>

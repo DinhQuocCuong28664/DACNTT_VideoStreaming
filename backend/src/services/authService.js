@@ -1,6 +1,9 @@
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
+const { OAuth2Client } = require('google-auth-library');
 const User = require('../models/User');
+
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 /**
  * Generate JWT token
@@ -65,6 +68,88 @@ const login = async (email, password) => {
   const token = generateToken(user._id);
 
   return { user, token };
+};
+
+/**
+ * Đảm bảo username không trùng bằng cách thêm hậu tố số nếu cần.
+ */
+const buildUniqueUsername = async (base) => {
+  const cleanBase = base.replace(/[^a-zA-Z0-9_]/g, '').slice(0, 24) || 'user';
+  let candidate = cleanBase;
+  let suffix = 0;
+
+  // Thử tối đa vài lần trước khi thêm hậu tố ngẫu nhiên để tránh vòng lặp vô hạn.
+  while (await User.findOne({ username: candidate })) {
+    suffix += 1;
+    candidate = `${cleanBase}${suffix}`;
+    if (suffix > 20) {
+      candidate = `${cleanBase}${crypto.randomBytes(3).toString('hex')}`;
+      break;
+    }
+  }
+
+  return candidate;
+};
+
+/**
+ * Đăng nhập/đăng ký qua Google Sign-In (Google Identity Services).
+ *
+ * Cố ý KHÔNG tự động liên kết (auto-link) vào tài khoản email/password đã
+ * tồn tại sẵn — đây là nguyên nhân của nhiều lỗ hổng account-takeover thực tế
+ * (vd. CVE-2026-53516 của Better Auth): kẻ tấn công đăng ký trước bằng email
+ * nạn nhân (chưa verify), rồi khi nạn nhân đăng nhập Google thật, hệ thống tự
+ * gộp 2 tài khoản khiến kẻ tấn công có sẵn mật khẩu để chiếm tài khoản đó.
+ * Xem docs/LITERATURE_REVIEW.md mục "Xác thực & Account Linking".
+ */
+const loginWithGoogle = async (idToken) => {
+  let payload;
+  try {
+    const ticket = await googleClient.verifyIdToken({
+      idToken,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+    payload = ticket.getPayload();
+  } catch {
+    const error = new Error('Invalid Google credential');
+    error.statusCode = 401;
+    throw error;
+  }
+
+  if (!payload.email_verified) {
+    const error = new Error('Google email is not verified');
+    error.statusCode = 401;
+    throw error;
+  }
+
+  // Tài khoản Google đã từng đăng nhập trước đây — nhận diện qua googleId.
+  const existingGoogleUser = await User.findOne({ googleId: payload.sub });
+  if (existingGoogleUser) {
+    return { user: existingGoogleUser, token: generateToken(existingGoogleUser._id) };
+  }
+
+  // Có tài khoản local (email/password) trùng email nhưng CHƯA từng liên kết
+  // Google — không tự gộp, yêu cầu người dùng đăng nhập bằng mật khẩu trước.
+  const existingLocalUser = await User.findOne({ email: payload.email });
+  if (existingLocalUser) {
+    const error = new Error(
+      'An account with this email already exists. Please log in with your password to link Google sign-in from Settings.'
+    );
+    error.statusCode = 409;
+    error.code = 'EMAIL_IN_USE';
+    throw error;
+  }
+
+  // Tài khoản hoàn toàn mới, tạo qua Google.
+  const username = await buildUniqueUsername(payload.email.split('@')[0]);
+  const user = await User.create({
+    username,
+    email: payload.email,
+    googleId: payload.sub,
+    displayName: payload.name || username,
+    avatar: payload.picture || '',
+  });
+
+  return { user, token: generateToken(user._id) };
 };
 
 /**
@@ -151,6 +236,7 @@ const changePassword = async (userId, currentPassword, newPassword) => {
 module.exports = {
   register,
   login,
+  loginWithGoogle,
   forgotPassword,
   resetPassword,
   changePassword,
