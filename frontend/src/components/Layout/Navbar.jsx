@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/useAuth';
 import { useTheme } from '../../context/useTheme';
 import { FiUpload, FiSearch, FiLogOut, FiVideo, FiMoon, FiSun, FiInfo, FiMenu, FiX, FiSettings } from 'react-icons/fi';
+import LogoIcon from './LogoIcon';
 import './Navbar.css';
 
 const Navbar = () => {
@@ -68,7 +69,7 @@ const Navbar = () => {
 
           {/* Logo */}
           <Link to="/" className="navbar-logo">
-            <div className="logo-icon">▶</div>
+            <div className="logo-icon"><LogoIcon /></div>
             <span className="logo-text">VidShare</span>
           </Link>
 
@@ -219,7 +220,7 @@ const Navbar = () => {
           <div className="mobile-drawer" onClick={(e) => e.stopPropagation()}>
             <div className="mobile-drawer-header">
               <Link to="/" className="navbar-logo" onClick={() => setShowMobileDrawer(false)}>
-                <div className="logo-icon">▶</div>
+                <div className="logo-icon"><LogoIcon /></div>
                 <span className="logo-text">VidShare</span>
               </Link>
               <button className="mobile-drawer-close" onClick={() => setShowMobileDrawer(false)}>
