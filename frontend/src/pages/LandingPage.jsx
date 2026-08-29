@@ -1,16 +1,17 @@
 import { Link } from 'react-router-dom';
-import { 
-  FiPlay, 
-  FiUploadCloud, 
-  FiZap, 
-  FiShield, 
-  FiCpu, 
-  FiGlobe, 
-  FiCheckCircle, 
-  FiArrowRight, 
+import {
+  FiPlay,
+  FiUploadCloud,
+  FiZap,
+  FiShield,
+  FiCpu,
+  FiGlobe,
+  FiCheckCircle,
+  FiArrowRight,
   FiLayers,
   FiActivity,
-  FiMoon
+  FiMoon,
+  FiCode
 } from 'react-icons/fi';
 import './LandingPage.css';
 
@@ -334,6 +335,34 @@ const LandingPage = () => {
               Phân phối luồng video HLS siêu mượt qua CloudFront CDN toàn cầu bảo mật OAC tới trình phát HLS.js trên Web UI.
             </p>
           </div>
+        </div>
+
+        {/* Trích đoạn thật từ infrastructure/modules/lambda/src/index.js —
+            không phải code minh hoạ, để chứng minh pipeline ở trên là có
+            thật chứ không chỉ là hình vẽ. */}
+        <div className="code-showcase glass-panel">
+          <div className="code-showcase-header">
+            <FiCode />
+            <span>infrastructure/modules/lambda/src/index.js</span>
+            <span className="code-showcase-tag">Lambda Job Submitter — mã nguồn thật</span>
+          </div>
+          <pre className="code-showcase-body font-mono">
+            <code>{`const submitCommand = new SubmitJobCommand({
+  jobName: \`transcode-\${videoId}-\${Date.now()}\`,
+  jobQueue: process.env.BATCH_JOB_QUEUE,
+  jobDefinition: process.env.BATCH_JOB_DEFINITION,
+  containerOverrides: {
+    environment: [
+      { name: 'VIDEO_ID', value: videoId },
+      { name: 'RAW_S3_KEY', value: key },
+      { name: 'RAW_S3_BUCKET', value: bucket },
+    ],
+  },
+});
+
+const response = await batchClient.send(submitCommand);
+// → Fargate Spot container khởi tạo, bắt đầu chuyển mã HLS`}</code>
+          </pre>
         </div>
       </section>
 
