@@ -145,6 +145,13 @@ button, input, select, textarea {
   padding: 0 var(--space-lg);
 }
 
+/* Dùng cho nhãn/đường dẫn kỹ thuật (S3 key, tên file...) — trước đây được
+   tham chiếu ở vài nơi (LandingPage) nhưng chưa từng định nghĩa, nên chữ
+   vẫn hiện font mặc định thay vì monospace như ý đồ ban đầu. */
+.font-mono {
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+}
+
 /* Glassmorphism Card Component */
 .card {
   background: var(--bg-card);

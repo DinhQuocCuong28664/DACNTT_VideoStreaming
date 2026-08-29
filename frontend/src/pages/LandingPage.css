@@ -575,6 +575,53 @@
   }
 }
 
+/* Code showcase — luôn nền tối kiểu editor, không đổi theo Light/Dark theme
+   của trang, vì đây là quy ước quen thuộc cho khối code (giữ cảm giác "code
+   thật" thay vì hoà lẫn vào nền trang). */
+.code-showcase {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background: #0d1117;
+  border: 1px solid var(--border-color);
+}
+
+.code-showcase-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+  color: #8b949e;
+  font-size: 0.8rem;
+}
+
+.code-showcase-tag {
+  margin-left: auto;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.2rem 0.55rem;
+  border-radius: 6px;
+  background: var(--accent-gradient);
+  color: #ffffff;
+  white-space: nowrap;
+}
+
+.code-showcase-body {
+  margin: 0;
+  overflow-x: auto;
+  font-size: 0.82rem;
+  line-height: 1.7;
+  color: #c9d1d9;
+}
+
+@media (max-width: 640px) {
+  .code-showcase-tag {
+    display: none;
+  }
+  .code-showcase-body {
+    font-size: 0.72rem;
+  }
+}
+
 /* ── 5. Call To Action (CTA) ───────────────────────────────── */
 .landing-cta {
   padding: 4rem 2.5rem;
