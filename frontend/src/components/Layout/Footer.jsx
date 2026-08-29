@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { FiGithub, FiZap, FiPlay, FiUploadCloud, FiInfo } from 'react-icons/fi';
+import LogoIcon from './LogoIcon';
 import './Footer.css';
 
 /**
@@ -30,7 +31,7 @@ const Footer = () => {
           {/* Thương hiệu & trạng thái hệ thống */}
           <div className="footer-col footer-brand">
             <Link to="/" className="footer-logo">
-              <div className="logo-icon">▶</div>
+              <div className="logo-icon"><LogoIcon /></div>
               <span className="logo-text">VidShare</span>
             </Link>
             <p className="footer-desc">

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import authApi from '../../api/authApi';
+import LogoIcon from '../Layout/LogoIcon';
 import './AuthForm.css';
 
 const ResetPasswordForm = () => {
@@ -44,7 +45,7 @@ const ResetPasswordForm = () => {
     <div className="auth-page">
       <div className="auth-card">
         <div className="auth-logo">
-          <div className="logo-icon">▶</div>
+          <div className="logo-icon"><LogoIcon /></div>
           <span className="logo-text">VidShare</span>
         </div>
         <h1 className="auth-title">Đặt lại mật khẩu</h1>
