@@ -31,6 +31,13 @@ export const options = {
 const BASE_URL = __ENV.API_URL || 'http://localhost:5000/api';
 const AUTH_TOKEN = __ENV.JWT_TOKEN || 'test-jwt-token';
 
+// k6 chỉ cho gọi open() ở init context (ngoài hàm default), nên phải đọc file
+// tại đây. Không set VIDEO_FILE_PATH thì quay lại payload giả 10KB như cũ —
+// đủ để đo tầng nhận request/queue, nhưng mọi job transcode sẽ lỗi (không
+// phải video thật). Truyền 1 file .mp4 thật, ngắn (vài giây) qua biến này để
+// đo đúng cả tầng transcode thật, tránh spam email "thất bại" cho từng job.
+const REAL_VIDEO = __ENV.VIDEO_FILE_PATH ? open(__ENV.VIDEO_FILE_PATH, 'b') : null;
+
 export default function () {
   const params = {
     headers: {
@@ -45,7 +52,7 @@ export default function () {
     description: 'k6 Automated Stress Test Video Payload',
     filename: `stress_test_${Date.now()}.mp4`,
     mimetype: 'video/mp4',
-    fileSize: 10485760, // 10 MB dummy size
+    fileSize: REAL_VIDEO ? REAL_VIDEO.byteLength : 10485760, // 10 MB dummy size khi không có video thật
     tags: ['k6', 'stresstest', 'benchmark'],
     visibility: 'public',
   });
@@ -71,7 +78,7 @@ export default function () {
 
     // 2. Simulate S3 Direct Upload (PUT request to pre-signed URL)
     const dummyVideoContent = 'MOCK_VIDEO_PAYLOAD_DATA_' + '0'.repeat(1024 * 10); // 10KB mock chunk
-    const s3Res = http.put(uploadUrl, dummyVideoContent, {
+    const s3Res = http.put(uploadUrl, REAL_VIDEO || dummyVideoContent, {
       headers: { 'Content-Type': 'video/mp4' },
     });
 
