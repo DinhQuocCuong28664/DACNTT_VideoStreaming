@@ -136,7 +136,7 @@ sequenceDiagram
 - Hệ thống cấu hình **Origin Access Control (OAC)** để S3 Bucket được đặt ở chế độ hoàn toàn riêng tư. Chỉ Amazon CloudFront được cấp quyền truy cập dữ liệu trong bucket (thông qua S3 Bucket Policy), qua đó ngăn chặn việc truy cập trực tiếp trái phép vào video.
 - Đối với video ở chế độ riêng tư, hệ thống bổ sung lớp bảo vệ thứ hai bằng **CloudFront Signed Cookies** kết hợp **Trusted Key Group**. Backend kiểm tra quyền truy cập rồi ký một Custom Policy giới hạn trong đúng thư mục của video, nhờ đó người không có quyền sẽ nhận HTTP 403 ngay tại Edge Location kể cả khi biết chính xác đường dẫn tệp `.m3u8`. Chi tiết thiết kế và hướng dẫn triển khai xem tại [`docs/PRIVATE_VIDEO_SIGNED_COOKIES.md`](docs/PRIVATE_VIDEO_SIGNED_COOKIES.md).
 
-> ⚠️ **Trạng thái triển khai thực tế (2026-08-10):** Toàn bộ mục trên mô tả đúng thiết kế và mã nguồn Terraform đã hoàn chỉnh (`terraform validate` pass cả hai môi trường), nhưng **chưa deploy được lên tài khoản AWS hiện tại** vì AWS yêu cầu xác minh tài khoản trước khi cấp phép tạo CloudFront Distribution mới (`AccessDenied: Your account must be verified`). Đã mở ticket AWS Support, đang chờ phản hồi. Trong lúc chờ, S3 Processed Bucket đang tạm để chế độ đọc công khai (được thêm thủ công trước đây) để video vẫn phát được qua URL S3 trực tiếp — nghĩa là **thuộc tính riêng tư của video hiện chưa được thực thi ở tầng lưu trữ**. Xem Chương 6 của báo cáo (`report/chapters/chap6.tex`) để biết phân tích đầy đủ.
+> ⚠️ **Trạng thái triển khai thực tế (cập nhật 2026-08-30):** CloudFront Distribution cho video CDN đã được deploy thành công và đang chạy trên production. Tài khoản AWS chính (lưu S3/Batch/Lambda) vẫn đang bị chặn tự tạo CloudFront Distribution (`AccessDenied: Your account must be verified`, ticket AWS Support vẫn đang chờ duyệt), nên CloudFront được vận hành trên một AWS account phụ thông qua cơ chế Terraform multi-account provider — S3 Processed Bucket vẫn ở account chính và hoàn toàn riêng tư (Origin Access Control, không còn bucket policy công khai tạm thời như trước). Phần còn thiếu duy nhất so với thiết kế gốc: **CloudFront Signed Cookies cho video riêng tư vẫn đang tắt** (`enable_signed_urls = false`) — video riêng tư hiện được phân phối qua CloudFront giống video công khai, chưa có lớp kiểm tra quyền truy cập ở Edge Location. Xem Chương 6 của báo cáo (`report/chapters/chap6.tex`) để biết phân tích đầy đủ.
 
 ---
 
@@ -194,7 +194,7 @@ graph TD
 4. `ci-infra.yml`: `terraform fmt -check` → `terraform validate` cho cả `dev` và `prod` → Trivy IaC Config Scan.
 5. `security-scan.yml`: DevSecOps Gate cho mọi Pull Request, gồm Gitleaks Secret Detection, Trivy Dependency Scan và SAST bằng `eslint-plugin-security`.
 6. `cd-staging.yml`: Triển khai môi trường Staging (Dev) khi có push vào nhánh `develop`.
-7. `cd-deploy.yml`: Triển khai Backend API lên Amazon EC2 qua SSH và Invalidate CloudFront Cache khi merge vào `main`.
+7. `cd-deploy.yml`: Triển khai Backend API lên Amazon EC2 qua **AWS Systems Manager (SSM Run Command)** — máy chủ backend không gắn key pair SSH nào, nên workflow tìm instance theo tag và thực thi `git pull` + `npm install` + `pm2 restart` từ xa bằng quyền IAM instance profile thay vì SSH — và Invalidate CloudFront Cache khi merge vào `main`.
 
 ### Cơ chế Quality Gate hai lớp
 
