@@ -6,7 +6,7 @@ const videoSchema = new mongoose.Schema(
   {
     title: String,
     description: String,
-    user: mongoose.Schema.Types.ObjectId,
+    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     status: {
       type: String,
       enum: ['UPLOADING', 'PROCESSING', 'READY', 'ERROR'],
