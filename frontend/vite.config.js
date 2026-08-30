@@ -6,9 +6,6 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
-    // Cho phép truy cập từ thiết bị khác cùng mạng LAN (vd. điện thoại test
-    // trên cùng Wi-Fi), không chỉ riêng máy đang chạy dev server.
-    host: true,
     proxy: {
       '/api': {
         target: 'http://localhost:5000',
