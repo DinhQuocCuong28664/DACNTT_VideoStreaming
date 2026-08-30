@@ -80,7 +80,13 @@ module "monitoring" {
 }
 
 module "cloudfront" {
-  source                       = "../../modules/cloudfront"
+  source = "../../modules/cloudfront"
+  # Prod dùng 1 account duy nhất (không bị chặn CloudFront như account dev),
+  # nên module chỉ cần ánh xạ cả 2 provider slot về cùng provider mặc định.
+  providers = {
+    aws           = aws
+    aws.account_a = aws
+  }
   project_name                 = "${var.project_name}-${var.environment}"
   processed_bucket_domain_name = module.s3.processed_bucket_domain_name
   processed_bucket_name        = module.s3.processed_bucket_name

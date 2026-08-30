@@ -1,9 +1,26 @@
 # ═══════════════════════════════════════════════════
 # Module: CloudFront — CDN with OAC (S3 Private)
 # ═══════════════════════════════════════════════════
+#
+# Toàn bộ tài nguyên CloudFront nằm trên `aws.account_a` — một AWS account
+# KHÁC với account đang giữ S3/Batch/Lambda (account mặc định), vì account
+# mặc định đang bị chặn tạo CloudFront Distribution (AccessDenied, chờ AWS
+# Support duyệt ticket). Riêng bucket policy vẫn phải chạy bằng provider mặc
+# định vì chỉ chủ bucket (account B) mới có quyền PutBucketPolicy cho bucket
+# của chính mình — bucket policy dùng Service Principal + điều kiện
+# AWS:SourceArn nên không quan tâm distribution thuộc account nào.
+terraform {
+  required_providers {
+    aws = {
+      source                = "hashicorp/aws"
+      configuration_aliases = [aws.account_a]
+    }
+  }
+}
 
 # ── Origin Access Control (S3 completely private) ──
 resource "aws_cloudfront_origin_access_control" "s3_oac" {
+  provider                          = aws.account_a
   name                              = "${var.project_name}-s3-oac"
   description                       = "OAC for HLS Processed Bucket"
   origin_access_control_origin_type = "s3"
@@ -22,6 +39,7 @@ resource "aws_cloudfront_origin_access_control" "s3_oac" {
 # ngăn truy cập trực tiếp vào S3, không kiểm soát được ai có quyền xem nội dung
 # thông qua CloudFront.
 resource "aws_cloudfront_public_key" "signing" {
+  provider    = aws.account_a
   count       = var.enable_signed_urls ? 1 : 0
   name        = "${var.project_name}-signing-key"
   comment     = "Public key dùng để xác thực CloudFront Signed Cookie"
@@ -29,9 +47,10 @@ resource "aws_cloudfront_public_key" "signing" {
 }
 
 resource "aws_cloudfront_key_group" "signing" {
-  count = var.enable_signed_urls ? 1 : 0
-  name  = "${var.project_name}-signing-key-group"
-  items = [aws_cloudfront_public_key.signing[0].id]
+  provider = aws.account_a
+  count    = var.enable_signed_urls ? 1 : 0
+  name     = "${var.project_name}-signing-key-group"
+  items    = [aws_cloudfront_public_key.signing[0].id]
 
   lifecycle {
     precondition {
@@ -43,6 +62,7 @@ resource "aws_cloudfront_key_group" "signing" {
 
 # ── Cache Policy for HLS content ──────────────────
 resource "aws_cloudfront_cache_policy" "hls" {
+  provider    = aws.account_a
   name        = "${var.project_name}-hls-cache-policy"
   comment     = "Cache policy for HLS segments and manifests"
   default_ttl = 86400  # 24 hours (segments never change after transcode)
@@ -66,6 +86,7 @@ resource "aws_cloudfront_cache_policy" "hls" {
 
 # ── CloudFront Distribution ──────────────────────
 resource "aws_cloudfront_distribution" "hls_cdn" {
+  provider        = aws.account_a
   count           = var.enable_cloudfront ? 1 : 0
   enabled         = true
   is_ipv6_enabled = true
@@ -138,8 +159,9 @@ resource "aws_cloudfront_distribution" "hls_cdn" {
 
 # ── CORS Response Headers Policy ──────────────────
 resource "aws_cloudfront_response_headers_policy" "cors" {
-  name    = "${var.project_name}-cors-hls"
-  comment = "CORS headers for HLS.js video player"
+  provider = aws.account_a
+  name     = "${var.project_name}-cors-hls"
+  comment  = "CORS headers for HLS.js video player"
 
   cors_config {
     # Khi bật Signed Cookie, trình duyệt chỉ gửi kèm cookie tới CDN nếu phản hồi
@@ -166,6 +188,9 @@ resource "aws_cloudfront_response_headers_policy" "cors" {
 }
 
 # ── S3 Bucket Policy: Only CloudFront OAC can read when CloudFront enabled ──
+# Cố ý KHÔNG dùng provider = aws.account_a: bucket này thuộc account B (mặc
+# định), chỉ chủ bucket mới PutBucketPolicy được cho chính nó dù distribution
+# nằm ở account A khác.
 resource "aws_s3_bucket_policy" "processed_cf_only" {
   count  = var.enable_cloudfront ? 1 : 0
   bucket = var.processed_bucket_name
