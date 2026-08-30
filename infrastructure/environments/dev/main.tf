@@ -103,9 +103,12 @@ module "cloudfront" {
   enable_cloudfront            = var.enable_cloudfront
   enable_signed_urls           = var.enable_signed_urls
   signing_public_key_pem       = var.signing_public_key_pem
-  aliases                      = var.cdn_aliases
-  acm_certificate_arn          = var.cdn_acm_certificate_arn
-  tags                         = local.common_tags
+  # cdn.zelostech.site dùng chung chứng chỉ ACM với frontend (đã phủ thêm SAN
+  # này trong frontend.tf) thay vì biến cdn_acm_certificate_arn — tránh phải
+  # xin/validate thêm 1 chứng chỉ ACM riêng chỉ để phục vụ 1 alias.
+  aliases             = ["cdn.zelostech.site"]
+  acm_certificate_arn = aws_acm_certificate_validation.frontend.certificate_arn
+  tags                = local.common_tags
 }
 
 # ── 10. AWS Batch (Fargate) ───────────────────────
@@ -122,9 +125,13 @@ module "batch" {
   raw_bucket_name             = module.s3.raw_bucket_name
   processed_bucket_name       = module.s3.processed_bucket_name
   sqs_queue_url               = module.sqs.queue_url
-  cloudfront_domain           = module.cloudfront.distribution_domain_name
-  mongodb_uri_secret_arn      = module.secrets.mongodb_uri_secret_arn
-  transcoder_log_group        = module.monitoring.transcoder_log_group_name
+  # Domain alias (không dùng module.cloudfront.distribution_domain_name nữa):
+  # Signed Cookie ký Resource theo đúng host trong hlsUrl, nên transcoder phải
+  # sinh hlsUrl bằng cùng 1 domain mà backend dùng để build Resource pattern —
+  # domain rời rạc *.cloudfront.net sẽ không khớp policy đã ký.
+  cloudfront_domain      = "cdn.zelostech.site"
+  mongodb_uri_secret_arn = module.secrets.mongodb_uri_secret_arn
+  transcoder_log_group   = module.monitoring.transcoder_log_group_name
   # Email thông báo trạng thái video — để trống email_user/email_from/
   # email_app_password (mặc định "") thì Terraform vẫn apply được bình
   # thường, chỉ là Batch Job Definition sẽ không có EMAIL_APP_PASSWORD secret

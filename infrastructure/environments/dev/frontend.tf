@@ -92,9 +92,12 @@ output "frontend_bucket_website_endpoint" {
 # distribution ben duoi chay tren account A — CloudFront khong the tham
 # chieu chung chi ACM tu mot account khac.
 resource "aws_acm_certificate" "frontend" {
-  provider                  = aws.account_a_us_east_1
-  domain_name               = "zelostech.site"
-  subject_alternative_names = ["www.zelostech.site"]
+  provider    = aws.account_a_us_east_1
+  domain_name = "zelostech.site"
+  # cdn.zelostech.site: alias cho CloudFront video CDN (module.cloudfront) —
+  # Signed Cookie cần CDN và app dùng chung parent domain, dùng chung luôn
+  # chứng chỉ này thay vì xin riêng.
+  subject_alternative_names = ["www.zelostech.site", "cdn.zelostech.site"]
   validation_method         = "DNS"
 
   tags = merge(local.common_tags, {
