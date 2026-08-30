@@ -117,6 +117,28 @@ resource "aws_cloudfront_distribution" "hls_cdn" {
     response_headers_policy_id = aws_cloudfront_response_headers_policy.cors.id
   }
 
+  # Thumbnail cố ý KHÔNG yêu cầu Signed Cookie dù enable_signed_urls=true.
+  #
+  # Cookie chỉ cấp quyền cho ĐÚNG 1 video tại một thời điểm (Resource pattern
+  # trong Policy trỏ tới 1 videoId cụ thể — xem cloudfrontService.js), trong
+  # khi trang danh sách hiển thị thumbnail của NHIỀU video cùng lúc. Nếu bắt
+  # thumbnail cũng cần cookie, mọi thumbnail trừ video vừa xem gần nhất sẽ vỡ
+  # ảnh 403. Thumbnail không phải nội dung nhạy cảm nên để công khai là hợp lý.
+  dynamic "ordered_cache_behavior" {
+    for_each = var.enable_signed_urls ? [1] : []
+    content {
+      path_pattern               = "*/thumbnail.jpg"
+      allowed_methods            = ["GET", "HEAD", "OPTIONS"]
+      cached_methods             = ["GET", "HEAD"]
+      target_origin_id           = "S3-processed-bucket"
+      cache_policy_id            = aws_cloudfront_cache_policy.hls.id
+      viewer_protocol_policy     = "redirect-to-https"
+      compress                   = true
+      trusted_key_groups         = []
+      response_headers_policy_id = aws_cloudfront_response_headers_policy.cors.id
+    }
+  }
+
   # Khi bật Signed Cookie, mã 403 mang ý nghĩa "không có quyền truy cập" và cần
   # được giữ nguyên để trình phát cũng như người kiểm thử phân biệt được với lỗi
   # "không tìm thấy tệp". Vì vậy chỉ ánh xạ 403 sang 404 khi chưa bật cơ chế ký.
