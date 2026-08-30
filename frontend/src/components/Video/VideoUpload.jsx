@@ -266,9 +266,9 @@ const VideoUpload = () => {
               ? `Đang tải lên... ${uploadProgress}%`
               : 'Upload hoàn tất! Đang chuyển hướng...'}
           </p>
-          <div className="progress-bar-track">
+          <div className="upload-progress-track">
             <div
-              className="progress-bar-fill"
+              className="upload-progress-fill"
               style={{ width: `${uploadProgress}%` }}
             />
           </div>

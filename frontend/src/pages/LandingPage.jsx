@@ -230,7 +230,7 @@ const LandingPage = () => {
                   <span className="preview-val">Pre-signed PUT URL</span>
                 </div>
                 <div className="preview-progress">
-                  <div className="progress-bar-fill" style={{ width: '85%' }} />
+                  <div className="arch-progress-fill" style={{ width: '85%' }} />
                 </div>
                 <div className="preview-sub font-mono">vidshare-raw-bucket/video.mp4</div>
               </div>

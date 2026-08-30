@@ -94,9 +94,38 @@
   gap: var(--space-md);
 }
 
+/* Chưa từng được định nghĩa ở đâu — ô "Mô tả" trước đây rơi về style mặc
+   định trần trụi của trình duyệt (bo góc 0, không padding), lệch hẳn so với
+   ô input phía trên (đã có style qua class .input). */
+.textarea {
+  width: 100%;
+  min-height: 100px;
+  padding: 11px 14px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: var(--font-size-base);
+  resize: vertical;
+  outline: none;
+  transition: all var(--transition-fast);
+}
+
+.textarea:focus {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.12);
+}
+
+.textarea::placeholder {
+  color: var(--text-muted);
+}
+
 .form-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  /* 3 phần tử thật (Tags, Danh mục, Quyền riêng tư) — trước đây để 2 cột nên
+     phần tử thứ 3 bị đẩy xuống dòng riêng, chiếm nửa trái, nửa phải trống. */
+  grid-template-columns: 1fr 1fr 1fr;
   gap: var(--space-md);
 }
 
@@ -134,7 +163,7 @@
   margin-bottom: var(--space-lg);
 }
 
-.progress-bar-track {
+.upload-progress-track {
   width: 100%;
   max-width: 400px;
   height: 8px;
@@ -143,7 +172,7 @@
   overflow: hidden;
 }
 
-.progress-bar-fill {
+.upload-progress-fill {
   height: 100%;
   background: var(--accent-gradient);
   border-radius: 4px;

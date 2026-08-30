@@ -140,7 +140,18 @@
   min-width: 40px;
 }
 
-/* ── Khung xương khi tải ── */
+/* ── Khung xương khi tải ──
+   .skeleton-card chưa từng được định nghĩa — khối thumbnail và
+   .skeleton-card-body vẫn xếp dọc được nhờ hành vi block mặc định, nhưng
+   thiếu khoảng cách rõ ràng giữa 2 phần, không đồng bộ với khoảng cách
+   thật của VideoCard khi đã tải xong (gây giật/lệch nhẹ lúc chuyển từ
+   skeleton sang nội dung thật). */
+.skeleton-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
 .skeleton-card-body {
   display: flex;
   gap: var(--space-sm);

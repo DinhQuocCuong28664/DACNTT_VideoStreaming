@@ -87,7 +87,7 @@
 }
 
 /* Progress bar */
-.progress-bar-container {
+.player-progress-container {
   position: relative;
   height: 4px;
   border-radius: 2px;
@@ -95,13 +95,13 @@
   margin-bottom: 10px;
 }
 
-.progress-bar-container:hover {
+.player-progress-container:hover {
   height: 6px;
 }
 
-.progress-bar-track,
-.progress-bar-buffered,
-.progress-bar-played {
+.player-progress-track,
+.player-progress-buffered,
+.player-progress-played {
   position: absolute;
   top: 0;
   left: 0;
@@ -109,20 +109,20 @@
   border-radius: 2px;
 }
 
-.progress-bar-track {
+.player-progress-track {
   width: 100%;
   background: rgba(255, 255, 255, 0.25);
 }
 
-.progress-bar-buffered {
+.player-progress-buffered {
   background: rgba(255, 255, 255, 0.45);
 }
 
-.progress-bar-played {
+.player-progress-played {
   background: var(--accent-primary, #6c5ce7);
 }
 
-.progress-bar-thumb {
+.player-progress-thumb {
   position: absolute;
   top: 50%;
   width: 12px;
