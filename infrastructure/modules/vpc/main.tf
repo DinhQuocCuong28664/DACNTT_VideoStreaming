@@ -109,6 +109,21 @@ resource "aws_security_group" "batch_containers" {
     description = "DNS resolution"
   }
 
+  # Outbound: Allow SMTP submission (Gmail, cong EMAIL_PORT=587) de gui email
+  # thong bao video READY/ERROR. Thieu rule nay khien nodemailer bi timeout
+  # ket noi toi smtp.gmail.com:587 (khong loi ket noi ngay, ma "hang" den khi
+  # het timeout) — da xac nhan qua log that: "Connection timeout" o ca 2 job
+  # gan nhat, trong khi backend (security group khac, mo toan bo port) van
+  # gui duoc email binh thuong qua cung 1 App Password.
+  # trivy:ignore:AWS-0104 Gmail SMTP khong co dai IP co dinh de gioi han hep hon.
+  egress {
+    from_port   = 587
+    to_port     = 587
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "SMTP submission (Gmail - video status notification emails)"
+  }
+
   tags = merge(var.tags, {
     Name = "${var.project_name}-batch-sg"
   })
