@@ -43,3 +43,22 @@ provider "aws" {
     }
   }
 }
+
+# Account B (provider mặc định ở trên) đang bị AWS chặn tạo CloudFront
+# Distribution (AccessDenied, chờ duyệt ticket). Account A là 1 AWS account
+# khác, hoạt động bình thường, chỉ dùng để "mượn" chỗ tạo CloudFront —
+# S3/Batch/Lambda/MongoDB vẫn ở account B như cũ. Profile "dacntt-a" là IAM
+# user tạo riêng cho việc này (xem ~/.aws/credentials).
+provider "aws" {
+  alias   = "account_a"
+  region  = var.aws_region
+  profile = "dacntt-a"
+
+  default_tags {
+    tags = {
+      Project     = "DACNTT"
+      Environment = var.environment
+      ManagedBy   = "Terraform"
+    }
+  }
+}

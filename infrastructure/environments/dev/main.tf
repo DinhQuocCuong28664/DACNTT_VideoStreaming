@@ -89,7 +89,11 @@ module "monitoring" {
 
 # ── 9. CloudFront CDN ─────────────────────────────
 module "cloudfront" {
-  source                       = "../../modules/cloudfront"
+  source = "../../modules/cloudfront"
+  providers = {
+    aws           = aws
+    aws.account_a = aws.account_a
+  }
   project_name                 = "${var.project_name}-${var.environment}"
   processed_bucket_domain_name = module.s3.processed_bucket_domain_name
   processed_bucket_name        = module.s3.processed_bucket_name
