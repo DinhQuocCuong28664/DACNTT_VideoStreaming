@@ -57,7 +57,7 @@ describe('Dịch vụ cấp CloudFront Signed Cookie', () => {
     it('nên giới hạn phạm vi ký trong đúng thư mục của video', () => {
       const resource = cloudfrontService.buildResourcePattern('video123');
 
-      expect(resource).toBe('https://cdn.zelostech.site/videos/*/video123/*');
+      expect(resource).toBe('https://cdn.zelostech.site/videos/video123/*');
     });
 
     it('nên loại bỏ tiền tố giao thức nếu biến môi trường có sẵn https://', () => {
@@ -65,7 +65,7 @@ describe('Dịch vụ cấp CloudFront Signed Cookie', () => {
 
       const resource = cloudfrontService.buildResourcePattern('video123');
 
-      expect(resource).toBe('https://cdn.zelostech.site/videos/*/video123/*');
+      expect(resource).toBe('https://cdn.zelostech.site/videos/video123/*');
     });
 
     it('không được cấp quyền sang video khác', () => {
@@ -112,8 +112,9 @@ describe('Dịch vụ cấp CloudFront Signed Cookie', () => {
       const { cookies, resource } = cloudfrontService.generatePlaybackCookies('video123');
 
       // CloudFront dùng base64 an toàn cho URL: + / = được thay bằng - _ ~
+      // (chiều giải mã ngược lại: - -> +, _ -> =, ~ -> /)
       const policyJson = Buffer.from(
-        cookies['CloudFront-Policy'].replace(/-/g, '+').replace(/_/g, '/').replace(/~/g, '='),
+        cookies['CloudFront-Policy'].replace(/-/g, '+').replace(/_/g, '=').replace(/~/g, '/'),
         'base64'
       ).toString('utf8');
 

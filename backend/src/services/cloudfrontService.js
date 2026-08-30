@@ -54,7 +54,10 @@ const normalizePrivateKey = (rawKey) => rawKey.replace(/\\n/g, '\n');
  */
 const buildResourcePattern = (videoId) => {
   const domain = process.env.CLOUDFRONT_DOMAIN.replace(/^https?:\/\//, '').replace(/\/$/, '');
-  return `https://${domain}/videos/*/${videoId}/*`;
+  // Transcoder ghi HLS output thẳng dưới videos/{videoId}/... (xem s3Prefix
+  // trong transcoder/src/index.js) — không có thư mục trung gian nào giữa
+  // "videos" và videoId, nên KHÔNG được thêm dấu * ở vị trí đó.
+  return `https://${domain}/videos/${videoId}/*`;
 };
 
 /**
