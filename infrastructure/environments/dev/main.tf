@@ -102,7 +102,11 @@ module "cloudfront" {
   cors_allowed_origins         = var.cors_allowed_origins
   enable_cloudfront            = var.enable_cloudfront
   enable_signed_urls           = var.enable_signed_urls
-  signing_public_key_pem       = var.signing_public_key_pem
+  # terraform.tfvars là file CRLF nên heredoc giữ nguyên \r\n giữa các dòng,
+  # nhưng AWS chuẩn hoá PEM về \n thuần khi lưu — mỗi lần plan sau đó Terraform
+  # thấy config (\r\n) khác state (\n) và đòi xoá + tạo lại khoá ký dù nội dung
+  # không hề đổi. Bỏ hết \r trước khi truyền vào để khớp đúng những gì AWS lưu.
+  signing_public_key_pem = "${replace(trimspace(var.signing_public_key_pem), "\r", "")}\n"
   # cdn.zelostech.site dùng chung chứng chỉ ACM với frontend (đã phủ thêm SAN
   # này trong frontend.tf) thay vì biến cdn_acm_certificate_arn — tránh phải
   # xin/validate thêm 1 chứng chỉ ACM riêng chỉ để phục vụ 1 alias.
