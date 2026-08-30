@@ -88,10 +88,14 @@ output "frontend_bucket_website_endpoint" {
 # ═══════════════════════════════════════════════════
 
 # ── ACM Certificate (must be in us-east-1 for CloudFront) ──
+# provider = account_a_us_east_1 (khong phai us_east_1 cua account B) vi
+# distribution ben duoi chay tren account A — CloudFront khong the tham
+# chieu chung chi ACM tu mot account khac.
 resource "aws_acm_certificate" "frontend" {
-  provider          = aws.us_east_1
-  domain_name       = "zelostech.site"
-  validation_method = "DNS"
+  provider                  = aws.account_a_us_east_1
+  domain_name               = "zelostech.site"
+  subject_alternative_names = ["www.zelostech.site"]
+  validation_method         = "DNS"
 
   tags = merge(local.common_tags, {
     Name = "zelostech.site-cert"
@@ -102,23 +106,27 @@ resource "aws_acm_certificate" "frontend" {
   }
 }
 
-# Apply with -target=aws_acm_certificate.frontend first, read this
-# output, add the CNAME at Hostinger, THEN run a normal apply —
-# aws_acm_certificate_validation below blocks until AWS sees it.
+# Apply with -target=aws_acm_certificate.frontend first, read this output,
+# add EACH CNAME on Cloudflare (DNS management moved there — Hostinger now
+# only holds the registrar/nameservers), THEN run a normal apply —
+# aws_acm_certificate_validation below blocks until AWS sees all of them.
+# 2 entries now (apex + www), not 1 — dung list thay vi tolist(...)[0].
 output "acm_validation_record" {
-  description = "Add this as a CNAME record at Hostinger DNS to validate the ACM certificate"
-  value = {
-    name  = tolist(aws_acm_certificate.frontend.domain_validation_options)[0].resource_record_name
-    type  = tolist(aws_acm_certificate.frontend.domain_validation_options)[0].resource_record_type
-    value = tolist(aws_acm_certificate.frontend.domain_validation_options)[0].resource_record_value
-  }
+  description = "Add EACH of these as a CNAME record on Cloudflare DNS to validate the ACM certificate"
+  value = [
+    for o in aws_acm_certificate.frontend.domain_validation_options : {
+      name  = o.resource_record_name
+      type  = o.resource_record_type
+      value = o.resource_record_value
+    }
+  ]
 }
 
 resource "aws_acm_certificate_validation" "frontend" {
-  provider        = aws.us_east_1
+  provider        = aws.account_a_us_east_1
   certificate_arn = aws_acm_certificate.frontend.arn
   validation_record_fqdns = [
-    tolist(aws_acm_certificate.frontend.domain_validation_options)[0].resource_record_name
+    for o in aws_acm_certificate.frontend.domain_validation_options : o.resource_record_name
   ]
 }
 
@@ -128,12 +136,13 @@ data "aws_cloudfront_cache_policy" "caching_optimized" {
 }
 
 resource "aws_cloudfront_distribution" "frontend" {
+  provider            = aws.account_a
   enabled             = true
   is_ipv6_enabled     = true
   comment             = "${var.project_name}-${var.environment}-frontend-cdn"
   default_root_object = "index.html"
   price_class         = "PriceClass_100"
-  aliases             = ["zelostech.site"]
+  aliases             = ["zelostech.site", "www.zelostech.site"]
 
   origin {
     domain_name = aws_s3_bucket_website_configuration.frontend.website_endpoint
@@ -190,6 +199,6 @@ resource "aws_cloudfront_distribution" "frontend" {
 }
 
 output "frontend_cloudfront_domain" {
-  description = "Point the Hostinger ALIAS/ANAME record for zelostech.site here instead of the S3 website endpoint"
+  description = "Point the Cloudflare CNAME/A record for zelostech.site here instead of the S3 website endpoint"
   value       = aws_cloudfront_distribution.frontend.domain_name
 }

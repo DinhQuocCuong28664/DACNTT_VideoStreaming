@@ -62,3 +62,21 @@ provider "aws" {
     }
   }
 }
+
+# Chung ly do voi "account_a" o tren, nhung cho chung chi ACM cua frontend
+# CloudFront — chung chi nay BAT BUOC nam o us-east-1 (gioi han cua CloudFront)
+# NHUNG van phai la us-east-1 cua account A, vi mot distribution khong the
+# tham chieu chung chi ACM tu account khac.
+provider "aws" {
+  alias   = "account_a_us_east_1"
+  region  = "us-east-1"
+  profile = "dacntt-a"
+
+  default_tags {
+    tags = {
+      Project     = "DACNTT"
+      Environment = var.environment
+      ManagedBy   = "Terraform"
+    }
+  }
+}
