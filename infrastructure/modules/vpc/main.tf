@@ -68,6 +68,10 @@ resource "aws_security_group" "batch_containers" {
   vpc_id      = aws_vpc.main.id
 
   # Outbound: Allow HTTPS (S3, ECR, SQS, Secrets Manager)
+  # 4 dich vu nay khong co dai IP co dinh de gioi han hep hon; chi S3 co VPC
+  # Endpoint (xem duoi), ECR/SQS/Secrets Manager thi khong, nen van can egress
+  # 443 ra internet.
+  # trivy:ignore:AWS-0104
   egress {
     from_port   = 443
     to_port     = 443
@@ -82,6 +86,9 @@ resource "aws_security_group" "batch_containers" {
   # container hangs for the full 30s server-selection timeout and crashes
   # with "Could not connect to any servers in your MongoDB Atlas cluster"
   # before it ever gets a chance to write status=ERROR back to the DB.
+  # MongoDB Atlas doi IP node theo cum, khong co dai CIDR co dinh de ghim;
+  # gioi han hep hon se gay dut ket noi moi khi Atlas doi node.
+  # trivy:ignore:AWS-0104
   egress {
     from_port   = 27017
     to_port     = 27017
@@ -91,6 +98,9 @@ resource "aws_security_group" "batch_containers" {
   }
 
   # Outbound: Allow DNS
+  # Phai phan giai duoc moi ten mien (S3, ECR, SQS, MongoDB SRV record...),
+  # khong the ghim truoc IP resolver.
+  # trivy:ignore:AWS-0104
   egress {
     from_port   = 53
     to_port     = 53

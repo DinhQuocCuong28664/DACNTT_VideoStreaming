@@ -58,6 +58,10 @@ resource "aws_security_group" "backend_api" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  # MongoDB Atlas, S3, Secrets Manager va cac mirror apt/npm deu khong co dai
+  # IP co dinh de ghim; day cung la egress mac dinh AWS tu tao cho moi
+  # security group moi neu khong tuy chinh.
+  # trivy:ignore:AWS-0104
   egress {
     description = "Cho phep goi ra ngoai: MongoDB Atlas, S3, Secrets Manager, apt/npm"
     from_port   = 0
