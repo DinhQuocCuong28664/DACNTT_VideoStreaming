@@ -51,7 +51,11 @@ const VideoPlayer = ({
   poster,
   onViewThreshold,
   viewThresholdSeconds = 5,
-  withCredentials = true,
+  // CloudFront chưa bật Signed Cookie ở môi trường hiện tại
+  // (enable_signed_urls=false), nên CORS response không trả
+  // Access-Control-Allow-Credentials: true — gửi kèm cookie lúc này chỉ khiến
+  // trình duyệt chặn request. Đổi lại true khi bật signing thật.
+  withCredentials = false,
 }) => {
   const wrapperRef = useRef(null);
   const videoRef = useRef(null);
