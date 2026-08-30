@@ -118,6 +118,33 @@ jobs:
       - name: Sync dist/ to S3 (Static Website Hosting bucket)
         run: aws s3 sync dist/ "s3://${{ env.S3_BUCKET }}" --delete
 
+      # Distribution nam o mot AWS account rieng (account A) khac voi account B
+      # o tren (S3) — xem infrastructure/environments/dev/providers.tf. Khong
+      # co buoc nay, CloudFront tiep tuc phat ban index.html/asset da cache tu
+      # truoc, du S3 da co ban moi (da gap thuc te: title page cu bi cache
+      # gan 9 tieng sau khi da deploy ban moi).
+      - name: Configure AWS credentials (account A — CloudFront)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID_ACCOUNT_A }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY_ACCOUNT_A }}
+          aws-region: us-east-1
+
+      - name: Invalidate frontend CloudFront cache
+        run: |
+          DISTRIBUTION_ID=$(aws cloudfront list-distributions \
+            --query "DistributionList.Items[?contains(Aliases.Items, 'zelostech.site')].Id" \
+            --output text)
+
+          if [ -n "$DISTRIBUTION_ID" ] && [ "$DISTRIBUTION_ID" != "None" ]; then
+            aws cloudfront create-invalidation \
+              --distribution-id "$DISTRIBUTION_ID" \
+              --paths "/*"
+            echo "✅ Frontend CloudFront cache invalidated for distribution: $DISTRIBUTION_ID"
+          else
+            echo "⚠️ No frontend CloudFront distribution found (aliases zelostech.site), skipping invalidation"
+          fi
+
       - name: Deploy Summary
         run: |
           echo "## 🚀 Frontend Deployed" >> $GITHUB_STEP_SUMMARY
