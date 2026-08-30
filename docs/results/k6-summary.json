@@ -1,27 +1,28 @@
 {
-  "measuredAt": "2026-08-16T13:41:28.829Z",
+  "measuredAt": "2026-08-30T15:18:40.814Z",
   "target": "https://api.zelostech.site/api",
+  "scenarios": {},
   "thresholds": {
-    "http_req_duration": ["p(95)<3000"],
-    "http_req_failed": ["rate<0.05"]
-  },
-  "summary": {
-    "totalRequests": 300,
-    "requestsPerSecond": 30.506367841667924,
-    "failedRate": 0,
-    "iterations": 100,
-    "maxVirtualUsers": 50,
-    "httpReqDurationMs": {
-      "avg": 670.0282474700001,
-      "med": 383.6947825,
-      "p90": 1173.6912510000002,
-      "p95": 1849.76492455,
-      "max": 3078.748402
+      "http_req_failed": ["rate<0.05"],
+      "http_req_duration": ["p(95)<3000"]
     },
-    "checks": {
-      "passes": 400,
-      "fails": 0,
-      "rate": 1
+  "summary": {
+      "totalRequests": 300,
+      "requestsPerSecond": 23.466352246749132,
+      "failedRate": 0,
+      "iterations": 100,
+      "maxVirtualUsers": 50,
+      "httpReqDurationMs": {
+        "avg": 729.7872189999998,
+        "med": 679.2644,
+        "p90": 1424.5402600000002,
+        "p95": 1827.0487400000002,
+        "max": 6130.0252
+      },
+      "checks": {
+        "passes": 400,
+        "fails": 0,
+        "rate": 1
+      }
     }
-  }
 }
