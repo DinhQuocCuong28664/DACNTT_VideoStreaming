@@ -509,7 +509,7 @@
   overflow: hidden;
 }
 
-.progress-bar-fill {
+.arch-progress-fill {
   height: 100%;
   background: var(--accent-gradient);
   border-radius: 3px;

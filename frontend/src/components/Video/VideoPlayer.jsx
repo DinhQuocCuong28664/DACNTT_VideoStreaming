@@ -439,11 +439,11 @@ const VideoPlayer = ({
       )}
 
       <div className="video-controls-bar" onClick={(e) => e.stopPropagation()}>
-        <div className="progress-bar-container" onClick={handleSeekClick}>
-          <div className="progress-bar-track" />
-          <div className="progress-bar-buffered" style={{ width: `${bufferedPct}%` }} />
-          <div className="progress-bar-played" style={{ width: `${playedPct}%` }} />
-          <div className="progress-bar-thumb" style={{ left: `${playedPct}%` }} />
+        <div className="player-progress-container" onClick={handleSeekClick}>
+          <div className="player-progress-track" />
+          <div className="player-progress-buffered" style={{ width: `${bufferedPct}%` }} />
+          <div className="player-progress-played" style={{ width: `${playedPct}%` }} />
+          <div className="player-progress-thumb" style={{ left: `${playedPct}%` }} />
         </div>
 
         <div className="controls-row">

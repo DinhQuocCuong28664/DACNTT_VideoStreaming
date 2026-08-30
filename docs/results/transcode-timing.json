@@ -309,5 +309,35 @@
     ],
     "videoDurationSec": 1600,
     "realtimeFactor": 0.673
+  },
+  {
+    "measuredAt": "2026-08-17T20:47:28.235Z",
+    "label": "verify-rebuild",
+    "file": {
+      "name": "video-100mb.mp4",
+      "sizeBytes": 100514431,
+      "sizeMB": 95.86
+    },
+    "videoId": "6a8371a9a813941ee83ce27e",
+    "finalStatus": "READY",
+    "timings": {
+      "initiateUploadSec": 0.62,
+      "s3UploadSec": 2.87,
+      "uploadThroughputMBps": 33.4,
+      "transcodePipelineSec": 437.65,
+      "endToEndSec": 441.14
+    },
+    "statusTransitions": [
+      {
+        "status": "PROCESSING",
+        "elapsedSec": 0.52
+      },
+      {
+        "status": "READY",
+        "elapsedSec": 437.65
+      }
+    ],
+    "videoDurationSec": 120,
+    "realtimeFactor": 3.647
   }
 ]
