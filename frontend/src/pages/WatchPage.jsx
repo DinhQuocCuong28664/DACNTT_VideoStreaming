@@ -71,6 +71,34 @@ const WatchPage = () => {
     fetchVideoAndComments();
   }, [id, currentUser]);
 
+  // Video còn đang xử lý — tự động kiểm tra lại định kỳ để chuyển sang phát
+  // ngay khi chuyển mã xong, thay vì bắt người xem tự bấm F5.
+  useEffect(() => {
+    if (!video || (video.status !== 'PROCESSING' && video.status !== 'UPLOADING')) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const res = await videoApi.getVideoById(id);
+        const v = res.data.data.video;
+
+        if (v.status === 'READY') {
+          try {
+            await videoApi.getPlaybackAuth(id);
+          } catch (authErr) {
+            console.error('Failed to obtain playback authorization:', authErr);
+            setPlaybackDenied(true);
+          }
+        }
+
+        setVideo(v);
+      } catch (err) {
+        console.error('Failed to poll video status:', err);
+      }
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [id, video?.status]);
+
   /**
    * Được trình phát gọi một lần sau khi video đã phát đủ ngưỡng thời gian.
    * Lỗi ở đây không cần hiển thị cho người dùng vì việc đếm lượt xem
