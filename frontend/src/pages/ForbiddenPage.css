@@ -1,0 +1,123 @@
+[data-theme='light'] {
+  --pf-outline: #1a1a1a;
+  --pf-body-light: #f5f5f5;
+  --pf-body-dark: #cfd2da;
+  --pf-chest: #2c2c2c;
+  --pf-wing: #b08968;
+  --pf-wing-dark: #7f5b3f;
+  --pf-eye: #ff5252;
+  --pf-brow: #1a1a1a;
+  --pf-pad: #d3d3d3;
+  --pf-shield: #ffd54f;
+  --pf-shield-dark: #c99b1f;
+}
+
+[data-theme='dark'] {
+  --pf-outline: #0d0d14;
+  --pf-body-light: #4a4a5e;
+  --pf-body-dark: #2c2c3e;
+  --pf-chest: #0d0d14;
+  --pf-wing: #a0826d;
+  --pf-wing-dark: #6b4a35;
+  --pf-eye: #ff6b6b;
+  --pf-brow: #0d0d14;
+  --pf-pad: #6b6b80;
+  --pf-shield: #ffd54f;
+  --pf-shield-dark: #b8860b;
+}
+
+.pf-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-lg);
+  background: var(--accent-gradient);
+}
+
+.pf-card {
+  background: var(--bg-card);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+  max-width: 640px;
+  width: 100%;
+  padding: var(--space-2xl) var(--space-xl);
+  text-align: center;
+}
+
+.pf-brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  color: var(--accent-primary);
+  font-weight: 700;
+  font-size: var(--font-size-lg);
+  margin-bottom: var(--space-md);
+}
+
+.pf-brand svg {
+  width: 28px;
+  height: 28px;
+}
+
+.pf-code {
+  color: var(--accent-primary);
+  font-size: 4rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  margin-bottom: var(--space-xs);
+}
+
+.pf-mascot-container {
+  margin: var(--space-lg) 0;
+  height: 300px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+}
+
+.pf-canvas {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  width: 280px;
+  height: 280px;
+  filter: drop-shadow(0 10px 20px rgba(108, 92, 231, 0.35));
+}
+
+.pf-status {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--accent-primary);
+}
+
+.pf-message {
+  font-size: var(--font-size-xl);
+  color: var(--text-primary);
+  margin: var(--space-md) 0 var(--space-sm);
+  font-weight: 700;
+}
+
+.pf-submessage {
+  font-size: var(--font-size-base);
+  color: var(--text-secondary);
+  margin-bottom: var(--space-xl);
+  line-height: 1.6;
+}
+
+.pf-actions {
+  display: flex;
+  gap: var(--space-sm);
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.pf-info {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  margin-top: var(--space-lg);
+}

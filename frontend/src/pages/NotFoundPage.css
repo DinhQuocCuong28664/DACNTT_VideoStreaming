@@ -1,0 +1,216 @@
+/* Màu riêng cho linh vật — tách khỏi bảng biến chung vì đây là chi tiết minh
+   hoạ, không phải màu giao diện dùng lại ở nơi khác. */
+[data-theme='light'] {
+  --nf-body-light: #f5f5f5;
+  --nf-body-dark: #cfd2da;
+  --nf-chest: #1a1a1a;
+  --nf-eye: #1a1a1a;
+  --nf-eye-shine: #d4af37;
+}
+
+[data-theme='dark'] {
+  --nf-body-light: #4a4a5e;
+  --nf-body-dark: #2c2c3e;
+  --nf-chest: #0d0d14;
+  --nf-eye: #0d0d14;
+  --nf-eye-shine: #ffd700;
+}
+
+.nf-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-lg);
+  background: var(--accent-gradient);
+}
+
+.nf-card {
+  background: var(--bg-card);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+  max-width: 640px;
+  width: 100%;
+  padding: var(--space-2xl) var(--space-xl);
+  text-align: center;
+}
+
+.nf-brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  color: var(--accent-primary);
+  font-weight: 700;
+  font-size: var(--font-size-lg);
+  margin-bottom: var(--space-md);
+}
+
+.nf-brand svg {
+  width: 28px;
+  height: 28px;
+}
+
+.nf-code {
+  color: var(--accent-primary);
+  font-size: 4rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  margin-bottom: var(--space-xs);
+  animation: nf-bounce 2s ease-in-out infinite;
+}
+
+@keyframes nf-bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-12px);
+  }
+}
+
+.nf-mascot-container {
+  margin: var(--space-lg) 0;
+  height: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.nf-mascot-wrapper {
+  position: relative;
+  width: 260px;
+  height: 300px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nf-mascot-wrapper svg {
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 10px 20px rgba(108, 92, 231, 0.35));
+}
+
+.nf-shadow {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 180px;
+  height: 26px;
+  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.25) 0%, transparent 70%);
+  border-radius: 50%;
+  animation: nf-shadow-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes nf-shadow-pulse {
+  0%,
+  100% {
+    transform: translateX(-50%) scale(1, 1);
+  }
+  50% {
+    transform: translateX(-50%) scale(0.8, 0.7);
+  }
+}
+
+.nf-status {
+  position: absolute;
+  bottom: 0;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--accent-primary);
+}
+
+.nf-sparkles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.nf-sparkle {
+  position: absolute;
+  font-size: 22px;
+  animation: nf-sparkle 2s ease-in-out infinite;
+}
+
+.nf-sparkle-1 {
+  left: 8%;
+  top: 12%;
+}
+.nf-sparkle-2 {
+  right: 12%;
+  top: 22%;
+  animation-delay: 0.5s;
+}
+.nf-sparkle-3 {
+  left: 5%;
+  bottom: 22%;
+  animation-delay: 1s;
+}
+.nf-sparkle-4 {
+  right: 8%;
+  bottom: 18%;
+  animation-delay: 1.5s;
+}
+
+@keyframes nf-sparkle {
+  0%,
+  100% {
+    opacity: 0;
+    transform: scale(0);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.nf-floating-sparkle {
+  position: absolute;
+  font-size: 18px;
+  animation: nf-float-up 2s ease-in forwards;
+  pointer-events: none;
+}
+
+@keyframes nf-float-up {
+  0% {
+    opacity: 1;
+    transform: translateY(0) rotateZ(0deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-60px) rotateZ(180deg);
+  }
+}
+
+.nf-message {
+  font-size: var(--font-size-xl);
+  color: var(--text-primary);
+  margin: var(--space-md) 0 var(--space-sm);
+  font-weight: 700;
+}
+
+.nf-submessage {
+  font-size: var(--font-size-base);
+  color: var(--text-secondary);
+  margin-bottom: var(--space-xl);
+  line-height: 1.6;
+}
+
+.nf-actions {
+  display: flex;
+  gap: var(--space-sm);
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.nf-info {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  margin-top: var(--space-lg);
+}
