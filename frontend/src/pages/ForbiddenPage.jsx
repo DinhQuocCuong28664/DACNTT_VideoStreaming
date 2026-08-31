@@ -124,25 +124,30 @@ const ForbiddenPage = () => {
       px(ox + 5, oy - 6, 3, 0.6, COLORS.brow);
       px(ox + 5, oy - 4.5, 3, 0.6, COLORS.brow);
 
-      // 2 cánh bắt chéo trước ngực — spread điều khiển góc mở/khép
-      const wingLen = 15;
-      ctx.save();
-      ctx.translate((ox - 3) * UNIT, oy * UNIT);
-      ctx.rotate((-35 - wingSpread) * (Math.PI / 180));
-      ctx.fillStyle = COLORS.wingDark;
-      ctx.fillRect(0, -2.5 * UNIT, wingLen * UNIT, 5 * UNIT);
-      ctx.fillStyle = COLORS.wing;
-      ctx.fillRect(0, -1.6 * UNIT, wingLen * UNIT, 3.2 * UNIT);
-      ctx.restore();
+      // 2 cánh bắt chéo trước ngực — spread điều khiển góc mở/khép.
+      //
+      // Cả 2 cánh dùng CHUNG 1 hướng vẽ cục bộ (+x từ điểm tựa), chỉ khác góc
+      // xoay — tránh lặp lại bug bản trước: vẽ cánh phải theo hướng -x rồi
+      // xoay 215° tưởng đối xứng với cánh trái (hướng +x, xoay -35°) nhưng
+      // thực chất lại cho ra cùng 1 hướng chéo (cả 2 cùng chúc xuống bên
+      // phải), khiến 2 cánh chồng lên nhau lệch hẳn sang phải thay vì bắt
+      // chéo qua tâm ngực.
+      const wingLen = 17;
+      const drawWing = (pivotX, pivotY, angleDeg) => {
+        ctx.save();
+        ctx.translate(pivotX * UNIT, pivotY * UNIT);
+        ctx.rotate(angleDeg * (Math.PI / 180));
+        ctx.fillStyle = COLORS.wingDark;
+        ctx.fillRect(0, -2.5 * UNIT, wingLen * UNIT, 5 * UNIT);
+        ctx.fillStyle = COLORS.wing;
+        ctx.fillRect(0, -1.6 * UNIT, wingLen * UNIT, 3.2 * UNIT);
+        ctx.restore();
+      };
 
-      ctx.save();
-      ctx.translate((ox + 3) * UNIT, oy * UNIT);
-      ctx.rotate((215 + wingSpread) * (Math.PI / 180));
-      ctx.fillStyle = COLORS.wingDark;
-      ctx.fillRect(-wingLen * UNIT, -2.5 * UNIT, wingLen * UNIT, 5 * UNIT);
-      ctx.fillStyle = COLORS.wing;
-      ctx.fillRect(-wingLen * UNIT, -1.6 * UNIT, wingLen * UNIT, 3.2 * UNIT);
-      ctx.restore();
+      // Điểm tựa đặt ở vai (gần mép thân) thay vì giữa ngực, để cánh đủ dài
+      // vươn chéo sang phía đối diện và thực sự bắt chéo nhau ở giữa ngực.
+      drawWing(ox - 7, oy - 2, 38 + wingSpread); // vai trái → chúc xuống phải
+      drawWing(ox + 7, oy - 2, 142 - wingSpread); // vai phải → chúc xuống trái (đối xứng gương)
 
       // Khiên nhỏ lơ lửng phía trên đầu — biểu tượng "bị chặn"
       const shieldY = oy - 26 + Math.sin(time * 0.06) * 0.6;
