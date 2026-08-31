@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, Navigate } from 'react-router-dom';
 import { FiEye, FiClock, FiShare2, FiUser, FiThumbsUp, FiThumbsDown, FiMessageSquare, FiTrash2 } from 'react-icons/fi';
 import { useAuth } from '../context/useAuth';
 import videoApi from '../api/videoApi';
@@ -202,14 +202,7 @@ const WatchPage = () => {
   }
 
   if (!video) {
-    return (
-      <div className="container flex-center watch-notfound">
-        <p>Video không tồn tại hoặc đã bị xóa</p>
-        <Link to="/" className="btn btn-primary">
-          Về trang chủ
-        </Link>
-      </div>
-    );
+    return <Navigate to="/404" replace />;
   }
 
   const user = video.user || {};
@@ -220,9 +213,7 @@ const WatchPage = () => {
     <div className="container watch-page">
       {/* Trình phát */}
       {playbackDenied ? (
-        <div className="player-placeholder">
-          <p>Bạn không có quyền phát video này.</p>
-        </div>
+        <Navigate to="/403" replace />
       ) : isReady ? (
         <VideoPlayer
           src={videoSrc}

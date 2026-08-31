@@ -13,6 +13,8 @@ import WatchPage from './pages/WatchPage';
 import ChannelPage from './pages/ChannelPage';
 import LandingPage from './pages/LandingPage';
 import SettingsPage from './pages/SettingsPage';
+import NotFoundPage from './pages/NotFoundPage';
+import ForbiddenPage from './pages/ForbiddenPage';
 
 /**
  * Protected Route — redirects to /login if not authenticated
@@ -146,8 +148,11 @@ function App() {
           }
         />
 
+        <Route path="/403" element={<ForbiddenPage />} />
+        <Route path="/404" element={<NotFoundPage />} />
+
         {/* 404 fallback */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </BrowserRouter>
   );
