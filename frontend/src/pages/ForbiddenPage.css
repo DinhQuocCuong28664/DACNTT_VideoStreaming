@@ -3,13 +3,13 @@
   --pf-body-light: #f5f5f5;
   --pf-body-dark: #cfd2da;
   --pf-chest: #2c2c2c;
-  --pf-wing: #b08968;
-  --pf-wing-dark: #7f5b3f;
+  /* Cùng tông tím-xanh với đôi cánh của linh vật 404 (NotFoundPage.css)
+     thay vì màu gỗ nâu cũ — giờ đây là cánh thật sau lưng, không phải
+     thanh chắn cửa. */
+  --pf-wing: var(--accent-secondary);
+  --pf-wing-dark: var(--accent-primary);
   --pf-eye: #ff5252;
   --pf-brow: #1a1a1a;
-  --pf-pad: #d3d3d3;
-  --pf-shield: #ffd54f;
-  --pf-shield-dark: #c99b1f;
 }
 
 [data-theme='dark'] {
@@ -17,11 +17,10 @@
   --pf-body-light: #4a4a5e;
   --pf-body-dark: #2c2c3e;
   --pf-chest: #0d0d14;
-  --pf-wing: #a0826d;
-  --pf-wing-dark: #6b4a35;
+  --pf-wing: var(--accent-secondary);
+  --pf-wing-dark: var(--accent-primary);
   --pf-eye: #ff6b6b;
   --pf-brow: #0d0d14;
-  --pf-pad: #6b6b80;
   --pf-shield: #ffd54f;
   --pf-shield-dark: #b8860b;
 }

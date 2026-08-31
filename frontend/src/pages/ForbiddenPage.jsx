@@ -46,9 +46,6 @@ const ForbiddenPage = () => {
       wingDark: c('--pf-wing-dark'),
       eye: c('--pf-eye'),
       brow: c('--pf-brow'),
-      pad: c('--pf-pad'),
-      shield: c('--pf-shield'),
-      shieldDark: c('--pf-shield-dark'),
     };
 
     const px = (x, y, w, h, color) => {
@@ -65,6 +62,22 @@ const ForbiddenPage = () => {
       ctx.beginPath();
       ctx.ellipse(ox * UNIT, (oy + 15) * UNIT, 11 * UNIT, 2 * UNIT, 0, 0, Math.PI * 2);
       ctx.fill();
+
+      // Đôi cánh sau lưng — giống đúng linh vật ở trang 404 (không phải tay
+      // bắt chéo trước ngực như bản trước), vẽ TRƯỚC thân để thân che khuất
+      // phần gốc cánh, tạo cảm giác cánh mọc ra từ sau lưng.
+      const drawBackWing = (pivotX, pivotY, angleDeg) => {
+        ctx.save();
+        ctx.translate(pivotX * UNIT, pivotY * UNIT);
+        ctx.rotate(angleDeg * (Math.PI / 180));
+        ctx.fillStyle = COLORS.wingDark;
+        ctx.fillRect(-3.5 * UNIT, -11 * UNIT, 7 * UNIT, 22 * UNIT);
+        ctx.fillStyle = COLORS.wing;
+        ctx.fillRect(-2.3 * UNIT, -9.5 * UNIT, 4.6 * UNIT, 18 * UNIT);
+        ctx.restore();
+      };
+      drawBackWing(ox - 10, oy - 1, -18 - wingSpread * 0.4);
+      drawBackWing(ox + 10, oy - 1, 18 + wingSpread * 0.4);
 
       // Thân (outline rồi tô)
       px(ox - 9, oy - 4, 18, 20, COLORS.outline);
@@ -124,39 +137,49 @@ const ForbiddenPage = () => {
       px(ox + 5, oy - 6, 3, 0.6, COLORS.brow);
       px(ox + 5, oy - 4.5, 3, 0.6, COLORS.brow);
 
-      // 2 cánh bắt chéo trước ngực — spread điều khiển góc mở/khép.
-      //
-      // Cả 2 cánh dùng CHUNG 1 hướng vẽ cục bộ (+x từ điểm tựa), chỉ khác góc
-      // xoay — tránh lặp lại bug bản trước: vẽ cánh phải theo hướng -x rồi
-      // xoay 215° tưởng đối xứng với cánh trái (hướng +x, xoay -35°) nhưng
-      // thực chất lại cho ra cùng 1 hướng chéo (cả 2 cùng chúc xuống bên
-      // phải), khiến 2 cánh chồng lên nhau lệch hẳn sang phải thay vì bắt
-      // chéo qua tâm ngực.
-      const wingLen = 17;
-      const drawWing = (pivotX, pivotY, angleDeg) => {
-        ctx.save();
-        ctx.translate(pivotX * UNIT, pivotY * UNIT);
-        ctx.rotate(angleDeg * (Math.PI / 180));
-        ctx.fillStyle = COLORS.wingDark;
-        ctx.fillRect(0, -2.5 * UNIT, wingLen * UNIT, 5 * UNIT);
-        ctx.fillStyle = COLORS.wing;
-        ctx.fillRect(0, -1.6 * UNIT, wingLen * UNIT, 3.2 * UNIT);
-        ctx.restore();
-      };
+      // Tay phải giơ lên cầm biển báo cấm — thay cho ý tưởng bắt chéo tay/
+      // cánh trước ngực ban đầu (nhìn giống 2 thanh gỗ chắn cửa hơn là tay).
+      // wingSpread làm biển hơi lắc qua lại ở pha 'shake'/'stomp' cho sống động.
+      ctx.save();
+      ctx.translate(ox * UNIT, oy * UNIT);
+      ctx.rotate((wingSpread * 0.5) * (Math.PI / 180));
 
-      // Điểm tựa đặt ở vai (gần mép thân) thay vì giữa ngực, để cánh đủ dài
-      // vươn chéo sang phía đối diện và thực sự bắt chéo nhau ở giữa ngực.
-      drawWing(ox - 7, oy - 2, 38 + wingSpread); // vai trái → chúc xuống phải
-      drawWing(ox + 7, oy - 2, 142 - wingSpread); // vai phải → chúc xuống trái (đối xứng gương)
+      // Cánh tay (2 đốt, cùng màu lông với thân — không phải màu gỗ)
+      px(5, -1, 3, 7, COLORS.outline);
+      px(5.6, -0.4, 1.8, 5.8, COLORS.bodyDark);
+      px(7, -8, 3, 8, COLORS.outline);
+      px(7.6, -7.4, 1.8, 6.8, COLORS.bodyDark);
+      // Bàn tay nắm cán biển
+      px(7.4, -10.5, 3.2, 3, COLORS.outline);
+      px(7.8, -10, 2.4, 2.2, COLORS.bodyLight);
 
-      // Khiên nhỏ lơ lửng phía trên đầu — biểu tượng "bị chặn"
-      const shieldY = oy - 26 + Math.sin(time * 0.06) * 0.6;
-      px(ox - 2.5, shieldY, 5, 5.5, COLORS.outline);
-      px(ox - 2, shieldY + 0.4, 4, 4.2, COLORS.shieldDark);
-      px(ox - 1.4, shieldY + 0.4, 2.8, 3, COLORS.shield);
-      // Dấu chấm than trong khiên
-      px(ox - 0.4, shieldY + 1, 0.8, 1.8, COLORS.outline);
-      px(ox - 0.4, shieldY + 3.2, 0.8, 0.8, COLORS.outline);
+      // Cán biển
+      px(8.5, -17, 1, 7, COLORS.brow);
+
+      // Biển báo cấm hình tròn (viền đỏ, nền trắng, gạch chéo đỏ)
+      const signCx = 9;
+      const signCy = -19;
+      ctx.beginPath();
+      ctx.arc(signCx * UNIT, signCy * UNIT, 5.2 * UNIT, 0, Math.PI * 2);
+      ctx.fillStyle = COLORS.outline;
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(signCx * UNIT, signCy * UNIT, 4.4 * UNIT, 0, Math.PI * 2);
+      ctx.fillStyle = COLORS.eye;
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(signCx * UNIT, signCy * UNIT, 3.3 * UNIT, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+      // Gạch chéo
+      ctx.save();
+      ctx.translate(signCx * UNIT, signCy * UNIT);
+      ctx.rotate(-Math.PI / 4);
+      ctx.fillStyle = COLORS.eye;
+      ctx.fillRect(-4 * UNIT, -1 * UNIT, 8 * UNIT, 2 * UNIT);
+      ctx.restore();
+
+      ctx.restore();
     };
 
     const tick = () => {
