@@ -36,8 +36,8 @@
 }
 
 .pf-card {
-  background: var(--bg-card);
-  backdrop-filter: blur(12px);
+  /* Lý do dùng --bg-secondary thay vì --bg-card: xem NotFoundPage.css */
+  background: var(--bg-secondary);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-lg);
