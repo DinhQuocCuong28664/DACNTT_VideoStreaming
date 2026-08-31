@@ -26,8 +26,11 @@
 }
 
 .nf-card {
-  background: var(--bg-card);
-  backdrop-filter: blur(12px);
+  /* --bg-card là nền trong suốt thiết kế để đặt trên --bg-primary (nền
+     trung tính của app) — đặt trên nền gradient rực rỡ như ở đây khiến chữ
+     var(--text-secondary) mất tương phản, gần như không đọc được ở dark
+     mode. Dùng --bg-secondary (nền đặc, không trong suốt) thay vào đó. */
+  background: var(--bg-secondary);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-lg);

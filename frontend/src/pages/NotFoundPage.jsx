@@ -64,6 +64,15 @@ const NotFoundPage = () => {
       const progress = actionProgress / ACTION_DURATION;
       let transform = '';
 
+      // 'wave' là hành động duy nhất tự set transform riêng cho cánh (để vẫy
+      // độc lập với thân). Nếu không reset ở các hành động khác, cánh sẽ giữ
+      // nguyên góc vẫy cuối cùng mãi mãi (style inline không tự mất), cộng
+      // dồn nhìn sai lệch với transform mới của thân ngay khi rời 'wave'.
+      if (currentAction !== 'wave') {
+        if (leftWingRef.current) leftWingRef.current.style.transform = '';
+        if (rightWingRef.current) rightWingRef.current.style.transform = '';
+      }
+
       switch (currentAction) {
         case 'idle': {
           const float = Math.sin(time * 0.05) * 10;
