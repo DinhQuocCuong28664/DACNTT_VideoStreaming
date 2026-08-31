@@ -99,6 +99,14 @@
   filter: drop-shadow(0 10px 20px rgba(108, 92, 231, 0.35));
 }
 
+/* Chưa từng được định nghĩa — cánh reset về '' ngay khi hết pha 'wave' bằng
+   JS, không có transition thì góc nhảy thẳng về 0 trong 1 frame, tạo cảm
+   giác giật/lơ lửng thay vì thu cánh lại mượt mà. */
+.nf-wing {
+  transform-origin: center;
+  transition: transform 0.35s ease-out;
+}
+
 .nf-shadow {
   position: absolute;
   bottom: 0;
