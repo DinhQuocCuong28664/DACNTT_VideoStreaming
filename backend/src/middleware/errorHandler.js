@@ -38,15 +38,30 @@ const errorHandler = (err, req, res, _next) => {
     message = 'Token has expired';
   }
 
+  // Log day du truoc khi che bot, de phia server khong mat thong tin nao.
   console.error(`❌ [${statusCode}] ${message}`, {
     path: req.originalUrl,
     method: req.method,
     stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
   });
 
+  /**
+   * Loi >= 500 la loi ngoai du kien, khong phai loi da duoc dat thong diep
+   * co chu dich nhu cac nhanh o tren. `err.message` khi do la van ban do
+   * thu vien ben duoi sinh ra — driver Mongo, AWS SDK, loi he thong tap
+   * tin — va co the chua ten host, duong dan noi bo hay chi tiet cau hinh.
+   * Nguoi dung cung khong lam gi duoc voi noi dung do, nen production tra
+   * ve thong diep chung; ban day du van nam trong log ben tren.
+   */
+  const isUnexpected = statusCode >= 500;
+  const clientMessage =
+    isUnexpected && process.env.NODE_ENV === 'production'
+      ? 'Đã xảy ra lỗi từ phía máy chủ. Vui lòng thử lại sau.'
+      : message;
+
   res.status(statusCode).json({
     success: false,
-    message,
+    message: clientMessage,
     ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
   });
 };
