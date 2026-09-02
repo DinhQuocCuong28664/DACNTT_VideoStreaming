@@ -76,10 +76,28 @@ export const AuthProvider = ({ children }) => {
     persistUser(userData);
   };
 
-  const logout = () => {
+  /**
+   * Đăng xuất.
+   *
+   * Xoá trạng thái cục bộ TRƯỚC, rồi mới nhờ máy chủ thu hồi CloudFront Signed
+   * Cookie. Thứ tự này là cố ý: người dùng phải được đăng xuất ngay cả khi
+   * mạng hỏng hoặc máy chủ không phản hồi — bắt họ ở lại trạng thái đăng nhập
+   * vì một lỗi mạng thì tệ hơn hẳn việc cookie phát video còn nán lại.
+   *
+   * Cookie đặt httpOnly nên JavaScript không xoá được; nếu bỏ qua lời gọi này
+   * thì quyền tải segment video riêng tư vẫn còn hiệu lực trong trình duyệt
+   * tới hai giờ, và trên máy dùng chung người kế tiếp vẫn xem được.
+   */
+  const logout = async () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     setUser(null);
+
+    try {
+      await authApi.logout();
+    } catch (err) {
+      console.error('Không thu hồi được cookie phát video:', err);
+    }
   };
 
   const value = {

@@ -23,6 +23,10 @@ export const authApi = {
 
   changePassword: (currentPassword, newPassword) =>
     axiosClient.put('/auth/change-password', { currentPassword, newPassword }),
+
+  // Yêu cầu máy chủ xoá CloudFront Signed Cookie — cookie đặt httpOnly nên
+  // trình duyệt không tự xoá được.
+  logout: () => axiosClient.post('/auth/logout'),
 };
 
 export default authApi;
