@@ -1,0 +1,69 @@
+{
+  "tuan": 3,
+  "tuNgay": "22/08/2026",
+  "denNgay": "28/08/2026",
+  "deTai": "Xây dựng nền tảng chia sẻ video trực tuyến với hệ thống chuyển mã HLS tự động trên kiến trúc Serverless Container và Event-Driven",
+  "sinhVien": ["Đinh Quốc Cường (523H0008)", "Võ Huỳnh Minh Đức (523H0014)"],
+  "giangVien": "ThS. Mai Văn Mạnh",
+  "tyLeHoanThanh": "100%",
+
+  "moDau": "Tuần 3 chuyển từ giai đoạn khảo sát sang hiện thực hoá: thiết kế mô hình dữ liệu trên MongoDB Atlas cho ba thực thể chính (User, Video, Comment) và dựng bộ RESTful API nền tảng bằng Node.js &amp; Express theo kiến trúc phân lớp đã chốt ở tuần 2.",
+
+  "doiChieu": [
+    [
+      "Thiết kế CSDL MongoDB Atlas với ba schema User, Video và Comment.",
+      "Đã định nghĩa ba schema bằng Mongoose. Video mang trường <b>status</b> hoạt động như một máy trạng thái bốn giá trị (UPLOADING → PROCESSING → READY/ERROR) để giao diện phân biệt được video đang xử lý với video lỗi. Quan hệ giữa các thực thể được mô hình hoá bằng tham chiếu ObjectId; sơ đồ ERD đã dựng tại <b>report/images/04-database-erd.png</b>.",
+      "Hoàn thành"
+    ],
+    [
+      "Kết nối ứng dụng tới cụm MongoDB Atlas.",
+      "Đã cấu hình kết nối tại <b>backend/src/config/db.js</b>, có bắt sự kiện mất kết nối và tự kết nối lại. Chuỗi kết nối đưa vào biến môi trường, không đặt trong mã nguồn.",
+      "Hoàn thành"
+    ],
+    [
+      "Xây dựng RESTful API nền tảng với Node.js &amp; Express.",
+      "Đã dựng ba nhóm route (<b>authRoutes</b>, <b>videoRoutes</b>, <b>userRoutes</b>) theo kiến trúc phân lớp: route → controller → service → model. Nghiệp vụ đặt hết ở tầng service nên có thể kiểm thử mà không cần dựng máy chủ HTTP.",
+      "Hoàn thành"
+    ],
+    [
+      "Chuẩn hoá định dạng phản hồi và xử lý lỗi tập trung.",
+      "Đã thêm middleware xử lý lỗi toàn cục, quy về một định dạng phản hồi thống nhất và dịch các lỗi đặc thù của Mongoose (CastError, trùng khoá, lỗi kiểm tra ràng buộc) sang mã HTTP tương ứng.",
+      "Hoàn thành"
+    ]
+  ],
+
+  "ketQuaKyThuat": [
+    "Mô hình dữ liệu ba thực thể: <b>User</b> (tài khoản, hồ sơ kênh), <b>Video</b> (siêu dữ liệu, trạng thái xử lý, đường dẫn HLS, lượt xem, tương tác) và <b>Comment</b> (bình luận gắn với video và người viết).",
+    "Đặt chỉ mục theo đúng truy vấn thực tế: chỉ mục ghép trên <b>(visibility, status, createdAt)</b> phục vụ trang chủ vốn luôn lọc theo hai trường đầu và sắp xếp theo trường thứ ba; thêm chỉ mục cho truy vấn theo kênh và theo thẻ.",
+    "Kiến trúc phân lớp đặt toàn bộ nghiệp vụ ở tầng service, tách khỏi tầng HTTP — đây là điều kiện để viết kiểm thử đơn vị ở các tuần sau.",
+    "Quyết định thiết kế quan trọng: mọi đường dẫn truy cập video đều gọi <i>cùng một</i> hàm kiểm tra quyền ở tầng service, thay vì lặp lại phép kiểm tra ở từng endpoint. Nhân bản phép kiểm tra là nguyên nhân phổ biến nhất khiến lỗ hổng phân quyền xuất hiện về sau, khi một bản được sửa còn các bản khác thì không."
+  ],
+
+  "minhChung": [
+    ["backend/src/models/User.js<br/>backend/src/models/Video.js<br/>backend/src/models/Comment.js", "Ba schema Mongoose kèm ràng buộc dữ liệu và khai báo chỉ mục."],
+    ["backend/src/config/db.js", "Kết nối MongoDB Atlas, xử lý mất kết nối và tự kết nối lại."],
+    ["backend/src/routes/ (auth, video, user)", "Ba nhóm RESTful endpoint nền tảng."],
+    ["backend/src/services/ và controllers/", "Kiến trúc phân lớp tách nghiệp vụ khỏi tầng HTTP."],
+    ["backend/src/middleware/errorHandler.js", "Xử lý lỗi tập trung, chuẩn hoá định dạng phản hồi."],
+    ["report/images/04-database-erd.png", "Sơ đồ ERD mô tả quan hệ giữa ba thực thể."]
+  ],
+
+  "lenhKiemTra": [
+    ["node src/server.js", "Máy chủ khởi động, log xác nhận đã kết nối MongoDB Atlas"],
+    ["curl http://localhost:5000/", "HTTP 200, trả JSON trạng thái dịch vụ"],
+    ["git log --oneline -- backend/src/models/", "Ghi nhận lịch sử thiết kế ba schema"]
+  ],
+
+  "gioiHan": [
+    "API nền tảng chưa có lớp xác thực; mọi endpoint hiện còn mở. Việc gắn JWT và phân quyền thuộc phạm vi tuần 4.",
+    "Chưa có kiểm thử tự động cho tầng service ở tuần này; kiến trúc phân lớp đã chuẩn bị sẵn điều kiện, nhưng bộ kiểm thử chỉ được viết từ tuần 4 trở đi cùng với module xác thực.",
+    "Mô hình lưu <b>likes</b>/<b>dislikes</b> dưới dạng mảng nhúng trong tài liệu Video. Cách này phù hợp ở quy mô đồ án vì số đếm luôn được đọc kèm video, nhưng sẽ cần tách thành collection riêng nếu hệ thống hướng tới lượng người dùng lớn — hạn chế này được ghi nhận để bàn trong chương đánh giá.",
+    "Chưa xử lý luồng tải video lên; các trường đường dẫn HLS trong schema hiện vẫn để trống, sẽ được điền bởi tiến trình chuyển mã ở giai đoạn sau."
+  ],
+
+  "camKet": [
+    "Phát triển module xác thực người dùng bằng JWT: đăng ký, đăng nhập, middleware bảo vệ endpoint.",
+    "Xây dựng tính năng quên và khôi phục mật khẩu qua email.",
+    "Bổ sung kiểm thử tự động cho tầng xác thực."
+  ]
+}
