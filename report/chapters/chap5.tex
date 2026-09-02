@@ -312,6 +312,68 @@ optimisation, and it was correct about cost. It was applied without asking where
 governed would come from, which is the question that determined whether the component helped or
 hurt.
 
+\subsection{Delivery Latency by Client Location}
+\label{sec:multiregion-measurement}
+
+Since a single vantage point was what concealed the fault above, the measurement was repeated from
+five. The same three-stage probe, with Signed Cookies attached, was deployed as an AWS Lambda
+function to five regions, invoked for twenty iterations each, and deleted afterwards. Placing the
+client inside AWS regions makes the comparison between locations clean, because the only variable
+that changes is geography; the caveat this introduces is discussed below.
+Table~\ref{tab:ttff-multiregion} reports the results.
+
+\begin{table}[H]
+\centering
+\caption{Time-to-First-Frame by client location, \texttt{PriceClass\_200}}
+\label{tab:ttff-multiregion}
+\small
+\begin{tabularx}{\textwidth}{X l r r r}
+\toprule
+\textbf{CLIENT LOCATION} & \textbf{EDGE} & \textbf{MEDIAN} & \textbf{MEAN} & \textbf{WARM} \\
+\midrule
+N. Virginia, United States & IAD61  & 55.23   & 207.14  & 54.49 \\
+Dublin, Ireland            & DUB2   & 55.91   & 185.03  & 55.15 \\
+Singapore                  & SIN3   & 56.89   & 109.07  & 55.57 \\
+Tokyo, Japan               & NRT12  & 59.68   & 114.35  & 43.89 \\
+Ho Chi Minh City (consumer) & SGN50 & 110.32  & 170.69  & 107.57 \\
+\midrule
+S\~{a}o Paulo, Brazil      & CPT51  & \textbf{1196.10} & \textbf{1569.73} & \textbf{1196.09} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\noindent\textit{Note: values in milliseconds, $n=20$ per location, from
+\texttt{docs/results/qoe-ttff-multiregion.json}. WARM reports the median over samples that hit the
+edge cache at all three stages. The Ho Chi Minh City row is the local measurement of
+Table~\ref{tab:ttff-cloudfront}, taken from a consumer connection rather than from inside an AWS
+region, and is included for comparison rather than as a like-for-like sample.}
+
+Four of the five locations are indistinguishable, clustering between 55 and 60~ms and each served
+by an edge in its own region. That uniformity is the property a content delivery network is
+supposed to have, and it is the evidence that the price class correction worked rather than merely
+improving the one location it was chosen for.
+
+S\~{a}o Paulo is the exception, and it is the most instructive row in the table. Requests from
+Brazil were served by \texttt{CPT51} --- Cape Town, South Africa --- across the South Atlantic, at
+a median of 1196~ms, twenty-one times the latency of every other location and considerably worse
+than the 728~ms that prompted the correction in the first place. The cause is the same mechanism:
+\texttt{PriceClass\_200} includes Asia, India, the Middle East and Africa, but excludes South
+America and Oceania, so a Brazilian viewer is now in exactly the position a Vietnamese viewer
+occupied before. The fix did not eliminate the problem; it moved the excluded region to one where
+this system has no users. Whether that is acceptable is a question about the audience rather than
+about the configuration, and it is stated here as a property of the deployment rather than
+resolved: serving Brazil and Australia at parity requires \texttt{PriceClass\_All} and the
+higher per-gigabyte rates that go with it.
+
+One methodological limit should be stated plainly. These probes ran inside AWS regions, reaching
+edges over well-provisioned network paths, which is why four of them report around 55~ms while the
+consumer connection in Ho Chi Minh City reports 110~ms to an edge in the same city. The figures
+therefore measure edge proximity under favourable conditions, not what a residential viewer in
+each location would experience; the last-mile difference is roughly a factor of two on this
+evidence. What the table does establish, and what a single vantage point could not, is the
+\emph{shape} of the delivery layer --- uniform where the price class reaches, and an order of
+magnitude worse where it does not.
+
 \section{Transcoding Pipeline Performance}
 \label{sec:pipeline-evaluation}
 
