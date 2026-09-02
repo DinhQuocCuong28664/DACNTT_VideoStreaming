@@ -17,11 +17,12 @@ graph TD
     D1 --> D2["Docker Multi-stage Build"]
     D2 --> D3["Trivy Image Scan"]
     D3 --> D4["Push Amazon ECR"]
-    D4 --> D5["Update Batch Job Definition"]
+    D4 --> D5["Register Batch Job Definition mới"]
 
     E --> E1["oxlint Code Quality"]
     E1 --> E2["Vite Build"]
-    E2 --> E3["Deploy S3 Static Hosting"]
+    E2 --> E3["Sync S3 Static Hosting"]
+    E3 --> E4["Invalidate CloudFront frontend"]
 
     I --> I1["terraform fmt -check"]
     I1 --> I2["terraform validate<br/>dev + prod"]
@@ -35,10 +36,10 @@ graph TD
     F3 -->|"Không"| F5["Cho phép Merge"]
 
     G --> G1["Triển khai môi trường Dev"]
-    H --> H1["Deploy Backend EC2 qua SSH"]
-    H1 --> H2["Invalidate CloudFront Cache"]
+    H --> H1["Deploy Backend EC2 qua AWS SSM"]
+    H1 --> H2["Kiểm chứng API phản hồi HTTP 200"]
 
     classDef gate fill:#fdecea,stroke:#c0392b,color:#1a1a1a
     classDef deploy fill:#eef7ee,stroke:#3d8b40,color:#1a1a1a
     class F3,F4 gate
-    class E3,G1,H1,H2 deploy
+    class E3,E4,G1,H1,H2 deploy
