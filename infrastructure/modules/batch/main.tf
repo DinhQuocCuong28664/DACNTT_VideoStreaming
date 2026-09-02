@@ -105,6 +105,54 @@ resource "aws_batch_job_definition" "transcoder" {
     command = ["node", "src/index.js", "batch"]
   })
 
+  # ── Thử lại ────────────────────────────────────────
+  #
+  # Trước đây job definition không khai báo retry, và điều đó tạo ra một lỗ
+  # hổng dễ hiểu nhầm. Kiến trúc triển khai là S3 → SQS → Lambda → Batch, trong
+  # đó Lambda nộp job rồi trả về NGAY; SQS vì thế xoá message ngay khi job được
+  # nộp, chứ không phải khi transcode xong. Nghĩa là khi container thất bại,
+  # message SQS đã biến mất từ lâu và KHÔNG có tầng nào thử lại — không phải
+  # SQS (message đã xoá), không phải Batch (không khai báo retry). Một lỗi
+  # thoáng qua như mạng chập chờn lúc tải file nguồn là đủ để mất hẳn video.
+  #
+  # evaluate_on_exit chỉ thử lại các lỗi hạ tầng: Fargate thu hồi Spot capacity,
+  # hoặc container không khởi tạo được. Lỗi do chính nội dung video (FFmpeg từ
+  # chối file hỏng) thoát với mã khác và dừng ngay, vì thử lại chỉ tốn tiền mà
+  # kết quả không đổi.
+  retry_strategy {
+    attempts = 3
+
+    # Mẫu khớp chỉ được kết thúc bằng dấu sao, không được bắt đầu bằng dấu sao —
+    # Terraform từ chối ngay ở bước validate nếu viết sai.
+    evaluate_on_exit {
+      action           = "RETRY"
+      on_status_reason = "Host EC2*"
+    }
+
+    # Lỗi khởi tạo container (không kéo được secret, không lấy được image).
+    # Fargate báo dạng "Task failed to start: ResourceInitializationError: ...".
+    evaluate_on_exit {
+      action           = "RETRY"
+      on_status_reason = "Task failed to start*"
+    }
+
+    evaluate_on_exit {
+      action    = "EXIT"
+      on_reason = "*"
+    }
+  }
+
+  # ── Giới hạn thời gian ─────────────────────────────
+  #
+  # Không có timeout thì một tiến trình FFmpeg bị treo (input dị dạng khiến nó
+  # chờ mãi thay vì thoát) sẽ giữ container chạy vô hạn và tính tiền Fargate
+  # cho tới khi có người tình cờ phát hiện. Hai giờ rộng hơn nhiều lần so với
+  # job dài nhất đo được trong chương đánh giá, nên nó chỉ chạm tới các job
+  # thực sự đã hỏng.
+  timeout {
+    attempt_duration_seconds = 7200
+  }
+
   tags = merge(var.tags, {
     Name = "${var.project_name}-transcoder-job-def"
   })
