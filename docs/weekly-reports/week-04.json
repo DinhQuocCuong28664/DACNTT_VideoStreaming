@@ -1,0 +1,77 @@
+{
+  "tuan": 4,
+  "tuNgay": "29/08/2026",
+  "denNgay": "04/09/2026",
+  "deTai": "Xây dựng nền tảng chia sẻ video trực tuyến với hệ thống chuyển mã HLS tự động trên kiến trúc Serverless Container và Event-Driven",
+  "sinhVien": ["Đinh Quốc Cường (523H0008)", "Võ Huỳnh Minh Đức (523H0014)"],
+  "giangVien": "ThS. Mai Văn Mạnh",
+  "tyLeHoanThanh": "100%",
+
+  "moDau": "Tuần 4 hoàn thiện module xác thực người dùng trên nền API đã dựng ở tuần 3: đăng ký và đăng nhập bằng JSON Web Token, middleware bảo vệ endpoint, cùng luồng quên và khôi phục mật khẩu qua email. Đây cũng là tuần đầu tiên có kiểm thử tự động.",
+
+  "doiChieu": [
+    [
+      "Phát triển module xác thực JWT (đăng ký, đăng nhập).",
+      "Đã hoàn thành tại <b>backend/src/services/authService.js</b>. Mật khẩu băm bằng bcrypt qua hook <b>pre('save')</b> của Mongoose nên không đường nào lưu được mật khẩu thô. Trường mật khẩu đặt <b>select: false</b> để không lọt ra trong các truy vấn thông thường.",
+      "Hoàn thành"
+    ],
+    [
+      "Xây dựng middleware bảo vệ các endpoint cần đăng nhập.",
+      "Đã có hai middleware tại <b>backend/src/middleware/auth.js</b>: <b>auth</b> bắt buộc đăng nhập, và <b>optionalAuth</b> cho các trang vừa phục vụ khách vãng lai vừa phục vụ người đã đăng nhập (ví dụ trang xem video công khai).",
+      "Hoàn thành"
+    ],
+    [
+      "Xây dựng tính năng quên và khôi phục mật khẩu qua email.",
+      "Đã hoàn thành. Token đặt lại được sinh ngẫu nhiên, <i>băm SHA-256 trước khi lưu</i> và có hiệu lực 15 phút. Lưu bản băm là có chủ đích: nếu cơ sở dữ liệu bị lộ, token trong đó không dùng lại được. Email gửi qua SMTP tại <b>backend/src/services/emailService.js</b>.",
+      "Hoàn thành"
+    ],
+    [
+      "Bổ sung kiểm thử tự động cho tầng xác thực.",
+      "Đã viết 31 kiểm thử trên hai bộ: <b>authService</b> (17) và <b>authMiddleware</b> (14), phủ các nhánh đăng ký trùng, đăng nhập sai, token bị giả mạo chữ ký, token hết hạn và token của người dùng đã bị xoá. Toàn bộ đều đạt.",
+      "Hoàn thành"
+    ],
+    [
+      "Chống dò mật khẩu ở các endpoint xác thực.",
+      "Đã giới hạn 10 lần thử trong 15 phút cho nhóm endpoint xác thực (<b>backend/src/middleware/rateLimiter.js</b>), đủ chặn dò mật khẩu tự động mà không ảnh hưởng người dùng thật.",
+      "Hoàn thành"
+    ]
+  ],
+
+  "ketQuaKyThuat": [
+    "Luồng xác thực đầy đủ: đăng ký → đăng nhập → cấp JWT → middleware xác thực → đổi mật khẩu, cùng luồng khôi phục mật khẩu qua email.",
+    "Mật khẩu không bao giờ tồn tại ở dạng thô trong cơ sở dữ liệu: bcrypt băm tại hook pre-save, còn trường mật khẩu bị loại khỏi kết quả truy vấn mặc định.",
+    "Token đặt lại mật khẩu lưu dưới dạng băm SHA-256 kèm hạn 15 phút — kẻ đọc được cơ sở dữ liệu vẫn không tái sử dụng được token.",
+    "Middleware tách làm hai mức <b>auth</b> và <b>optionalAuth</b>, vì hệ thống có những trang cần biết người xem là ai nếu họ đã đăng nhập nhưng vẫn phải phục vụ được khách vãng lai.",
+    "Bộ kiểm thử tự động đầu tiên của dự án: 31 kiểm thử cho tầng xác thực, chạy được mà không cần dựng máy chủ HTTP nhờ kiến trúc phân lớp từ tuần 3.",
+    "Máy chủ kiểm tra biến môi trường bắt buộc ngay khi khởi động và từ chối chạy nếu thiếu khoá ký JWT, biến một lỗi nguy hiểm lúc chạy thành một lỗi lộ ra ngay lập tức."
+  ],
+
+  "minhChung": [
+    ["backend/src/services/authService.js", "Đăng ký, đăng nhập, sinh JWT, quên và đặt lại mật khẩu, đổi mật khẩu."],
+    ["backend/src/middleware/auth.js", "Hai middleware auth và optionalAuth."],
+    ["backend/src/services/emailService.js", "Gửi email chứa liên kết đặt lại mật khẩu qua SMTP."],
+    ["backend/src/models/User.js", "Hook bcrypt pre-save, phương thức so khớp mật khẩu và sinh token đặt lại."],
+    ["backend/src/middleware/rateLimiter.js", "Giới hạn tần suất cho nhóm endpoint xác thực."],
+    ["backend/tests/authService.test.js<br/>backend/tests/authMiddleware.test.js", "31 kiểm thử tự động cho tầng xác thực."]
+  ],
+
+  "lenhKiemTra": [
+    ["npx jest tests/authService.test.js tests/authMiddleware.test.js", "<b>Tests: 31 passed, 31 total</b> — 2 bộ kiểm thử đều đạt"],
+    ["curl -X POST /api/auth/register", "HTTP 201, trả về JWT; phản hồi không chứa trường mật khẩu"],
+    ["curl -X POST /api/auth/login (sai mật khẩu)", "HTTP 401, thông báo lỗi không tiết lộ tài khoản có tồn tại hay không"],
+    ["curl /api/auth/me (không kèm token)", "HTTP 401 — middleware auth chặn đúng"]
+  ],
+
+  "gioiHan": [
+    "JWT không lưu trạng thái phía máy chủ nên chưa thu hồi được token trước hạn: đổi mật khẩu hiện cấp token mới nhưng token cũ vẫn còn hiệu lực tới khi hết hạn. Nhóm ghi nhận đây là hạn chế cần xử lý và sẽ bàn trong chương đánh giá.",
+    "Kiểm thử ở tuần này dùng mock cho tầng model, nên chúng kiểm chứng logic nghiệp vụ chứ chưa kiểm chứng tương tác thật với cơ sở dữ liệu.",
+    "Thông tin đăng nhập SMTP hiện đặt trong biến môi trường cục bộ; việc đưa vào kho bí mật có quản lý sẽ thực hiện ở giai đoạn dựng hạ tầng.",
+    "Chưa có xác minh địa chỉ email khi đăng ký, nên một tài khoản có thể tạo bằng email không thuộc sở hữu người đăng ký."
+  ],
+
+  "camKet": [
+    "Xây dựng cơ chế tải video trực tiếp lên Amazon S3 bằng Pre-signed PUT URL.",
+    "Kiểm chứng phía máy chủ định dạng và dung lượng tệp trước khi cấp URL tải lên.",
+    "Viết Chương 2 báo cáo đồ án (Cơ sở lý thuyết và khảo sát)."
+  ]
+}
