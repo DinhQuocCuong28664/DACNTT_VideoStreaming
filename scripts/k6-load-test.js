@@ -133,8 +133,17 @@ export function handleSummary(data) {
     },
   };
 
+  // Đường dẫn kết quả có thể đổi qua RESULT_FILE.
+  //
+  // Trước đây đường dẫn này bị ghi cứng, nên mỗi lần chạy lại là đè lên kết quả
+  // lần trước mà không cảnh báo gì. Điều đó đã thực sự xảy ra: lần đo drain-rate
+  // ghi đè lên số liệu của lần chạy trước đó, trong khi Chương 5 vẫn đang trích
+  // dẫn chính tệp ấy cho những con số không còn tồn tại trong đó nữa. Một phép
+  // đo khác mục đích thì phải ghi ra tệp khác.
+  const resultFile = __ENV.RESULT_FILE || 'docs/results/k6-summary.json';
+
   return {
-    'docs/results/k6-summary.json': JSON.stringify(report, null, 2),
+    [resultFile]: JSON.stringify(report, null, 2),
     // Giữ nguyên bảng tổng hợp mặc định trên màn hình
     stdout: textSummary(data),
   };

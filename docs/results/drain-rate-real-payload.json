@@ -1,0 +1,285 @@
+{
+  "testName": "Transcoding pipeline drain rate with real video payloads",
+  "measuredAt": "2026-09-02T13:49:01.974609+00:00",
+  "purpose": "Close the gap left by Section 5.6.3: the real-payload concurrency run confirmed every job succeeds but was not instrumented with the polling cadence needed to state a drain rate.",
+  "config": {
+    "concurrency": 50,
+    "totalUploads": 100,
+    "payload": "real 3-second H.264 clip (43127 bytes)",
+    "pollIntervalSec": 25,
+    "batchMaxVcpus": 8,
+    "jobVcpu": 1,
+    "baselineSucceededBeforeRun": 110,
+    "note": "Same scenario, executor and concurrency as the earlier synthetic run, so the two drain curves compare directly."
+  },
+  "result": {
+    "jobsSubmitted": 100,
+    "jobsSucceeded": 100,
+    "jobsFailed": 0,
+    "firstJobQueuedAtSec": 33,
+    "queueEmptyAtSec": 859,
+    "drainDurationSec": 826,
+    "drainRateJobsPerMin": 7.26,
+    "secondsPerJobAggregate": 8.26,
+    "impliedWallClockPerJobSec": 66.1,
+    "maxObservedRunning": 8,
+    "maxObservedStartingPlusRunning": 11
+  },
+  "comparisonToSyntheticRun": {
+    "source": "docs/results/stress-test-concurrency.json",
+    "syntheticDrainSec": 456,
+    "syntheticDrainRateJobsPerMin": 13.16,
+    "note": "The synthetic run drained faster because every job failed at FFmpeg immediately, paying only container provisioning. The ratio isolates the cost of doing the work."
+  },
+  "drainCurve": [
+    {
+      "tSec": 0,
+      "runnable": 0,
+      "starting": 0,
+      "running": 0,
+      "succeeded": 0,
+      "failed": 0
+    },
+    {
+      "tSec": 33,
+      "runnable": 92,
+      "starting": 8,
+      "running": 0,
+      "succeeded": 0,
+      "failed": 0
+    },
+    {
+      "tSec": 66,
+      "runnable": 92,
+      "starting": 0,
+      "running": 8,
+      "succeeded": 0,
+      "failed": 0
+    },
+    {
+      "tSec": 99,
+      "runnable": 84,
+      "starting": 5,
+      "running": 4,
+      "succeeded": 8,
+      "failed": 0
+    },
+    {
+      "tSec": 132,
+      "runnable": 83,
+      "starting": 2,
+      "running": 3,
+      "succeeded": 13,
+      "failed": 0
+    },
+    {
+      "tSec": 165,
+      "runnable": 77,
+      "starting": 2,
+      "running": 6,
+      "succeeded": 15,
+      "failed": 0
+    },
+    {
+      "tSec": 199,
+      "runnable": 72,
+      "starting": 5,
+      "running": 2,
+      "succeeded": 22,
+      "failed": 0
+    },
+    {
+      "tSec": 232,
+      "runnable": 69,
+      "starting": 2,
+      "running": 6,
+      "succeeded": 23,
+      "failed": 0
+    },
+    {
+      "tSec": 265,
+      "runnable": 64,
+      "starting": 5,
+      "running": 2,
+      "succeeded": 29,
+      "failed": 0
+    },
+    {
+      "tSec": 298,
+      "runnable": 61,
+      "starting": 2,
+      "running": 6,
+      "succeeded": 31,
+      "failed": 0
+    },
+    {
+      "tSec": 331,
+      "runnable": 60,
+      "starting": 1,
+      "running": 6,
+      "succeeded": 34,
+      "failed": 0
+    },
+    {
+      "tSec": 365,
+      "runnable": 53,
+      "starting": 4,
+      "running": 4,
+      "succeeded": 39,
+      "failed": 0
+    },
+    {
+      "tSec": 397,
+      "runnable": 50,
+      "starting": 3,
+      "running": 4,
+      "succeeded": 43,
+      "failed": 0
+    },
+    {
+      "tSec": 431,
+      "runnable": 45,
+      "starting": 4,
+      "running": 5,
+      "succeeded": 47,
+      "failed": 0
+    },
+    {
+      "tSec": 464,
+      "runnable": 43,
+      "starting": 5,
+      "running": 3,
+      "succeeded": 52,
+      "failed": 0
+    },
+    {
+      "tSec": 497,
+      "runnable": 38,
+      "starting": 3,
+      "running": 8,
+      "succeeded": 55,
+      "failed": 0
+    },
+    {
+      "tSec": 529,
+      "runnable": 33,
+      "starting": 4,
+      "running": 3,
+      "succeeded": 62,
+      "failed": 0
+    },
+    {
+      "tSec": 562,
+      "runnable": 29,
+      "starting": 3,
+      "running": 6,
+      "succeeded": 63,
+      "failed": 0
+    },
+    {
+      "tSec": 595,
+      "runnable": 24,
+      "starting": 4,
+      "running": 5,
+      "succeeded": 69,
+      "failed": 0
+    },
+    {
+      "tSec": 629,
+      "runnable": 21,
+      "starting": 3,
+      "running": 3,
+      "succeeded": 73,
+      "failed": 0
+    },
+    {
+      "tSec": 662,
+      "runnable": 16,
+      "starting": 4,
+      "running": 4,
+      "succeeded": 76,
+      "failed": 0
+    },
+    {
+      "tSec": 695,
+      "runnable": 12,
+      "starting": 2,
+      "running": 6,
+      "succeeded": 80,
+      "failed": 0
+    },
+    {
+      "tSec": 728,
+      "runnable": 8,
+      "starting": 3,
+      "running": 4,
+      "succeeded": 86,
+      "failed": 0
+    },
+    {
+      "tSec": 761,
+      "runnable": 4,
+      "starting": 1,
+      "running": 5,
+      "succeeded": 90,
+      "failed": 0
+    },
+    {
+      "tSec": 793,
+      "runnable": 0,
+      "starting": 1,
+      "running": 4,
+      "succeeded": 95,
+      "failed": 0
+    },
+    {
+      "tSec": 826,
+      "runnable": 0,
+      "starting": 0,
+      "running": 1,
+      "succeeded": 99,
+      "failed": 0
+    },
+    {
+      "tSec": 859,
+      "runnable": 0,
+      "starting": 0,
+      "running": 0,
+      "succeeded": 100,
+      "failed": 0
+    },
+    {
+      "tSec": 892,
+      "runnable": 0,
+      "starting": 0,
+      "running": 0,
+      "succeeded": 100,
+      "failed": 0
+    },
+    {
+      "tSec": 925,
+      "runnable": 0,
+      "starting": 0,
+      "running": 0,
+      "succeeded": 100,
+      "failed": 0
+    }
+  ],
+  "httpLayer": {
+    "source": "k6 handleSummary output of this run",
+    "measuredAt": "2026-09-02T13:13:37.285Z",
+    "totalRequests": 300,
+    "requestsPerSecond": 33.12,
+    "failedRate": 0,
+    "iterations": 100,
+    "maxVirtualUsers": 50,
+    "httpReqDurationMs": {
+      "avg": 862.83,
+      "med": 879.81,
+      "p90": 1688.22,
+      "p95": 1987.8,
+      "max": 3163.3
+    },
+    "note": "Kept here rather than in k6-summary.json: the k6 script writes that path from handleSummary, and this run would otherwise have overwritten the earlier real-payload run that Section 5.6.3 cites."
+  }
+}

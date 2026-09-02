@@ -622,14 +622,70 @@ Two point-in-time samples of the job queue, taken roughly ten minutes apart whil
 drained, showed 18 succeeded / 3 running / 84 queued shortly after the burst and 28 succeeded / 5
 running / 74 queued about ten minutes later, consistent with the same seven-to-eight-way
 concurrency ceiling established in Section~\ref{sec:load-cross-validation} and confirming that
-ceiling now gates genuine FFmpeg work rather than a task that fails at initialisation. This run
-was not instrumented with the twenty-five-second polling cadence used to produce
-\texttt{stress-test-concurrency.json}, so it does not supersede that measurement's precision about
-drain rate, a gap Section~\ref{sec:future-work} returns to. What it establishes, which no earlier
-run in this chapter could, is that the queueing and admission-control behaviour validated in
-Section~\ref{sec:load-cross-validation} sits in front of a pipeline that actually completes real
-transcoding work at that concurrency rather than one that only queues and admits it. The full
-result is recorded in \texttt{docs/results/k6-summary.json}.
+ceiling now gates genuine FFmpeg work rather than a task that fails at initialisation. What it
+establishes, which no earlier run in this chapter could, is that the queueing and admission-control
+behaviour validated in Section~\ref{sec:load-cross-validation} sits in front of a pipeline that
+actually completes real transcoding work at that concurrency rather than one that only queues and
+admits it. The full result is recorded in \texttt{docs/results/k6-summary.json}.
+
+\subsection{Drain Rate Under Real Transcoding Load}
+\label{sec:drain-rate}
+
+That run established that the work completes but not how fast the backlog clears, because it was
+not instrumented with the twenty-five-second polling cadence that produced the synthetic drain
+curve. Repeating it with that cadence in place closes the last measurement gap and, more usefully,
+makes the two curves directly comparable: same scenario, same executor, same fifty-way concurrency
+and one hundred uploads, differing only in whether the payload is a real video.
+
+The HTTP layer behaved as before --- three hundred requests, no failures, 33.12 requests per second
+--- and all one hundred Batch jobs again succeeded, with none failing. Independently of the Batch
+job states, all one hundred video records were confirmed to have reached \texttt{READY} in the
+database, which verifies that the jobs did the work rather than merely exiting zero.
+Table~\ref{tab:drain-rate} reports the comparison.
+
+\begin{table}[H]
+\centering
+\caption{Backlog drain under synthetic and real payloads}
+\label{tab:drain-rate}
+\small
+\begin{tabularx}{\textwidth}{X r r}
+\toprule
+& \textbf{SYNTHETIC} & \textbf{REAL VIDEO} \\
+\midrule
+Jobs submitted                  & 100    & 100 \\
+Jobs succeeded                  & 0      & 100 \\
+Drain duration (s)              & 456    & 826 \\
+Drain rate (jobs/min)           & 13.16  & 7.26 \\
+Peak concurrent \texttt{RUNNING} & 0     & 8 \\
+Implied wall-clock per job (s)  & ---    & 66.1 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\noindent\textit{Note: from \texttt{docs/results/drain-rate-real-payload.json} and
+\texttt{docs/results/stress-test-concurrency.json}, both sampled every 25~s. The synthetic column
+records no successes and no \texttt{RUNNING} observations because those jobs failed at FFmpeg
+almost immediately, which is what that experiment intended. Implied wall-clock per job is the
+drain duration multiplied by the observed concurrency and divided by the job count.}
+
+The real backlog drains at 7.26 jobs per minute against 13.16 for the synthetic one, so doing the
+work costs a factor of 1.8 in throughput relative to merely admitting and rejecting it. The
+concurrency ceiling is confirmed rather than inferred: \texttt{RUNNING} peaked at exactly eight,
+matching \texttt{max\_vcpus} divided by the per-job vCPU allocation, and stayed there through the
+linear portion of the curve. The synthetic run could not establish this, because with jobs failing
+on startup the \texttt{RUNNING} count was zero at every sample and only \texttt{STARTING} was
+observable.
+
+The implied per-job figure is where the number becomes interesting rather than merely precise. At
+eight-way concurrency, 826~seconds for one hundred jobs means roughly 66~seconds of wall-clock per
+job --- for a three-second video. Section~\ref{sec:pipeline-evaluation} measured a 100~MB input at
+around 476~seconds, so the fixed overhead visible here is not a small fraction of that, but for
+short content it is almost the entire cost. What the pipeline spends on a three-second clip is
+overwhelmingly container provisioning, image pull and result upload rather than encoding, which
+explains why the realtime factor reported earlier stays in a narrow band across input sizes: the
+variable cost scales with duration while a fixed cost of roughly a minute is paid regardless. For
+a platform whose median upload is short, that fixed cost, not FFmpeg's throughput, is what
+determines how long a user waits.
 
 \section{Cost Analysis}
 \label{sec:cost-analysis}
