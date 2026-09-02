@@ -60,6 +60,21 @@ const userSchema = new mongoose.Schema(
     // Password Reset
     resetPasswordToken: String,
     resetPasswordExpire: Date,
+
+    /**
+     * Thoi diem mat khau duoc doi lan gan nhat.
+     *
+     * Middleware xac thuc so truong nay voi claim `iat` cua JWT de tu choi
+     * moi token cap TRUOC lan doi mat khau. Neu khong co no, doi mat khau
+     * chi cap them token moi chu khong vo hieu hoa token cu — nghia la
+     * nguoi chiem duoc tai khoan van truy cap duoc den khi token het han
+     * (mac dinh 7 ngay), dung vao luc nan nhan tuong minh vua khoa lai
+     * tai khoan.
+     *
+     * De trong voi tai khoan chua tung doi mat khau; middleware bo qua
+     * kiem tra khi truong nay undefined.
+     */
+    passwordChangedAt: Date,
   },
   {
     timestamps: true, // Auto-create createdAt and updatedAt
@@ -76,6 +91,20 @@ userSchema.pre('save', async function () {
 
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
+
+  // Ghi nhan moc doi mat khau de vo hieu hoa cac JWT cap truoc do.
+  //
+  // Bo qua khi tao tai khoan moi: luc dang ky chua co token nao can vo
+  // hieu hoa, va de moc nay trong se don gian hon.
+  //
+  // Tru di 1 giay la co y. Claim `iat` cua JWT tinh bang GIAY (lam tron
+  // xuong), con Date o day tinh bang MILI giay. Token cap ngay sau khi
+  // doi mat khau se co iat = floor(t/1000), nho hon t neu t co phan le —
+  // khong tru bu thi chinh token vua cap cho nguoi dung se bi tu choi
+  // ngay lap tuc.
+  if (!this.isNew) {
+    this.passwordChangedAt = new Date(Date.now() - 1000);
+  }
 });
 
 // Instance method: Compare entered password with hashed password
