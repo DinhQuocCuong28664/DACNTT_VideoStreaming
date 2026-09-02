@@ -131,9 +131,35 @@ resource "aws_instance" "backend_api" {
   }
 }
 
+# ── Địa chỉ IP cố định ─────────────────────────────
+#
+# Không có Elastic IP, địa chỉ công khai của máy chủ gắn liền với vòng đời của
+# chính instance: dựng lại máy là mất địa chỉ, và bản ghi A cho
+# api.zelostech.site trên Cloudflare phải sửa tay. Đây không phải rủi ro giả
+# định — instance hiện tại có LaunchTime 30/08/2026 và địa chỉ đã đổi từ
+# 13.212.74.63 sang 13.229.211.233 đúng lần dựng lại đó.
+#
+# ignore_changes trên `ami` ở trên chặn NGUYÊN NHÂN hay gặp nhất khiến máy bị
+# dựng lại; Elastic IP chặn nốt HẬU QUẢ, cho mọi lý do dựng lại còn lại — đổi
+# instance type, sửa user_data, hay tự tay chạy -replace.
+#
+# Về chi phí: gắn EIP vào máy đang chạy KHÔNG tốn thêm. Từ 01/02/2024 AWS tính
+# phí mọi địa chỉ IPv4 công khai (~$0,005/giờ), và máy này vốn đã có một địa
+# chỉ như vậy do associate_public_ip_address = true. EIP thay thế địa chỉ đó
+# chứ không cộng thêm, nên số địa chỉ vẫn là một. Cảnh báo duy nhất: một EIP
+# đã cấp phát nhưng KHÔNG gắn vào đâu vẫn bị tính tiền — đừng để nó mồ côi.
+resource "aws_eip" "backend_api" {
+  instance = aws_instance.backend_api.id
+  domain   = "vpc"
+
+  tags = merge(local.common_tags, {
+    Name = "${var.project_name}-${var.environment}-backend-eip"
+  })
+}
+
 output "backend_public_ip" {
-  description = "Tro ban ghi A cua api.zelostech.site tren Cloudflare toi dia chi nay"
-  value       = aws_instance.backend_api.public_ip
+  description = "Tro ban ghi A cua api.zelostech.site tren Cloudflare toi dia chi nay (Elastic IP - co dinh qua cac lan dung lai may chu)"
+  value       = aws_eip.backend_api.public_ip
 }
 
 output "backend_instance_id" {
