@@ -30,9 +30,10 @@ environments, and seven GitHub Actions workflows automate linting, unit testing,
 analysis, container scanning, infrastructure validation, and deployment. The security gate
 blocks merges on fixable critical findings rather than merely reporting them.
 
-The automated test suite grew to 92 tests. Its practical value was demonstrated when it caught a
-defect in the cookie signing implementation that would have prevented every private video from
-playing once deployed.
+The automated test suite grew to 104 tests across nine suites. Its practical value was demonstrated
+when it caught a defect in the cookie signing implementation that would have prevented every
+private video from playing once deployed. A second, related defect in that same subsystem, caught
+only later and by a different means, is discussed in Section~\ref{sec:limitations} below.
 
 \section{Limitations}
 \label{sec:limitations}
@@ -67,30 +68,72 @@ from Amazon S3 without any authorisation check. Attempting to apply the Terrafor
 to correct this failed with an access-denied error, because AWS requires manual account
 verification before a new account may create CloudFront distributions, a restriction the project
 had encountered before and for which the \texttt{enable\_cloudfront} flag had originally been
-introduced as a workaround. A support request was filed with AWS to lift this restriction; at the
-time of writing, several days later, it remains pending, and repeated attempts to re-apply the
-Terraform configuration continue to return the identical access-denied error, confirming the
-restriction is still in effect rather than merely slow to propagate. This episode is reported here
+introduced as a workaround. A support request was filed with AWS to lift this restriction and, at
+the time, remained pending with no bound on how long it might take. This episode is reported here
 in the interest of honesty rather than omitted, and it illustrates a broader lesson about
 serverless and managed cloud services: correctness of the Infrastructure as Code is necessary but
 not sufficient, since provisioning can still be blocked by account-level policy outside the
 application's control, and verifying claims against the live environment rather than against the
 source code alone is essential before a security control can be considered in effect.
 
-Because the wait for account verification could not be bounded, a temporary substitute was put in
-place so the deployed system would not be left serving plain HTTP indefinitely. Cloudflare's free
-tier was configured as an interim DNS and TLS-terminating proxy in front of the same S3-hosted
-frontend, and a small Nginx reverse proxy was added on the backend's EC2 instance so the API could
-also be reached over HTTPS, since Cloudflare's free tier only forwards a fixed set of ports and the
-API's port was not among them. This restores end-to-end HTTPS for users immediately, but it is
-explicitly a stopgap rather than a substitute for the evaluated design: it protects the connection
-in transit, not the content itself, so the manually added public bucket policy described above
-still leaves every object directly fetchable from S3 by anyone who obtains its URL, and the
-CloudFront Signed Cookie mechanism evaluated in Section~\ref{sec:content-protection} remains
-unenforced until the real CloudFront distribution can be created. The Terraform configuration for
-that distribution needs no changes once AWS lifts the restriction; the only remaining step is to
-re-point DNS from the interim S3 target to the CloudFront domain name, which is expected to take
-minutes rather than days.
+Rather than wait indefinitely on the support ticket, the gap was closed by provisioning the
+distribution in a second AWS account that was not subject to the same restriction. Terraform
+supports this without duplicating any module: the distribution, its Origin Access Control, its
+cache and response-header policies, and its Signed Cookie trusted key group were given an explicit
+\texttt{provider} argument pointing at the second account's credentials, while the buckets, Batch,
+Lambda, and the database connection remained where they already were. Only one resource could not
+simply move with the rest: a bucket policy can only be attached by the account that owns the
+bucket, so the statement granting the distribution read access was kept on the original account's
+provider. This is not a special case requiring extra logic, because an Origin Access Control
+policy is already expressed as a service principal together with an \texttt{AWS:SourceArn}
+condition naming the distribution, a form that is indifferent to which account owns the ARN it
+names. With the cross-account distribution in place, the manually added public bucket policy was
+removed, and the bucket returned to being reachable only through CloudFront, exactly as
+Section~\ref{sec:content-protection} specifies. The workaround changes nothing about the security
+property being evaluated: the distribution, key group, and signing logic are identical to what
+would have been provisioned in the original account, and the account boundary a distribution
+happens to sit behind is invisible to a viewer.
+
+A second, more subtle defect emerged only once Signed Cookies were exercised against the newly
+deployed distribution, and it is worth recording because of how it evaded the existing test suite.
+The function constructing the resource pattern a cookie's policy authorises,
+\texttt{buildResourcePattern} in \texttt{cloudfrontService.js}, signed
+\texttt{videos/*/\{videoId\}/*}, with a wildcard segment between the fixed prefix and the video
+identifier. The transcoder, however, writes every rendition and the master playlist directly
+under \texttt{videos/\{videoId\}/}, with no such intermediate segment. Every cookie the backend
+issued was consequently well-formed and correctly signed, and CloudFront rejected every one of
+them, because the resource each cookie authorised never matched any URL a viewer could actually
+request; every private and public video alike returned \texttt{403 Forbidden}. The existing test
+for \texttt{buildResourcePattern} did not catch this because its assertion compared the function's
+output against a literal string obtained by reading the function itself, not against the
+transcoder's actual key layout, so the test could only confirm that the function had not changed,
+not that the pattern it produced was one CloudFront would ever match. This is the canned-policy
+defect from Section~\ref{sec:testing} recurring in a different guise: a test written by copying an
+implementation's current behaviour cannot detect a defect in that behaviour, only a later
+regression away from it. The fix corrects the pattern to \texttt{videos/\{videoId\}/*} and
+rewrites the test to assert against the key layout the transcoder actually produces.
+
+Two further consequences of finally exercising the deployed distribution are worth recording more
+briefly. Gating every object behind Signed Cookies also gated video thumbnails, which a catalogue
+listing must render for many videos at once even though a cookie authorises exactly one; the fix
+carves out a separate, unsigned cache behaviour for the thumbnail path specifically, since a
+thumbnail is not the content the mechanism is meant to protect. Separately, the frontend's own
+CloudFront distribution, provisioned around the same time for the unrelated reason that an Amazon
+S3 website endpoint cannot return \texttt{200} for a single-page application's client-side routes
+on a direct navigation, had no cache-invalidation step in its deployment workflow, so a fix already
+synced to the origin bucket continued to be served from the edge cache for hours afterward; the
+workflow now invalidates that distribution immediately after every deployment. Both were found the
+same way as the two defects above: by exercising the deployed system rather than trusting that a
+correct configuration change had taken effect once it merged.
+
+Signed Cookies were verified end to end after these corrections: a request for a manifest without
+a valid cookie returns \texttt{403 Forbidden} at the edge, and the identical request succeeds once
+the backend's playback-authorisation endpoint has issued cookies for that video, confirming the
+mechanism evaluated in Section~\ref{sec:content-protection} is now in effect on the deployed
+system and not merely present in its source code. Cloudflare continues to sit in front of the
+deployment as its DNS provider and edge TLS terminator, a role introduced as a stopgap while the
+distribution above did not yet exist; that role persists, but it now proxies to the real
+CloudFront distribution rather than substituting for it.
 
 The system implements no digital rights management. An authorised viewer can capture the
 decrypted stream or share their cookies, and preventing this is outside the scope of the
@@ -126,12 +169,19 @@ the defect within minutes instead of hours.
 \section{Future Work}
 \label{sec:future-work}
 
-Two measurements should be repeated before the experimental results are considered settled. The
-concurrency test should be re-run with genuine video payloads now that the initialisation defect
-is corrected, so that the queue drain rate reflects real transcoding throughput rather than the
-speed at which Fargate provisions and fails a task; using short clips would keep the cost of such
-a run modest while still exercising the full data plane. The vCPU scaling comparison should also
-be repeated with more replications of the 1~vCPU baseline and with memory held constant, since
+Three measurements should be repeated before the experimental results are considered settled. The
+Time-to-First-Frame measurement in Section~\ref{sec:qoe-evaluation} was taken against the S3 origin
+before the CloudFront distribution described in Section~\ref{sec:limitations} existed, and should
+be repeated against the live distribution with Signed Cookies attached exactly as a real playback
+session presents them, so that the reported figures reflect what a viewer experiences on the
+deployed system rather than origin latency alone. The concurrency test re-run with genuine video
+payloads (Section~\ref{sec:real-throughput-validation})
+confirmed that every job succeeds under load, but it was not instrumented with the same
+twenty-five-second polling cadence as the original synthetic run, so a precise drain-rate figure
+for real transcoding throughput --- as opposed to confirmation that throughput is non-zero and
+failure-free --- remains to be measured; repeating the same short-clip payload with that polling
+protocol in place would close this. The vCPU scaling comparison should also be repeated with more
+replications of the 1~vCPU baseline and with memory held constant, since
 Section~\ref{sec:pipeline-evaluation} showed the present estimate to be dominated by baseline
 variance and confounded by a simultaneous change in memory allocation.
 

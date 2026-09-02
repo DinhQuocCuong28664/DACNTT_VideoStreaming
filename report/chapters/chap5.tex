@@ -145,7 +145,7 @@ scans the configuration for insecure settings.
 \section{Testing}
 \label{sec:testing}
 
-The automated test suite comprises 98 tests across eight suites, summarised in
+The automated test suite comprises 104 tests across nine suites, summarised in
 Table~\ref{tab:test-coverage}.
 
 \begin{table}[H]
@@ -165,6 +165,7 @@ Table~\ref{tab:test-coverage}.
 \texttt{uploadValidation}   & 11 & HTTP-level validation of file type and size \\
 \texttt{cloudfrontService}  & 21 & Cookie signing, policy scope, cookie attributes \\
 \texttt{transcoder/dbHandler} & 6 & Conditional writes preventing duplicate-job overwrites \\
+\texttt{transcoder/emailService} & 6 & READY/ERROR notification content and recipient targeting, and that raw failure detail is never exposed to the viewer \\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -225,10 +226,13 @@ First segment      & 108.76 & 87.04  & 322.20 & 78.41 & 322.20 \\
 
 \noindent\textit{Note: values in milliseconds, from Table~\ref{tab:ttff-results}, $n=20$ samples,
 populated from \texttt{docs/results/qoe-ttff.json}, produced by \texttt{scripts/benchmark-qoe.js}
-against a video served directly from the S3 bucket (source URL recorded in the result file), since
-CloudFront was not yet provisioned at measurement time (Section~\ref{sec:limitations}) --- these
-figures therefore represent origin latency without CDN edge caching, and would be expected to
-improve once CloudFront is enabled. The mean (292.93~ms) exceeds the median (251.52~ms) because one
+against a video served directly from the S3 bucket (source URL recorded in the result file), taken
+before the CloudFront distribution described in Section~\ref{sec:limitations} was deployed --- these
+figures therefore represent origin latency without CDN edge caching, not the latency a viewer
+experiences on the deployed system today. Repeating this measurement against the now-live
+distribution, with Signed Cookies attached as a real playback session would present them, is
+recorded as future work in Section~\ref{sec:future-work} rather than presented here as a settled
+result. The mean (292.93~ms) exceeds the median (251.52~ms) because one
 outlier sample (884.54~ms) inflates both the mean and the P95/max columns, which coincide with the
 single-sample maximum at this sample size.}
 
@@ -344,8 +348,8 @@ message, and that AWS Batch admitted exactly its configured number of concurrent
 unaffected, because those mechanisms operate before and independently of the container's
 entrypoint. The \emph{rate} at which the backlog cleared, however, reflects how quickly Fargate
 provisions and fails a task, not how quickly it completes real transcoding work, and must not be
-read as a throughput figure for production load. A genuine throughput measurement under concurrency
-is identified as future work in Section~\ref{sec:future-work}.
+read as a throughput figure for production load. This gap is closed, though not with the same
+measurement precision, in Section~\ref{sec:real-throughput-validation}.
 
 \begin{table}[H]
 \centering
@@ -438,6 +442,35 @@ message was lost or left stuck; the full sample sequence is recorded in
 the direct evidence for the claim that opened this section: Amazon SQS retained every unit of work
 submitted faster than the compute layer could consume it, and AWS Batch admitted work strictly at,
 and never above, its configured limit while consuming that backlog.
+
+\subsection{Validating Real Transcoding Throughput}
+\label{sec:real-throughput-validation}
+
+The caveat stated at the start of this section was closed once the Secrets Manager defect was
+corrected (Section~\ref{sec:limitations}) and the concurrency test was re-run with a genuine
+three-second H.264 source file in place of the synthetic byte string that every earlier run in
+this section used. The scenario, executor, and concurrency were otherwise unchanged from
+Table~\ref{tab:load-crossvalidation}: fifty virtual users driving the
+\texttt{shared-iterations} executor to exactly one hundred upload cycles against the same
+production endpoint.
+
+All three hundred HTTP requests --- initiate, direct-to-S3 PUT, and confirm, across the one
+hundred cycles --- succeeded, for a throughput of 23.47 requests per second and a 95th-percentile
+request duration of 1827~ms, both consistent with the request-level figures in
+Table~\ref{tab:load-crossvalidation}. The decisive difference is downstream of the HTTP layer:
+every one of the resulting one hundred Batch jobs reached \texttt{SUCCEEDED}, and none failed.
+Two point-in-time samples of the job queue, taken roughly ten minutes apart while the backlog
+drained, showed 18 succeeded / 3 running / 84 queued shortly after the burst and 28 succeeded / 5
+running / 74 queued about ten minutes later, consistent with the same seven-to-eight-way
+concurrency ceiling established in Section~\ref{sec:load-cross-validation} and confirming that
+ceiling now gates genuine FFmpeg work rather than a task that fails at initialisation. This run
+was not instrumented with the twenty-five-second polling cadence used to produce
+\texttt{stress-test-concurrency.json}, so it does not supersede that measurement's precision about
+drain rate, a gap Section~\ref{sec:future-work} returns to. What it establishes, which no earlier
+run in this chapter could, is that the queueing and admission-control behaviour validated in
+Section~\ref{sec:load-cross-validation} sits in front of a pipeline that actually completes real
+transcoding work at that concurrency rather than one that only queues and admits it. The full
+result is recorded in \texttt{docs/results/k6-summary.json}.
 
 \section{Cost Analysis}
 \label{sec:cost-analysis}
