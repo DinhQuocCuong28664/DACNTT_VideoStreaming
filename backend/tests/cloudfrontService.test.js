@@ -234,4 +234,61 @@ describe('Dịch vụ cấp CloudFront Signed Cookie', () => {
       }
     });
   });
+
+  describe('clearPlaybackCookies', () => {
+    beforeEach(enableSigning);
+
+    it('nên xoá đủ cả ba cookie', () => {
+      const res = { clearCookie: jest.fn() };
+
+      cloudfrontService.clearPlaybackCookies(res);
+
+      expect(res.clearCookie).toHaveBeenCalledTimes(3);
+      expect(res.clearCookie.mock.calls.map((c) => c[0])).toEqual([
+        'CloudFront-Policy',
+        'CloudFront-Signature',
+        'CloudFront-Key-Pair-Id',
+      ]);
+    });
+
+    /**
+     * Đây là bài kiểm tra quan trọng nhất của nhóm này. Trình duyệt chỉ xoá
+     * một cookie khi domain và path của lệnh xoá trùng khớp với lúc đặt; lệch
+     * dù chỉ một thuộc tính thì nó coi đây là cookie khác, âm thầm không làm
+     * gì, và cookie cũ vẫn còn hiệu lực. Máy chủ vẫn trả 200 nên không có dấu
+     * hiệu nào cho thấy việc thu hồi đã thất bại.
+     *
+     * So sánh trực tiếp với tham số mà attachPlaybackCookies dùng, thay vì
+     * viết lại giá trị mong đợi bằng hằng số — nếu sau này ai đó đổi domain
+     * hay path ở một bên mà quên bên kia, test này phải gãy.
+     */
+    it('nên dùng đúng domain/path/sameSite như lúc đặt, nếu không trình duyệt sẽ không xoá', () => {
+      process.env.COOKIE_DOMAIN = '.zelostech.site';
+
+      const resDat = { cookie: jest.fn() };
+      cloudfrontService.attachPlaybackCookies(resDat, 'video123');
+      const optionsLucDat = resDat.cookie.mock.calls[0][2];
+
+      const resXoa = { clearCookie: jest.fn() };
+      cloudfrontService.clearPlaybackCookies(resXoa);
+      const optionsLucXoa = resXoa.clearCookie.mock.calls[0][1];
+
+      expect(optionsLucXoa.domain).toBe(optionsLucDat.domain);
+      expect(optionsLucXoa.path).toBe(optionsLucDat.path);
+      expect(optionsLucXoa.sameSite).toBe(optionsLucDat.sameSite);
+      expect(optionsLucXoa.secure).toBe(optionsLucDat.secure);
+      expect(optionsLucXoa.httpOnly).toBe(optionsLucDat.httpOnly);
+    });
+
+    it('không nên đặt thuộc tính domain khi COOKIE_DOMAIN bỏ trống', () => {
+      delete process.env.COOKIE_DOMAIN;
+      const res = { clearCookie: jest.fn() };
+
+      cloudfrontService.clearPlaybackCookies(res);
+
+      for (const call of res.clearCookie.mock.calls) {
+        expect(call[1].domain).toBeUndefined();
+      }
+    });
+  });
 });

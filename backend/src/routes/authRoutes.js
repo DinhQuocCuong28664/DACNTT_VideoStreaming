@@ -12,6 +12,7 @@ const {
   forgotPassword,
   resetPassword,
   changePassword,
+  logout,
 } = require('../controllers/authController');
 
 // Public routes — áp dụng rate limit nghiêm ngặt để chống brute-force
@@ -20,6 +21,10 @@ router.post('/login', authLimiter, validateRequest(['email', 'password']), valid
 router.post('/google', authLimiter, validateRequest(['credential']), googleAuth);
 router.post('/forgot-password', authLimiter, validateRequest(['email']), validateEmail, forgotPassword);
 router.post('/reset-password/:token', authLimiter, validateRequest(['password']), resetPassword);
+// Không đặt sau `auth`: đăng xuất phải dọn được cookie kể cả khi token đã hết
+// hạn — xem ghi chú ở controller. Cũng không áp authLimiter, vì bị chặn đăng
+// xuất là để lại quyền xem còn hiệu lực trong trình duyệt.
+router.post('/logout', logout);
 
 // Protected routes (require JWT)
 router.get('/me', auth, getMe);

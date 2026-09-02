@@ -1,5 +1,25 @@
 const authService = require('../services/authService');
 const emailService = require('../services/emailService');
+const { clearPlaybackCookies } = require('../services/cloudfrontService');
+
+/**
+ * @route   POST /api/auth/logout
+ * @desc    Thu hồi CloudFront Signed Cookie của phiên xem
+ * @access  Public
+ *
+ * Xác thực bằng JWT vốn không cần máy chủ tham gia lúc đăng xuất, nhưng cookie
+ * phát video thì có: chúng đặt `httpOnly` nên chỉ máy chủ mới xoá được. Không
+ * có endpoint này, đăng xuất chỉ dọn localStorage còn quyền tải segment video
+ * riêng tư vẫn nằm lại trong trình duyệt cho tới khi cookie hết hạn.
+ *
+ * Cố ý KHÔNG đặt sau middleware `auth`: người dùng hay bấm đăng xuất đúng lúc
+ * token đã hết hạn hoặc vừa bị truất quyền, và đó chính là lúc cần dọn cookie
+ * nhất. Endpoint chỉ xoá cookie của chính người gọi nên không cần danh tính.
+ */
+const logout = (req, res) => {
+  clearPlaybackCookies(res);
+  res.status(200).json({ success: true, message: 'Đã đăng xuất' });
+};
 
 /**
  * @route   POST /api/auth/register
@@ -219,4 +239,5 @@ module.exports = {
   forgotPassword,
   resetPassword,
   changePassword,
+  logout,
 };

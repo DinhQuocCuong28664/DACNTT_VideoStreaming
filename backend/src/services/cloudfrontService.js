@@ -137,10 +137,41 @@ const attachPlaybackCookies = (res, videoId) => {
   return { expiresAt, resource };
 };
 
+/**
+ * Thu hồi bộ Signed Cookie khỏi trình duyệt.
+ *
+ * Cần có hàm này vì cookie được đặt `httpOnly`, nên đăng xuất phía trình duyệt
+ * không thể tự xoá chúng — chỉ máy chủ mới xoá được. Trước đây không có đường
+ * nào làm việc đó: đăng xuất chỉ xoá token trong localStorage, còn bộ cookie
+ * phát video vẫn nằm lại trong trình duyệt tới hai giờ. Trên máy dùng chung,
+ * người ngồi vào sau vẫn tải được segment video riêng tư của người trước nếu
+ * biết đường dẫn.
+ *
+ * Các thuộc tính domain/path/sameSite/secure phải trùng khớp với lúc đặt, nếu
+ * không trình duyệt coi đó là cookie khác và cookie cũ vẫn còn nguyên.
+ */
+const clearPlaybackCookies = (res) => {
+  const options = {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
+  };
+
+  if (process.env.COOKIE_DOMAIN) {
+    options.domain = process.env.COOKIE_DOMAIN;
+  }
+
+  res.clearCookie(COOKIE_NAMES.policy, options);
+  res.clearCookie(COOKIE_NAMES.signature, options);
+  res.clearCookie(COOKIE_NAMES.keyPairId, options);
+};
+
 module.exports = {
   isSigningEnabled,
   generatePlaybackCookies,
   attachPlaybackCookies,
+  clearPlaybackCookies,
   buildResourcePattern,
   COOKIE_TTL_SECONDS,
   COOKIE_NAMES,
