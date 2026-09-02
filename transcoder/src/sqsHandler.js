@@ -1,13 +1,28 @@
 const { SQSClient, ReceiveMessageCommand, DeleteMessageCommand, ChangeMessageVisibilityCommand } = require('@aws-sdk/client-sqs');
 const config = require('./config');
 
-const sqsClient = new SQSClient({
-  region: config.awsRegion,
-  credentials: {
+// Chỉ truyền `credentials` khi thực sự có khoá tĩnh trong biến môi trường.
+//
+// Truyền vô điều kiện sẽ đưa cho SDK object {accessKeyId: undefined,
+// secretAccessKey: undefined} khi tiến trình chạy bằng IAM Role, và SDK từ
+// chối với lỗi "Resolved credential object is not valid" thay vì tự dò theo
+// chuỗi mặc định. Trên Fargate, nơi container nhận quyền qua task role chứ
+// không qua khoá tĩnh, mọi lệnh gọi SQS sẽ hỏng ngay.
+//
+// Đây đúng là lỗi đã gặp và đã sửa ở hai nơi khác — s3Handler.js ngay bên
+// cạnh, và s3Service.js phía backend, nơi comment còn ghi rõ triệu chứng —
+// nhưng tệp này bị bỏ sót. Nó chưa gây sự cố chỉ vì chế độ `worker` không
+// được dùng khi triển khai (job chạy ở chế độ `batch`, không đụng tới SQS),
+// nên lỗi sẽ nằm im cho tới lần đầu có người thực sự chạy chế độ đó.
+const sqsClientConfig = { region: config.awsRegion };
+if (config.awsAccessKeyId && config.awsSecretAccessKey) {
+  sqsClientConfig.credentials = {
     accessKeyId: config.awsAccessKeyId,
     secretAccessKey: config.awsSecretAccessKey,
-  },
-});
+  };
+}
+
+const sqsClient = new SQSClient(sqsClientConfig);
 
 /**
  * Poll SQS queue for messages (Long Polling)
