@@ -1,0 +1,238 @@
+{
+  "measuredAt": "2026-09-02T09:59:13.141Z",
+  "source": "https://cdn.zelostech.site/videos/6a9441d0983da3aa78f9536b/master.m3u8",
+  "iterations": 20,
+  "successfulSamples": 20,
+  "failedSamples": 0,
+  "ttff": {
+    "count": 20,
+    "minMs": 83.17,
+    "maxMs": 1099.51,
+    "meanMs": 170.69,
+    "medianMs": 110.32,
+    "p95Ms": 1099.51
+  },
+  "breakdown": {
+    "masterPlaylist": {
+      "count": 20,
+      "minMs": 6.54,
+      "maxMs": 263.43,
+      "meanMs": 28.65,
+      "medianMs": 8.37,
+      "p95Ms": 263.43
+    },
+    "subPlaylist": {
+      "count": 20,
+      "minMs": 5.89,
+      "maxMs": 348.78,
+      "meanMs": 29.29,
+      "medianMs": 7.93,
+      "p95Ms": 348.78
+    },
+    "firstSegment": {
+      "count": 20,
+      "minMs": 68.87,
+      "maxMs": 487.31,
+      "meanMs": 112.75,
+      "medianMs": 87.36,
+      "p95Ms": 487.31
+    }
+  },
+  "firstSegmentBytes": 277300,
+  "cacheStatuses": {
+    "Miss from cloudfront": 2,
+    "Hit from cloudfront": 18
+  },
+  "signedCookies": true,
+  "errors": [],
+  "samples": [
+    {
+      "totalTtffMs": 1099.51,
+      "cacheStatus": "Miss from cloudfront",
+      "cachePerStage": {
+        "master": "miss",
+        "subPlaylist": "miss",
+        "segment": "miss"
+      }
+    },
+    {
+      "totalTtffMs": 361.45,
+      "cacheStatus": "Miss from cloudfront",
+      "cachePerStage": {
+        "master": "miss",
+        "subPlaylist": "miss",
+        "segment": "miss"
+      }
+    },
+    {
+      "totalTtffMs": 120.86,
+      "cacheStatus": "Hit from cloudfront",
+      "cachePerStage": {
+        "master": "hit",
+        "subPlaylist": "hit",
+        "segment": "hit"
+      }
+    },
+    {
+      "totalTtffMs": 126.51,
+      "cacheStatus": "Hit from cloudfront",
+      "cachePerStage": {
+        "master": "hit",
+        "subPlaylist": "hit",
+        "segment": "hit"
+      }
+    },
+    {
+      "totalTtffMs": 159.25,
+      "cacheStatus": "Hit from cloudfront",
+      "cachePerStage": {
+        "master": "hit",
+        "subPlaylist": "hit",
+        "segment": "hit"
+      }
+    },
+    {
+      "totalTtffMs": 110.32,
+      "cacheStatus": "Hit from cloudfront",
+      "cachePerStage": {
+        "master": "hit",
+        "subPlaylist": "hit",
+        "segment": "hit"
+      }
+    },
+    {
+      "totalTtffMs": 117.72,
+      "cacheStatus": "Hit from cloudfront",
+      "cachePerStage": {
+        "master": "hit",
+        "subPlaylist": "hit",
+        "segment": "hit"
+      }
+    },
+    {
+      "totalTtffMs": 119.46,
+      "cacheStatus": "Hit from cloudfront",
+      "cachePerStage": {
+        "master": "hit",
+        "subPlaylist": "hit",
+        "segment": "hit"
+      }
+    },
+    {
+      "totalTtffMs": 121.26,
+      "cacheStatus": "Hit from cloudfront",
+      "cachePerStage": {
+        "master": "hit",
+        "subPlaylist": "hit",
+        "segment": "hit"
+      }
+    },
+    {
+      "totalTtffMs": 95.24,
+      "cacheStatus": "Hit from cloudfront",
+      "cachePerStage": {
+        "master": "hit",
+        "subPlaylist": "hit",
+        "segment": "hit"
+      }
+    },
+    {
+      "totalTtffMs": 103.2,
+      "cacheStatus": "Hit from cloudfront",
+      "cachePerStage": {
+        "master": "hit",
+        "subPlaylist": "hit",
+        "segment": "hit"
+      }
+    },
+    {
+      "totalTtffMs": 99.1,
+      "cacheStatus": "Hit from cloudfront",
+      "cachePerStage": {
+        "master": "hit",
+        "subPlaylist": "hit",
+        "segment": "hit"
+      }
+    },
+    {
+      "totalTtffMs": 107.57,
+      "cacheStatus": "Hit from cloudfront",
+      "cachePerStage": {
+        "master": "hit",
+        "subPlaylist": "hit",
+        "segment": "hit"
+      }
+    },
+    {
+      "totalTtffMs": 119.9,
+      "cacheStatus": "Hit from cloudfront",
+      "cachePerStage": {
+        "master": "hit",
+        "subPlaylist": "hit",
+        "segment": "hit"
+      }
+    },
+    {
+      "totalTtffMs": 102.21,
+      "cacheStatus": "Hit from cloudfront",
+      "cachePerStage": {
+        "master": "hit",
+        "subPlaylist": "hit",
+        "segment": "hit"
+      }
+    },
+    {
+      "totalTtffMs": 99.99,
+      "cacheStatus": "Hit from cloudfront",
+      "cachePerStage": {
+        "master": "hit",
+        "subPlaylist": "hit",
+        "segment": "hit"
+      }
+    },
+    {
+      "totalTtffMs": 83.17,
+      "cacheStatus": "Hit from cloudfront",
+      "cachePerStage": {
+        "master": "hit",
+        "subPlaylist": "hit",
+        "segment": "hit"
+      }
+    },
+    {
+      "totalTtffMs": 92.53,
+      "cacheStatus": "Hit from cloudfront",
+      "cachePerStage": {
+        "master": "hit",
+        "subPlaylist": "hit",
+        "segment": "hit"
+      }
+    },
+    {
+      "totalTtffMs": 84.65,
+      "cacheStatus": "Hit from cloudfront",
+      "cachePerStage": {
+        "master": "hit",
+        "subPlaylist": "hit",
+        "segment": "hit"
+      }
+    },
+    {
+      "totalTtffMs": 89.97,
+      "cacheStatus": "Hit from cloudfront",
+      "cachePerStage": {
+        "master": "hit",
+        "subPlaylist": "hit",
+        "segment": "hit"
+      }
+    }
+  ],
+  "ttffWarmCacheOnly": {
+    "count": 18,
+    "minMs": 83.17,
+    "maxMs": 159.25,
+    "meanMs": 108.49,
+    "medianMs": 107.57,
+    "p95Ms": 159.25
+  }
+}

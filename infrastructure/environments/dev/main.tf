@@ -99,7 +99,21 @@ module "cloudfront" {
   processed_bucket_domain_name = module.s3.processed_bucket_domain_name
   processed_bucket_name        = module.s3.processed_bucket_name
   processed_bucket_arn         = module.s3.processed_bucket_arn
-  price_class                  = "PriceClass_100" # Dev: cheapest
+  # PriceClass_200 gồm cả các edge châu Á; PriceClass_100 thì không.
+  #
+  # Trước đây đặt PriceClass_100 kèm ghi chú "rẻ nhất". Nó rẻ thật, và nó khiến
+  # CDN chậm hơn cả việc lấy thẳng từ origin đối với đúng tập người dùng của hệ
+  # thống. Đo thực tế từ Việt Nam cho thấy mọi yêu cầu đều được phục vụ bởi PoP
+  # MRS53 (Marseille, Pháp), vì PriceClass_100 chỉ có Bắc Mỹ và châu Âu: trung
+  # vị TTFF 728 ms qua CDN so với 251 ms khi đo trực tiếp tới S3 ở Singapore.
+  # Cache vẫn hoạt động đúng (19/20 hit) — thứ bị trả giá thuần tuý là khoảng
+  # cách địa lý.
+  #
+  # PriceClass_200 bổ sung châu Á, Ấn Độ, Trung Đông và châu Phi, chỉ loại trừ
+  # Nam Mỹ, Úc và New Zealand. Giá mỗi GB ở châu Á cao hơn, nhưng CloudFront
+  # miễn phí 1 TB truyền ra và 10 triệu yêu cầu mỗi tháng, mức mà dự án này
+  # không chạm tới.
+  price_class                  = "PriceClass_200"
   cors_allowed_origins         = var.cors_allowed_origins
   enable_cloudfront            = var.enable_cloudfront
   enable_signed_urls           = var.enable_signed_urls
