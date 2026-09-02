@@ -1,0 +1,262 @@
+{
+  "measuredAt": "2026-09-02T10:13:23.708600+00:00",
+  "method": "AWS Lambda probe deployed temporarily to each region, 20 iterations each, CloudFront Signed Cookies attached, deleted after measurement",
+  "priceClass": "PriceClass_200",
+  "byRegion": {
+    "ap-northeast-1": {
+      "clientLocation": "Tokyo, Japan",
+      "servedByPop": [
+        "NRT12-P9"
+      ],
+      "samples": 20,
+      "cacheHits": 19,
+      "ttff": {
+        "count": 20,
+        "minMs": 36.19,
+        "maxMs": 1147.53,
+        "meanMs": 114.35,
+        "medianMs": 59.68,
+        "p95Ms": 1147.53
+      },
+      "ttffWarmCacheOnly": {
+        "count": 19,
+        "minMs": 36.19,
+        "maxMs": 141.17,
+        "meanMs": 59.97,
+        "medianMs": 43.89,
+        "p95Ms": 141.17
+      },
+      "breakdown": {
+        "master": {
+          "count": 20,
+          "minMs": 13.57,
+          "maxMs": 340.67,
+          "meanMs": 38.93,
+          "medianMs": 18.54,
+          "p95Ms": 340.67
+        },
+        "sub": {
+          "count": 20,
+          "minMs": 3.33,
+          "maxMs": 358.19,
+          "meanMs": 32.99,
+          "medianMs": 19.02,
+          "p95Ms": 358.19
+        },
+        "segment": {
+          "count": 20,
+          "minMs": 5.01,
+          "maxMs": 448.66,
+          "meanMs": 42.43,
+          "medianMs": 20.13,
+          "p95Ms": 448.66
+        }
+      },
+      "errors": []
+    },
+    "ap-southeast-1": {
+      "clientLocation": "Singapore",
+      "servedByPop": [
+        "SIN3-P3"
+      ],
+      "samples": 20,
+      "cacheHits": 18,
+      "ttff": {
+        "count": 20,
+        "minMs": 39.21,
+        "maxMs": 520.57,
+        "meanMs": 109.07,
+        "medianMs": 56.89,
+        "p95Ms": 520.57
+      },
+      "ttffWarmCacheOnly": {
+        "count": 18,
+        "minMs": 39.21,
+        "maxMs": 218.54,
+        "meanMs": 77.96,
+        "medianMs": 55.57,
+        "p95Ms": 218.54
+      },
+      "breakdown": {
+        "master": {
+          "count": 20,
+          "minMs": 4.2,
+          "maxMs": 219.93,
+          "meanMs": 42.14,
+          "medianMs": 20.65,
+          "p95Ms": 219.93
+        },
+        "sub": {
+          "count": 20,
+          "minMs": 2.98,
+          "maxMs": 149.5,
+          "meanMs": 25.32,
+          "medianMs": 20.05,
+          "p95Ms": 149.5
+        },
+        "segment": {
+          "count": 20,
+          "minMs": 4.99,
+          "maxMs": 151.14,
+          "meanMs": 41.61,
+          "medianMs": 18.48,
+          "p95Ms": 151.14
+        }
+      },
+      "errors": []
+    },
+    "eu-west-1": {
+      "clientLocation": "Dublin, Ireland",
+      "servedByPop": [
+        "DUB2-P1"
+      ],
+      "samples": 20,
+      "cacheHits": 19,
+      "ttff": {
+        "count": 20,
+        "minMs": 39.62,
+        "maxMs": 2488.25,
+        "meanMs": 185.03,
+        "medianMs": 55.91,
+        "p95Ms": 2488.25
+      },
+      "ttffWarmCacheOnly": {
+        "count": 19,
+        "minMs": 39.62,
+        "maxMs": 202.52,
+        "meanMs": 63.81,
+        "medianMs": 55.15,
+        "p95Ms": 202.52
+      },
+      "breakdown": {
+        "master": {
+          "count": 20,
+          "minMs": 3.81,
+          "maxMs": 718.03,
+          "meanMs": 60.99,
+          "medianMs": 17.93,
+          "p95Ms": 718.03
+        },
+        "sub": {
+          "count": 20,
+          "minMs": 4.62,
+          "maxMs": 688.45,
+          "meanMs": 51.99,
+          "medianMs": 19.83,
+          "p95Ms": 688.45
+        },
+        "segment": {
+          "count": 20,
+          "minMs": 4.34,
+          "maxMs": 1081.77,
+          "meanMs": 72.05,
+          "medianMs": 19.34,
+          "p95Ms": 1081.77
+        }
+      },
+      "errors": []
+    },
+    "sa-east-1": {
+      "clientLocation": "Sao Paulo, Brazil",
+      "servedByPop": [
+        "CPT51-P2"
+      ],
+      "samples": 20,
+      "cacheHits": 19,
+      "ttff": {
+        "count": 20,
+        "minMs": 1192.87,
+        "maxMs": 7199.46,
+        "meanMs": 1569.73,
+        "medianMs": 1196.1,
+        "p95Ms": 7199.46
+      },
+      "ttffWarmCacheOnly": {
+        "count": 19,
+        "minMs": 1192.87,
+        "maxMs": 2545.14,
+        "meanMs": 1273.43,
+        "medianMs": 1196.09,
+        "p95Ms": 2545.14
+      },
+      "breakdown": {
+        "master": {
+          "count": 20,
+          "minMs": 338.47,
+          "maxMs": 2620.92,
+          "meanMs": 462.03,
+          "medianMs": 339.66,
+          "p95Ms": 2620.92
+        },
+        "sub": {
+          "count": 20,
+          "minMs": 338.44,
+          "maxMs": 2467.02,
+          "meanMs": 453.62,
+          "medianMs": 339.71,
+          "p95Ms": 2467.02
+        },
+        "segment": {
+          "count": 20,
+          "minMs": 514.59,
+          "maxMs": 2111.52,
+          "meanMs": 654.09,
+          "medianMs": 518.02,
+          "p95Ms": 2111.52
+        }
+      },
+      "errors": []
+    },
+    "us-east-1": {
+      "clientLocation": "N. Virginia, United States",
+      "servedByPop": [
+        "IAD61-P11"
+      ],
+      "samples": 20,
+      "cacheHits": 19,
+      "ttff": {
+        "count": 20,
+        "minMs": 30.09,
+        "maxMs": 2955.87,
+        "meanMs": 207.14,
+        "medianMs": 55.23,
+        "p95Ms": 2955.87
+      },
+      "ttffWarmCacheOnly": {
+        "count": 19,
+        "minMs": 30.09,
+        "maxMs": 187.13,
+        "meanMs": 62.47,
+        "medianMs": 54.49,
+        "p95Ms": 187.13
+      },
+      "breakdown": {
+        "master": {
+          "count": 20,
+          "minMs": 8.31,
+          "maxMs": 846.82,
+          "meanMs": 69.04,
+          "medianMs": 19.49,
+          "p95Ms": 846.82
+        },
+        "sub": {
+          "count": 20,
+          "minMs": 3.45,
+          "maxMs": 733.07,
+          "meanMs": 50.82,
+          "medianMs": 19.05,
+          "p95Ms": 733.07
+        },
+        "segment": {
+          "count": 20,
+          "minMs": 4.95,
+          "maxMs": 1375.98,
+          "meanMs": 87.28,
+          "medianMs": 18.58,
+          "p95Ms": 1375.98
+        }
+      },
+      "errors": []
+    }
+  }
+}

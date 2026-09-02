@@ -290,13 +290,16 @@ report --- describes intent.
 \label{sec:future-work}
 
 Two measurements should still be repeated before the experimental results are considered settled.
-The Time-to-First-Frame measurement has since been repeated against the live distribution with
-Signed Cookies attached, and is reported in Section~\ref{sec:cdn-measurement}; what remains open
-there is narrower, namely that all samples were taken from a single client location. Since the
-defect that measurement uncovered was itself a matter of where the client sits relative to the
-edge, figures gathered from several geographic origins would characterise the delivery layer
-considerably better than the present single vantage point can. The concurrency test re-run with
-genuine video payloads (Section~\ref{sec:real-throughput-validation})
+The Time-to-First-Frame measurement has been repeated against the live distribution
+(Section~\ref{sec:cdn-measurement}) and then from five client locations
+(Section~\ref{sec:multiregion-measurement}), which closed that item and, in doing so, exposed a
+further limitation of the deployment rather than of the measurement: viewers in South America and
+Oceania fall outside the configured price class and are served across an ocean. What remains open
+is that every probe ran inside an AWS region, so the figures describe edge proximity under
+favourable network conditions rather than residential connections; comparing the two Vietnamese
+samples suggests the last mile costs roughly a factor of two, but one pair of observations is not
+a basis for that claim. The concurrency test re-run with genuine video payloads
+(Section~\ref{sec:real-throughput-validation})
 confirmed that every job succeeds under load, but it was not instrumented with the same
 twenty-five-second polling cadence as the original synthetic run, so a precise drain-rate figure
 for real transcoding throughput --- as opposed to confirmation that throughput is non-zero and
