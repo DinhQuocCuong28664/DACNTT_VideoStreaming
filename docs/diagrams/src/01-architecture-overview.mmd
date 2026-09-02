@@ -1,21 +1,21 @@
 graph TB
-    subgraph Client["Người dùng"]
-        Browser["Trình duyệt<br/>React SPA + HLS.js"]
+    subgraph Client["Client"]
+        Browser["Browser<br/>React SPA + HLS.js"]
     end
 
-    subgraph Edge["Tầng phân phối"]
+    subgraph Edge["Delivery tier"]
         CFWeb["CloudFront frontend<br/>zelostech.site"]
-        S3Web["Amazon S3<br/>Static Web Hosting"]
+        S3Web["Amazon S3<br/>Static Website Hosting"]
         CFVid["CloudFront video CDN<br/>cdn.zelostech.site<br/>OAC + Signed Cookies"]
     end
 
-    subgraph App["Tầng ứng dụng"]
-        API["Backend API<br/>Node.js + Express<br/>trên Amazon EC2"]
+    subgraph App["Application tier"]
+        API["Backend API<br/>Node.js + Express<br/>on Amazon EC2"]
         DB[("MongoDB Atlas<br/>Users, Videos, Comments")]
-        SM["Secrets Manager<br/>URI, JWT, khóa ký"]
+        SM["Secrets Manager<br/>DB URI, JWT, signing key"]
     end
 
-    subgraph Pipeline["Tầng xử lý video (Event-Driven)"]
+    subgraph Pipeline["Processing tier (event-driven)"]
         S3Raw[("S3 Raw Bucket")]
         SQS["Amazon SQS<br/>Transcode Queue + DLQ"]
         Lambda["AWS Lambda<br/>Job Submitter"]
@@ -24,24 +24,24 @@ graph TB
         S3Proc[("S3 Processed Bucket<br/>HLS Segments")]
     end
 
-    Browser -->|"1 - Tải giao diện"| CFWeb
+    Browser -->|"1 - Load interface"| CFWeb
     CFWeb --> S3Web
-    Browser -->|"2 - Gọi REST API"| API
+    Browser -->|"2 - Call REST API"| API
     API <--> DB
-    SM -.->|"Nạp bí mật"| API
-    SM -.->|"Nạp bí mật"| Batch
-    API -->|"3 - Cấp Pre-signed URL"| Browser
-    Browser -->|"4 - Upload trực tiếp"| S3Raw
-    S3Raw -->|"5 - Event Notification"| SQS
+    SM -.->|"Inject secrets"| API
+    SM -.->|"Inject secrets"| Batch
+    API -->|"3 - Issue pre-signed URL"| Browser
+    Browser -->|"4 - Direct upload"| S3Raw
+    S3Raw -->|"5 - Event notification"| SQS
     SQS -->|"6 - Trigger"| Lambda
     Lambda -->|"7 - SubmitJob"| Batch
-    ECR -.->|"Pull Image"| Batch
-    S3Raw -->|"8 - Tải video gốc"| Batch
+    ECR -.->|"Pull image"| Batch
+    S3Raw -->|"8 - Download source"| Batch
     Batch -->|"9 - Upload HLS"| S3Proc
-    Batch -->|"10 - Cập nhật READY"| DB
+    Batch -->|"10 - Set status READY"| DB
     S3Proc -->|"Origin (OAC)"| CFVid
-    API -->|"11 - Cấp Signed Cookie"| Browser
-    CFVid -->|"12 - Phát HLS (cần chữ ký)"| Browser
+    API -->|"11 - Issue signed cookies"| Browser
+    CFVid -->|"12 - Serve HLS (signature required)"| Browser
 
     classDef storage fill:#e8f4f8,stroke:#2c7a9e,color:#1a1a1a
     classDef compute fill:#fff4e6,stroke:#d98324,color:#1a1a1a

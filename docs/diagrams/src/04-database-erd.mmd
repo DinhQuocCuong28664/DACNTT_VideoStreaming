@@ -1,9 +1,9 @@
 erDiagram
     direction LR
 
-    USER ||--o{ VIDEO : "tải lên"
-    USER ||--o{ COMMENT : "viết"
-    VIDEO ||--o{ COMMENT : "chứa"
+    USER ||--o{ VIDEO : "uploads"
+    USER ||--o{ COMMENT : "writes"
+    VIDEO ||--o{ COMMENT : "has"
 
     USER {
         ObjectId _id PK
@@ -17,7 +17,7 @@ erDiagram
         number subscribers
         string resetPasswordToken "SHA-256"
         Date resetPasswordExpire
-        Date passwordChangedAt "vo hieu hoa JWT cu"
+        Date passwordChangedAt "invalidates earlier JWTs"
         Date createdAt
         Date updatedAt
     }
@@ -27,13 +27,13 @@ erDiagram
         ObjectId user FK
         string title
         string description
-        string category "enum 7 danh muc"
+        string category "enum of 7 categories"
         string status "UPLOADING PROCESSING READY ERROR"
         string visibility "public private unlisted"
         string rawS3Key
         string hlsUrl "CloudFront master m3u8"
         string thumbnailUrl
-        number duration "giay"
+        number duration "seconds"
         number fileSize "bytes"
         string mimeType
         number views
