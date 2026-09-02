@@ -111,34 +111,50 @@ const getMe = async (req, res, next) => {
  * @access  Public
  */
 const forgotPassword = async (req, res, next) => {
+  // Phan hoi duy nhat cho moi ket cuc.
+  //
+  // Endpoint nay phai khong tiet lo email co ton tai trong he thong hay
+  // khong, nen ca ba truong hop — khong co tai khoan, gui mail thanh cong,
+  // gui mail that bai — deu tra ve dung chuoi nay. Neu de truong hop gui
+  // mail that bai tra 500 thi 500 do tu no da la bang chung tai khoan co
+  // that, dung lo hong vua bit lai o duoi mot hinh thuc khac.
+  //
+  // Danh doi: nguoi dung gap su co ha tang mail se khong duoc bao gi. Su
+  // co do duoc ghi log day du phia server de con phat hien duoc.
+  const genericResponse = {
+    success: true,
+    message:
+      'Nếu email này có tài khoản, liên kết đặt lại mật khẩu đã được gửi tới hộp thư của bạn.',
+  };
+
   try {
     const { email } = req.body;
 
-    const { user, resetToken } = await authService.forgotPassword(email);
+    const result = await authService.forgotPassword(email);
+
+    if (!result) {
+      return res.status(200).json(genericResponse);
+    }
+
+    const { user, resetToken } = result;
 
     // Build reset URL — must point to the FRONTEND page, not the backend API
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
     const resetUrl = `${frontendUrl}/reset-password/${resetToken}`;
 
-    // Send email
     try {
       await emailService.sendPasswordResetEmail(user.email, resetUrl);
-
-      res.status(200).json({
-        success: true,
-        message: 'Password reset email sent',
-      });
     } catch (emailError) {
-      // If email fails, clear the reset token from DB
+      // Gui mail hong thi thu hoi token vua cap, tranh de lai mot token
+      // dat lai mat khau con hieu luc ma nguoi dung khong bao gio nhan duoc.
       user.resetPasswordToken = undefined;
       user.resetPasswordExpire = undefined;
       await user.save({ validateBeforeSave: false });
 
       console.error('❌ Email send failed:', emailError.message);
-      const error = new Error('Email could not be sent. Please try again later.');
-      error.statusCode = 500;
-      throw error;
     }
+
+    return res.status(200).json(genericResponse);
   } catch (error) {
     next(error);
   }
