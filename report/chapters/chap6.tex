@@ -263,9 +263,28 @@ system lacked monitoring. It had monitoring. The monitoring named the failure mo
 in the alarm description, in the language an operator would search for --- and was wired to a
 signal that the architecture made incapable of carrying that information. An alarm that cannot
 fire is worse than an absent one, because its presence is taken as evidence that the case is
-covered, and its silence is read as good news. Anything asserted about what a monitor detects is a
-claim about the deployed system, and it has to be verified against that system by making the
-failure happen, exactly as Section~\ref{sec:content-protection}'s guarantees had to be.
+covered, and its silence is read as good news.
+
+Several defects recorded in this chapter, together with two corrections made elsewhere in this
+report, share a single shape, and naming it is more useful than any of the individual fixes. In
+each case a mechanism was described correctly, and the description was then taken as evidence that
+the property the mechanism exists to provide was in force. It was not. The signing implementation
+was correct and never provisioned. The heartbeat is correct and runs in a mode the deployment does
+not use. The alarm named the failure it was meant to catch, in the words an operator would search
+for, and watched a signal that failure could not reach. The text index was declared, documented,
+and queried by nothing. In each instance the artefact and the guarantee were conflated, and the
+conflation survived review precisely because reading the artefact is what produced the belief in
+the first place.
+
+This report was not an outside observer of that pattern; it carried four such claims itself until
+they were checked. That is the uncomfortable part, and the reason the pattern is worth stating
+rather than quietly correcting: a requirement that names a mechanism, as the original wording of
+NFR-03 did, cannot be falsified once the mechanism changes, because it no longer describes
+anything the system could fail to do. The rule this suggests is narrow enough to act on. A claim
+about what a system guarantees is a claim about the deployed system, and the only evidence that
+settles it is the guarantee holding, or failing to hold, when the corresponding failure is
+actually provoked. Everything short of that --- the source, the configuration, the plan, and this
+report --- describes intent.
 
 \section{Future Work}
 \label{sec:future-work}
