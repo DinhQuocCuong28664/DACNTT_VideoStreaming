@@ -90,8 +90,18 @@ videoSchema.index({ user: 1, createdAt: -1 });
 videoSchema.index({ status: 1 });
 videoSchema.index({ category: 1 });
 videoSchema.index({ tags: 1 });
-videoSchema.index({ title: 'text', description: 'text' });
 videoSchema.index({ visibility: 1, status: 1, createdAt: -1 });
+
+// Ghi chu: truoc day o day co mot text index { title: 'text', description: 'text' }.
+// No da duoc go bo vi khong truy van nao dung den — getAllVideos() tim kiem bang
+// bieu thuc chinh quy khong neo dau chuoi (xem videoService.js), va MongoDB khong
+// the dung index cho dang regex do, nen moi lan tim kiem van la mot lan quet toan
+// bo collection. Giu lai text index chi ton them dung luong va lam cham moi thao
+// tac ghi ma khong doi lai loi ich nao.
+//
+// Van con la lua chon mo: chuyen sang $text se dung duoc index, nhung se doi ca
+// hanh vi tim kiem — regex hien tai khop duoc chuoi con o giua tu va khop ca
+// truong tags, hai dieu ma $text khong lam duoc.
 
 // Remove __v from JSON output
 videoSchema.methods.toJSON = function () {
