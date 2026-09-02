@@ -31,12 +31,15 @@ newly uploaded ones remain in a pending state.
 Figure~\ref{fig:sequence} traces the sequence of interactions from the moment the user
 initiates an upload until the video becomes available.
 
-\begin{figure}[H]
+% Xoay ngang: so do nay rong 6792 px voi tam doi tuong, dat vua chieu rong
+% vung chu thi nhan chi con khoang 3pt. Xoay ngang cho phep dung chieu cao
+% trang lam chieu rong hinh, lon hon 54 phan tram.
+\begin{sidewaysfigure}
 \centering
-\includegraphics[width=\textwidth]{images/02-transcoding-sequence.png}
+\includegraphics[width=\textheight]{images/02-transcoding-sequence.png}
 \caption{\textit{Sequence diagram of the event-driven transcoding pipeline}}
 \label{fig:sequence}
-\end{figure}
+\end{sidewaysfigure}
 
 Two design decisions embedded in this sequence merit explanation.
 
@@ -88,7 +91,7 @@ Section~\ref{sec:limitations} draws about content protection.
 The persistence layer uses MongoDB Atlas with three collections, shown in
 Figure~\ref{fig:erd}.
 
-\begin{figure}[H]
+\begin{figure}[htbp]
 \centering
 \includegraphics[width=\textwidth]{images/04-database-erd.png}
 \caption{\textit{Entity relationship diagram of the MongoDB data model}}
