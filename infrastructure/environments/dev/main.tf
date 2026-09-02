@@ -85,6 +85,8 @@ module "monitoring" {
   dlq_queue_name       = "${var.project_name}-${var.environment}-transcode-dlq"
   transcode_queue_name = "${var.project_name}-${var.environment}-transcode-queue"
   batch_job_queue_arn  = module.batch.job_queue_arn
+  health_check_url     = "https://api.zelostech.site/"
+  backend_instance_id  = aws_instance.backend_api.id
   tags                 = local.common_tags
 }
 
@@ -120,10 +122,10 @@ module "cloudfront" {
   # không chạm tới — nên không có lý do gì để giữ lại một vùng phục vụ kém.
   # Nếu lưu lượng sau này vượt hạn mức miễn phí thì đây là thiết lập cần xem
   # lại đầu tiên, vì giá mỗi GB ở Nam Mỹ và châu Đại Dương cao nhất trong bảng.
-  price_class                  = "PriceClass_All"
-  cors_allowed_origins         = var.cors_allowed_origins
-  enable_cloudfront            = var.enable_cloudfront
-  enable_signed_urls           = var.enable_signed_urls
+  price_class          = "PriceClass_All"
+  cors_allowed_origins = var.cors_allowed_origins
+  enable_cloudfront    = var.enable_cloudfront
+  enable_signed_urls   = var.enable_signed_urls
   # terraform.tfvars là file CRLF nên heredoc giữ nguyên \r\n giữa các dòng,
   # nhưng AWS chuẩn hoá PEM về \n thuần khi lưu — mỗi lần plan sau đó Terraform
   # thấy config (\r\n) khác state (\n) và đòi xoá + tạo lại khoá ký dù nội dung

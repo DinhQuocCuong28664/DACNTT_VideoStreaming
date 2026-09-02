@@ -150,8 +150,8 @@ resource "aws_cloudfront_distribution" "frontend" {
   # tới thời gian tải trang chứ không phải TTFF, nhưng nguyên nhân là một, nên
   # để hai distribution lệch nhau chỉ tạo ra một khác biệt không ai giải thích
   # được về sau.
-  price_class         = "PriceClass_All"
-  aliases             = ["zelostech.site", "www.zelostech.site"]
+  price_class = "PriceClass_All"
+  aliases     = ["zelostech.site", "www.zelostech.site"]
 
   origin {
     domain_name = aws_s3_bucket_website_configuration.frontend.website_endpoint

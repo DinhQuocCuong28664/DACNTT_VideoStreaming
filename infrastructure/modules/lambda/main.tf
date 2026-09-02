@@ -9,11 +9,14 @@ data "archive_file" "lambda_zip" {
 }
 
 resource "aws_lambda_function" "job_submitter" {
-  function_name    = "${var.project_name}-job-submitter"
-  description      = "SQS → AWS Batch Job Submitter for video transcoding"
-  role             = var.lambda_role_arn
-  handler          = "index.handler"
-  runtime          = "nodejs18.x"
+  function_name = "${var.project_name}-job-submitter"
+  description   = "SQS → AWS Batch Job Submitter for video transcoding"
+  role          = var.lambda_role_arn
+  handler       = "index.handler"
+  # nodejs22.x — nodejs18.x da het vong doi ho tro va khong con nhan ban va bao
+  # mat. Chuong 5 ghi lai viec nang transcoder len Node 24 dung vi ly do nay;
+  # ham Lambda nay bi bo sot trong lan ra soat do.
+  runtime          = "nodejs22.x"
   timeout          = 30
   memory_size      = 128
   filename         = data.archive_file.lambda_zip.output_path

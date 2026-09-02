@@ -176,3 +176,183 @@ resource "aws_cloudwatch_dashboard" "main" {
     ]
   })
 }
+
+# ═══════════════════════════════════════════════════
+# Canary kiểm tra sức khoẻ API từ bên ngoài
+# ═══════════════════════════════════════════════════
+#
+# Trước đây toàn bộ hệ thống chỉ có hai alarm, cả hai trên metric của SQS.
+# Không có gì theo dõi backend — đúng thành phần mà mọi thứ khác phụ thuộc vào.
+#
+# Khoảng trống đó đã được chứng minh bằng một sự cố thật: khi máy chủ chuyển
+# sang Elastic IP, bản ghi DNS còn trỏ vào địa chỉ đã bị thu hồi và toàn bộ API
+# trả 522 trong nhiều phút. Instance vẫn chạy, mọi kiểm tra ở tầng hạ tầng đều
+# xanh, và không một cảnh báo nào phát ra; sự cố chỉ được phát hiện vì tình cờ
+# có người gọi thử.
+#
+# Bài học là kiểm tra phải đi qua đúng đường của người dùng. StatusCheckFailed
+# của EC2 (khai báo bên dưới) chỉ nói instance còn sống, không nói API còn phục
+# vụ được hay không.
+#
+# Chọn tự dựng bằng Lambda thay vì Route 53 health check là quyết định về chi
+# phí: Route 53 tính khoảng 1,75 USD/tháng cho endpoint ngoài AWS có HTTPS,
+# trong khi cách này nằm gọn trong hạn mức miễn phí (1 triệu lần gọi Lambda,
+# 10 custom metric, 10 alarm). Đánh đổi là chỉ kiểm tra từ một region thay vì
+# nhiều vị trí toàn cầu, nên có thể báo nhầm khi mạng ở region đó trục trặc.
+
+data "archive_file" "health_check" {
+  count       = var.health_check_url != "" ? 1 : 0
+  type        = "zip"
+  source_dir  = "${path.module}/src"
+  output_path = "${path.module}/dist/health-check.zip"
+}
+
+resource "aws_iam_role" "health_check" {
+  count = var.health_check_url != "" ? 1 : 0
+  name  = "${var.project_name}-health-check-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "lambda.amazonaws.com" }
+      Action    = "sts:AssumeRole"
+    }]
+  })
+
+  tags = merge(var.tags, { Name = "${var.project_name}-health-check-role" })
+}
+
+resource "aws_iam_role_policy" "health_check" {
+  count = var.health_check_url != "" ? 1 : 0
+  name  = "${var.project_name}-health-check-policy"
+  role  = aws_iam_role.health_check[0].id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        # PutMetricData không hỗ trợ giới hạn theo tài nguyên; thu hẹp bằng
+        # điều kiện trên namespace để vai trò này không ghi được vào namespace
+        # khác.
+        Effect   = "Allow"
+        Action   = "cloudwatch:PutMetricData"
+        Resource = "*"
+        Condition = {
+          StringEquals = { "cloudwatch:namespace" = var.health_metric_namespace }
+        }
+      },
+      {
+        Effect   = "Allow"
+        Action   = ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"]
+        Resource = "arn:aws:logs:*:*:*"
+      }
+    ]
+  })
+}
+
+resource "aws_lambda_function" "health_check" {
+  count            = var.health_check_url != "" ? 1 : 0
+  function_name    = "${var.project_name}-health-check"
+  description      = "Gọi API qua tên miền công khai theo lịch và phát metric ApiHealthy"
+  role             = aws_iam_role.health_check[0].arn
+  handler          = "health-check.handler"
+  runtime          = "nodejs22.x"
+  timeout          = 60
+  memory_size      = 128
+  filename         = data.archive_file.health_check[0].output_path
+  source_code_hash = data.archive_file.health_check[0].output_base64sha256
+
+  environment {
+    variables = {
+      HEALTH_CHECK_URL = var.health_check_url
+      METRIC_NAMESPACE = var.health_metric_namespace
+    }
+  }
+
+  tags = merge(var.tags, { Name = "${var.project_name}-health-check" })
+}
+
+resource "aws_cloudwatch_event_rule" "health_check_schedule" {
+  count               = var.health_check_url != "" ? 1 : 0
+  name                = "${var.project_name}-health-check-schedule"
+  description         = "Chạy canary kiểm tra API mỗi 5 phút"
+  schedule_expression = "rate(5 minutes)"
+
+  tags = merge(var.tags, { Name = "${var.project_name}-health-check-schedule" })
+}
+
+resource "aws_cloudwatch_event_target" "health_check" {
+  count     = var.health_check_url != "" ? 1 : 0
+  rule      = aws_cloudwatch_event_rule.health_check_schedule[0].name
+  target_id = "health-check-lambda"
+  arn       = aws_lambda_function.health_check[0].arn
+}
+
+resource "aws_lambda_permission" "health_check_events" {
+  count         = var.health_check_url != "" ? 1 : 0
+  statement_id  = "AllowExecutionFromEventBridge"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.health_check[0].function_name
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.health_check_schedule[0].arn
+}
+
+# Alarm bám vào metric do canary phát ra.
+#
+# Chu kỳ 900s trong khi canary chạy 5 phút/lần là có chủ đích: mỗi chu kỳ nhận
+# khoảng ba điểm dữ liệu, nên một lần chạy trễ hay trượt không tạo ra chu kỳ
+# trống. Cấu hình đầu tiên đặt chu kỳ 300s bằng đúng nhịp canary, tức mỗi chu kỳ
+# chỉ có duy nhất một điểm và không có biên dự phòng nào — nó báo động giả ngay
+# lần đầu triển khai, khi mới chỉ có một điểm dữ liệu tồn tại. Chính comment
+# trong mã canary nói rằng báo động giả là kiểu hỏng tệ nhất, nên để lại cấu
+# hình đó thì mâu thuẫn.
+#
+# statistic = "Minimum" nghĩa là chỉ cần MỘT lần kiểm tra trong cửa sổ thất bại
+# (sau ba lần thử lại nội bộ của nó) là báo động — lọc nhiễu nằm ở tầng thử lại
+# bên trong canary, không phải ở đây.
+#
+# treat_missing_data = "breaching" là điểm quan trọng: nếu chính canary hỏng và
+# ngừng phát metric, im lặng phải được hiểu là có vấn đề chứ không phải là ổn.
+# Một bộ giám sát hỏng mà không ai biết thì tệ hơn là không có giám sát.
+resource "aws_cloudwatch_metric_alarm" "api_unhealthy" {
+  count               = var.health_check_url != "" ? 1 : 0
+  alarm_name          = "${var.project_name}-api-unhealthy"
+  comparison_operator = "LessThanThreshold"
+  evaluation_periods  = 1
+  metric_name         = "ApiHealthy"
+  namespace           = var.health_metric_namespace
+  period              = 900
+  statistic           = "Minimum"
+  threshold           = 1
+  treat_missing_data  = "breaching"
+  alarm_description   = "ALERT: API khong phan hoi qua ten mien cong khai (${var.health_check_url}). Kiem tra nginx, pm2, va ban ghi DNS."
+  alarm_actions       = [var.dlq_alert_topic_arn]
+  ok_actions          = [var.dlq_alert_topic_arn]
+
+  tags = merge(var.tags, { Name = "${var.project_name}-api-unhealthy" })
+}
+
+# Kiểm tra ở tầng hạ tầng, bổ sung chứ không thay thế canary bên trên: nó bắt
+# được máy chủ chết hoặc phần cứng hỏng, nhưng hoàn toàn không thấy được trường
+# hợp instance khoẻ mà dịch vụ không phục vụ được.
+resource "aws_cloudwatch_metric_alarm" "backend_status_check" {
+  count               = var.backend_instance_id != "" ? 1 : 0
+  alarm_name          = "${var.project_name}-backend-status-check-failed"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 2
+  metric_name         = "StatusCheckFailed"
+  namespace           = "AWS/EC2"
+  period              = 60
+  statistic           = "Maximum"
+  threshold           = 0
+  alarm_description   = "ALERT: EC2 backend truot status check (loi instance hoac ha tang ben duoi)"
+  alarm_actions       = [var.dlq_alert_topic_arn]
+  ok_actions          = [var.dlq_alert_topic_arn]
+
+  dimensions = {
+    InstanceId = var.backend_instance_id
+  }
+
+  tags = merge(var.tags, { Name = "${var.project_name}-backend-status-check" })
+}
