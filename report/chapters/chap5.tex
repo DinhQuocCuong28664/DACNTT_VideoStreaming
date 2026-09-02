@@ -66,10 +66,17 @@ that lists the available bandwidths and resolutions. A thumbnail is extracted in
 pass.
 
 Failure handling is deliberate. When FFmpeg exits with a non-zero status, the error propagates
-to the top-level handler, which records the \texttt{ERROR} status in the database and, crucially,
-does \emph{not} delete the SQS message. Leaving the message in flight allows the visibility
-timeout to lapse so that the job is retried, and after the configured number of failed attempts
-the message is moved to the dead letter queue where it can be inspected rather than lost.
+to the top-level handler, which records the \texttt{ERROR} status in the database and, in
+\texttt{worker} mode, does \emph{not} delete the SQS message: leaving it in flight allows the
+visibility timeout to lapse so that the job is retried, and after the configured number of failed
+attempts the message is moved to the dead letter queue where it can be inspected rather than lost.
+
+As Section~\ref{sec:pipeline-design} establishes, however, the deployed system runs \texttt{batch}
+mode, where the container holds no message to retain. The retry and dead-letter behaviour just
+described therefore governs only the Lambda that submits jobs, not the transcoding itself, and the
+recording of \texttt{ERROR} in the database is the sole part of this paragraph that applies to a
+deployed transcoding failure. The gap this left, and its consequences for how such failures were
+detected, is examined in Section~\ref{sec:limitations}.
 
 \section{Infrastructure as Code}
 \label{sec:iac}
@@ -145,7 +152,7 @@ scans the configuration for insecure settings.
 \section{Testing}
 \label{sec:testing}
 
-The automated test suite comprises 104 tests across nine suites, summarised in
+The automated test suite comprises 117 tests across ten suites, summarised in
 Table~\ref{tab:test-coverage}.
 
 \begin{table}[H]
@@ -160,10 +167,11 @@ Table~\ref{tab:test-coverage}.
 \texttt{videoService}       & 11 & Upload initiation, ownership checks, deletion cascade \\
 \texttt{s3Service}          & 2  & Key generation and pre-signed URL creation \\
 \texttt{authService}        & 17 & Registration conflicts, login failures, token claims, password reset \\
-\texttt{authMiddleware}     & 9  & Missing, malformed, forged, and expired tokens \\
+\texttt{authMiddleware}     & 14 & Missing, malformed, forged, and expired tokens, and tokens issued before the account's last password change \\
 \texttt{visibility}         & 21 & Privacy enforcement across every query path, view deduplication \\
 \texttt{uploadValidation}   & 11 & HTTP-level validation of file type and size \\
-\texttt{cloudfrontService}  & 21 & Cookie signing, policy scope, cookie attributes \\
+\texttt{cloudfrontService}  & 24 & Cookie signing, policy scope, cookie attributes, and that revocation repeats the attributes used when issuing \\
+\texttt{forgotPassword}     & 5  & That the response is identical whether or not the address has an account, including when e-mail delivery fails \\
 \texttt{transcoder/dbHandler} & 6 & Conditional writes preventing duplicate-job overwrites \\
 \texttt{transcoder/emailService} & 6 & READY/ERROR notification content and recipient targeting, and that raw failure detail is never exposed to the viewer \\
 \bottomrule

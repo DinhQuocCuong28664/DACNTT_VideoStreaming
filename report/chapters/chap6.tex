@@ -16,8 +16,11 @@ filter the catalogue, and interact through likes and comments.
 The transcoding pipeline operates without manual intervention. An upload emits an S3 event that
 is buffered in Amazon SQS and dispatched by an AWS Lambda function to AWS Batch, where a
 container packaging FFmpeg produces the renditions, the master playlist, and a thumbnail before
-terminating. The heartbeat pattern prevents duplicate processing of long jobs, and failed jobs
-are retried and ultimately isolated in a dead letter queue rather than being lost silently.
+terminating. Conditional database writes prevent a duplicate delivery from overwriting a completed
+job, failed jobs are retried by AWS Batch and, when they exhaust their attempts, raise an alert
+carrying the reason for the failure rather than terminating silently. Both mechanisms replaced
+earlier designs that held only for an execution mode the deployed system does not use; the
+reasoning is set out in Section~\ref{sec:pipeline-design} and Section~\ref{sec:limitations}.
 
 Content protection was implemented in two layers. Origin Access Control keeps the storage
 bucket entirely private, and CloudFront Signed Cookies ensure that private videos are rejected
@@ -30,7 +33,7 @@ environments, and seven GitHub Actions workflows automate linting, unit testing,
 analysis, container scanning, infrastructure validation, and deployment. The security gate
 blocks merges on fixable critical findings rather than merely reporting them.
 
-The automated test suite grew to 104 tests across nine suites. Its practical value was demonstrated
+The automated test suite grew to 117 tests across ten suites. Its practical value was demonstrated
 when it caught a defect in the cookie signing implementation that would have prevented every
 private video from playing once deployed. A second, related defect in that same subsystem, caught
 only later and by a different means, is discussed in Section~\ref{sec:limitations} below.
@@ -56,6 +59,30 @@ Signed cookies remain valid for two hours after issuance. If an owner switches a
 public to private, viewers holding unexpired cookies retain access until those cookies lapse.
 Immediate revocation would require rotating the signing key or introducing an edge function that
 performs a per-request check.
+
+A related gap was narrower than that one and did prove fixable. Logging out cleared the token from
+browser storage and nothing else, so the playback cookies stayed in the browser for the remainder
+of their two hours; on a shared machine the next person could still fetch the previous user's
+private segments given a URL. The cookies are \texttt{httpOnly}, which is what makes them safe
+from scripted theft and equally what makes them impossible for the client to clear on its own, so
+a server endpoint now expires them explicitly. The delete has to repeat the domain, path and
+\texttt{sameSite} attributes used when issuing: a browser silently ignores a deletion whose
+attributes do not match while the server still returns a success, which is why the test asserts
+the two option sets against one another rather than against copied literals.
+
+The same reasoning exposed a larger revocation gap in the session tokens themselves. The
+authentication middleware verified a token's signature and loaded its user, but never compared the
+token against the account's last password change, so changing a password issued a new token
+without invalidating any existing one. A password change is what somebody does when they believe
+their account is compromised, and here it did not evict the intruder; it merely gave the owner a
+second valid session alongside the attacker's, for up to the seven-day token lifetime. Recording
+a \texttt{passwordChangedAt} timestamp and rejecting tokens issued before it closes this. The
+detail worth recording is a unit mismatch that makes the fix fail in the most confusing possible
+direction: the \texttt{iat} claim is in whole seconds while the timestamp is in milliseconds, so
+without an offset the token issued immediately after a password change looks older than the change
+and logs the user straight back out. Statelessness is the property that makes JSON Web Tokens
+attractive, and it is exactly the property that makes revocation something that must be designed
+in rather than assumed.
 
 A more fundamental limitation surfaced during the preparation of the experimental results for
 this report. Verifying the deployed environment directly through the AWS command line interface
@@ -135,6 +162,43 @@ deployment as its DNS provider and edge TLS terminator, a role introduced as a s
 distribution above did not yet exist; that role persists, but it now proxies to the real
 CloudFront distribution rather than substituting for it.
 
+The two-hour cookie lifetime also had a consequence in the player that no amount of reading the
+code would have revealed. The page requested cookies once, when the watch page mounted, and never
+again, so crossing the two-hour boundary produced a \texttt{403} on the next segment. The player's
+error handler responded to any fatal network error by calling \texttt{startLoad()} immediately,
+with no attempt counter and no delay, and since hls.js re-emits the error after each failed
+attempt, an error that does not resolve on its own becomes an unbounded retry loop against the
+CDN while the viewer watches a ``reconnecting'' message that will never change. Bounding the
+recovery and refreshing the cookies on a \texttt{403} is the obvious fix.
+
+What makes the episode instructive is that the obvious fix, written by reading the code, was
+wrong twice, and both errors were invisible until the path was actually executed. First, hls.js
+marks the initial \texttt{403} as non-fatal while it retries internally, so a handler that filters
+on the fatal flag before inspecting the status code discards precisely the error it exists to
+report --- the player sat silently on the poster frame with no message at all. Second, refreshing
+the cookie and calling \texttt{startLoad()} does nothing, because that call resumes segment
+loading whereas an expired cookie fails at the manifest; the retry issued no request, produced no
+new error, and so never reached the give-up branch. Instrumenting the page made the contradiction
+plain in a way that inspection had not: two cookie refreshes against exactly one manifest request.
+Recovering required re-invoking \texttt{loadSource()}. Error-handling code is the least exercised
+part of any system and the part whose correctness is least visible from reading it, which is an
+argument for provoking the failure rather than reasoning about it.
+
+A hazard of a different kind was found the same way, by reading a plan rather than the code that
+produced it. The AMI for the backend instance is resolved through a data source with
+\texttt{most\_recent = true}, and the \texttt{ami} attribute forces replacement when it changes.
+Every Ubuntu security release therefore armed the next \texttt{terraform apply} --- an apply for
+any unrelated reason --- to destroy and rebuild the running server. The plan taken while adding
+the Batch configuration above showed exactly that, unprompted. What would have been lost is not an
+instance but the state on it that Terraform does not manage: the environment file holding the
+database URI, signing key and mail credentials, the nginx configuration, the TLS certificates, and
+the process manager's state, along with the public address that DNS points at. The address had in
+fact already moved once, in a rebuild three days earlier. Ignoring changes to the attribute makes
+an image upgrade deliberate, and an Elastic IP makes the address survive whatever rebuilds do
+occur. The general point is that Infrastructure as Code describes what should exist, not what a
+given apply will \emph{do} to what already exists, and those differ precisely when a resource
+holds state that the code never described.
+
 The system implements no digital rights management. An authorised viewer can capture the
 decrypted stream or share their cookies, and preventing this is outside the scope of the
 techniques used here.
@@ -165,6 +229,43 @@ experiment is designed such that failure is the anticipated outcome, failure car
 information, and the reason for each failure must be inspected rather than assumed. Verifying the
 \emph{cause} recorded in \texttt{statusReason}, not merely the terminal state, would have surfaced
 the defect within minutes instead of hours.
+
+That account, given above, is accurate but incomplete, and the missing half is the more
+uncomfortable one. It explains why nobody looked. It does not explain why nothing told them ---
+and a later audit of the deployed alerting showed that nothing could have. The system had two
+alarms, both on Amazon SQS metrics, and the one whose description read ``video transcoding
+failures detected'' watched the depth of the dead letter queue. No transcoding failure can reach
+that queue. The Lambda that consumes the message submits a Batch job and returns, so SQS deletes
+the message on successful \emph{submission}; whatever the container does afterwards is invisible
+to the queue, which no longer holds anything. The dead letter queue receives a message only when
+the Lambda itself fails to submit. Every one of those hundreds of failed jobs was therefore, from
+the queue's point of view, a complete success.
+
+The same structural gap accounted for the absent retry. The report states above that a failed job
+is retried until the message reaches the dead letter queue, which describes \texttt{worker} mode
+(Section~\ref{sec:pipeline-design}); on the deployed path SQS has already discarded the message,
+and the Batch job definition declared no \texttt{retryStrategy}. Nothing retried a failed job at
+any layer. A transient fault --- a network fault while downloading the source, a reclaimed Spot
+task --- lost the video outright, with no record beyond an \texttt{ERROR} row.
+
+Three changes close this. The job definition now declares three attempts, retrying only
+infrastructure faults and exiting immediately on an exit status indicating that FFmpeg rejected
+the content, since retrying such a job costs money and cannot change the outcome. It also declares
+a two-hour timeout, without which an FFmpeg process stalled on malformed input bills indefinitely.
+Detection moved to where the failures actually occur: AWS Batch publishes no CloudWatch metric for
+failed jobs, so an EventBridge rule matches job state transitions to \texttt{FAILED} and publishes
+to the alert topic, with the notification shaped to carry \texttt{statusReason} --- the precise
+field whose absence turned a five-minute diagnosis into a multi-hour one. The misleading alarm
+description was corrected to state what it genuinely covers.
+
+The generalisation is worth stating carefully, because it is not the familiar observation that the
+system lacked monitoring. It had monitoring. The monitoring named the failure mode that occurred,
+in the alarm description, in the language an operator would search for --- and was wired to a
+signal that the architecture made incapable of carrying that information. An alarm that cannot
+fire is worse than an absent one, because its presence is taken as evidence that the case is
+covered, and its silence is read as good news. Anything asserted about what a monitor detects is a
+claim about the deployed system, and it has to be verified against that system by making the
+failure happen, exactly as Section~\ref{sec:content-protection}'s guarantees had to be.
 
 \section{Future Work}
 \label{sec:future-work}
