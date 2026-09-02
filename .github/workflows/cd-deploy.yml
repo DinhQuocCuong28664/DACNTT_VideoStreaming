@@ -1,8 +1,19 @@
 # ═══════════════════════════════════════════════════
 # CD — Continuous Deployment (Merge to main)
-# Stages: detect changed paths → invalidate video CDN cache
-#         (always) → deploy backend to EC2 (only if backend/**
-#         changed)
+# Stages: detect changed paths → deploy backend to EC2
+#         (only if backend/** changed)
+#
+# Luu y: workflow nay KHONG invalidate cache cua HLS Video CDN.
+# Transcoder ghi moi rendition vao videos/{videoId}/ va khong bao
+# gio ghi de len khoa da ton tai, nen noi dung video la bat bien —
+# khong co gi de invalidate. Truoc day o day co mot job chay
+# 'create-invalidation --paths /*' tren moi push, ke ca push chi
+# sua frontend hoac tai lieu; no xoa sach segment da cache o edge
+# va buoc moi luot xem sau do phai fetch lai tu S3, lam tang
+# Time-to-First-Frame va phi GET dung vao thu ma CDN sinh ra de
+# tranh. Cache cua frontend thi nguoc lai VAN can invalidate (vi
+# index.html bi ghi de moi lan deploy) — viec do nam trong
+# ci-frontend.yml.
 # ═══════════════════════════════════════════════════
 
 name: CD — Deploy
@@ -34,45 +45,6 @@ jobs:
           filters: |
             backend:
               - 'backend/**'
-
-  invalidate-cdn:
-    name: "Invalidate Video CDN Cache"
-    runs-on: ubuntu-latest
-    environment: production
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Invalidate CloudFront Cache
-        run: |
-          DISTRIBUTION_ID=$(aws cloudfront list-distributions \
-            --query "DistributionList.Items[?Comment=='dacntt-prod HLS Video CDN'].Id" \
-            --output text)
-
-          if [ -n "$DISTRIBUTION_ID" ] && [ "$DISTRIBUTION_ID" != "None" ]; then
-            aws cloudfront create-invalidation \
-              --distribution-id "$DISTRIBUTION_ID" \
-              --paths "/*"
-            echo "✅ CloudFront cache invalidated for distribution: $DISTRIBUTION_ID"
-          else
-            echo "⚠️ No CloudFront distribution found, skipping invalidation"
-          fi
-
-      - name: Deploy Summary
-        run: |
-          echo "## 🚀 Deployment Summary" >> $GITHUB_STEP_SUMMARY
-          echo "- **Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Triggered by:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **CloudFront:** Cache invalidated" >> $GITHUB_STEP_SUMMARY
 
   # ── Deploy Backend to EC2 (only when backend/** changed) ──
   deploy-backend:
