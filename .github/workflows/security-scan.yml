@@ -43,7 +43,7 @@ jobs:
       # hiện trạng, nhưng không chặn pipeline vì nhiều lỗ hổng HIGH nằm ở
       # dependency gián tiếp và chưa có bản vá.
       - name: "Trivy SCA — Báo cáo (CRITICAL + HIGH)"
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
         with:
           scan-type: 'fs'
           scan-ref: '${{ matrix.directory }}/'
@@ -56,7 +56,7 @@ jobs:
       # Quality Gate thực sự: chỉ lỗ hổng CRITICAL đã có bản vá mới chặn pipeline.
       # Đây là bước khiến Pull Request bị đánh dấu thất bại và không thể merge.
       - name: "Trivy SCA — Quality Gate (chặn khi có CRITICAL)"
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
         with:
           scan-type: 'fs'
           scan-ref: '${{ matrix.directory }}/'

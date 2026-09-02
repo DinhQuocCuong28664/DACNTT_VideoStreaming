@@ -70,8 +70,13 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # Ghim theo SHA thay vi @master. Truoc day ca nam workflow deu tro vao
+      # nhanh master cua action nay, nghia la bat ky thay doi nao o repo do —
+      # ke ca do bi chiem quyen — se chay ngay trong CI cua du an, noi co san
+      # thong tin dang nhap AWS. Trớ trêu la chinh action quet bao mat lai la
+      # thanh phan duoc ghim long leo nhat trong toan bo pipeline.
       - name: Trivy — SCA Scan (backend dependencies)
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
         with:
           scan-type: 'fs'
           scan-ref: 'backend/'
