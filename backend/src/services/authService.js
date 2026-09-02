@@ -206,14 +206,21 @@ const linkGoogleAccount = async (userId, idToken) => {
 /**
  * Generate password reset token and return it (raw, unhashed)
  * The hashed version is stored in DB.
+ *
+ * Tra ve `null` khi email khong ung voi tai khoan nao, thay vi nem loi 404.
+ * Truoc day ham nay nem "No account found with that email" va loi do di
+ * thang ra client, bien endpoint quen-mat-khau thanh cong cu do xem email
+ * nao da dang ky (user enumeration). Rate limiter chi lam cham chu khong
+ * bit duoc, vi no tinh theo IP.
+ *
+ * Quyet dinh "co tai khoan hay khong" gio nam lai o day; phia controller
+ * tra ve cung mot phan hoi trong ca hai truong hop.
  */
 const forgotPassword = async (email) => {
   const user = await User.findOne({ email });
 
   if (!user) {
-    const error = new Error('No account found with that email');
-    error.statusCode = 404;
-    throw error;
+    return null;
   }
 
   // Generate reset token (raw token returned, hashed stored in DB)
