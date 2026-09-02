@@ -57,6 +57,31 @@ visibility timeout of the in-flight message. The message is deleted only after t
 completes successfully. If the container crashes, the heartbeat stops, the timeout lapses, and
 the message returns to the queue for another attempt.
 
+That description is accurate about the transcoder's \texttt{worker} mode, in which the container
+consumes from the queue itself, but it is important to be precise that this is not the mode the
+deployed system runs. The container image and the AWS Batch job definition both invoke
+\texttt{batch} mode, in which the video identifier and object key arrive as environment variables
+and the container never contacts SQS at all. The queue is consumed instead by the Lambda
+submitter, which reads the message, submits a Batch job, and returns immediately. Because the
+Lambda's work is finished at that point, the message is deleted when the job is \emph{submitted},
+not when transcoding completes.
+
+The consequence is that on the deployed path there is no heartbeat, and the message is long gone
+before FFmpeg starts. Two properties the pattern was chosen to provide therefore have to be
+obtained elsewhere. Protection against duplicate processing rests entirely on the conditional
+database writes described in Section~\ref{sec:transcoder-impl}, which is where it belongs in any
+case, since Burrows' analysis of leases (Section~\ref{sec:testing}) shows that a renewal timer
+cannot by itself guarantee mutual exclusion. Retrying a failed job, which the heartbeat design
+delegated to SQS redelivery, has no equivalent unless AWS Batch is configured to provide it; that
+it originally was not is discussed in Section~\ref{sec:limitations}.
+
+Retaining the worker-mode implementation is a deliberate choice rather than an oversight: it
+allows the transcoder to be run against the queue directly during development without provisioning
+Batch. Recording which of the two modes the evaluated system actually executes matters, though,
+because a mechanism present in the source but absent from the deployed path cannot be credited
+with the guarantees it would provide if it ran --- the same distinction that
+Section~\ref{sec:limitations} draws about content protection.
+
 \section{Database Design}
 \label{sec:database-design}
 

@@ -78,9 +78,9 @@ with an empirical assessment of what that choice costs and what it saves.
 
 More concretely, the work contributes an event-driven pipeline in which an upload event
 propagates through Amazon S3, Amazon SQS, and AWS Lambda to AWS Batch without any polling
-service in between; a containerised FFmpeg worker that implements the heartbeat pattern to
-extend the SQS visibility timeout during long transcoding jobs, thereby preventing duplicate
-processing; a two-layer content protection scheme combining Origin Access Control with
+service in between; a containerised FFmpeg worker whose conditional database writes make a
+duplicate delivery harmless, so that exactly-once \emph{effects} are obtained without relying on
+exactly-once delivery; a two-layer content protection scheme combining Origin Access Control with
 CloudFront Signed Cookies so that private videos remain inaccessible even to a viewer holding
 the exact manifest URL; a complete Infrastructure as Code description of the AWS environment
 in eleven Terraform modules; and a DevSecOps pipeline whose security gate genuinely blocks
