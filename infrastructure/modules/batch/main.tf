@@ -24,6 +24,9 @@ resource "aws_batch_compute_environment" "fargate" {
 
 # ── Job Queue ─────────────────────────────────────
 resource "aws_batch_job_queue" "transcode" {
+  # Ten nay duoc chinh sach IAM cua Lambda job submitter dung de dung ARN
+  # (modules/iam/main.tf). Doi ten o day ma khong sua ben do se lam Lambda mat
+  # quyen nop job.
   name     = "${var.project_name}-transcode-queue"
   state    = "ENABLED"
   priority = 1

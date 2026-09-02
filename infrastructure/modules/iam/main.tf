@@ -286,11 +286,26 @@ resource "aws_iam_role_policy" "lambda_sqs_batch" {
         Resource = var.sqs_queue_arn
       },
       {
+        # SubmitJob co ho tro gioi han theo tai nguyen, nen thu hep dung ve hang
+        # doi va job definition cua du an. Truoc day ca hai hanh dong dung chung
+        # Resource = "*", nghia la ham nay nop duoc job vao BAT KY hang doi nao
+        # trong tai khoan — rong hon nhieu so voi viec no thuc su lam.
         Effect = "Allow"
-        Action = [
-          "batch:SubmitJob",
-          "batch:DescribeJobs"
+        Action = "batch:SubmitJob"
+        # ARN dung theo quy tac dat ten cua module batch thay vi tham chieu
+        # module.batch: batch phu thuoc vao module nay de lay role, nen tham
+        # chieu nguoc lai se tao phu thuoc vong. Doi lai, neu ten tai nguyen ben
+        # batch doi thi phai sua o day — rang buoc do duoc ghi ro o ca hai noi.
+        Resource = [
+          "arn:aws:batch:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:job-queue/${var.project_name}-transcode-queue",
+          "arn:aws:batch:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:job-definition/${var.project_name}-transcoder-job:*"
         ]
+      },
+      {
+        # DescribeJobs thi khong ho tro gioi han theo tai nguyen — no nhan job ID
+        # tuy y — nen "*" o day la bat buoc chu khong phai buong long.
+        Effect   = "Allow"
+        Action   = "batch:DescribeJobs"
         Resource = "*"
       }
     ]

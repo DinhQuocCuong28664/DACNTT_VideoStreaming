@@ -34,3 +34,21 @@ variable "tags" {
   type    = map(string)
   default = {}
 }
+
+variable "health_check_url" {
+  description = "URL công khai mà canary sẽ gọi định kỳ. Để rỗng thì không tạo canary."
+  type        = string
+  default     = ""
+}
+
+variable "health_metric_namespace" {
+  description = "Namespace CloudWatch cho metric do canary phát ra"
+  type        = string
+  default     = "VidShare/Health"
+}
+
+variable "backend_instance_id" {
+  description = "ID instance EC2 backend, dùng cho alarm StatusCheckFailed. Để rỗng thì bỏ qua alarm này."
+  type        = string
+  default     = ""
+}
