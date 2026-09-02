@@ -1,5 +1,5 @@
 graph TD
-    A["Git Push / Pull Request"] --> B{"Branch & Path Filter"}
+    A["Git Push / Pull Request"] --> B{"Branch and path filter"}
 
     B -->|"backend/**"| C["ci-backend.yml"]
     B -->|"transcoder/**"| D["ci-transcoder.yml"]
@@ -9,35 +9,35 @@ graph TD
     B -->|"push develop"| G["cd-staging.yml"]
     B -->|"merge main"| H["cd-deploy.yml"]
 
-    C --> C1["Jest Unit Tests"]
+    C --> C1["Jest unit tests"]
     C1 --> C2["ESLint"]
     C2 --> C3["Gitleaks + Trivy SCA"]
 
     D --> D1["ESLint + Gitleaks"]
-    D1 --> D2["Docker Multi-stage Build"]
-    D2 --> D3["Trivy Image Scan"]
-    D3 --> D4["Push Amazon ECR"]
-    D4 --> D5["Register Batch Job Definition mới"]
+    D1 --> D2["Docker multi-stage build"]
+    D2 --> D3["Trivy image scan"]
+    D3 --> D4["Push to Amazon ECR"]
+    D4 --> D5["Register new Batch job definition"]
 
-    E --> E1["oxlint Code Quality"]
-    E1 --> E2["Vite Build"]
-    E2 --> E3["Sync S3 Static Hosting"]
-    E3 --> E4["Invalidate CloudFront frontend"]
+    E --> E1["oxlint code quality"]
+    E1 --> E2["Vite build"]
+    E2 --> E3["Sync to S3 static hosting"]
+    E3 --> E4["Invalidate frontend CloudFront"]
 
     I --> I1["terraform fmt -check"]
     I1 --> I2["terraform validate<br/>dev + prod"]
-    I2 --> I3["Trivy IaC Config Scan"]
+    I2 --> I3["Trivy IaC config scan"]
 
-    F --> F1["Gitleaks Secret Scan"]
-    F1 --> F2["Trivy SCA: Báo cáo<br/>CRITICAL + HIGH"]
+    F --> F1["Gitleaks secret scan"]
+    F1 --> F2["Trivy SCA: report<br/>CRITICAL + HIGH"]
     F2 --> F6["SAST: eslint-plugin-security"]
-    F6 --> F3{"Phát hiện lỗ hổng<br/>mức CRITICAL?"}
-    F3 -->|"Có"| F4["Chặn Pull Request"]
-    F3 -->|"Không"| F5["Cho phép Merge"]
+    F6 --> F3{"Fixable CRITICAL<br/>finding?"}
+    F3 -->|"Yes"| F4["Block pull request"]
+    F3 -->|"No"| F5["Allow merge"]
 
-    G --> G1["Triển khai môi trường Dev"]
-    H --> H1["Deploy Backend EC2 qua AWS SSM"]
-    H1 --> H2["Kiểm chứng API phản hồi HTTP 200"]
+    G --> G1["Deploy to dev environment"]
+    H --> H1["Deploy backend to EC2 via AWS SSM"]
+    H1 --> H2["Verify API answers HTTP 200"]
 
     classDef gate fill:#fdecea,stroke:#c0392b,color:#1a1a1a
     classDef deploy fill:#eef7ee,stroke:#3d8b40,color:#1a1a1a

@@ -1,25 +1,25 @@
 graph LR
-    Guest(("Khách<br/>vãng lai"))
-    User(("Người dùng<br/>đã đăng nhập"))
-    System(("Hệ thống<br/>Transcoding"))
+    Guest(("Anonymous<br/>visitor"))
+    User(("Registered<br/>user"))
+    System(("Transcoding<br/>system"))
 
-    subgraph UC["Nền tảng chia sẻ video"]
-        UC1["Xem danh sách video công khai"]
-        UC2["Tìm kiếm và lọc theo danh mục"]
-        UC3["Xem video HLS với ABR"]
-        UC4["Đăng ký tài khoản"]
-        UC5["Đăng nhập"]
-        UC6["Quên và đặt lại mật khẩu"]
-        UC16["Đăng nhập bằng Google"]
-        UC7["Tải video lên qua Pre-signed URL"]
-        UC8["Chọn chế độ công khai / riêng tư"]
-        UC9["Quản lý video trên kênh cá nhân"]
-        UC10["Xóa video"]
-        UC11["Thích / Không thích video"]
-        UC12["Bình luận video"]
-        UC13["Chia sẻ liên kết video"]
-        UC14["Chuyển mã HLS tự động"]
-        UC15["Sinh thumbnail và metadata"]
+    subgraph UC["Video sharing platform"]
+        UC1["Browse public videos"]
+        UC2["Search and filter by category"]
+        UC3["Watch HLS video with ABR"]
+        UC4["Register an account"]
+        UC5["Log in"]
+        UC6["Reset a forgotten password"]
+        UC16["Sign in with Google"]
+        UC7["Upload video via pre-signed URL"]
+        UC8["Set public or private visibility"]
+        UC9["Manage videos on own channel"]
+        UC10["Delete a video"]
+        UC11["Like or dislike a video"]
+        UC12["Comment on a video"]
+        UC13["Share a video link"]
+        UC14["Transcode to HLS automatically"]
+        UC15["Generate thumbnail and metadata"]
     end
 
     Guest --> UC1

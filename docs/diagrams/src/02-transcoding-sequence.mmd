@@ -1,6 +1,6 @@
 sequenceDiagram
     autonumber
-    actor User as Người dùng (Browser)
+    actor User as User (Browser)
     participant API as Backend API
     participant S3Raw as S3 Raw Bucket
     participant SQS as Amazon SQS
@@ -10,26 +10,26 @@ sequenceDiagram
     participant DB as MongoDB Atlas
 
     User->>API: POST /api/videos/initiate-upload
-    API->>DB: Tạo bản ghi (status = UPLOADING)
-    API-->>User: Trả về Pre-signed URL (TTL 15 phút)
-    User->>S3Raw: PUT video gốc trực tiếp
+    API->>DB: Create record (status = UPLOADING)
+    API-->>User: Return pre-signed URL (TTL 15 min)
+    User->>S3Raw: PUT source video directly
 
     User->>API: PATCH /:id/confirm-upload
-    API->>DB: Cập nhật status = PROCESSING
+    API->>DB: Set status = PROCESSING
 
-    S3Raw-->>SQS: Event Notification (s3:ObjectCreated)
-    SQS-->>Lambda: Event source mapping kích hoạt
+    S3Raw-->>SQS: Event notification (s3:ObjectCreated)
+    SQS-->>Lambda: Event source mapping triggers
     Lambda->>Batch: SubmitJob (VIDEO_ID, RAW_S3_KEY)
-    Lambda-->>SQS: Handler trả về, message bị xóa
-    Note over Lambda,SQS: Message xóa khi job được NỘP,<br/>không phải khi chuyển mã xong
+    Lambda-->>SQS: Handler returns, message deleted
+    Note over Lambda,SQS: Message is deleted when the job is SUBMITTED,<br/>not when transcoding completes
 
     activate Batch
-    Batch->>S3Raw: Tải video gốc về container
-    Batch->>Batch: FFmpeg chuyển mã 360p / 720p / 1080p
-    Batch->>Batch: Sinh master.m3u8 + thumbnail.jpg
-    Batch->>S3Proc: Upload toàn bộ segment .ts và manifest
-    Batch->>DB: Ghi có điều kiện status = READY
+    Batch->>S3Raw: Download source into container
+    Batch->>Batch: FFmpeg transcode 360p / 720p / 1080p
+    Batch->>Batch: Emit master.m3u8 + thumbnail.jpg
+    Batch->>S3Proc: Upload all .ts segments and manifests
+    Batch->>DB: Conditional write status = READY
     deactivate Batch
 
-    Note over Batch,DB: Ghi có điều kiện (chỉ ghi khi chưa READY)<br/>là thứ chống job trùng, vì container<br/>không giữ message SQS nào để gia hạn
-    Note over Batch: Container tự hủy, Fargate scale về 0
+    Note over Batch,DB: The conditional write (only if not already READY)<br/>is what guards against duplicate jobs, since the<br/>container holds no SQS message to extend
+    Note over Batch: Container terminates, Fargate scales to zero
