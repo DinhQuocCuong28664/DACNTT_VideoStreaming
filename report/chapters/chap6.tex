@@ -289,13 +289,14 @@ report --- describes intent.
 \section{Future Work}
 \label{sec:future-work}
 
-Three measurements should be repeated before the experimental results are considered settled. The
-Time-to-First-Frame measurement in Section~\ref{sec:qoe-evaluation} was taken against the S3 origin
-before the CloudFront distribution described in Section~\ref{sec:limitations} existed, and should
-be repeated against the live distribution with Signed Cookies attached exactly as a real playback
-session presents them, so that the reported figures reflect what a viewer experiences on the
-deployed system rather than origin latency alone. The concurrency test re-run with genuine video
-payloads (Section~\ref{sec:real-throughput-validation})
+Two measurements should still be repeated before the experimental results are considered settled.
+The Time-to-First-Frame measurement has since been repeated against the live distribution with
+Signed Cookies attached, and is reported in Section~\ref{sec:cdn-measurement}; what remains open
+there is narrower, namely that all samples were taken from a single client location. Since the
+defect that measurement uncovered was itself a matter of where the client sits relative to the
+edge, figures gathered from several geographic origins would characterise the delivery layer
+considerably better than the present single vantage point can. The concurrency test re-run with
+genuine video payloads (Section~\ref{sec:real-throughput-validation})
 confirmed that every job succeeds under load, but it was not instrumented with the same
 twenty-five-second polling cadence as the original synthetic run, so a precise drain-rate figure
 for real transcoding throughput --- as opposed to confirmation that throughput is non-zero and

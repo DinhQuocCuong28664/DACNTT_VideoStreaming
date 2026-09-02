@@ -144,7 +144,11 @@ resource "aws_cloudfront_distribution" "frontend" {
   is_ipv6_enabled     = true
   comment             = "${var.project_name}-${var.environment}-frontend-cdn"
   default_root_object = "index.html"
-  price_class         = "PriceClass_100"
+  # Xem ghi chú ở module.cloudfront trong main.tf: PriceClass_100 không có edge
+  # châu Á. Distribution này cũng chịu đúng vấn đề đó — đo được PoP TLV55
+  # (Tel Aviv) khi truy cập từ Việt Nam — nên đổi cùng lúc. Ảnh hưởng ở đây là
+  # tới thời gian tải trang chứ không phải TTFF, nhưng nguyên nhân là một.
+  price_class         = "PriceClass_200"
   aliases             = ["zelostech.site", "www.zelostech.site"]
 
   origin {

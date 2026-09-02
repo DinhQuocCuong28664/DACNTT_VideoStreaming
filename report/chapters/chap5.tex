@@ -235,14 +235,82 @@ First segment      & 108.76 & 87.04  & 322.20 & 78.41 & 322.20 \\
 \noindent\textit{Note: values in milliseconds, from Table~\ref{tab:ttff-results}, $n=20$ samples,
 populated from \texttt{docs/results/qoe-ttff.json}, produced by \texttt{scripts/benchmark-qoe.js}
 against a video served directly from the S3 bucket (source URL recorded in the result file), taken
-before the CloudFront distribution described in Section~\ref{sec:limitations} was deployed --- these
-figures therefore represent origin latency without CDN edge caching, not the latency a viewer
-experiences on the deployed system today. Repeating this measurement against the now-live
-distribution, with Signed Cookies attached as a real playback session would present them, is
-recorded as future work in Section~\ref{sec:future-work} rather than presented here as a settled
-result. The mean (292.93~ms) exceeds the median (251.52~ms) because one
-outlier sample (884.54~ms) inflates both the mean and the P95/max columns, which coincide with the
-single-sample maximum at this sample size.}
+before the CloudFront distribution described in Section~\ref{sec:limitations} was deployed. These
+figures therefore represent origin latency without any CDN, and they serve here as the baseline
+against which Section~\ref{sec:cdn-measurement} compares the deployed system. The mean
+(292.93~ms) exceeds the median (251.52~ms) because one outlier sample (884.54~ms) inflates both
+the mean and the P95/max columns, which coincide with the single-sample maximum at this sample
+size.}
+
+\subsection{Measuring the Deployed CDN, and a Configuration That Inverted It}
+\label{sec:cdn-measurement}
+
+Repeating the measurement against the live distribution required extending the instrumentation,
+since every request now requires a Signed Cookie: without one the script would have measured the
+latency of being refused. The script therefore requests cookies from the playback-authorisation
+endpoint and attaches them to all three stages, exactly as a browser does.
+
+The first run produced a result that contradicted the entire justification for using a content
+delivery network. Against the CDN the median TTFF was 727.69~ms, against 251.52~ms measured
+directly from S3 --- the CDN was slower than the origin it was meant to accelerate, by a factor of
+2.9. Caching was not the problem: nineteen of twenty samples were edge hits, and the single miss
+(4655~ms) was six times slower than the hits, so the cache was working precisely as intended.
+
+The cause was visible in a response header rather than in any timing. Every request reported
+\texttt{X-Amz-Cf-Pop: MRS53}, the edge location in Marseille, France, and the frontend
+distribution was answering from Tel Aviv. Both distributions were configured with
+\texttt{PriceClass\_100}, annotated in the Terraform as the cheapest option, which restricts
+delivery to edge locations in North America and Europe. Every request from Vietnam --- where the
+system's users are --- was therefore crossing to Europe and back. The setting did reduce the
+per-gigabyte rate, and in doing so it removed the entire benefit the component exists to provide
+for the only population that uses it.
+
+Changing both distributions to \texttt{PriceClass\_200}, which includes the Asian edge locations,
+moved delivery to \texttt{SGN50} in Ho Chi Minh City and produced Table~\ref{tab:ttff-cloudfront}.
+
+\begin{table}[H]
+\centering
+\caption{Time-to-First-Frame through CloudFront after the price class correction}
+\label{tab:ttff-cloudfront}
+\small
+\begin{tabularx}{\textwidth}{X r r r r r}
+\toprule
+\textbf{STAGE} & \textbf{MEAN} & \textbf{MEDIAN} & \textbf{P95} & \textbf{MIN} & \textbf{MAX} \\
+\midrule
+Master playlist    & 28.65  & 8.37   & 263.43  & 6.54  & 263.43 \\
+Rendition playlist & 29.29  & 7.93   & 348.78  & 5.89  & 348.78 \\
+First segment      & 112.75 & 87.36  & 487.31  & 68.87 & 487.31 \\
+\midrule
+\textbf{Total TTFF} & \textbf{170.69} & \textbf{110.32} & \textbf{1099.51} & \textbf{83.17} & \textbf{1099.51} \\
+\midrule
+\textit{Warm cache only} ($n=18$) & \textit{108.49} & \textit{107.57} & \textit{159.25} & \textit{83.17} & \textit{159.25} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\noindent\textit{Note: values in milliseconds, $n=20$ samples with Signed Cookies attached,
+populated from \texttt{docs/results/qoe-ttff-cloudfront.json}. Two samples were edge cache misses
+and eighteen were hits; the final row reports only the samples that hit at all three stages,
+which is the steady state a viewer of an already-watched video experiences. The P95 and maximum of
+the full sample coincide with the colder of the two misses, as at this sample size the 95th
+percentile is the single slowest observation.}
+
+The comparison against the two earlier figures is stark. The median falls from 727.69~ms through
+the European edge to 110.32~ms through the local one, a factor of 6.6, and now sits 2.3 times
+faster than the S3 origin baseline rather than 2.9 times slower. The stage breakdown shows where
+the gain lands: the manifest and rendition playlists, small files served from cache, now complete
+in single-digit milliseconds, while the segment continues to dominate because it is the only stage
+transferring a meaningful payload.
+
+Two observations are worth separating from the numbers. The first is that this defect was
+invisible to every form of inspection short of measurement from the right place: the
+infrastructure code was valid, the distribution was healthy, the cache hit rate was excellent, and
+each individual request succeeded. A measurement taken from Europe or North America would have
+shown the CDN performing well, and only the location of the observer made the fault apparent. The
+second is that the original setting was not careless --- it was a deliberate, documented cost
+optimisation, and it was correct about cost. It was applied without asking where the traffic it
+governed would come from, which is the question that determined whether the component helped or
+hurt.
 
 \section{Transcoding Pipeline Performance}
 \label{sec:pipeline-evaluation}
