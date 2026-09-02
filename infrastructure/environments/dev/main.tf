@@ -84,6 +84,7 @@ module "monitoring" {
   dlq_alert_topic_arn  = module.sns.dlq_alert_topic_arn
   dlq_queue_name       = "${var.project_name}-${var.environment}-transcode-dlq"
   transcode_queue_name = "${var.project_name}-${var.environment}-transcode-queue"
+  batch_job_queue_arn  = module.batch.job_queue_arn
   tags                 = local.common_tags
 }
 
