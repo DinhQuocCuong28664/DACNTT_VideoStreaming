@@ -106,6 +106,96 @@ describe('Middleware xác thực JWT', () => {
       expect(next).toHaveBeenCalled();
       expect(res.status).not.toHaveBeenCalled();
     });
+
+    it('nên từ chối token được cấp TRƯỚC lần đổi mật khẩu gần nhất', async () => {
+      const userId = new mongoose.Types.ObjectId().toString();
+
+      // Token cấp cách đây một giờ, mật khẩu vừa đổi cách đây một phút:
+      // đây đúng là tình huống tài khoản bị chiếm rồi chủ tài khoản đổi
+      // mật khẩu để đuổi kẻ tấn công ra.
+      const motGioTruoc = Math.floor(Date.now() / 1000) - 3600;
+      const token = jwt.sign({ id: userId, iat: motGioTruoc }, process.env.JWT_SECRET);
+
+      User.findById.mockResolvedValue({
+        _id: userId,
+        username: 'nguoidung',
+        passwordChangedAt: new Date(Date.now() - 60 * 1000),
+      });
+
+      const req = { headers: { authorization: `Bearer ${token}` } };
+      const res = createMockRes();
+      const next = jest.fn();
+
+      await auth(req, res, next);
+
+      expect(res.status).toHaveBeenCalledWith(401);
+      expect(next).not.toHaveBeenCalled();
+      expect(req.user).toBeUndefined();
+    });
+
+    it('nên chấp nhận token được cấp SAU lần đổi mật khẩu gần nhất', async () => {
+      const userId = new mongoose.Types.ObjectId().toString();
+      const mockUser = {
+        _id: userId,
+        username: 'nguoidung',
+        passwordChangedAt: new Date(Date.now() - 3600 * 1000),
+      };
+      // Token cấp ngay bây giờ — tức là cấp sau khi đổi mật khẩu
+      const token = jwt.sign({ id: userId }, process.env.JWT_SECRET);
+      User.findById.mockResolvedValue(mockUser);
+
+      const req = { headers: { authorization: `Bearer ${token}` } };
+      const res = createMockRes();
+      const next = jest.fn();
+
+      await auth(req, res, next);
+
+      expect(req.user).toEqual(mockUser);
+      expect(next).toHaveBeenCalled();
+      expect(res.status).not.toHaveBeenCalled();
+    });
+
+    it('nên chấp nhận token khi tài khoản chưa từng đổi mật khẩu', async () => {
+      const userId = new mongoose.Types.ObjectId().toString();
+      // Không có passwordChangedAt — tài khoản cũ, tạo trước khi có trường này
+      const mockUser = { _id: userId, username: 'nguoidung' };
+      const token = jwt.sign({ id: userId }, process.env.JWT_SECRET);
+      User.findById.mockResolvedValue(mockUser);
+
+      const req = { headers: { authorization: `Bearer ${token}` } };
+      const res = createMockRes();
+      const next = jest.fn();
+
+      await auth(req, res, next);
+
+      expect(req.user).toEqual(mockUser);
+      expect(next).toHaveBeenCalled();
+    });
+
+    it('nên chấp nhận token cấp ngay sát thời điểm đổi mật khẩu', async () => {
+      // Chống hồi quy cho sai lệch đơn vị giây/mili giây: `iat` của JWT tính
+      // bằng giây và bị làm tròn xuống, nên nếu pre-save hook không trừ bù
+      // thì token vừa cấp cho chính người dùng vừa đổi mật khẩu sẽ bị coi là
+      // cũ và họ bị đăng xuất ngay lập tức.
+      const userId = new mongoose.Types.ObjectId().toString();
+      const mockUser = {
+        _id: userId,
+        username: 'nguoidung',
+        // Đúng như pre-save hook trong User model đặt: lùi lại 1 giây
+        passwordChangedAt: new Date(Date.now() - 1000),
+      };
+      const token = jwt.sign({ id: userId }, process.env.JWT_SECRET);
+      User.findById.mockResolvedValue(mockUser);
+
+      const req = { headers: { authorization: `Bearer ${token}` } };
+      const res = createMockRes();
+      const next = jest.fn();
+
+      await auth(req, res, next);
+
+      expect(next).toHaveBeenCalled();
+      expect(res.status).not.toHaveBeenCalled();
+    });
   });
 
   describe('optionalAuth (đăng nhập không bắt buộc)', () => {
@@ -147,6 +237,31 @@ describe('Middleware xác thực JWT', () => {
 
       expect(req.user).toEqual(mockUser);
       expect(next).toHaveBeenCalled();
+    });
+
+    it('nên đi tiếp mà KHÔNG gắn req.user khi token cấp trước lần đổi mật khẩu', async () => {
+      // Nếu thiếu kiểm tra này, token đã bị truất quyền vẫn được coi là đã
+      // đăng nhập trên các route dùng optionalAuth — chẳng hạn xem video
+      // riêng tư — khiến việc đổi mật khẩu chỉ có tác dụng một nửa.
+      const userId = new mongoose.Types.ObjectId().toString();
+      const motGioTruoc = Math.floor(Date.now() / 1000) - 3600;
+      const token = jwt.sign({ id: userId, iat: motGioTruoc }, process.env.JWT_SECRET);
+
+      User.findById.mockResolvedValue({
+        _id: userId,
+        username: 'nguoidung',
+        passwordChangedAt: new Date(Date.now() - 60 * 1000),
+      });
+
+      const req = { headers: { authorization: `Bearer ${token}` } };
+      const res = createMockRes();
+      const next = jest.fn();
+
+      await optionalAuth(req, res, next);
+
+      expect(req.user).toBeUndefined();
+      expect(next).toHaveBeenCalled();
+      expect(res.status).not.toHaveBeenCalled();
     });
   });
 });
