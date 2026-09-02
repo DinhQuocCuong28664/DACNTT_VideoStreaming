@@ -265,6 +265,54 @@ signal that the architecture made incapable of carrying that information. An ala
 fire is worse than an absent one, because its presence is taken as evidence that the case is
 covered, and its silence is read as good news.
 
+A later review found the same reasoning applied to a larger omission. After the corrections above
+the system had four alarms, and every one of them watched the transcoding pipeline. Nothing
+watched the backend API --- the single component that every other part of the system depends on,
+running as one process on one instance. If the process died, the web server stopped, or the
+instance failed, no signal would have been produced at all.
+
+That gap was demonstrated during this work rather than reasoned about. Assigning the backend a
+static address moved its public IP, the DNS record continued to point at the released one, and
+the entire API returned \texttt{522} for several minutes --- the proxy in front of it reporting that it could not
+reach the origin at all. The instance was healthy throughout;
+every infrastructure-level indicator was green, because nothing at the infrastructure level was
+wrong. The outage was noticed only because someone happened to call the endpoint. This is the
+distinction that matters when choosing what to monitor: a check on the instance answers whether
+the server is running, and a check on the public domain answers whether the service is being
+delivered, which is the only question a user is asking.
+
+A scheduled function now calls the public domain every five minutes, traversing the same path a
+viewer does, and publishes a metric that an alarm watches; an instance status-check alarm sits
+alongside it, complementing rather than replacing it, since it would not have detected the failure
+just described. The choice of a self-hosted check over a managed one was decided on cost --- a
+managed health check on an endpoint outside the provider costs roughly 1.75 USD per month, against
+zero for this approach within the free tier --- and the trade-off it accepts, that checks come
+from one location rather than several, is recorded alongside the implementation.
+
+Configuring that alarm produced a mistake worth reporting, because it is the first in this chapter
+that was introduced rather than discovered. The alarm was given an evaluation period equal to the
+interval between checks, so each period contained exactly one datapoint and no margin. Missing
+data is deliberately treated as a failure --- a monitor that dies must raise an alarm rather than
+fall silent --- and on first deployment, when only a single datapoint existed, the empty adjacent
+period was read as a breach and the alarm fired against a system that was working. The canary's
+own source comments state that a false alarm is the worst failure mode available to a monitor,
+because it teaches people to disregard the next one; the configuration contradicted the reasoning
+written beside it. Widening the evaluation period to three times the check interval gives each
+window several datapoints, so that one late execution cannot open a gap. The general lesson is
+narrow and practical: for any monitor evaluated over a window, the sampling rate and the
+evaluation window are a single joint decision, and choosing them independently produces a monitor
+that is either deaf or hysterical.
+
+Two smaller corrections came from the same review. The frontend had no error boundary, so any
+exception thrown during rendering unmounted the entire component tree and left a blank page ---
+an outcome sitting oddly beside the deliberately designed pages for the 403 and 404 cases, and one
+that gave a user experiencing a real fault less information than one who requested a missing
+video. And the function submitting transcoding jobs was still running a language runtime past its
+end-of-life date, months after Section~
+ef{sec:transcoder-impl} records upgrading the transcoder
+for precisely that reason; the upgrade had been applied to the component the report discusses and
+not to the one it does not.
+
 Several defects recorded in this chapter, together with two corrections made elsewhere in this
 report, share a single shape, and naming it is more useful than any of the individual fixes. In
 each case a mechanism was described correctly, and the description was then taken as evidence that
