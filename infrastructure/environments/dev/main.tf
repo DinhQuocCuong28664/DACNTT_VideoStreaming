@@ -99,21 +99,28 @@ module "cloudfront" {
   processed_bucket_domain_name = module.s3.processed_bucket_domain_name
   processed_bucket_name        = module.s3.processed_bucket_name
   processed_bucket_arn         = module.s3.processed_bucket_arn
-  # PriceClass_200 gồm cả các edge châu Á; PriceClass_100 thì không.
+  # PriceClass_All — dùng mọi edge location, không loại trừ vùng nào.
   #
-  # Trước đây đặt PriceClass_100 kèm ghi chú "rẻ nhất". Nó rẻ thật, và nó khiến
-  # CDN chậm hơn cả việc lấy thẳng từ origin đối với đúng tập người dùng của hệ
-  # thống. Đo thực tế từ Việt Nam cho thấy mọi yêu cầu đều được phục vụ bởi PoP
-  # MRS53 (Marseille, Pháp), vì PriceClass_100 chỉ có Bắc Mỹ và châu Âu: trung
-  # vị TTFF 728 ms qua CDN so với 251 ms khi đo trực tiếp tới S3 ở Singapore.
-  # Cache vẫn hoạt động đúng (19/20 hit) — thứ bị trả giá thuần tuý là khoảng
-  # cách địa lý.
+  # Lịch sử của thiết lập này đáng ghi lại vì nó đi qua hai lần sai cùng kiểu.
+  # Ban đầu là PriceClass_100 kèm ghi chú "rẻ nhất": rẻ thật, nhưng nó chỉ gồm
+  # Bắc Mỹ và châu Âu, nên mọi yêu cầu từ Việt Nam đều được phục vụ bởi PoP
+  # MRS53 (Marseille). Trung vị TTFF khi đó là 728 ms, tức CDN CHẬM HƠN việc
+  # lấy thẳng từ S3 ở Singapore (251 ms) — thành phần được đặt vào để tăng tốc
+  # lại đang làm chậm đi.
   #
-  # PriceClass_200 bổ sung châu Á, Ấn Độ, Trung Đông và châu Phi, chỉ loại trừ
-  # Nam Mỹ, Úc và New Zealand. Giá mỗi GB ở châu Á cao hơn, nhưng CloudFront
-  # miễn phí 1 TB truyền ra và 10 triệu yêu cầu mỗi tháng, mức mà dự án này
-  # không chạm tới.
-  price_class                  = "PriceClass_200"
+  # PriceClass_200 sửa được cho châu Á (trung vị còn 110 ms, edge SGN50 tại
+  # TP.HCM), nhưng đo từ năm vị trí cho thấy nó chỉ DỜI vùng bị loại: São Paulo
+  # bị đẩy sang CPT51 (Cape Town) với trung vị 1196 ms, tệ hơn cả con số 728 ms
+  # ban đầu, vì PriceClass_200 loại trừ Nam Mỹ và châu Đại Dương.
+  #
+  # PriceClass_All không còn vùng bị loại nào. Cần nói rõ căn cứ: dự án hiện
+  # KHÔNG có người dùng ở Nam Mỹ hay châu Đại Dương, nên đây không phải đáp ứng
+  # một nhu cầu đã có. Lý do chọn là chi phí chênh lệch thực tế bằng 0 —
+  # CloudFront miễn phí 1 TB truyền ra và 10 triệu yêu cầu mỗi tháng, mức dự án
+  # không chạm tới — nên không có lý do gì để giữ lại một vùng phục vụ kém.
+  # Nếu lưu lượng sau này vượt hạn mức miễn phí thì đây là thiết lập cần xem
+  # lại đầu tiên, vì giá mỗi GB ở Nam Mỹ và châu Đại Dương cao nhất trong bảng.
+  price_class                  = "PriceClass_All"
   cors_allowed_origins         = var.cors_allowed_origins
   enable_cloudfront            = var.enable_cloudfront
   enable_signed_urls           = var.enable_signed_urls

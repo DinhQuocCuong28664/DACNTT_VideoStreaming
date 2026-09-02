@@ -324,46 +324,67 @@ Table~\ref{tab:ttff-multiregion} reports the results.
 
 \begin{table}[H]
 \centering
-\caption{Time-to-First-Frame by client location, \texttt{PriceClass\_200}}
+\caption{Time-to-First-Frame by client location, before and after \texttt{PriceClass\_All}}
 \label{tab:ttff-multiregion}
 \small
-\begin{tabularx}{\textwidth}{X l r r r}
+\begin{tabularx}{\textwidth}{X l r l r r}
 \toprule
-\textbf{CLIENT LOCATION} & \textbf{EDGE} & \textbf{MEDIAN} & \textbf{MEAN} & \textbf{WARM} \\
+& \multicolumn{2}{c}{\textbf{PRICECLASS\_200}} & \multicolumn{3}{c}{\textbf{PRICECLASS\_ALL}} \\
+\cmidrule(lr){2-3} \cmidrule(lr){4-6}
+\textbf{CLIENT LOCATION} & \textbf{EDGE} & \textbf{MEDIAN} & \textbf{EDGE} & \textbf{MEDIAN} & \textbf{WARM} \\
 \midrule
-N. Virginia, United States & IAD61  & 55.23   & 207.14  & 54.49 \\
-Dublin, Ireland            & DUB2   & 55.91   & 185.03  & 55.15 \\
-Singapore                  & SIN3   & 56.89   & 109.07  & 55.57 \\
-Tokyo, Japan               & NRT12  & 59.68   & 114.35  & 43.89 \\
-Ho Chi Minh City (consumer) & SGN50 & 110.32  & 170.69  & 107.57 \\
+N. Virginia, United States & IAD61 & 55.23   & ---   & ---   & --- \\
+Dublin, Ireland            & DUB2  & 55.91   & DUB2  & 55.68 & 55.68 \\
+Singapore                  & SIN3  & 56.89   & SIN3  & 53.20 & 53.20 \\
+Tokyo, Japan               & NRT12 & 59.68   & ---   & ---   & --- \\
+Sydney, Australia          & ---   & ---     & SYD3  & 52.30 & 43.36 \\
+S\~{a}o Paulo, Brazil      & CPT51 & \textbf{1196.10} & GRU1 & \textbf{36.79} & \textbf{36.49} \\
 \midrule
-S\~{a}o Paulo, Brazil      & CPT51  & \textbf{1196.10} & \textbf{1569.73} & \textbf{1196.09} \\
+Ho Chi Minh City (consumer) & SGN50 & 110.32 & ---   & ---   & --- \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
-\noindent\textit{Note: values in milliseconds, $n=20$ per location, from
+\noindent\textit{Note: values in milliseconds, $n=20$ per location and per configuration, from
 \texttt{docs/results/qoe-ttff-multiregion.json}. WARM reports the median over samples that hit the
-edge cache at all three stages. The Ho Chi Minh City row is the local measurement of
+edge cache at all three stages. Entries marked --- were not measured in that configuration: the
+first run predated the Sydney probe, and the second re-measured only the two locations that could
+change plus two controls. The Ho Chi Minh City row is the local measurement of
 Table~\ref{tab:ttff-cloudfront}, taken from a consumer connection rather than from inside an AWS
 region, and is included for comparison rather than as a like-for-like sample.}
 
-Four of the five locations are indistinguishable, clustering between 55 and 60~ms and each served
-by an edge in its own region. That uniformity is the property a content delivery network is
-supposed to have, and it is the evidence that the price class correction worked rather than merely
-improving the one location it was chosen for.
+Under \texttt{PriceClass\_200}, four of the five locations were indistinguishable, clustering
+between 55 and 60~ms and each served by an edge in its own region. That uniformity is the property
+a content delivery network is supposed to have, and it was better evidence that the price class
+correction worked than the single improved figure from Vietnam had been.
 
-S\~{a}o Paulo is the exception, and it is the most instructive row in the table. Requests from
+S\~{a}o Paulo was the exception, and it was the most instructive row in the table. Requests from
 Brazil were served by \texttt{CPT51} --- Cape Town, South Africa --- across the South Atlantic, at
 a median of 1196~ms, twenty-one times the latency of every other location and considerably worse
-than the 728~ms that prompted the correction in the first place. The cause is the same mechanism:
+than the 728~ms that prompted the correction in the first place. The cause was the same mechanism:
 \texttt{PriceClass\_200} includes Asia, India, the Middle East and Africa, but excludes South
-America and Oceania, so a Brazilian viewer is now in exactly the position a Vietnamese viewer
-occupied before. The fix did not eliminate the problem; it moved the excluded region to one where
-this system has no users. Whether that is acceptable is a question about the audience rather than
-about the configuration, and it is stated here as a property of the deployment rather than
-resolved: serving Brazil and Australia at parity requires \texttt{PriceClass\_All} and the
-higher per-gigabyte rates that go with it.
+America and Oceania, so a Brazilian viewer occupied exactly the position a Vietnamese viewer had
+occupied before. The correction had not eliminated the problem; it had moved the excluded region
+to one where this system happens to have no users.
+
+Both distributions were therefore moved to \texttt{PriceClass\_All}, which excludes nothing, and
+the affected locations were re-measured. Brazil is now served by \texttt{GRU1} in S\~{a}o Paulo
+itself at a median of 36.79~ms, a thirty-two-fold improvement and the fastest figure in the table;
+Sydney, the other previously excluded region, is served by \texttt{SYD3} at 52.30~ms. The two
+control locations moved by less than 4~ms, confirming that nothing else changed. Delivery is now
+uniform across every location measured.
+
+The basis for that decision should be stated honestly, because it is not the one the numbers
+suggest on their own. The system has no users in South America or Oceania, so this did not meet an
+existing need. It was adopted because the difference in cost is zero in practice --- CloudFront's
+perpetual free tier covers one terabyte of transfer and ten million requests per month, well above
+anything this deployment approaches --- which leaves no reason to retain a region served an order
+of magnitude worse. Were traffic ever to exceed that allowance, this is the first setting that
+should be revisited, since South America and Oceania carry the highest per-gigabyte rates in the
+schedule. The general form of the decision is worth noting: the correct choice depended not on
+which configuration was better in the abstract but on where the traffic actually originates and
+what the alternative genuinely costs, and both of those are facts about the deployment rather than
+about CloudFront.
 
 One methodological limit should be stated plainly. These probes ran inside AWS regions, reaching
 edges over well-provisioned network paths, which is why four of them report around 55~ms while the

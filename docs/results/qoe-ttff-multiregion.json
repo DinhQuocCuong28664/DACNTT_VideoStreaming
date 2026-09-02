@@ -1,8 +1,317 @@
 {
-  "measuredAt": "2026-09-02T10:13:23.708600+00:00",
+  "measuredAt": "2026-09-02T10:29:39.152619+00:00",
   "method": "AWS Lambda probe deployed temporarily to each region, 20 iterations each, CloudFront Signed Cookies attached, deleted after measurement",
-  "priceClass": "PriceClass_200",
+  "priceClass": "PriceClass_All",
   "byRegion": {
+    "ap-northeast-1": {
+      "clientLocation": "Tokyo, Japan",
+      "servedByPop": [
+        "NRT12-P9"
+      ],
+      "samples": 20,
+      "cacheHits": 19,
+      "ttff": {
+        "count": 20,
+        "minMs": 36.19,
+        "maxMs": 1147.53,
+        "meanMs": 114.35,
+        "medianMs": 59.68,
+        "p95Ms": 1147.53
+      },
+      "ttffWarmCacheOnly": {
+        "count": 19,
+        "minMs": 36.19,
+        "maxMs": 141.17,
+        "meanMs": 59.97,
+        "medianMs": 43.89,
+        "p95Ms": 141.17
+      },
+      "breakdown": {
+        "master": {
+          "count": 20,
+          "minMs": 13.57,
+          "maxMs": 340.67,
+          "meanMs": 38.93,
+          "medianMs": 18.54,
+          "p95Ms": 340.67
+        },
+        "sub": {
+          "count": 20,
+          "minMs": 3.33,
+          "maxMs": 358.19,
+          "meanMs": 32.99,
+          "medianMs": 19.02,
+          "p95Ms": 358.19
+        },
+        "segment": {
+          "count": 20,
+          "minMs": 5.01,
+          "maxMs": 448.66,
+          "meanMs": 42.43,
+          "medianMs": 20.13,
+          "p95Ms": 448.66
+        }
+      },
+      "errors": []
+    },
+    "ap-southeast-1": {
+      "clientLocation": "Singapore",
+      "servedByPop": [
+        "SIN3-P3"
+      ],
+      "samples": 20,
+      "cacheHits": 20,
+      "ttff": {
+        "count": 20,
+        "minMs": 24.51,
+        "maxMs": 437.62,
+        "meanMs": 107.98,
+        "medianMs": 53.2,
+        "p95Ms": 437.62
+      },
+      "ttffWarmCacheOnly": {
+        "count": 20,
+        "minMs": 24.51,
+        "maxMs": 437.62,
+        "meanMs": 107.98,
+        "medianMs": 53.2,
+        "p95Ms": 437.62
+      },
+      "breakdown": {
+        "master": {
+          "count": 20,
+          "minMs": 4.11,
+          "maxMs": 179.19,
+          "meanMs": 40.36,
+          "medianMs": 19.65,
+          "p95Ms": 179.19
+        },
+        "sub": {
+          "count": 20,
+          "minMs": 2.51,
+          "maxMs": 138.54,
+          "meanMs": 28.23,
+          "medianMs": 19.61,
+          "p95Ms": 138.54
+        },
+        "segment": {
+          "count": 20,
+          "minMs": 4.97,
+          "maxMs": 119.89,
+          "meanMs": 39.4,
+          "medianMs": 20.46,
+          "p95Ms": 119.89
+        }
+      },
+      "errors": []
+    },
+    "eu-west-1": {
+      "clientLocation": "Dublin, Ireland",
+      "servedByPop": [
+        "DUB2-P1"
+      ],
+      "samples": 20,
+      "cacheHits": 20,
+      "ttff": {
+        "count": 20,
+        "minMs": 39.97,
+        "maxMs": 419.91,
+        "meanMs": 110.11,
+        "medianMs": 55.68,
+        "p95Ms": 419.91
+      },
+      "ttffWarmCacheOnly": {
+        "count": 20,
+        "minMs": 39.97,
+        "maxMs": 419.91,
+        "meanMs": 110.11,
+        "medianMs": 55.68,
+        "p95Ms": 419.91
+      },
+      "breakdown": {
+        "master": {
+          "count": 20,
+          "minMs": 4.1,
+          "maxMs": 220.57,
+          "meanMs": 47.05,
+          "medianMs": 21.96,
+          "p95Ms": 220.57
+        },
+        "sub": {
+          "count": 20,
+          "minMs": 2.88,
+          "maxMs": 118.6,
+          "meanMs": 27.35,
+          "medianMs": 17.11,
+          "p95Ms": 118.6
+        },
+        "segment": {
+          "count": 20,
+          "minMs": 5.68,
+          "maxMs": 81.7,
+          "meanMs": 35.7,
+          "medianMs": 20.17,
+          "p95Ms": 81.7
+        }
+      },
+      "errors": []
+    },
+    "sa-east-1": {
+      "clientLocation": "Sao Paulo, Brazil",
+      "servedByPop": [
+        "GRU1-P8"
+      ],
+      "samples": 20,
+      "cacheHits": 19,
+      "ttff": {
+        "count": 20,
+        "minMs": 21.88,
+        "maxMs": 4395.52,
+        "meanMs": 256.82,
+        "medianMs": 36.79,
+        "p95Ms": 4395.52
+      },
+      "ttffWarmCacheOnly": {
+        "count": 19,
+        "minMs": 21.88,
+        "maxMs": 94.33,
+        "meanMs": 38.99,
+        "medianMs": 36.49,
+        "p95Ms": 94.33
+      },
+      "breakdown": {
+        "master": {
+          "count": 20,
+          "minMs": 2.56,
+          "maxMs": 1199.73,
+          "meanMs": 73.39,
+          "medianMs": 16.02,
+          "p95Ms": 1199.73
+        },
+        "sub": {
+          "count": 20,
+          "minMs": 2.5,
+          "maxMs": 1102.34,
+          "meanMs": 64.06,
+          "medianMs": 5.03,
+          "p95Ms": 1102.34
+        },
+        "segment": {
+          "count": 20,
+          "minMs": 3.22,
+          "maxMs": 2093.44,
+          "meanMs": 119.37,
+          "medianMs": 17.28,
+          "p95Ms": 2093.44
+        }
+      },
+      "errors": []
+    },
+    "us-east-1": {
+      "clientLocation": "N. Virginia, United States",
+      "servedByPop": [
+        "IAD61-P11"
+      ],
+      "samples": 20,
+      "cacheHits": 19,
+      "ttff": {
+        "count": 20,
+        "minMs": 30.09,
+        "maxMs": 2955.87,
+        "meanMs": 207.14,
+        "medianMs": 55.23,
+        "p95Ms": 2955.87
+      },
+      "ttffWarmCacheOnly": {
+        "count": 19,
+        "minMs": 30.09,
+        "maxMs": 187.13,
+        "meanMs": 62.47,
+        "medianMs": 54.49,
+        "p95Ms": 187.13
+      },
+      "breakdown": {
+        "master": {
+          "count": 20,
+          "minMs": 8.31,
+          "maxMs": 846.82,
+          "meanMs": 69.04,
+          "medianMs": 19.49,
+          "p95Ms": 846.82
+        },
+        "sub": {
+          "count": 20,
+          "minMs": 3.45,
+          "maxMs": 733.07,
+          "meanMs": 50.82,
+          "medianMs": 19.05,
+          "p95Ms": 733.07
+        },
+        "segment": {
+          "count": 20,
+          "minMs": 4.95,
+          "maxMs": 1375.98,
+          "meanMs": 87.28,
+          "medianMs": 18.58,
+          "p95Ms": 1375.98
+        }
+      },
+      "errors": []
+    },
+    "ap-southeast-2": {
+      "clientLocation": "Sydney, Australia",
+      "servedByPop": [
+        "SYD3-P2"
+      ],
+      "samples": 20,
+      "cacheHits": 19,
+      "ttff": {
+        "count": 20,
+        "minMs": 26.04,
+        "maxMs": 1485.8,
+        "meanMs": 128.26,
+        "medianMs": 52.3,
+        "p95Ms": 1485.8
+      },
+      "ttffWarmCacheOnly": {
+        "count": 19,
+        "minMs": 26.04,
+        "maxMs": 185.7,
+        "meanMs": 56.81,
+        "medianMs": 43.36,
+        "p95Ms": 185.7
+      },
+      "breakdown": {
+        "master": {
+          "count": 20,
+          "minMs": 2.62,
+          "maxMs": 480.08,
+          "meanMs": 45.53,
+          "medianMs": 16.31,
+          "p95Ms": 480.08
+        },
+        "sub": {
+          "count": 20,
+          "minMs": 2.58,
+          "maxMs": 410.85,
+          "meanMs": 36.93,
+          "medianMs": 17.45,
+          "p95Ms": 410.85
+        },
+        "segment": {
+          "count": 20,
+          "minMs": 4.5,
+          "maxMs": 594.87,
+          "meanMs": 45.8,
+          "medianMs": 17.52,
+          "p95Ms": 594.87
+        }
+      },
+      "errors": []
+    }
+  },
+  "note": "byRegion holds the PriceClass_All measurement. priceClass200 holds the earlier run, kept for comparison: it is what showed that PriceClass_200 merely relocated the excluded region.",
+  "priceClass200": {
     "ap-northeast-1": {
       "clientLocation": "Tokyo, Japan",
       "servedByPop": [
