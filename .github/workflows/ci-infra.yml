@@ -67,7 +67,7 @@ jobs:
 
       # Báo cáo mọi cấu hình sai lệch để nhóm nắm hiện trạng
       - name: "Trivy IaC — Báo cáo (CRITICAL + HIGH)"
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
         with:
           scan-type: 'config'
           scan-ref: 'infrastructure/'
@@ -78,7 +78,7 @@ jobs:
       # Quality Gate: chặn khi có cấu hình sai lệch ở mức nghiêm trọng,
       # ví dụ S3 bucket để công khai hoặc Security Group mở toàn bộ cổng ra Internet.
       - name: "Trivy IaC — Quality Gate (chặn khi có CRITICAL)"
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
         with:
           scan-type: 'config'
           scan-ref: 'infrastructure/'

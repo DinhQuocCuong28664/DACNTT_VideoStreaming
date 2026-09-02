@@ -105,7 +105,7 @@ jobs:
 
       # Báo cáo đầy đủ CRITICAL + HIGH để nắm hiện trạng image
       - name: "Trivy — Quét Image (Báo cáo)"
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
         with:
           image-ref: '${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}'
           severity: 'CRITICAL,HIGH'
@@ -117,7 +117,7 @@ jobs:
       # Quality Gate: chặn không cho đẩy image có lỗ hổng CRITICAL đã có bản vá
       # lên Amazon ECR, tránh đưa image chứa lỗ hổng nghiêm trọng vào môi trường chạy.
       - name: "Trivy — Quality Gate (chặn khi có CRITICAL)"
-        uses: aquasecurity/trivy-action@master
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
         with:
           image-ref: '${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}'
           severity: 'CRITICAL'
