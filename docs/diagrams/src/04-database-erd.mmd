@@ -1,4 +1,6 @@
 erDiagram
+    direction LR
+
     USER ||--o{ VIDEO : "tải lên"
     USER ||--o{ COMMENT : "viết"
     VIDEO ||--o{ COMMENT : "chứa"
@@ -8,12 +10,14 @@ erDiagram
         string username UK
         string email UK
         string password "bcrypt hash, select false"
+        string googleId "sub claim, sparse unique"
         string displayName
         string avatar
         string channelDescription
         number subscribers
-        string resetPasswordToken
+        string resetPasswordToken "SHA-256"
         Date resetPasswordExpire
+        Date passwordChangedAt "vo hieu hoa JWT cu"
         Date createdAt
         Date updatedAt
     }
