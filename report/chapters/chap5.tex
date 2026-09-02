@@ -194,7 +194,7 @@ Table~\ref{tab:test-coverage}.
 \texttt{cloudfrontService}  & 24 & Cookie signing, policy scope, cookie attributes, and that revocation repeats the attributes used when issuing \\
 \texttt{forgotPassword}     & 5  & That the response is identical whether or not the address has an account, including when e-mail delivery fails \\
 \texttt{transcoder/dbHandler} & 6 & Conditional writes preventing duplicate-job overwrites \\
-\texttt{transcoder/emailService} & 6 & READY/ERROR notification content and recipient targeting, and that raw failure detail is never exposed to the viewer \\
+\path{transcoder/emailService} & 6 & READY/ERROR notification content and recipient targeting, and that raw failure detail is never exposed to the viewer \\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -618,7 +618,7 @@ notifications firing. The \texttt{STARTING} count held at 7--8 throughout the dr
 environment enforced its configured concurrency ceiling rather than either exceeding it or
 under-utilising it. The backlog of 92 queued jobs reached zero 456 seconds after the burst, and no
 message was lost or left stuck; the full sample sequence is recorded in
-\texttt{docs/results/stress-test-concurrency.json}. Subject to the caveat stated above, this is
+\path{docs/results/stress-test-concurrency.json}. Subject to the caveat stated above, this is
 the direct evidence for the claim that opened this section: Amazon SQS retained every unit of work
 submitted faster than the compute layer could consume it, and AWS Batch admitted work strictly at,
 and never above, its configured limit while consuming that backlog.
@@ -683,8 +683,8 @@ Implied wall-clock per job (s)  & ---    & 66.1 \\
 \end{tabularx}
 \end{table}
 
-\noindent\textit{Note: from \texttt{docs/results/drain-rate-real-payload.json} and
-\texttt{docs/results/stress-test-concurrency.json}, both sampled every 25~s. The synthetic column
+\noindent\textit{Note: from \path{docs/results/drain-rate-real-payload.json} and
+\path{docs/results/stress-test-concurrency.json}, both sampled every 25~s. The synthetic column
 records no successes and no \texttt{RUNNING} observations because those jobs failed at FFmpeg
 almost immediately, which is what that experiment intended. Implied wall-clock per job is the
 drain duration multiplied by the observed concurrency and divided by the job count.}

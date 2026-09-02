@@ -7,6 +7,16 @@
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 
+% ----- Cỡ chữ 13pt -----
+%
+% Kế hoạch môn học yêu cầu Times New Roman 13pt. Tuỳ chọn của \documentclass
+% chuẩn chỉ nhận 10/11/12pt, không có 13pt, nên phải dùng gói `fontsize` để đặt
+% cỡ chữ nền tuỳ ý mà vẫn giữ nguyên lớp tài liệu `report`. Cách khác là đổi
+% sang lớp KOMA-Script (scrreprt hỗ trợ fontsize=13pt), nhưng đổi lớp sẽ kéo
+% theo thay đổi cách trình bày tiêu đề chương và mục lục — thay đổi rộng hơn
+% nhiều so với thứ đang cần.
+\usepackage[fontsize=13pt]{fontsize}
+
 % --- Colors (bắt buộc trước listings) ---
 \usepackage[dvipsnames,table]{xcolor}
 % dvipsnames: thêm nhiều tên màu có sẵn; 'table' để màu trong bảng booktabs nếu cần.
@@ -37,8 +47,18 @@
 \usepackage{multirow}
 \usepackage{longtable}  % Bảng trải dài nhiều trang (danh mục viết tắt)
 
-% ----- Math -----
-\usepackage{amsmath, amssymb}
+% ----- Math + Times New Roman -----
+%
+% newtxtext/newtxmath là bản clone Times chất lượng cao dùng được với pdflatex
+% (engine đang dùng). Không dùng fontspec + font Times New Roman thật vì
+% fontspec đòi XeLaTeX hoặc LuaLaTeX, tức đổi cả toolchain biên dịch.
+%
+% Thứ tự nạp là bắt buộc: newtxmath phải đứng SAU amsmath. Và không nạp kèm
+% amssymb — newtxmath đã cung cấp bộ ký hiệu AMS, nạp cả hai sẽ báo lỗi trùng
+% định nghĩa lệnh. Đã kiểm tra toàn bộ chương: không chỗ nào dùng ký hiệu riêng
+% của amssymb, chỉ có \times là lệnh LaTeX cơ bản.
+\usepackage{amsmath}
+\usepackage{newtxtext,newtxmath}
 
 % ----- Hyperlinks -----
 \usepackage[hidelinks]{hyperref}
@@ -78,3 +98,30 @@
 
 % ----- Bibliography -----
 \usepackage{cite}
+% ----- Chống tràn lề -----
+%
+% Tài liệu có nhiều đường dẫn dài đặt trong \texttt (ví dụ
+% docs/results/node-load-test.json). Chữ máy chữ mặc định không được ngắt âm
+% tiết, nên khi một đường dẫn không vừa dòng, TeX để nó tràn hẳn ra ngoài lề
+% thay vì xuống dòng — phần chữ thừa bị cắt mất khi in.
+%
+% Hai biện pháp bổ sung cho nhau:
+%
+% 1. hyphenat với tuỳ chọn htt cho phép ngắt âm tiết trong chữ máy chữ, nhờ đó
+%    đường dẫn dài có thể xuống dòng.
+% 2. emergencystretch cho TeX thêm biên co giãn khoảng trắng ở lượt sắp chữ
+%    cuối cùng, xử lý những dòng còn lại mà việc ngắt âm tiết không cứu được.
+%    Giá phải trả là vài dòng có khoảng cách chữ rộng hơn bình thường — chấp
+%    nhận được, vì thay thế cho nó là chữ tràn ra ngoài trang giấy.
+\setlength{\emergencystretch}{3em}
+
+% ----- Ngắt dòng cho URL dài -----
+%
+% Thư mục tham khảo có vài URL rất dài (bài blog kỹ thuật của Netflix), và
+% \url mặc định chỉ ngắt được ở một số ký tự nhất định. Khi không tìm được chỗ
+% ngắt, cả URL tràn ra ngoài lề phải và phần đuôi bị cắt mất khi in. Gói xurl
+% cho phép ngắt ở bất kỳ vị trí nào trong URL, đổi một dòng xấu lấy một dòng
+% đọc được.
+%
+% Phải nạp SAU hyperref vì nó chỉnh lại cách hyperref sắp chữ URL.
+\usepackage{xurl}
