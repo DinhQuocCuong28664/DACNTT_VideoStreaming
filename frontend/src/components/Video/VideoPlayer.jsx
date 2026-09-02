@@ -17,6 +17,23 @@ import './VideoPlayer.css';
 
 const PLAYBACK_RATES = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
 
+/**
+ * Giới hạn số lần tự khôi phục trước khi bỏ cuộc và báo lỗi cho người dùng.
+ *
+ * HLS.js gọi lại handler lỗi sau mỗi lần thử hỏng, nên nếu cứ gọi startLoad()
+ * hay recoverMediaError() vô điều kiện thì một lỗi KHÔNG tự hết — điển hình là
+ * CloudFront trả 403 khi Signed Cookie đã hết hạn — sẽ tạo vòng lặp không có
+ * điểm dừng: thử, hỏng, thử lại ngay, mãi mãi. Người xem thấy dòng "đang thử
+ * kết nối lại" đứng im vĩnh viễn, máy quay CPU, còn CDN thì nhận một tràng
+ * request vô ích.
+ */
+const MAX_NETWORK_RETRIES = 3;
+const MAX_MEDIA_RECOVERIES = 2;
+/** Số lần tối đa xin cấp lại cookie phát trong một phiên xem */
+const MAX_AUTH_REFRESHES = 2;
+/** Giãn cách tăng dần giữa các lần thử lại mạng (ms) */
+const NETWORK_RETRY_DELAYS_MS = [1000, 3000, 7000];
+
 const formatTime = (seconds) => {
   if (!Number.isFinite(seconds) || seconds < 0) return '0:00';
   const h = Math.floor(seconds / 3600);
@@ -55,6 +72,13 @@ const VideoPlayer = ({
   // response trả đúng Access-Control-Allow-Credentials: true nên phải gửi
   // kèm cookie thì CDN mới cấp quyền phát video (kể cả video public).
   withCredentials = true,
+  /**
+   * Được gọi khi CloudFront từ chối một segment với mã 403 — dấu hiệu Signed
+   * Cookie đã hết hạn giữa chừng. Nơi gọi dùng callback này để xin cấp lại
+   * cookie; nếu resolve thành công, trình phát nối lại luồng ngay tại chỗ
+   * thay vì bắt người xem tải lại trang.
+   */
+  onAuthExpired,
 }) => {
   const wrapperRef = useRef(null);
   const videoRef = useRef(null);
@@ -63,6 +87,13 @@ const VideoPlayer = ({
   // Bảo đảm lượt xem chỉ được báo cáo một lần cho mỗi phiên phát
   const viewReportedRef = useRef(false);
   const onViewThresholdRef = useRef(onViewThreshold);
+  const onAuthExpiredRef = useRef(onAuthExpired);
+
+  // Bộ đếm số lần đã thử khôi phục, đặt lại mỗi khi chuyển video
+  const networkRetriesRef = useRef(0);
+  const mediaRecoveriesRef = useRef(0);
+  const authRefreshesRef = useRef(0);
+  const retryTimerRef = useRef(null);
 
   const [levels, setLevels] = useState([]);
   const [currentLevel, setCurrentLevel] = useState(-1); // -1 = Auto
@@ -87,9 +118,16 @@ const VideoPlayer = ({
     onViewThresholdRef.current = onViewThreshold;
   }, [onViewThreshold]);
 
+  useEffect(() => {
+    onAuthExpiredRef.current = onAuthExpired;
+  }, [onAuthExpired]);
+
   // Đặt lại trạng thái khi chuyển sang video khác
   useEffect(() => {
     viewReportedRef.current = false;
+    networkRetriesRef.current = 0;
+    mediaRecoveriesRef.current = 0;
+    authRefreshesRef.current = 0;
     setPlaybackError(null);
   }, [src]);
 
@@ -126,31 +164,118 @@ const VideoPlayer = ({
         setCurrentLevel(data.level);
       });
 
+      // Tải được một mảnh nghĩa là luồng đã chạy lại bình thường — xoá thông
+      // báo "đang thử kết nối lại" và đặt lại bộ đếm, để một sự cố thoáng qua
+      // sau này vẫn còn đủ lượt thử của riêng nó thay vì tiêu vào hạn ngạch
+      // của lần trước.
+      hls.on(Hls.Events.FRAG_LOADED, () => {
+        networkRetriesRef.current = 0;
+        mediaRecoveriesRef.current = 0;
+        setPlaybackError((prev) => (prev === null ? prev : null));
+      });
+
+      /** Dừng hẳn: hiện lỗi cho người dùng và giải phóng hls.js */
+      const giveUp = (message) => {
+        setPlaybackError(message);
+        hls.destroy();
+        hlsRef.current = null;
+      };
+
       /**
        * Xử lý lỗi phát video.
        *
        * HLS.js phân biệt lỗi nghiêm trọng (fatal) và lỗi có thể bỏ qua. Với lỗi
        * mạng, việc gọi lại startLoad() thường đủ để nối lại luồng khi kết nối
        * chập chờn. Với lỗi giải mã, recoverMediaError() cho phép khôi phục mà
-       * không cần tải lại toàn bộ trang. Chỉ khi cả hai cách đều không áp dụng
-       * được thì mới hiển thị thông báo lỗi cho người dùng.
+       * không cần tải lại toàn bộ trang.
+       *
+       * Điểm mấu chốt: MỌI đường khôi phục đều phải có số lần tối đa. HLS.js
+       * bắn lại sự kiện lỗi sau mỗi lần thử hỏng, nên gọi lại vô điều kiện sẽ
+       * biến một lỗi không tự hết thành vòng lặp bận không có điểm dừng.
+       *
+       * Riêng mã 403 được tách ra xử lý trước, vì nó gần như luôn có nghĩa là
+       * Signed Cookie đã hết hạn giữa buổi xem chứ không phải mạng có vấn đề —
+       * thử lại bao nhiêu lần cũng vô ích, thứ cần làm là xin cookie mới.
        */
       hls.on(Hls.Events.ERROR, (_, data) => {
+        const httpStatus = data.response?.code;
+
+        // ── Cookie phát hết hạn giữa chừng ────────────
+        //
+        // Kiểm tra 403 đặt TRƯỚC bộ lọc `data.fatal`, và đây là điều chỉnh rút
+        // ra từ việc chạy thử thật chứ không phải từ đọc code: hls.js thường
+        // đánh dấu 403 đầu tiên là không nghiêm trọng để tự thử lại vài lần,
+        // nên nếu lọc theo `fatal` trước thì lần 403 sau cùng — lần đáng lẽ
+        // phải báo cho người xem — lại lọt qua, và trình phát đứng im không
+        // một lời giải thích. Thử lại cũng không bao giờ gỡ được 403; thứ duy
+        // nhất có ích là xin cookie mới, rồi bỏ cuộc một cách rõ ràng.
+        if (httpStatus === 403 && onAuthExpiredRef.current) {
+          if (authRefreshesRef.current >= MAX_AUTH_REFRESHES) {
+            giveUp('Không xác thực được phiên xem video. Vui lòng tải lại trang.');
+            return;
+          }
+
+          authRefreshesRef.current += 1;
+          setPlaybackError('Đang gia hạn phiên xem…');
+
+          onAuthExpiredRef.current()
+            .then(() => {
+              // Chỉ nối lại nếu người xem chưa rời khỏi video này
+              if (hlsRef.current !== hls) return;
+              setPlaybackError(null);
+
+              // Phải nạp lại nguồn chứ không chỉ startLoad(). startLoad() chỉ
+              // tiếp tục tải các fragment, trong khi 403 do cookie hết hạn
+              // thường chặn ngay ở manifest — gọi startLoad() khi đó không phát
+              // sinh request nào, nên cũng không có lỗi mới để bắt, và trình
+              // phát đứng im vĩnh viễn không báo gì. Quan sát được đúng hành vi
+              // này khi chạy thử: hai lần gia hạn cookie diễn ra nhưng manifest
+              // chỉ được yêu cầu đúng một lần.
+              hls.loadSource(src);
+              hls.startLoad();
+            })
+            .catch(() => {
+              giveUp('Bạn không còn quyền xem video này.');
+            });
+          return;
+        }
+
         if (!data.fatal) return;
 
         switch (data.type) {
-          case Hls.ErrorTypes.NETWORK_ERROR:
+          case Hls.ErrorTypes.NETWORK_ERROR: {
+            if (networkRetriesRef.current >= MAX_NETWORK_RETRIES) {
+              giveUp('Không thể kết nối tới máy chủ video. Vui lòng tải lại trang.');
+              return;
+            }
+
+            const delay = NETWORK_RETRY_DELAYS_MS[networkRetriesRef.current];
+            networkRetriesRef.current += 1;
             setPlaybackError('Mất kết nối tới máy chủ video. Đang thử kết nối lại…');
-            hls.startLoad();
+
+            // Giãn cách giữa các lần thử: nối lại ngay lập tức chỉ tạo thêm
+            // một lần hỏng nữa khi sự cố mạng chưa kịp qua đi.
+            clearTimeout(retryTimerRef.current);
+            retryTimerRef.current = setTimeout(() => {
+              if (hlsRef.current !== hls) return;
+              hls.startLoad();
+            }, delay);
             break;
+          }
+
           case Hls.ErrorTypes.MEDIA_ERROR:
+            if (mediaRecoveriesRef.current >= MAX_MEDIA_RECOVERIES) {
+              giveUp('Không thể giải mã video này. Vui lòng tải lại trang.');
+              return;
+            }
+
+            mediaRecoveriesRef.current += 1;
             setPlaybackError('Lỗi giải mã video. Đang khôi phục…');
             hls.recoverMediaError();
             break;
+
           default:
-            setPlaybackError('Không thể phát video này. Vui lòng tải lại trang.');
-            hls.destroy();
-            hlsRef.current = null;
+            giveUp('Không thể phát video này. Vui lòng tải lại trang.');
         }
       });
 
@@ -166,6 +291,7 @@ const VideoPlayer = ({
     }
 
     return () => {
+      clearTimeout(retryTimerRef.current);
       if (hlsRef.current) {
         hlsRef.current.destroy();
         hlsRef.current = null;
