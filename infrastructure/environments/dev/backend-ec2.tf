@@ -101,6 +101,34 @@ resource "aws_instance" "backend_api" {
     Name = "${var.project_name}-${var.environment}-backend-api"
     Role = "Backend API Server"
   })
+
+  lifecycle {
+    # Bỏ qua thay đổi của `ami`, nếu không máy chủ này sẽ tự huỷ và dựng lại.
+    #
+    # data.aws_ami.ubuntu đặt most_recent = true, nên mỗi lần Canonical phát
+    # hành một bản vá Ubuntu 24.04 là AMI ID đổi. Thuộc tính `ami` của
+    # aws_instance thì buộc thay mới khi đổi, nên chỉ cần Canonical đẩy ảnh mới
+    # là lần `terraform apply` kế tiếp — dù áp dụng một thay đổi hoàn toàn
+    # không liên quan — sẽ huỷ máy chủ đang chạy. Đây không phải giả thiết:
+    # bản plan tại thời điểm thêm dòng này đã hiện đúng như vậy
+    # (ami-0ed6a65b84536f6ce -> ami-02a51b0cea2315d19, "forces replacement").
+    #
+    # Cái mất đi không chỉ là một máy ảo. Máy chủ này mang trạng thái được cấu
+    # hình bằng tay và KHÔNG nằm trong Terraform: tệp backend/.env (chuỗi kết
+    # nối MongoDB, JWT_SECRET, khoá riêng ký CloudFront, mật khẩu ứng dụng
+    # Gmail), cấu hình nginx, chứng chỉ Let's Encrypt, và trạng thái tiến trình
+    # pm2. Địa chỉ IP công khai cũng đổi theo, làm hỏng bản ghi A trên
+    # Cloudflare cho api.zelostech.site.
+    #
+    # Nâng cấp AMI vì thế phải là hành động có chủ đích — thay bằng
+    # `terraform apply -replace=aws_instance.backend_api` sau khi đã sao lưu
+    # những thứ trên — chứ không phải hệ quả phụ của một lần apply bất kỳ.
+    #
+    # Lưu ý user_data_replace_on_change = true ở trên cũng thay mới máy chủ khi
+    # scripts/ec2-userdata.sh đổi. Điều đó là cố ý, nhưng nay mang đúng những
+    # hậu quả vừa liệt kê, nên hãy sửa tệp đó một cách có ý thức.
+    ignore_changes = [ami]
+  }
 }
 
 output "backend_public_ip" {
