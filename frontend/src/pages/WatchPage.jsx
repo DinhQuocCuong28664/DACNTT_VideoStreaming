@@ -115,6 +115,20 @@ const WatchPage = () => {
     }
   }, [id]);
 
+  /**
+   * Xin cấp lại CloudFront Signed Cookie khi cookie cũ hết hạn giữa buổi xem.
+   *
+   * Cookie chỉ sống hai giờ, còn trang này trước đây chỉ xin đúng một lần lúc
+   * mở. Người xem một video dài, hoặc để tab mở qua mốc hai giờ, sẽ gặp 403 ở
+   * segment kế tiếp mà không có đường nào lấy cookie mới ngoài tải lại trang.
+   *
+   * Cố ý để lỗi ném ra ngoài: trình phát phân biệt "gia hạn được" với "không
+   * còn quyền xem" dựa vào promise này resolve hay reject.
+   */
+  const handleAuthExpired = useCallback(async () => {
+    await videoApi.getPlaybackAuth(id);
+  }, [id]);
+
   const handleLike = async () => {
     if (!isAuthenticated) return alert('Vui lòng đăng nhập để thích video');
     try {
@@ -219,6 +233,7 @@ const WatchPage = () => {
           src={videoSrc}
           poster={video.thumbnailUrl}
           onViewThreshold={handleViewThreshold}
+          onAuthExpired={handleAuthExpired}
         />
       ) : (
         <div className="player-placeholder">
