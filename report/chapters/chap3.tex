@@ -68,7 +68,7 @@ Chapter~\ref{chap:implementation} can report whether they were met.
 \midrule
 NFR-01 & Latency & Time-to-First-Frame should remain low enough that playback feels immediate; the measurement methodology is defined in Section~\ref{sec:qoe-evaluation}. \\
 NFR-02 & Scalability & The pipeline must absorb a burst of concurrent uploads without losing work, processing them as capacity permits rather than rejecting them. \\
-NFR-03 & Reliability & A failed transcoding job must not silently disappear; failures are retried and, after repeated failure, isolated in a dead letter queue. \\
+NFR-03 & Reliability & A failed transcoding job must not silently disappear: it must be retried where retrying could succeed, and must raise an alert carrying the reason when it cannot. How this requirement was initially satisfied only in appearance is examined in Section~\ref{sec:limitations}. \\
 NFR-04 & Cost efficiency & Compute cost must accrue only during actual transcoding, with no charge for idle capacity. \\
 NFR-05 & Security of content & Private videos must be inaccessible to unauthorised viewers even when the exact manifest URL is known. \\
 NFR-06 & Security of the API & Authentication endpoints must resist brute-force attempts, and the origin of cross-origin requests must be restricted to an explicit allow-list. \\

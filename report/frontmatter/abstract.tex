@@ -18,9 +18,10 @@ running on AWS Fargate. A container packaging FFmpeg is created only when there 
 do, produces three renditions at 360p, 720p, and 1080p together with a master playlist and
 a thumbnail, uploads the result to a processed bucket, updates the metadata in MongoDB
 Atlas, and then terminates. Content is delivered through Amazon CloudFront with Origin
-Access Control, while private videos are additionally protected by CloudFront Signed
-Cookies so that unauthorised viewers are rejected at the edge even when they know the exact
-manifest URL.
+Access Control, and every stream is gated at the edge by CloudFront Signed Cookies, so that a
+viewer without a valid signature is rejected even when they know the exact manifest URL; a
+video's visibility setting governs who the backend will issue those cookies to, not whether
+the gate applies.
 
 The entire AWS infrastructure is described as code using eleven independent Terraform
 modules and can be provisioned with a single command. Seven GitHub Actions workflows

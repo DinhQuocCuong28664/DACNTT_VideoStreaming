@@ -104,14 +104,34 @@ simply renders a different state for each value, and a video that failed to tran
 distinguishable from one that is merely slow.
 
 Likes and dislikes are stored as arrays of user identifiers embedded within the video document
-rather than as a separate collection. This denormalisation is appropriate here because the
-counts are always read together with the video and because a single user can appear at most
-once in each array, which bounds the array size by the number of viewers rather than allowing
-unbounded growth.
+rather than as a separate collection. The denormalisation is justified at this scale because the
+counts are always read together with the video, and because a single user can appear at most once
+in each array, so the arrays cannot grow through repeated interaction by the same person.
+
+It should not be justified more strongly than that. Uniqueness bounds each array by the number of
+distinct users, which is a bound only in the formal sense; on a widely viewed video it is exactly
+the growth that a document store is poorly suited to hold, against MongoDB's document size limit.
+The cost is also paid on reads that do not want it, since a listing of twelve videos retrieves
+every identifier in all twenty-four arrays merely to display counts. The conventional remedy is a
+separate collection with a compound unique index on video and user, plus a denormalised counter on
+the video. That is the right structure for a system expecting popular content, and the reason it
+was not adopted here is scale rather than principle --- which is a different claim from the design
+being correct in general, and is recorded as such.
 
 Indexes are defined to match the actual query patterns. A compound index on visibility, status,
 and creation time supports the home page listing, which always filters on the first two fields
-and sorts on the third. A text index on title and description supports the search feature.
+and sorts on the third.
+
+Search is the exception, and it is worth stating plainly because the schema originally claimed
+otherwise. The collection carried a text index on title and description, described as supporting
+the search feature, but no query ever used it: search is implemented as a case-insensitive regular
+expression matched against title, description and tags, and MongoDB cannot serve an unanchored
+regular expression from an index. Every search was a full collection scan, and the index cost
+write throughput and storage while serving nothing. The index has been removed rather than the
+query rewritten, because switching to a text search would change the feature's behaviour and not
+merely its cost: the regular expression matches substrings inside words and covers the tags field,
+neither of which a text index does. At the scale of this project a scan is acceptable; recording
+which of the two was actually chosen, and why, is what matters.
 
 \section{Content Protection Design}
 \label{sec:content-protection}
@@ -145,6 +165,24 @@ cosmetic: a canned policy does not permit wildcards in the resource path, wherea
 scope is an entire directory. The custom policy expresses the resource as a pattern covering
 the manifest and all segments of one specific video, which grants exactly the access needed and
 no more.
+
+One consequence of this design deserves stating precisely, because it is easy to describe the
+scheme as protecting private videos and thereby understate it. The edge does not distinguish
+public content from private: \emph{every} manifest and segment requires a valid signature, and a
+request without one is refused whatever the video's visibility. What visibility governs is the
+authorisation decision made earlier, when the backend decides whether to issue cookies at all.
+Public and private videos are thus protected identically at the edge and differ only in who can
+obtain the credential.
+
+That uniformity has a limit that the design has to accommodate. A cookie authorises exactly one
+video's directory, whereas a catalogue page renders thumbnails for many videos at once, and no
+single cookie can cover them. Rather than weaken the policy scope to span the whole bucket, the
+distribution carves out a separate cache behaviour for the thumbnail path that requires no
+signature. The justification is that a thumbnail is not the asset the mechanism exists to
+protect: it is a single low-resolution still, already shown to anyone permitted to see the video
+in a listing, and treating it as public costs nothing that the scheme was designed to prevent.
+The narrower point is that the protected unit is the stream, not every byte associated with a
+video.
 
 \section{Interface Design}
 \label{sec:interface-design}
