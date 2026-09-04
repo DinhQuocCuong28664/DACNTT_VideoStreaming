@@ -151,7 +151,7 @@ scans the configuration for insecure settings.
 
 A later audit of the pipeline itself found a weakness in the pipeline's own supply chain, and it
 is worth recording because of where it sat. All five workflows referenced the vulnerability
-scanner as 	exttt{aquasecurity/trivy-action@master}. A branch reference resolves to whatever
+scanner as \texttt{aquasecurity/trivy-action@master}. A branch reference resolves to whatever
 that repository's default branch contains at the moment a job runs, so a change made there ---
 including one made by someone who had compromised the action --- would execute inside this
 project's continuous integration, which holds AWS credentials. Every other action in the pipeline
@@ -160,12 +160,12 @@ scanner. The references are now pinned to a release commit hash, with the versio
 a comment so that upgrades remain deliberate and readable.
 
 The same audit narrowed one permission. The Lambda that submits transcoding jobs held
-	exttt{batch:SubmitJob} on 	exttt{Resource: "*"}, which allowed it to submit to any job queue
+\texttt{batch:SubmitJob} on \texttt{Resource: "*"}, which allowed it to submit to any job queue
 in the account rather than the project's own. It is now scoped to the specific queue and job
 definition. The scoping is expressed through the naming convention rather than by referencing the
 Batch module's outputs, because the Batch module already depends on the IAM module for its roles
 and referring back would introduce a dependency cycle; both modules carry a note recording the
-coupling that this creates. The companion action 	exttt{batch:DescribeJobs} keeps the wildcard,
+coupling that this creates. The companion action \texttt{batch:DescribeJobs} keeps the wildcard,
 because it accepts arbitrary job identifiers and AWS provides no resource-level control for it ---
 a distinction worth making explicitly, since a wildcard that is required and a wildcard that is
 merely convenient look identical in a policy document.
