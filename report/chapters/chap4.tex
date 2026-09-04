@@ -218,6 +218,16 @@ The frontend is a single page application composed of functional React component
 using React Context for authentication and theme state. Redux was considered unnecessary at
 this scale, since the shared state consists only of the current user and the selected theme.
 
+The interface is available in Vietnamese and English, selected by a control in the header and
+remembered in the browser. One consequence of adding a second language is worth recording,
+because it constrains the data model rather than only the presentation layer. Video categories
+are stored in the database as Vietnamese strings, and the schema validates each new video against
+exactly those strings, so translating a category would have made both the catalogue filter and
+the upload form reject valid input. The display label and the stored value are therefore kept
+apart: the client renders a translated label while always sending the original value to the API.
+The same separation applies to messages the API returns, which are selected from the request's
+\texttt{Accept-Language} header rather than being fixed at the point where the error is raised.
+
 The video player is implemented as a custom component rather than relying on the browser's
 native controls. The reason is that native controls cannot be extended: the browser renders its
 own separate menu for playback speed and picture-in-picture, which cannot be merged with the

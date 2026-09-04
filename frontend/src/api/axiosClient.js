@@ -1,4 +1,5 @@
 import axios from 'axios';
+import i18n from '../i18n';
 
 /**
  * Hàm điều hướng do lớp React đăng ký vào.
@@ -42,6 +43,13 @@ axiosClient.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+
+    // Máy chủ trả về thông điệp lỗi bằng ngôn ngữ của tiêu đề này. Đọc trực
+    // tiếp từ i18next thay vì từ navigator, vì người dùng có thể đã chọn ngôn
+    // ngữ khác với ngôn ngữ trình duyệt, và lựa chọn của họ mới là thứ giao
+    // diện đang hiển thị.
+    config.headers['Accept-Language'] = i18n.resolvedLanguage || i18n.language;
+
     return config;
   },
   (error) => Promise.reject(error)

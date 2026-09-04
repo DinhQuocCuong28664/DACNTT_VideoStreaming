@@ -12,6 +12,7 @@ const { apiLimiter } = require('./middleware/rateLimiter');
 const authRoutes = require('./routes/authRoutes');
 const videoRoutes = require('./routes/videoRoutes');
 const userRoutes = require('./routes/userRoutes');
+const { translate, DEFAULT_LANGUAGE } = require('./config/i18n');
 
 // Dừng sớm nếu thiếu cấu hình bắt buộc, trước khi mở cổng lắng nghe
 validateEnv();
@@ -48,7 +49,7 @@ app.use(
       if (!origin || allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
-      return callback(new Error(`Origin không được phép bởi chính sách CORS: ${origin}`));
+      return callback(new Error(translate(DEFAULT_LANGUAGE, 'cors.forbiddenOrigin', { origin })));
     },
     credentials: true,
   })

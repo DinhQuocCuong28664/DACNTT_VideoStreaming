@@ -1,10 +1,12 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import authApi from '../../api/authApi';
 import LogoIcon from '../Layout/LogoIcon';
 import './AuthForm.css';
 
 const ResetPasswordForm = () => {
+  const { t } = useTranslation();
   const { token } = useParams();
   const navigate = useNavigate();
   const [formData, setFormData] = useState({ password: '', confirmPassword: '' });
@@ -21,7 +23,7 @@ const ResetPasswordForm = () => {
     e.preventDefault();
 
     if (formData.password !== formData.confirmPassword) {
-      setError('Mật khẩu xác nhận không khớp');
+      setError(t('auth.passwordMismatch'));
       return;
     }
 
@@ -34,7 +36,7 @@ const ResetPasswordForm = () => {
       setTimeout(() => navigate('/login'), 2500);
     } catch (err) {
       setError(
-        err.response?.data?.message || 'Liên kết không hợp lệ hoặc đã hết hạn.'
+        err.response?.data?.message || t('auth.resetFailed')
       );
     } finally {
       setLoading(false);
@@ -48,25 +50,25 @@ const ResetPasswordForm = () => {
           <div className="logo-icon"><LogoIcon /></div>
           <span className="logo-text">VidShare</span>
         </div>
-        <h1 className="auth-title">Đặt lại mật khẩu</h1>
-        <p className="auth-subtitle">Nhập mật khẩu mới cho tài khoản của bạn</p>
+        <h1 className="auth-title">{t('auth.resetTitle')}</h1>
+        <p className="auth-subtitle">{t('auth.resetSubtitle')}</p>
 
         {error && <div className="auth-error">{error}</div>}
 
         {done ? (
           <div className="auth-error" style={{ background: 'rgba(0, 206, 201, 0.1)', borderColor: 'rgba(0, 206, 201, 0.25)', color: 'var(--text-primary)' }}>
-            Đặt lại mật khẩu thành công! Đang chuyển đến trang đăng nhập...
+            {t('auth.resetDone')}
           </div>
         ) : (
           <form className="auth-form" onSubmit={handleSubmit}>
             <div className="form-group">
-              <label className="label" htmlFor="password">Mật khẩu mới</label>
+              <label className="label" htmlFor="password">{t('auth.newPasswordLabel')}</label>
               <input
                 id="password"
                 name="password"
                 type="password"
                 className="input"
-                placeholder="Tối thiểu 6 ký tự"
+                placeholder={t('auth.passwordHint')}
                 value={formData.password}
                 onChange={handleChange}
                 required
@@ -75,13 +77,13 @@ const ResetPasswordForm = () => {
             </div>
 
             <div className="form-group">
-              <label className="label" htmlFor="confirmPassword">Xác nhận mật khẩu mới</label>
+              <label className="label" htmlFor="confirmPassword">{t('auth.confirmNewPasswordLabel')}</label>
               <input
                 id="confirmPassword"
                 name="confirmPassword"
                 type="password"
                 className="input"
-                placeholder="Nhập lại mật khẩu mới"
+                placeholder={t('auth.confirmNewPasswordPlaceholder')}
                 value={formData.confirmPassword}
                 onChange={handleChange}
                 required
@@ -90,13 +92,13 @@ const ResetPasswordForm = () => {
             </div>
 
             <button type="submit" className="btn btn-primary" disabled={loading}>
-              {loading ? 'Đang xử lý...' : 'Đặt lại mật khẩu'}
+              {loading ? t('auth.resetSubmitting') : t('auth.resetSubmit')}
             </button>
           </form>
         )}
 
         <p className="auth-footer">
-          <Link to="/login">← Quay lại đăng nhập</Link>
+          <Link to="/login">← {t('auth.backToLogin')}</Link>
         </p>
       </div>
     </div>

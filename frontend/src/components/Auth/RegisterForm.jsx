@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/useAuth';
 import GoogleSignInButton from './GoogleSignInButton';
 import LogoIcon from '../Layout/LogoIcon';
 import './AuthForm.css';
 
 const RegisterForm = () => {
+  const { t } = useTranslation();
   const { register, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
@@ -28,7 +30,7 @@ const RegisterForm = () => {
     setError('');
 
     if (formData.password !== formData.confirmPassword) {
-      setError('Mật khẩu xác nhận không khớp');
+      setError(t('auth.passwordMismatch'));
       setLoading(false);
       return;
     }
@@ -38,7 +40,7 @@ const RegisterForm = () => {
       navigate('/');
     } catch (err) {
       setError(
-        err.response?.data?.message || 'Đăng ký thất bại. Vui lòng thử lại.'
+        err.response?.data?.message || t('auth.registerFailed')
       );
     } finally {
       setLoading(false);
@@ -52,14 +54,14 @@ const RegisterForm = () => {
           <div className="logo-icon"><LogoIcon /></div>
           <span className="logo-text">VidShare</span>
         </div>
-        <h1 className="auth-title">Đăng ký</h1>
-        <p className="auth-subtitle">Tạo tài khoản mới miễn phí</p>
+        <h1 className="auth-title">{t('auth.registerTitle')}</h1>
+        <p className="auth-subtitle">{t('auth.registerSubtitle')}</p>
 
         {error && <div className="auth-error">{error}</div>}
 
         <form className="auth-form" onSubmit={handleSubmit}>
           <div className="form-group">
-            <label className="label" htmlFor="username">Tên người dùng</label>
+            <label className="label" htmlFor="username">{t('auth.usernameLabel')}</label>
             <input
               id="username"
               name="username"
@@ -88,13 +90,13 @@ const RegisterForm = () => {
           </div>
 
           <div className="form-group">
-            <label className="label" htmlFor="reg-password">Mật khẩu</label>
+            <label className="label" htmlFor="reg-password">{t('auth.passwordLabel')}</label>
             <input
               id="reg-password"
               name="password"
               type="password"
               className="input"
-              placeholder="Tối thiểu 6 ký tự"
+              placeholder={t('auth.passwordHint')}
               value={formData.password}
               onChange={handleChange}
               required
@@ -103,13 +105,13 @@ const RegisterForm = () => {
           </div>
 
           <div className="form-group">
-            <label className="label" htmlFor="confirmPassword">Xác nhận mật khẩu</label>
+            <label className="label" htmlFor="confirmPassword">{t('auth.confirmPasswordLabel')}</label>
             <input
               id="confirmPassword"
               name="confirmPassword"
               type="password"
               className="input"
-              placeholder="Nhập lại mật khẩu"
+              placeholder={t('auth.confirmPasswordPlaceholder')}
               value={formData.confirmPassword}
               onChange={handleChange}
               required
@@ -118,11 +120,11 @@ const RegisterForm = () => {
           </div>
 
           <button type="submit" className="btn btn-primary" disabled={loading}>
-            {loading ? 'Đang tạo tài khoản...' : 'Đăng ký'}
+            {loading ? t('auth.registerSubmitting') : t('auth.registerSubmit')}
           </button>
         </form>
 
-        <div className="auth-divider"><span>hoặc</span></div>
+        <div className="auth-divider"><span>{t('auth.or')}</span></div>
         <GoogleSignInButton
           onCredential={async (credential) => {
             await loginWithGoogle(credential);
@@ -132,7 +134,7 @@ const RegisterForm = () => {
         />
 
         <p className="auth-footer">
-          Đã có tài khoản? <Link to="/login">Đăng nhập</Link>
+          {t('auth.haveAccount')} <Link to="/login">{t('auth.loginLink')}</Link>
         </p>
       </div>
     </div>

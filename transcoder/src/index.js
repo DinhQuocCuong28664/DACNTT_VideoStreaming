@@ -24,14 +24,14 @@ const { sendVideoReadyEmail, sendVideoFailedEmail } = require('./emailService');
  */
 const notifySafely = async (sendFn, to, payload, label) => {
   if (!to) {
-    console.warn(`⚠️  Không gửi được email ${label}: video không có email người nhận hợp lệ.`);
+    console.warn(`⚠️  Could not send the ${label} email: the video has no valid recipient address.`);
     return;
   }
   try {
     await sendFn(to, payload);
-    console.log(`📧 Đã gửi email ${label} tới ${to}`);
+    console.log(`📧 Sent the ${label} email to ${to}`);
   } catch (err) {
-    console.error(`⚠️  Gửi email ${label} thất bại (không ảnh hưởng kết quả transcode):`, err.message);
+    console.error(`⚠️  Sending the ${label} email failed (this does not affect the transcode result):`, err.message);
   }
 };
 
@@ -71,7 +71,7 @@ const processVideo = async (videoId, rawS3Key) => {
   const existingVideo = await getVideo(videoId);
   if (existingVideo && existingVideo.status === 'READY') {
     console.warn(
-      `⚠️  Video ${videoId} đã ở trạng thái READY — bỏ qua xử lý trùng lặp, không tải/transcode lại.`
+      `⚠️  Video ${videoId} is already READY; skipping the duplicate job without downloading or transcoding again.`
     );
     return;
   }
@@ -116,7 +116,7 @@ const processVideo = async (videoId, rawS3Key) => {
           videoId,
           displayName: videoWithUser?.user?.displayName || videoWithUser?.user?.username,
         },
-        'video sẵn sàng'
+        'video ready'
       );
     }
   } catch (err) {
@@ -132,7 +132,7 @@ const processVideo = async (videoId, rawS3Key) => {
           title: videoWithUser?.title,
           displayName: videoWithUser?.user?.displayName || videoWithUser?.user?.username,
         },
-        'video thất bại'
+        'video failed'
       );
     }
 

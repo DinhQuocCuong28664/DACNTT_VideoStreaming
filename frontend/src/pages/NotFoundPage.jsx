@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import LogoIcon from '../components/Layout/LogoIcon';
 import './NotFoundPage.css';
 
@@ -11,21 +12,18 @@ import './NotFoundPage.css';
  */
 const ACTIONS = ['idle', 'jump', 'spin', 'search', 'wave'];
 const ACTION_DURATION = 150; // frames
-const STATUS_MESSAGES = {
-  idle: '🧘 Đang yên tĩnh...',
-  jump: '🦘 Nhảy hồi hộp...',
-  spin: '🌀 Xoay tròn tìm kiếm...',
-  search: '🔍 Lục lọi tìm kiếm...',
-  wave: '👋 Vẫy tay chào...',
-};
+// Trạng thái lưu tên hành động chứ không lưu câu chữ: nhãn hiển thị được tra
+// lại mỗi lần render nên đổi ngôn ngữ là đổi ngay, không cần khởi động lại
+// vòng lặp hoạt hình.
 
 const NotFoundPage = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const wrapperRef = useRef(null);
   const leftWingRef = useRef(null);
   const rightWingRef = useRef(null);
   const sparklesRef = useRef(null);
-  const [status, setStatus] = useState(STATUS_MESSAGES.idle);
+  const [status, setStatus] = useState('idle');
 
   useEffect(() => {
     let raf;
@@ -57,7 +55,7 @@ const NotFoundPage = () => {
         actionIndex = (actionIndex + 1) % ACTIONS.length;
         currentAction = ACTIONS[actionIndex];
         actionProgress = 0;
-        setStatus(STATUS_MESSAGES[currentAction]);
+        setStatus(currentAction);
         spawnSparkles();
       }
 
@@ -201,25 +199,24 @@ const NotFoundPage = () => {
             </svg>
           </div>
 
-          <div className="nf-status">{status}</div>
+          <div className="nf-status">{t(`notFound.${status}`)}</div>
         </div>
 
-        <h2 className="nf-message">Video hoặc trang này không tồn tại</h2>
+        <h2 className="nf-message">{t('notFound.message')}</h2>
         <p className="nf-submessage">
-          Linh vật của VidShare đang cố tìm nhưng chắc video đã bị xoá, đổi đường dẫn, hoặc chưa từng
-          tồn tại. 🔍
+          {t('notFound.body')}
         </p>
 
         <div className="nf-actions">
           <button className="btn btn-primary" onClick={() => navigate('/')}>
-            ← Về trang chủ
+            ← {t('notFound.home')}
           </button>
           <button className="btn btn-secondary" onClick={() => navigate(-1)}>
-            Quay lại
+            {t('notFound.back')}
           </button>
         </div>
 
-        <p className="nf-info">Mã lỗi: 404 · Linh vật sẽ tiếp tục tìm kiếm... ✨</p>
+        <p className="nf-info">{t('notFound.info')}</p>
       </div>
     </div>
   );

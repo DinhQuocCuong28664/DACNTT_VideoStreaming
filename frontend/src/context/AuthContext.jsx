@@ -96,7 +96,7 @@ export const AuthProvider = ({ children }) => {
     try {
       await authApi.logout();
     } catch (err) {
-      console.error('Không thu hồi được cookie phát video:', err);
+      console.error('Could not revoke the playback cookies:', err);
     }
   };
 

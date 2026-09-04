@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 const GIS_MAX_WIDTH = 400; // giới hạn tối đa mà Google Identity Services cho phép
@@ -14,7 +15,21 @@ const GIS_MAX_WIDTH = 400; // giới hạn tối đa mà Google Identity Service
  * làm gì với credential trả về.
  */
 const GoogleSignInButton = ({ onCredential, onError, text = 'continue_with' }) => {
+  const { t, i18n } = useTranslation();
   const buttonRef = useRef(null);
+
+  /**
+   * Ngôn ngữ hiển thị trên nút do Google dựng, không phải do ứng dụng dựng.
+   *
+   * Tuỳ chọn `locale` dưới đây chỉ có tác dụng khi thư viện Google Identity
+   * Services được nạp với đúng tham số `hl` tương ứng, việc đó làm ở
+   * index.html dựa trên lựa chọn đã lưu. Hệ quả là khi người dùng đổi ngôn ngữ
+   * giữa chừng, toàn bộ giao diện đổi ngay nhưng riêng chữ trong nút này giữ
+   * nguyên cho tới lần tải trang kế tiếp. Đây là giới hạn của thư viện Google
+   * chứ không phải của phần dịch, và cách duy nhất để tránh là tải lại trang
+   * mỗi lần đổi ngôn ngữ, một cái giá đắt hơn nhiều so với thứ nó sửa.
+   */
+  const locale = i18n.resolvedLanguage === 'en' ? 'en' : 'vi';
 
   useEffect(() => {
     if (!CLIENT_ID || !buttonRef.current) return;
@@ -25,7 +40,7 @@ const GoogleSignInButton = ({ onCredential, onError, text = 'continue_with' }) =
       } catch (err) {
         onError?.(
           err.response?.data?.message ||
-            'Xác thực Google thất bại. Vui lòng thử lại.'
+            t('auth.googleFailed')
         );
       }
     };
@@ -46,7 +61,7 @@ const GoogleSignInButton = ({ onCredential, onError, text = 'continue_with' }) =
         size: 'large',
         width,
         text,
-        locale: 'vi',
+        locale,
         // Google chỉ cho chọn 1 trong vài shape cố định (rectangular/pill/
         // circle/square), không tự set số px bo góc tuỳ ý được — cả 2 lựa
         // chọn thử đều lệch với input/nút chính (10px). Dùng 'rectangular'
@@ -83,7 +98,7 @@ const GoogleSignInButton = ({ onCredential, onError, text = 'continue_with' }) =
       resizeObserver?.disconnect();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [locale]);
 
   if (!CLIENT_ID) return null;
 

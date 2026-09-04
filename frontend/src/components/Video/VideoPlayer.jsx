@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import Hls from 'hls.js';
 import {
   FiPlay,
@@ -80,6 +81,14 @@ const VideoPlayer = ({
    */
   onAuthExpired,
 }) => {
+  const { t } = useTranslation();
+
+  // Effect dựng hls chỉ được chạy lại khi nguồn video đổi. Nếu phụ thuộc trực
+  // tiếp vào `t`, mỗi lần người dùng đổi ngôn ngữ sẽ khiến trình phát dựng
+  // lại và video đang xem bị cắt ngang, nên hàm dịch đi qua một ref.
+  const tRef = useRef(t);
+  tRef.current = t;
+
   const wrapperRef = useRef(null);
   const videoRef = useRef(null);
   const hlsRef = useRef(null);
@@ -211,12 +220,12 @@ const VideoPlayer = ({
         // nhất có ích là xin cookie mới, rồi bỏ cuộc một cách rõ ràng.
         if (httpStatus === 403 && onAuthExpiredRef.current) {
           if (authRefreshesRef.current >= MAX_AUTH_REFRESHES) {
-            giveUp('Không xác thực được phiên xem video. Vui lòng tải lại trang.');
+            giveUp(tRef.current('player.authFailed'));
             return;
           }
 
           authRefreshesRef.current += 1;
-          setPlaybackError('Đang gia hạn phiên xem…');
+          setPlaybackError(tRef.current('player.renewing'));
 
           onAuthExpiredRef.current()
             .then(() => {
@@ -235,7 +244,7 @@ const VideoPlayer = ({
               hls.startLoad();
             })
             .catch(() => {
-              giveUp('Bạn không còn quyền xem video này.');
+              giveUp(tRef.current('player.forbidden'));
             });
           return;
         }
@@ -245,13 +254,13 @@ const VideoPlayer = ({
         switch (data.type) {
           case Hls.ErrorTypes.NETWORK_ERROR: {
             if (networkRetriesRef.current >= MAX_NETWORK_RETRIES) {
-              giveUp('Không thể kết nối tới máy chủ video. Vui lòng tải lại trang.');
+              giveUp(tRef.current('player.networkFatal'));
               return;
             }
 
             const delay = NETWORK_RETRY_DELAYS_MS[networkRetriesRef.current];
             networkRetriesRef.current += 1;
-            setPlaybackError('Mất kết nối tới máy chủ video. Đang thử kết nối lại…');
+            setPlaybackError(tRef.current('player.networkRetry'));
 
             // Giãn cách giữa các lần thử: nối lại ngay lập tức chỉ tạo thêm
             // một lần hỏng nữa khi sự cố mạng chưa kịp qua đi.
@@ -265,17 +274,17 @@ const VideoPlayer = ({
 
           case Hls.ErrorTypes.MEDIA_ERROR:
             if (mediaRecoveriesRef.current >= MAX_MEDIA_RECOVERIES) {
-              giveUp('Không thể giải mã video này. Vui lòng tải lại trang.');
+              giveUp(tRef.current('player.mediaFatal'));
               return;
             }
 
             mediaRecoveriesRef.current += 1;
-            setPlaybackError('Lỗi giải mã video. Đang khôi phục…');
+            setPlaybackError(tRef.current('player.mediaRetry'));
             hls.recoverMediaError();
             break;
 
           default:
-            giveUp('Không thể phát video này. Vui lòng tải lại trang.');
+            giveUp(tRef.current('player.unplayable'));
         }
       });
 
@@ -556,7 +565,7 @@ const VideoPlayer = ({
       />
 
       {!isPlaying && !playbackError && (
-        <button className="center-play-btn" onClick={togglePlay} aria-label="Phát video">
+        <button className="center-play-btn" onClick={togglePlay} aria-label={t('player.playVideo')}>
           <FiPlay />
         </button>
       )}
@@ -576,12 +585,12 @@ const VideoPlayer = ({
         </div>
 
         <div className="controls-row">
-          <button className="control-btn" onClick={togglePlay} aria-label={isPlaying ? 'Tạm dừng' : 'Phát'}>
+          <button className="control-btn" onClick={togglePlay} aria-label={isPlaying ? t('player.pause') : t('player.play')}>
             {isPlaying ? <FiPause /> : <FiPlay />}
           </button>
 
           <div className="volume-control">
-            <button className="control-btn" onClick={toggleMute} aria-label="Tắt/bật tiếng">
+            <button className="control-btn" onClick={toggleMute} aria-label={t('player.toggleMute')}>
               <VolumeIcon />
             </button>
             <input
@@ -592,7 +601,7 @@ const VideoPlayer = ({
               step="0.05"
               value={muted ? 0 : volume}
               onChange={handleVolumeChange}
-              aria-label="Âm lượng"
+              aria-label={t('player.volume')}
             />
           </div>
 
@@ -609,8 +618,8 @@ const VideoPlayer = ({
                 setShowSettings((s) => !s);
                 setSettingsView('main');
               }}
-              aria-label="Cài đặt video"
-              title="Cài đặt"
+              aria-label={t('player.settingsAria')}
+              title={t('player.settings')}
             >
               <FiSettings />
             </button>
@@ -620,14 +629,14 @@ const VideoPlayer = ({
                 {settingsView === 'main' && (
                   <>
                     <button className="settings-option" onClick={() => setSettingsView('speed')}>
-                      <span>Tốc độ phát</span>
+                      <span>{t('player.speed')}</span>
                       <span className="settings-option-value">
-                        {playbackRate === 1 ? 'Chuẩn' : `${playbackRate}x`} <FiChevronRight />
+                        {playbackRate === 1 ? t('player.speedNormal') : `${playbackRate}x`} <FiChevronRight />
                       </span>
                     </button>
                     {levels.length > 1 && (
                       <button className="settings-option" onClick={() => setSettingsView('quality')}>
-                        <span>Chất lượng</span>
+                        <span>{t('player.quality')}</span>
                         <span className="settings-option-value">
                           {getCurrentQualityLabel()} <FiChevronRight />
                         </span>
@@ -647,7 +656,7 @@ const VideoPlayer = ({
                 {settingsView === 'speed' && (
                   <>
                     <button className="settings-menu-header" onClick={() => setSettingsView('main')}>
-                      <FiChevronLeft /> Tốc độ phát
+                      <FiChevronLeft /> {t('player.speed')}
                     </button>
                     {PLAYBACK_RATES.map((rate) => (
                       <button
@@ -655,7 +664,7 @@ const VideoPlayer = ({
                         className={`settings-option ${playbackRate === rate ? 'active' : ''}`}
                         onClick={() => changePlaybackRate(rate)}
                       >
-                        <span>{rate === 1 ? 'Chuẩn' : `${rate}x`}</span>
+                        <span>{rate === 1 ? t('player.speedNormal') : `${rate}x`}</span>
                         {playbackRate === rate && <FiCheck />}
                       </button>
                     ))}
@@ -665,7 +674,7 @@ const VideoPlayer = ({
                 {settingsView === 'quality' && (
                   <>
                     <button className="settings-menu-header" onClick={() => setSettingsView('main')}>
-                      <FiChevronLeft /> Chất lượng
+                      <FiChevronLeft /> {t('player.quality')}
                     </button>
                     <button
                       className={`settings-option ${hlsRef.current?.currentLevel === -1 ? 'active' : ''}`}
@@ -690,7 +699,7 @@ const VideoPlayer = ({
             )}
           </div>
 
-          <button className="control-btn" onClick={toggleFullscreen} aria-label="Toàn màn hình">
+          <button className="control-btn" onClick={toggleFullscreen} aria-label={t('player.fullscreen')}>
             {isFullscreen ? <FiMinimize /> : <FiMaximize />}
           </button>
         </div>

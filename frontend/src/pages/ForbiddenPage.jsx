@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import LogoIcon from '../components/Layout/LogoIcon';
 import './ForbiddenPage.css';
 
@@ -15,16 +16,14 @@ const GRID = 48; // canvas GRID x GRID đơn vị
 
 const ACTIONS = ['stand', 'shake', 'stomp'];
 const ACTION_DURATION = 130;
-const STATUS_MESSAGES = {
-  stand: '🛡️ Đang canh gác...',
-  shake: '🚫 Không được vào đâu!',
-  stomp: '⛔ Dừng lại!',
-};
+// Xem chú thích cùng nội dung ở NotFoundPage: trạng thái lưu tên hành động,
+// nhãn hiển thị tra theo ngôn ngữ tại lúc render.
 
 const ForbiddenPage = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const canvasRef = useRef(null);
-  const [status, setStatus] = useState(STATUS_MESSAGES.stand);
+  const [status, setStatus] = useState('stand');
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -190,7 +189,7 @@ const ForbiddenPage = () => {
         actionIndex = (actionIndex + 1) % ACTIONS.length;
         currentAction = ACTIONS[actionIndex];
         actionProgress = 0;
-        setStatus(STATUS_MESSAGES[currentAction]);
+        setStatus(currentAction);
       }
 
       const progress = actionProgress / ACTION_DURATION;
@@ -227,25 +226,24 @@ const ForbiddenPage = () => {
 
         <div className="pf-mascot-container">
           <canvas ref={canvasRef} width={GRID * UNIT} height={GRID * UNIT} className="pf-canvas" />
-          <div className="pf-status">{status}</div>
+          <div className="pf-status">{t(`forbidden.${status}`)}</div>
         </div>
 
-        <h2 className="pf-message">Bạn không có quyền truy cập trang này</h2>
+        <h2 className="pf-message">{t('forbidden.message')}</h2>
         <p className="pf-submessage">
-          Nội dung này có thể đang ở chế độ riêng tư, hoặc tài khoản hiện tại không có quyền xem. Thử
-          đăng nhập bằng tài khoản khác hoặc quay về trang chủ.
+          {t('forbidden.body')}
         </p>
 
         <div className="pf-actions">
           <button className="btn btn-primary" onClick={() => navigate('/')}>
-            ← Về trang chủ
+            ← {t('forbidden.home')}
           </button>
           <button className="btn btn-secondary" onClick={() => navigate(-1)}>
-            Quay lại
+            {t('forbidden.back')}
           </button>
         </div>
 
-        <p className="pf-info">Mã lỗi: 403 · Linh vật vẫn đang canh gác nghiêm ngặt 🛡️</p>
+        <p className="pf-info">{t('forbidden.info')}</p>
       </div>
     </div>
   );

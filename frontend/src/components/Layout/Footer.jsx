@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { FiGithub, FiZap, FiPlay, FiUploadCloud, FiInfo } from 'react-icons/fi';
 import LogoIcon from './LogoIcon';
 import './Footer.css';
@@ -24,6 +25,7 @@ const TECH_STACK = [
 ];
 
 const Footer = () => {
+  const { t } = useTranslation();
   return (
     <footer className="app-footer">
       <div className="footer-inner">
@@ -35,32 +37,31 @@ const Footer = () => {
               <span className="logo-text">VidShare</span>
             </Link>
             <p className="footer-desc">
-              Nền tảng chia sẻ video với hệ thống chuyển mã HLS tự động trên kiến
-              trúc Serverless Container và Event-Driven.
+              {t('footer.tagline')}
             </p>
             <div className="footer-status-badge">
               <span className="status-dot" />
-              <FiZap /> Hạ tầng AWS: <strong>đang hoạt động</strong>
+              <FiZap /> {t('footer.infraLabel')} <strong>{t('footer.infraStatus')}</strong>
             </div>
           </div>
 
           {/* Điều hướng — chỉ những liên kết thật sự dẫn tới đâu đó */}
-          <nav className="footer-col" aria-label="Liên kết chân trang">
-            <h4 className="footer-heading">Điều hướng</h4>
+          <nav className="footer-col" aria-label={t('footer.navAria')}>
+            <h4 className="footer-heading">{t('footer.navHeading')}</h4>
             <ul className="footer-links">
               <li>
                 <Link to="/">
-                  <FiPlay /> Trang chủ
+                  <FiPlay /> {t('footer.home')}
                 </Link>
               </li>
               <li>
                 <Link to="/upload">
-                  <FiUploadCloud /> Tải video lên
+                  <FiUploadCloud /> {t('footer.upload')}
                 </Link>
               </li>
               <li>
                 <Link to="/landing">
-                  <FiInfo /> Giới thiệu nền tảng
+                  <FiInfo /> {t('footer.about')}
                 </Link>
               </li>
             </ul>
@@ -68,7 +69,7 @@ const Footer = () => {
 
           {/* Công nghệ sử dụng */}
           <div className="footer-col">
-            <h4 className="footer-heading">Công nghệ sử dụng</h4>
+            <h4 className="footer-heading">{t('footer.techHeading')}</h4>
             <ul className="footer-chips">
               {TECH_STACK.map((tech) => (
                 <li key={tech} className="footer-chip">
@@ -84,11 +85,10 @@ const Footer = () => {
         <div className="footer-bottom">
           <div className="footer-copyright">
             <span>
-              © {new Date().getFullYear()} VidShare — Đồ án Công nghệ Thông tin 2
+              {t('footer.copyright', { year: new Date().getFullYear() })}
             </span>
             <span className="author-credit">
-              Đinh Quốc Cường (523H0008) &amp; Võ Huỳnh Minh Đức (523H0014) — GVHD:
-              ThS. Mai Văn Mạnh
+              {t('footer.authors')}
             </span>
           </div>
 
@@ -97,8 +97,8 @@ const Footer = () => {
             target="_blank"
             rel="noreferrer"
             className="social-btn"
-            title="Mã nguồn trên GitHub"
-            aria-label="Mã nguồn trên GitHub"
+            title={t('footer.github')}
+            aria-label={t('footer.github')}
           >
             <FiGithub />
           </a>

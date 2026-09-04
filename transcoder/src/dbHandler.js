@@ -84,7 +84,7 @@ const updateVideoReady = async (videoId, { hlsUrl, thumbnailUrl, duration }) => 
       throw new Error(`Video not found: ${videoId}`);
     }
     console.warn(
-      `⚠️  Video ${videoId} đã ở trạng thái READY từ trước — bỏ qua ghi trùng (duplicate job phát hiện qua SQS redelivery)`
+      `⚠️  Video ${videoId} was already READY; skipping the duplicate write (duplicate job detected via SQS redelivery)`
     );
     // updated=false: đây không phải job thắng cuộc ghi, không được gửi email
     // thông báo (job thắng cuộc — nếu còn sống — đã hoặc sẽ tự gửi).
@@ -117,7 +117,7 @@ const updateVideoError = async (videoId, errorMessage) => {
       return { video: null, updated: false };
     }
     console.warn(
-      `⚠️  Video ${videoId} đã READY — bỏ qua việc đánh dấu ERROR từ job trùng (lỗi gốc: ${errorMessage})`
+      `⚠️  Video ${videoId} is already READY; skipping the ERROR mark from a duplicate job (original error: ${errorMessage})`
     );
     return { video: existing, updated: false };
   }

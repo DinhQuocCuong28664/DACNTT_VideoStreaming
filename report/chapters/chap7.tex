@@ -115,6 +115,14 @@ delivery latency figures were collected from probes running inside AWS regions r
 residential connections, so they describe edge proximity under favourable network conditions
 rather than what a home viewer would experience.
 
+The two-language interface has one gap of the same kind. A viewer's language choice is held in
+the browser and sent to the API on each request, which is sufficient for everything the interface
+and the API produce, but the notification e-mails announcing that a video is ready or has failed
+are sent from an AWS Batch job long after the request that started it. That job has no request to
+read a language from, and the account record stores no language preference, so those two e-mails
+are sent in both languages. Storing the preference on the user document would let them be sent in
+one, and is the correct fix rather than the one adopted here.
+
 Finally, the CloudFront distributions are provisioned in a second AWS account, because the primary
 account was not permitted to create them. The arrangement is invisible to viewers and changes
 nothing about the security property being provided, but it splits the infrastructure across two
