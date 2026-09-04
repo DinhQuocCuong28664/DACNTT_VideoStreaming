@@ -133,3 +133,22 @@
 % được khi in. Xoay ngang cho phép dùng chiều cao trang làm chiều rộng hình
 % (24,7 cm), lớn hơn 54% và đưa nhãn về mức đọc được.
 \usepackage{rotating}
+
+% ----- Ô giữ chỗ cho ảnh chụp màn hình chưa có -----
+%
+% Dùng cho các hình sẽ chụp từ hệ thống đã triển khai. Vẽ một khung nét đứt
+% đúng kích thước ảnh dự kiến, kèm mô tả nội dung cần chụp, để bố cục trang
+% và số hiệu hình đã ổn định trước khi có ảnh thật. Xoá lệnh này và thay
+% bằng \includegraphics khi ảnh đã sẵn sàng.
+% Tham số: {chiều rộng}{chiều cao}{mô tả ảnh cần chụp}
+\newcommand{\screenshotplaceholder}[3]{%
+  \setlength{\fboxrule}{0.6pt}%
+  \setlength{\fboxsep}{0pt}%
+  \textcolor{gray}{\fbox{%
+    \begin{minipage}[c][#2][c]{#1}%
+      \centering
+      \footnotesize\itshape\color{gray!55!black}
+      [Screenshot to be inserted]\\[0.7em]
+      \begin{minipage}{0.86\linewidth}\centering #3\end{minipage}
+    \end{minipage}}}%
+}

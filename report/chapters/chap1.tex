@@ -82,7 +82,7 @@ protocol itself was taken from its specification, RFC 8216, and the encoding par
 FFmpeg HLS muxer documentation, rather than from secondary sources. Peer-reviewed studies of
 serverless video processing supplied both the motivation for the architecture and the measurement
 vocabulary used later in the evaluation, and the multi-threaded H.264 literature supplied the
-expected bound against which the vCPU scaling results of Chapter~\ref{chap:implementation} are
+expected bound against which the vCPU scaling results of Chapter~\ref{chap:evaluation} are
 interpreted.
 
 The practical component followed an incremental development model. Each subsystem, comprising the
@@ -93,7 +93,7 @@ automated test suite executed on every push through a continuous integration pip
 runs dependency, container and infrastructure security scans.
 
 Evaluation was empirical rather than analytical. Every performance figure reported in
-Chapter~\ref{chap:implementation} was produced by a measurement script committed alongside the
+Chapter~\ref{chap:evaluation} was produced by a measurement script committed alongside the
 source code, executed against the deployed system rather than a local approximation of it, with
 the raw output stored as JSON under \path{docs/results/} so that any table in this report can be
 traced back to the run that produced it. Where a result could plausibly be an artefact of the
@@ -149,8 +149,10 @@ how comparable platforms solve the transcoding problem and justifies the technol
 made here. Chapter~\ref{chap:requirements} analyses the functional and non-functional
 requirements of the system and presents the use case model. Chapter~\ref{chap:design}
 describes the architecture, the data model, the content protection scheme, and the interface
-design. Chapter~\ref{chap:implementation} details the implementation of each subsystem together
-with the infrastructure automation, the difficulties encountered during development and how they
-were resolved, the deployed user interface, and the experimental results.
-Chapter~\ref{chap:conclusion} summarises what was achieved, states the strengths and limitations
-of the delivered system, and outlines directions for future work.
+design. Chapter~\ref{chap:implementation} details the implementation of each subsystem, the
+infrastructure automation and continuous integration, the difficulties encountered during
+development and how they were resolved, and the automated test suite.
+Chapter~\ref{chap:evaluation} presents the deployed system and its user interface, then reports
+the experimental results for delivery latency, transcoding performance, behaviour under load, and
+operating cost. Chapter~\ref{chap:conclusion} summarises what was achieved, states the strengths
+and limitations of the delivered system, and outlines directions for future work.

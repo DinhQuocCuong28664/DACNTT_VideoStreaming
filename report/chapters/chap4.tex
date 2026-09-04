@@ -188,6 +188,32 @@ video.
 \section{Interface Design}
 \label{sec:interface-design}
 
+Figure~\ref{fig:user-flow} sets out the paths a user can take through the application, and it is
+worth reading before the component-level discussion that follows, because two of its properties
+constrain the design.
+
+The first is that the catalogue and the watch page are reachable without an account. Browsing,
+searching, filtering by category and playing a public video all work for an anonymous visitor, and
+authentication is demanded only at the point where an action requires an identity, which in
+practice means uploading, commenting, reacting, or managing one's own channel. A visitor who
+reaches the upload page without a session is therefore diverted through sign-in or registration
+and returned to it, rather than being asked to sign in on arrival.
+
+The second is that the upload path does not end where the user's involvement ends. Once the
+browser has transferred the file directly to Amazon S3, the interface returns control immediately
+and the video enters the \texttt{PROCESSING} state, in which it is visible only to its owner on
+the channel management view. Only when the pipeline marks it \texttt{READY} does it join the
+public catalogue. The interface consequently has to represent a video that exists but cannot yet
+be played, which is why the state machine of Section~\ref{sec:database-design} is modelled
+explicitly rather than inferred.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.55\textwidth]{images/08-user-flow.png}
+\caption{\textit{User flow through the application, from an anonymous visit to a published video}}
+\label{fig:user-flow}
+\end{figure}
+
 The frontend is a single page application composed of functional React components with hooks,
 using React Context for authentication and theme state. Redux was considered unnecessary at
 this scale, since the shared state consists only of the current user and the selected theme.

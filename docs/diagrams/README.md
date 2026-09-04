@@ -11,6 +11,7 @@ Thư mục này chứa các sơ đồ dùng cho báo cáo đồ án. Mã nguồn
 | `05-use-case.png` | Sơ đồ Use Case với 3 tác nhân | 3.4 |
 | `06-hls-abr.png` | Các tệp HLS sinh ra từ một video nguồn và thứ tự player tải | 2.2 |
 | `07-compute-models.png` | So sánh cụm luôn bật với container serverless theo yêu cầu | 2.2 |
+| `08-user-flow.png` | Luồng người dùng từ lúc vào trang tới khi video được công bố | 4.5 |
 
 ## Tái sinh ảnh sau khi sửa sơ đồ
 
