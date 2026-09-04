@@ -175,7 +175,7 @@ What makes the episode instructive is that the obvious fix, written by reading t
 wrong twice, and both errors were invisible until the path was actually executed. First, hls.js
 marks the initial \texttt{403} as non-fatal while it retries internally, so a handler that filters
 on the fatal flag before inspecting the status code discards precisely the error it exists to
-report --- the player sat silently on the poster frame with no message at all. Second, refreshing
+report. The player sat silently on the poster frame with no message at all. Second, refreshing
 the cookie and calling \texttt{startLoad()} does nothing, because that call resumes segment
 loading whereas an expired cookie fails at the manifest; the retry issued no request, produced no
 new error, and so never reached the give-up branch. Instrumenting the page made the contradiction
@@ -187,8 +187,8 @@ argument for provoking the failure rather than reasoning about it.
 A hazard of a different kind was found the same way, by reading a plan rather than the code that
 produced it. The AMI for the backend instance is resolved through a data source with
 \texttt{most\_recent = true}, and the \texttt{ami} attribute forces replacement when it changes.
-Every Ubuntu security release therefore armed the next \texttt{terraform apply} --- an apply for
-any unrelated reason --- to destroy and rebuild the running server. The plan taken while adding
+Every Ubuntu security release therefore armed the next \texttt{terraform apply}, made for any
+unrelated reason, to destroy and rebuild the running server. The plan taken while adding
 the Batch configuration above showed exactly that, unprompted. What would have been lost is not an
 instance but the state on it that Terraform does not manage: the environment file holding the
 database URI, signing key and mail credentials, the nginx configuration, the TLS certificates, and
@@ -214,7 +214,7 @@ Secrets Manager created the entry holding the notification e-mail password uncon
 populated its value only when an e-mail password had actually been configured. Leaving e-mail
 unconfigured therefore produced an empty secret: a container with no version carrying the
 \texttt{AWSCURRENT} label. The Batch module, meanwhile, decided whether to declare that secret in
-the job definition by testing whether its ARN was non-empty --- and the ARN of an empty secret is
+the job definition by testing whether its ARN was non-empty, and the ARN of an empty secret is
 perfectly non-empty. Every transcoding task consequently failed at
 \texttt{ResourceInitializationError} before its entrypoint ran, and the transcoding pipeline was
 inoperative for as long as that job definition revision was active. The fix was to make the secret
@@ -231,8 +231,8 @@ information, and the reason for each failure must be inspected rather than assum
 the defect within minutes instead of hours.
 
 That account, given above, is accurate but incomplete, and the missing half is the more
-uncomfortable one. It explains why nobody looked. It does not explain why nothing told them ---
-and a later audit of the deployed alerting showed that nothing could have. The system had two
+uncomfortable one. It explains why nobody looked. It does not explain why nothing told them, and
+a later audit of the deployed alerting showed that nothing could have. The system had two
 alarms, both on Amazon SQS metrics, and the one whose description read ``video transcoding
 failures detected'' watched the depth of the dead letter queue. No transcoding failure can reach
 that queue. The Lambda that consumes the message submits a Batch job and returns, so SQS deletes
@@ -245,8 +245,8 @@ The same structural gap accounted for the absent retry. The report states above 
 is retried until the message reaches the dead letter queue, which describes \texttt{worker} mode
 (Section~\ref{sec:pipeline-design}); on the deployed path SQS has already discarded the message,
 and the Batch job definition declared no \texttt{retryStrategy}. Nothing retried a failed job at
-any layer. A transient fault --- a network fault while downloading the source, a reclaimed Spot
-task --- lost the video outright, with no record beyond an \texttt{ERROR} row.
+any layer. A transient fault, such as a network fault while downloading the source or a reclaimed
+Spot task, lost the video outright, with no record beyond an \texttt{ERROR} row.
 
 Three changes close this. The job definition now declares three attempts, retrying only
 infrastructure faults and exiting immediately on an exit status indicating that FFmpeg rejected
@@ -254,27 +254,27 @@ the content, since retrying such a job costs money and cannot change the outcome
 a two-hour timeout, without which an FFmpeg process stalled on malformed input bills indefinitely.
 Detection moved to where the failures actually occur: AWS Batch publishes no CloudWatch metric for
 failed jobs, so an EventBridge rule matches job state transitions to \texttt{FAILED} and publishes
-to the alert topic, with the notification shaped to carry \texttt{statusReason} --- the precise
+to the alert topic, with the notification shaped to carry \texttt{statusReason}, the precise
 field whose absence turned a five-minute diagnosis into a multi-hour one. The misleading alarm
 description was corrected to state what it genuinely covers.
 
 The generalisation is worth stating carefully, because it is not the familiar observation that the
 system lacked monitoring. It had monitoring. The monitoring named the failure mode that occurred,
-in the alarm description, in the language an operator would search for --- and was wired to a
+in the alarm description, in the language an operator would search for, and yet it was wired to a
 signal that the architecture made incapable of carrying that information. An alarm that cannot
 fire is worse than an absent one, because its presence is taken as evidence that the case is
 covered, and its silence is read as good news.
 
 A later review found the same reasoning applied to a larger omission. After the corrections above
 the system had four alarms, and every one of them watched the transcoding pipeline. Nothing
-watched the backend API --- the single component that every other part of the system depends on,
+watched the backend API, the single component that every other part of the system depends on,
 running as one process on one instance. If the process died, the web server stopped, or the
 instance failed, no signal would have been produced at all.
 
 That gap was demonstrated during this work rather than reasoned about. Assigning the backend a
 static address moved its public IP, the DNS record continued to point at the released one, and
-the entire API returned \texttt{522} for several minutes --- the proxy in front of it reporting that it could not
-reach the origin at all. The instance was healthy throughout;
+the entire API returned \texttt{522} for several minutes, with the proxy in front of it reporting
+that it could not reach the origin at all. The instance was healthy throughout;
 every infrastructure-level indicator was green, because nothing at the infrastructure level was
 wrong. The outage was noticed only because someone happened to call the endpoint. This is the
 distinction that matters when choosing what to monitor: a check on the instance answers whether
@@ -284,17 +284,18 @@ delivered, which is the only question a user is asking.
 A scheduled function now calls the public domain every five minutes, traversing the same path a
 viewer does, and publishes a metric that an alarm watches; an instance status-check alarm sits
 alongside it, complementing rather than replacing it, since it would not have detected the failure
-just described. The choice of a self-hosted check over a managed one was decided on cost --- a
-managed health check on an endpoint outside the provider costs roughly 1.75 USD per month, against
-zero for this approach within the free tier --- and the trade-off it accepts, that checks come
-from one location rather than several, is recorded alongside the implementation.
+just described. The choice of a self-hosted check over a managed one was decided on cost, since a
+managed health check on an endpoint outside the provider costs roughly 1.75 USD per month against
+zero for this approach within the free tier. The trade-off it accepts, that checks come from one
+location rather than several, is recorded alongside the implementation.
 
 Configuring that alarm produced a mistake worth reporting, because it is the first in this chapter
 that was introduced rather than discovered. The alarm was given an evaluation period equal to the
 interval between checks, so each period contained exactly one datapoint and no margin. Missing
-data is deliberately treated as a failure --- a monitor that dies must raise an alarm rather than
-fall silent --- and on first deployment, when only a single datapoint existed, the empty adjacent
-period was read as a breach and the alarm fired against a system that was working. The canary's
+data is deliberately treated as a failure, on the principle that a monitor which dies must raise
+an alarm rather than fall silent. On first deployment, when only a single datapoint existed, the
+empty adjacent period was read as a breach and the alarm fired against a system that was working.
+The canary's
 own source comments state that a false alarm is the worst failure mode available to a monitor,
 because it teaches people to disregard the next one; the configuration contradicted the reasoning
 written beside it. Widening the evaluation period to three times the check interval gives each
@@ -304,7 +305,7 @@ evaluation window are a single joint decision, and choosing them independently p
 that is either deaf or hysterical.
 
 Two smaller corrections came from the same review. The frontend had no error boundary, so any
-exception thrown during rendering unmounted the entire component tree and left a blank page ---
+exception thrown during rendering unmounted the entire component tree and left a blank page,
 an outcome sitting oddly beside the deliberately designed pages for the 403 and 404 cases, and one
 that gave a user experiencing a real fault less information than one who requested a missing
 video. And the function submitting transcoding jobs was still running a language runtime past its
@@ -330,8 +331,8 @@ NFR-03 did, cannot be falsified once the mechanism changes, because it no longer
 anything the system could fail to do. The rule this suggests is narrow enough to act on. A claim
 about what a system guarantees is a claim about the deployed system, and the only evidence that
 settles it is the guarantee holding, or failing to hold, when the corresponding failure is
-actually provoked. Everything short of that --- the source, the configuration, the plan, and this
-report --- describes intent.
+actually provoked. Everything short of that, including the source, the configuration, the plan,
+and this report, describes intent.
 
 \section{Future Work}
 \label{sec:future-work}
@@ -349,8 +350,8 @@ two, but one pair of observations is not a basis for that claim. The concurrency
 (Section~\ref{sec:real-throughput-validation})
 confirmed that every job succeeds under load, but it was not instrumented with the same
 twenty-five-second polling cadence as the original synthetic run, so a precise drain-rate figure
-for real transcoding throughput --- as opposed to confirmation that throughput is non-zero and
-failure-free --- remains to be measured; repeating the same short-clip payload with that polling
+for real transcoding throughput, as opposed to confirmation that throughput is non-zero and
+failure-free, remains to be measured; repeating the same short-clip payload with that polling
 protocol in place would close this. The vCPU scaling comparison should also be repeated with more
 replications of the 1~vCPU baseline and with memory held constant, since
 Section~\ref{sec:pipeline-evaluation} showed the present estimate to be dominated by baseline
