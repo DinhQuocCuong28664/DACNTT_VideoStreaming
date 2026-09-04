@@ -1,0 +1,166 @@
+\chapter{Conclusion and Future Work}
+\label{chap:conclusion}
+
+\section{Summary of Achievements}
+\label{sec:summary}
+
+This project set out to build a video sharing platform whose transcoding subsystem runs on a
+serverless container and event-driven architecture, and to evaluate whether that choice
+delivers the cost and scalability benefits it promises.
+
+The functional platform was completed. Users can register, authenticate, upload videos directly
+to Amazon S3 through pre-signed URLs, watch them with adaptive bitrate playback across three
+renditions, control whether each video is public or private, manage their channel, search and
+filter the catalogue, and interact through likes and comments.
+
+The transcoding pipeline operates without manual intervention. An upload emits an S3 event that
+is buffered in Amazon SQS and dispatched by an AWS Lambda function to AWS Batch, where a
+container packaging FFmpeg produces the renditions, the master playlist, and a thumbnail before
+terminating. Conditional database writes prevent a duplicate delivery from overwriting a completed
+job, failed jobs are retried by AWS Batch and, when they exhaust their attempts, raise an alert
+carrying the reason for the failure rather than terminating silently. Both mechanisms replaced
+earlier designs that held only for an execution mode the deployed system does not use; the
+reasoning is set out in Section~\ref{sec:pipeline-design} and Section~\ref{sec:challenges}.
+
+Content protection was implemented in two layers. Origin Access Control keeps the storage
+bucket entirely private, and CloudFront Signed Cookies ensure that private videos are rejected
+at the edge even when the exact manifest URL is known. This closes a gap that would otherwise
+have made the private visibility setting ineffective in practice, since the API can restrict its
+own responses but cannot restrict a content delivery network.
+
+The infrastructure is fully described as code in eleven Terraform modules across two
+environments, and seven GitHub Actions workflows automate linting, unit testing, static security
+analysis, container scanning, infrastructure validation, and deployment. The security gate
+blocks merges on fixable critical findings rather than merely reporting them.
+
+The automated test suite grew to 117 tests across ten suites. Its practical value was demonstrated
+when it caught a defect in the cookie signing implementation that would have prevented every
+private video from playing once deployed. A second defect in that same subsystem, which only
+appeared once the distribution was live, is described in Section~\ref{sec:challenges}.
+
+\section{Strengths of the System}
+\label{sec:strengths}
+
+The strongest property of the design is the separation between the application tier and the media
+path. The backend API issues pre-signed URLs, records metadata and answers queries, and never
+handles video bytes, which flow directly between the browser, Amazon S3 and CloudFront. The API's
+resource consumption is therefore independent of video size and upload concurrency, and a failure
+in the processing tier leaves already-published videos playable.
+
+The processing tier costs nothing while idle. Because transcoding runs on AWS Batch over Fargate
+rather than on a reserved instance, compute capacity exists only while a job runs.
+Section~\ref{sec:cost-analysis} estimates the monthly operating cost of this arrangement at
+\$1.51 against \$133.35 for an always-on instance sized for the same workload, a difference that
+originates entirely in the elimination of idle capacity.
+
+Content protection is enforced at the edge rather than only in the API. Origin Access Control
+keeps the storage bucket private and CloudFront Signed Cookies reject unauthorised requests before
+they reach it, which is what makes the private visibility setting meaningful, since an API can
+restrict its own responses but cannot restrict a content delivery network. The mechanism was
+verified against the deployed system rather than in code alone, as
+Section~\ref{sec:challenges} records.
+
+The infrastructure is reproducible. Eleven Terraform modules describe two environments in full,
+and seven GitHub Actions workflows automate linting, unit testing, static security analysis,
+container and dependency scanning, infrastructure validation and deployment. The security gate
+blocks a merge on fixable critical findings rather than merely reporting them, and the scanner
+itself is pinned to a release commit rather than to a moving branch.
+
+Finally, the performance claims in this report are measured rather than asserted.
+Time-to-First-Frame was measured from six AWS regions and from a consumer connection in Vietnam,
+and led to two corrections of the CloudFront price class that reduced the median latency seen from
+Vietnam by a factor of 6.6 and the median seen from Brazil by a factor of 32. Transcoding
+throughput was measured under one hundred concurrent uploads of real video and cross-validated
+with two independently implemented load generators. And the automated suite of 117 tests across
+ten suites caught a signing defect that would otherwise have prevented every private video from
+playing.
+
+\section{Limitations}
+\label{sec:limitations}
+
+Several limitations remain in the delivered system.
+
+The bitrate ladder is fixed at three rungs regardless of content. As the literature reviewed in
+Section~\ref{sec:core-models} shows, the optimal ladder is content-dependent, so a fixed ladder
+wastes bandwidth on simple content while under-serving complex content. Netflix reported bitrate
+reductions between 28\% and 38\% at equivalent perceptual quality by optimising the ladder per
+shot \cite{netflix2018dynamic}, which indicates the magnitude of the opportunity forgone.
+
+Each video is transcoded by a single container, without the chunk-based parallelism that Netflix
+employs. Processing time therefore scales linearly with video duration, and a long video cannot be
+accelerated by adding capacity. Section~\ref{sec:drain-rate} measured roughly 66 seconds of
+wall-clock time per job for a three-second clip, which shows how far fixed overhead dominates for
+short content; for long content the encoder itself dominates instead, and it is that portion which
+the current design cannot parallelise.
+
+Signed Cookies remain valid for two hours after issuance, so switching a video from public to
+private leaves viewers holding unexpired cookies with access until those cookies lapse. Immediate
+revocation would require rotating the signing key or introducing an edge function that performs a
+per-request check. The system also implements no digital rights management: an authorised viewer
+can capture the decrypted stream or share their cookies, and preventing this is outside the scope
+of the techniques used here.
+
+Rate limiting and view deduplication hold their state in process memory. This is correct for the
+current single-instance deployment but would need to move to a shared store such as Redis before
+the backend could be scaled horizontally, since each instance would otherwise enforce its own
+independent limits. The backend itself remains one process on one instance in a single region and
+is the only single point of failure in the system, the transcoding and delivery tiers being
+managed services that scale and recover on their own.
+
+Two experimental results are narrower than the headline figures suggest. The comparison between
+1 and 4~vCPU allocations rests on a 1~vCPU baseline whose three runs span 56\%, so the estimated
+speedup varies between 3.3 and 4.9 times depending on which statistic is compared, and memory was
+raised at the same time as the vCPU count, so the experiment does not isolate either variable. The
+delivery latency figures were collected from probes running inside AWS regions rather than on
+residential connections, so they describe edge proximity under favourable network conditions
+rather than what a home viewer would experience.
+
+Finally, the CloudFront distributions are provisioned in a second AWS account, because the primary
+account was not permitted to create them. The arrangement is invisible to viewers and changes
+nothing about the security property being provided, but it splits the infrastructure across two
+sets of credentials and carries operational overhead that a verified account would not.
+
+\section{Future Work}
+\label{sec:future-work}
+
+Two measurements should still be repeated before the experimental results are considered settled.
+The Time-to-First-Frame measurement has been repeated against the live distribution
+(Section~\ref{sec:cdn-measurement}) and then from several client locations
+(Section~\ref{sec:multiregion-measurement}), which closed that item and, in doing so, exposed a
+further limitation that has since been corrected: viewers in South America and Oceania fell
+outside the configured price class and were served across an ocean until both distributions were
+moved to \texttt{PriceClass\_All}. What remains open is that every probe ran inside an AWS region,
+so the figures describe edge proximity under favourable network conditions rather than residential
+connections; comparing the two Vietnamese samples suggests the last mile costs roughly a factor of
+two, but one pair of observations is not a basis for that claim. The concurrency test re-run with genuine video payloads
+(Section~\ref{sec:real-throughput-validation})
+confirmed that every job succeeds under load, but it was not instrumented with the same
+twenty-five-second polling cadence as the original synthetic run, so a precise drain-rate figure
+for real transcoding throughput, as opposed to confirmation that throughput is non-zero and
+failure-free, remains to be measured; repeating the same short-clip payload with that polling
+protocol in place would close this. The vCPU scaling comparison should also be repeated with more
+replications of the 1~vCPU baseline and with memory held constant, since
+Section~\ref{sec:pipeline-evaluation} showed the present estimate to be dominated by baseline
+variance and confounded by a simultaneous change in memory allocation.
+
+The most valuable functional extension would be per-title bitrate ladder optimisation driven by a
+perceptual quality metric such as VMAF. Encoding a short probe of the source at several
+operating points and selecting those on the convex hull of the quality-versus-bitrate curve
+would reduce delivery bandwidth at unchanged perceived quality, which lowers the largest
+remaining cost component of the system.
+
+Chunk-based parallel transcoding would address the linear scaling of processing time. Splitting
+the source at keyframe boundaries, encoding the segments concurrently across multiple
+containers, and concatenating the results would convert additional capacity into reduced
+latency. The main challenge is maintaining rate control consistency across chunk boundaries so
+that quality does not fluctuate visibly.
+
+Hardware acceleration offers a further avenue. Research on GPU-enabled serverless platforms for
+HEVC encoding \cite{gpuserverless2024} suggests substantial throughput gains, and adopting a
+more efficient codec such as HEVC or AV1 alongside H.264 would reduce bandwidth for clients that
+support it.
+
+Finally, moving the rate limiting and deduplication state into a shared store, and adding
+distributed tracing across the S3, SQS, Lambda, and Batch boundaries, would prepare the system
+for horizontal scaling and make failures in the asynchronous pipeline substantially easier to
+diagnose.

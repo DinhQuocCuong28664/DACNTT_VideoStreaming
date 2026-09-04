@@ -1,0 +1,41 @@
+graph TB
+    START(["Visitor opens the site"])
+
+    HOME["Catalogue page<br/>browse, filter by category, search"]
+    WATCH["Watch page<br/>adaptive playback, like, comment, share"]
+
+    AUTH{"Signed in?"}
+    LOGIN["Sign in<br/>e-mail and password, or Google"]
+    REG["Register an account"]
+    RESET["Reset a forgotten password<br/>via e-mailed token"]
+
+    UPLOAD["Upload page<br/>title, description, category, visibility"]
+    PRESIGN["Browser transfers the file<br/>directly to Amazon S3"]
+    PROC["Video shown as PROCESSING<br/>on the owner's channel"]
+    READY["Video reaches READY<br/>and appears in the catalogue"]
+    CHANNEL["Channel management<br/>edit, change visibility, delete"]
+
+    START --> HOME
+    HOME --> WATCH
+    HOME -->|"chooses to upload"| AUTH
+    AUTH -->|"no"| LOGIN
+    LOGIN -->|"no account"| REG
+    LOGIN -->|"forgot password"| RESET
+    REG --> UPLOAD
+    RESET --> LOGIN
+    AUTH -->|"yes"| UPLOAD
+    UPLOAD --> PRESIGN
+    PRESIGN --> PROC
+    PROC -->|"transcoding pipeline completes"| READY
+    READY --> WATCH
+    PROC --> CHANNEL
+    CHANNEL --> WATCH
+
+    classDef public fill:#e8f4f8,stroke:#2c7a9e,color:#1a1a1a
+    classDef account fill:#fff4e6,stroke:#d98324,color:#1a1a1a
+    classDef owner fill:#eef7ee,stroke:#3d8b40,color:#1a1a1a
+    classDef gate fill:#fdecea,stroke:#c0392b,color:#1a1a1a
+    class HOME,WATCH public
+    class LOGIN,REG,RESET account
+    class UPLOAD,PRESIGN,PROC,READY,CHANNEL owner
+    class AUTH gate
