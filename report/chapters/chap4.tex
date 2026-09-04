@@ -82,8 +82,8 @@ Retaining the worker-mode implementation is a deliberate choice rather than an o
 allows the transcoder to be run against the queue directly during development without provisioning
 Batch. Recording which of the two modes the evaluated system actually executes matters, though,
 because a mechanism present in the source but absent from the deployed path cannot be credited
-with the guarantees it would provide if it ran --- the same distinction that
-Section~\ref{sec:limitations} draws about content protection.
+with the guarantees it would provide if it ran. Section~\ref{sec:limitations} draws the same
+distinction about content protection.
 
 \section{Database Design}
 \label{sec:database-design}
@@ -118,8 +118,8 @@ The cost is also paid on reads that do not want it, since a listing of twelve vi
 every identifier in all twenty-four arrays merely to display counts. The conventional remedy is a
 separate collection with a compound unique index on video and user, plus a denormalised counter on
 the video. That is the right structure for a system expecting popular content, and the reason it
-was not adopted here is scale rather than principle --- which is a different claim from the design
-being correct in general, and is recorded as such.
+was not adopted here is scale rather than principle. That is a different claim from the design
+being correct in general, and it is recorded as such.
 
 Indexes are defined to match the actual query patterns. A compound index on visibility, status,
 and creation time supports the home page listing, which always filters on the first two fields

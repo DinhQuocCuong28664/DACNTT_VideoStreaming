@@ -46,7 +46,7 @@ variant was avoided throughout because FFmpeg requires glibc.
 The heartbeat mechanism described in Section~\ref{sec:pipeline-design} is, in effect, a lease in
 the sense introduced by Burrows for the Chubby lock service \cite{burrows2006chubby}: a holder
 retains a resource by periodically renewing it before a timeout expires, and Burrows already
-identified the classical failure mode of that pattern — a lease can expire while its holder is
+identified the classical failure mode of that pattern: a lease can expire while its holder is
 merely stalled rather than dead, so a second holder may be granted the same resource while the
 first is still alive and will eventually act on it. A defect matching exactly this failure mode
 surfaced during a literature-driven review of the pipeline's reliability guarantees, discussed
@@ -152,8 +152,8 @@ scans the configuration for insecure settings.
 A later audit of the pipeline itself found a weakness in the pipeline's own supply chain, and it
 is worth recording because of where it sat. All five workflows referenced the vulnerability
 scanner as \texttt{aquasecurity/trivy-action@master}. A branch reference resolves to whatever
-that repository's default branch contains at the moment a job runs, so a change made there ---
-including one made by someone who had compromised the action --- would execute inside this
+that repository's default branch contains at the moment a job runs, so a change made there,
+including one made by someone who had compromised the action, would execute inside this
 project's continuous integration, which holds AWS credentials. Every other action in the pipeline
 was pinned at least to a major version tag. The component pinned to nothing was the security
 scanner. The references are now pinned to a release commit hash, with the version tag retained in
@@ -166,9 +166,9 @@ definition. The scoping is expressed through the naming convention rather than b
 Batch module's outputs, because the Batch module already depends on the IAM module for its roles
 and referring back would introduce a dependency cycle; both modules carry a note recording the
 coupling that this creates. The companion action \texttt{batch:DescribeJobs} keeps the wildcard,
-because it accepts arbitrary job identifiers and AWS provides no resource-level control for it ---
-a distinction worth making explicitly, since a wildcard that is required and a wildcard that is
-merely convenient look identical in a policy document.
+because it accepts arbitrary job identifiers and AWS provides no resource-level control for it.
+That distinction is worth making explicitly, since a wildcard that is required and a wildcard that
+is merely convenient look identical in a policy document.
 
 \section{Testing}
 \label{sec:testing}
@@ -273,7 +273,7 @@ endpoint and attaches them to all three stages, exactly as a browser does.
 
 The first run produced a result that contradicted the entire justification for using a content
 delivery network. Against the CDN the median TTFF was 727.69~ms, against 251.52~ms measured
-directly from S3 --- the CDN was slower than the origin it was meant to accelerate, by a factor of
+directly from S3. The CDN was slower than the origin it was meant to accelerate, by a factor of
 2.9. Caching was not the problem: nineteen of twenty samples were edge hits, and the single miss
 (4655~ms) was six times slower than the hits, so the cache was working precisely as intended.
 
@@ -281,8 +281,8 @@ The cause was visible in a response header rather than in any timing. Every requ
 \texttt{X-Amz-Cf-Pop: MRS53}, the edge location in Marseille, France, and the frontend
 distribution was answering from Tel Aviv. Both distributions were configured with
 \texttt{PriceClass\_100}, annotated in the Terraform as the cheapest option, which restricts
-delivery to edge locations in North America and Europe. Every request from Vietnam --- where the
-system's users are --- was therefore crossing to Europe and back. The setting did reduce the
+delivery to edge locations in North America and Europe. Every request from Vietnam, where the
+system's users are, was therefore crossing to Europe and back. The setting did reduce the
 per-gigabyte rate, and in doing so it removed the entire benefit the component exists to provide
 for the only population that uses it.
 
@@ -328,7 +328,7 @@ invisible to every form of inspection short of measurement from the right place:
 infrastructure code was valid, the distribution was healthy, the cache hit rate was excellent, and
 each individual request succeeded. A measurement taken from Europe or North America would have
 shown the CDN performing well, and only the location of the observer made the fault apparent. The
-second is that the original setting was not careless --- it was a deliberate, documented cost
+second is that the original setting was not careless. It was a deliberate, documented cost
 optimisation, and it was correct about cost. It was applied without asking where the traffic it
 governed would come from, which is the question that determined whether the component helped or
 hurt.
@@ -354,21 +354,21 @@ Table~\ref{tab:ttff-multiregion} reports the results.
 \cmidrule(lr){2-3} \cmidrule(lr){4-6}
 \textbf{CLIENT LOCATION} & \textbf{EDGE} & \textbf{MEDIAN} & \textbf{EDGE} & \textbf{MEDIAN} & \textbf{WARM} \\
 \midrule
-N. Virginia, United States & IAD61 & 55.23   & ---   & ---   & --- \\
+N. Virginia, United States & IAD61 & 55.23   & n/a   & n/a   & n/a \\
 Dublin, Ireland            & DUB2  & 55.91   & DUB2  & 55.68 & 55.68 \\
 Singapore                  & SIN3  & 56.89   & SIN3  & 53.20 & 53.20 \\
-Tokyo, Japan               & NRT12 & 59.68   & ---   & ---   & --- \\
-Sydney, Australia          & ---   & ---     & SYD3  & 52.30 & 43.36 \\
+Tokyo, Japan               & NRT12 & 59.68   & n/a   & n/a   & n/a \\
+Sydney, Australia          & n/a   & n/a     & SYD3  & 52.30 & 43.36 \\
 S\~{a}o Paulo, Brazil      & CPT51 & \textbf{1196.10} & GRU1 & \textbf{36.79} & \textbf{36.49} \\
 \midrule
-Ho Chi Minh City (consumer) & SGN50 & 110.32 & ---   & ---   & --- \\
+Ho Chi Minh City (consumer) & SGN50 & 110.32 & n/a   & n/a   & n/a \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
 \noindent\textit{Note: values in milliseconds, $n=20$ per location and per configuration, from
 \texttt{docs/results/qoe-ttff-multiregion.json}. WARM reports the median over samples that hit the
-edge cache at all three stages. Entries marked --- were not measured in that configuration: the
+edge cache at all three stages. Entries marked n/a were not measured in that configuration: the
 first run predated the Sydney probe, and the second re-measured only the two locations that could
 change plus two controls. The Ho Chi Minh City row is the local measurement of
 Table~\ref{tab:ttff-cloudfront}, taken from a consumer connection rather than from inside an AWS
@@ -380,7 +380,7 @@ a content delivery network is supposed to have, and it was better evidence that 
 correction worked than the single improved figure from Vietnam had been.
 
 S\~{a}o Paulo was the exception, and it was the most instructive row in the table. Requests from
-Brazil were served by \texttt{CPT51} --- Cape Town, South Africa --- across the South Atlantic, at
+Brazil were served by \texttt{CPT51} in Cape Town, South Africa, across the South Atlantic, at
 a median of 1196~ms, twenty-one times the latency of every other location and considerably worse
 than the 728~ms that prompted the correction in the first place. The cause was the same mechanism:
 \texttt{PriceClass\_200} includes Asia, India, the Middle East and Africa, but excludes South
@@ -397,10 +397,11 @@ uniform across every location measured.
 
 The basis for that decision should be stated honestly, because it is not the one the numbers
 suggest on their own. The system has no users in South America or Oceania, so this did not meet an
-existing need. It was adopted because the difference in cost is zero in practice --- CloudFront's
+existing need. It was adopted because the difference in cost is zero in practice: CloudFront's
 perpetual free tier covers one terabyte of transfer and ten million requests per month, well above
-anything this deployment approaches --- which leaves no reason to retain a region served an order
-of magnitude worse. Were traffic ever to exceed that allowance, this is the first setting that
+anything this deployment approaches. With no cost to weigh against it, there is no reason to retain
+a region served an order of magnitude worse. Were traffic ever to exceed that allowance, this is
+the first setting that
 should be revisited, since South America and Oceania carry the highest per-gigabyte rates in the
 schedule. The general form of the decision is worth noting: the correct choice depended not on
 which configuration was better in the abstract but on where the traffic actually originates and
@@ -413,7 +414,7 @@ consumer connection in Ho Chi Minh City reports 110~ms to an edge in the same ci
 therefore measure edge proximity under favourable conditions, not what a residential viewer in
 each location would experience; the last-mile difference is roughly a factor of two on this
 evidence. What the table does establish, and what a single vantage point could not, is the
-\emph{shape} of the delivery layer --- uniform where the price class reaches, and an order of
+\emph{shape} of the delivery layer: uniform where the price class reaches, and an order of
 magnitude worse where it does not.
 
 \section{Transcoding Pipeline Performance}
@@ -454,7 +455,7 @@ because a full run at these sizes takes 30--100 minutes of AWS Batch time, which
 sampling costly within the project's time and budget; this is a threat to the precision of those
 two rows that Chapter~\ref{chap:conclusion} returns to. For the 100~MB size, the three individual
 runs (346.32~s, 539.80~s, 541.28~s) did not show the monotonic cold-start slowdown the measurement
-protocol anticipated --- the first run was in fact the fastest of the three --- which suggests that
+protocol anticipated, since the first run was in fact the fastest of the three. This suggests that
 Fargate Spot capacity variability dominates over container image pull cost at this scale, rather
 than a first-run-specific effect.}
 
@@ -466,8 +467,8 @@ speedups of 4.12$\times$ and 5.49$\times$ respectively.
 
 Both figures exceed the 4$\times$ that the change in vCPU count alone could account for, and that
 observation deserves scepticism rather than celebration. Amdahl's Law bounds the achievable
-speedup \emph{below} the resource ratio, because the serial portion of an encoder --- entropy
-coding and rate control among others --- does not parallelise; the multi-threaded H.264 literature
+speedup \emph{below} the resource ratio, because the serial portion of an encoder, entropy
+coding and rate control among others, does not parallelise; the multi-threaded H.264 literature
 reports exactly this sub-linear pattern, with Sankaraiah~\textit{et al.} measuring
 1.97$\times$/3.96$\times$/7.71$\times$ at 2/4/8 threads~\cite{sankaraiah2014macroblock} and
 Chen~\textit{et al.} 4.7--8.6$\times$ across six Cell SPEs~\cite{chen2011taskbased}. A measured
@@ -490,8 +491,9 @@ allocation from 1 to 4~vCPU reduced pipeline latency by roughly a factor of four
 but the present sample is too small and too noisy to establish whether the true scaling is
 sub-linear as theory requires, and the simultaneous memory change means the experiment does not
 isolate the effect of vCPU count. Establishing the scaling behaviour properly would require
-repeated 1~vCPU baselines --- the variance there, not the 4~vCPU measurements, is what limits the
-conclusion --- and a separate arm that varies memory alone. This is recorded as future work in
+repeated 1~vCPU baselines, since the variance there rather than in the 4~vCPU measurements is what
+limits the conclusion, together with a separate arm that varies memory alone. This is recorded as
+future work in
 Section~\ref{sec:future-work} rather than presented as a settled result.
 
 Cost per video, by contrast, is robust to this uncertainty: AWS Batch on Fargate bills per
@@ -523,8 +525,8 @@ Secrets Manager entry holding the notification e-mail password was created as an
 without a value whenever e-mail was left unconfigured, while the Batch job definition still
 declared that secret, so every task failed before its entrypoint ran. The defect is described and
 its correction recorded in Section~\ref{sec:limitations}. Its consequence for this experiment is
-specific: the control-plane observations below --- that Amazon SQS retained and forwarded every
-message, and that AWS Batch admitted exactly its configured number of concurrent tasks --- are
+specific: the control-plane observations below, that Amazon SQS retained and forwarded every
+message and that AWS Batch admitted exactly its configured number of concurrent tasks, are
 unaffected, because those mechanisms operate before and independently of the container's
 entrypoint. The \emph{rate} at which the backlog cleared, however, reflects how quickly Fargate
 provisions and fails a task, not how quickly it completes real transcoding work, and must not be
@@ -593,7 +595,7 @@ point at which 76 jobs remained queued until the queue emptied took 416~s in the
 the 92/8 split and the drain rate across two independently implemented generators running on
 different runtimes is considerably stronger evidence than either run alone that the eight-job
 ceiling and the resulting throughput are properties of the compute environment's configuration
---- \texttt{max\_vcpus}~$=$~8 divided by \texttt{job\_vcpu}~$=$~1 --- rather than artefacts of how
+namely \texttt{max\_vcpus}~$=$~8 divided by \texttt{job\_vcpu}~$=$~1, rather than artefacts of how
 one particular client paced its requests.
 
 The latency figures, by contrast, are \emph{not} directly comparable, and reporting them side by
@@ -601,7 +603,7 @@ side without qualification would be an error. The Node.js script times each comp
 so its mean of 2388.52~ms covers all three HTTP requests together; k6's \texttt{http\_req\_duration}
 times each HTTP request individually, giving a mean of 670.03~ms per request across 300 requests.
 Scaling the latter by the three requests per cycle yields 2010.09~ms, within 15.8\% of the Node.js
-figure --- close enough to corroborate it, and the residual gap is consistent with k6 running
+figure, close enough to corroborate it, and the residual gap is consistent with k6 running
 inside a Docker container with an additional network hop that the natively executed Node.js script
 did not incur. Throughput agrees on the same basis once k6's virtual-user initialisation is
 accounted for: the raw 100 cycles over 9.83~s understates the steady-state rate, because no
@@ -634,8 +636,8 @@ Table~\ref{tab:load-crossvalidation}: fifty virtual users driving the
 \texttt{shared-iterations} executor to exactly one hundred upload cycles against the same
 production endpoint.
 
-All three hundred HTTP requests --- initiate, direct-to-S3 PUT, and confirm, across the one
-hundred cycles --- succeeded, for a throughput of 23.47 requests per second and a 95th-percentile
+All three hundred HTTP requests succeeded, covering initiate, direct-to-S3 PUT, and confirm across
+the one hundred cycles, for a throughput of 23.47 requests per second and a 95th-percentile
 request duration of 1827~ms, both consistent with the request-level figures in
 Table~\ref{tab:load-crossvalidation}. The decisive difference is downstream of the HTTP layer:
 every one of the resulting one hundred Batch jobs reached \texttt{SUCCEEDED}, and none failed.
@@ -658,8 +660,8 @@ curve. Repeating it with that cadence in place closes the last measurement gap a
 makes the two curves directly comparable: same scenario, same executor, same fifty-way concurrency
 and one hundred uploads, differing only in whether the payload is a real video.
 
-The HTTP layer behaved as before --- three hundred requests, no failures, 33.12 requests per second
---- and all one hundred Batch jobs again succeeded, with none failing. Independently of the Batch
+The HTTP layer behaved as before, with three hundred requests, no failures and 33.12 requests per
+second, and all one hundred Batch jobs again succeeded, with none failing. Independently of the Batch
 job states, all one hundred video records were confirmed to have reached \texttt{READY} in the
 database, which verifies that the jobs did the work rather than merely exiting zero.
 Table~\ref{tab:drain-rate} reports the comparison.
@@ -678,7 +680,7 @@ Jobs succeeded                  & 0      & 100 \\
 Drain duration (s)              & 456    & 826 \\
 Drain rate (jobs/min)           & 13.16  & 7.26 \\
 Peak concurrent \texttt{RUNNING} & 0     & 8 \\
-Implied wall-clock per job (s)  & ---    & 66.1 \\
+Implied wall-clock per job (s)  & n/a    & 66.1 \\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -699,7 +701,7 @@ observable.
 
 The implied per-job figure is where the number becomes interesting rather than merely precise. At
 eight-way concurrency, 826~seconds for one hundred jobs means roughly 66~seconds of wall-clock per
-job --- for a three-second video. Section~\ref{sec:pipeline-evaluation} measured a 100~MB input at
+job, and that is for a three-second video. Section~\ref{sec:pipeline-evaluation} measured a 100~MB input at
 around 476~seconds, so the fixed overhead visible here is not a small fraction of that, but for
 short content it is almost the entire cost. What the pipeline spends on a three-second clip is
 overwhelmingly container provisioning, image pull and result upload rather than encoding, which
@@ -727,7 +729,7 @@ forty-five seconds, giving 3.75 hours of actual processing per month.
 \midrule
 Compute & \texttt{c5.xlarge} for 730 h: \$124.10 & Fargate Spot for 3.75 h: \$0.05 & 99.96\% \\
 Storage & EBS 100 GB plus S3 50 GB: \$9.25 & S3 with Glacier lifecycle: \$1.45 & 84.32\% \\
-Queueing & Self-hosted broker & SQS and Lambda: \$0.01 & --- \\
+Queueing & Self-hosted broker & SQS and Lambda: \$0.01 & n/a \\
 \midrule
 \textbf{Total} & \textbf{\$133.35} & \textbf{\$1.51} & \textbf{98.87\%} \\
 \bottomrule
