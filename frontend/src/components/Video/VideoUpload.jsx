@@ -1,13 +1,16 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { FiUploadCloud, FiFile, FiX, FiCheck } from 'react-icons/fi';
 import videoApi from '../../api/videoApi';
+import { UPLOAD_CATEGORIES } from '../../i18n/categories';
 import './VideoUpload.css';
 
 /** Dung lượng tối đa mỗi video: 2 GB — phải khớp với giới hạn phía máy chủ */
 const MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024 * 1024;
 
 const VideoUpload = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
 
@@ -15,7 +18,7 @@ const VideoUpload = () => {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    category: 'Công nghệ',
+    category: UPLOAD_CATEGORIES[0].value,
     tags: '',
     visibility: 'public',
   });
@@ -36,7 +39,7 @@ const VideoUpload = () => {
 
     const allowed = ['video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/x-matroska'];
     if (!allowed.includes(selected.type)) {
-      setError('Định dạng không hỗ trợ. Vui lòng chọn file .mp4, .mov, .avi hoặc .mkv');
+      setError(t('upload.errorFormat'));
       return;
     }
 
@@ -45,8 +48,10 @@ const VideoUpload = () => {
     // xong hàng GB rồi mới nhận lỗi từ API.
     if (selected.size > MAX_FILE_SIZE_BYTES) {
       setError(
-        `File vượt quá dung lượng tối đa ${formatFileSize(MAX_FILE_SIZE_BYTES)}. ` +
-          `File bạn chọn có dung lượng ${formatFileSize(selected.size)}.`
+        t('upload.errorTooLarge', {
+          max: formatFileSize(MAX_FILE_SIZE_BYTES),
+          actual: formatFileSize(selected.size),
+        })
       );
       return;
     }
@@ -71,7 +76,7 @@ const VideoUpload = () => {
 
   const handleUpload = async () => {
     if (!file || !formData.title.trim()) {
-      setError('Vui lòng điền tiêu đề video');
+      setError(t('upload.errorNoTitle'));
       return;
     }
 
@@ -112,7 +117,7 @@ const VideoUpload = () => {
       navigate(`/watch/${videoId}`);
     } catch (err) {
       setError(
-        err.response?.data?.message || 'Upload thất bại. Vui lòng thử lại.'
+        err.response?.data?.message || t('upload.errorFailed')
       );
       setStep(2);
       setUploading(false);
@@ -124,7 +129,13 @@ const VideoUpload = () => {
     setStep(1);
     setUploadProgress(0);
     setError('');
-    setFormData({ title: '', description: '', category: 'Công nghệ', tags: '', visibility: 'public' });
+    setFormData({
+      title: '',
+      description: '',
+      category: UPLOAD_CATEGORIES[0].value,
+      tags: '',
+      visibility: 'public',
+    });
   };
 
   return (
@@ -142,8 +153,8 @@ const VideoUpload = () => {
           onDragOver={(e) => e.preventDefault()}
         >
           <FiUploadCloud className="dropzone-icon" />
-          <p className="dropzone-text">Kéo thả video vào đây hoặc nhấn để chọn file</p>
-          <p className="dropzone-hint">Hỗ trợ: MP4, MOV, AVI, MKV</p>
+          <p className="dropzone-text">{t('upload.dropzone')}</p>
+          <p className="dropzone-hint">{t('upload.dropzoneHint')}</p>
           <input
             ref={fileInputRef}
             type="file"
@@ -163,20 +174,20 @@ const VideoUpload = () => {
               <p className="file-name">{file?.name}</p>
               <p className="file-size">{file && formatFileSize(file.size)}</p>
             </div>
-            <button className="btn-icon" onClick={resetUpload} title="Chọn file khác">
+            <button className="btn-icon" onClick={resetUpload} title={t('upload.chooseAnother')}>
               <FiX />
             </button>
           </div>
 
           <div className="upload-form">
             <div className="form-group">
-              <label className="label" htmlFor="vid-title">Tiêu đề *</label>
+              <label className="label" htmlFor="vid-title">{t('upload.titleLabel')}</label>
               <input
                 id="vid-title"
                 name="title"
                 type="text"
                 className="input"
-                placeholder="Nhập tiêu đề video"
+                placeholder={t('upload.titlePlaceholder')}
                 value={formData.title}
                 onChange={handleChange}
                 maxLength={100}
@@ -184,12 +195,12 @@ const VideoUpload = () => {
             </div>
 
             <div className="form-group">
-              <label className="label" htmlFor="vid-desc">Mô tả</label>
+              <label className="label" htmlFor="vid-desc">{t('upload.descriptionLabel')}</label>
               <textarea
                 id="vid-desc"
                 name="description"
                 className="textarea"
-                placeholder="Mô tả nội dung video..."
+                placeholder={t('upload.descriptionPlaceholder')}
                 value={formData.description}
                 onChange={handleChange}
                 maxLength={5000}
@@ -211,7 +222,7 @@ const VideoUpload = () => {
               </div>
 
               <div className="form-group">
-                <label className="label" htmlFor="vid-cat">Danh mục Video</label>
+                <label className="label" htmlFor="vid-cat">{t('upload.categoryLabel')}</label>
                 <select
                   id="vid-cat"
                   name="category"
@@ -219,17 +230,16 @@ const VideoUpload = () => {
                   value={formData.category}
                   onChange={handleChange}
                 >
-                  <option value="Công nghệ">Công nghệ</option>
-                  <option value="Giáo dục">Giáo dục</option>
-                  <option value="Giải trí">Giải trí</option>
-                  <option value="Âm nhạc">Âm nhạc</option>
-                  <option value="Game">Game</option>
-                  <option value="Khác">Khác</option>
+                  {UPLOAD_CATEGORIES.map((cat) => (
+                    <option key={cat.value} value={cat.value}>
+                      {t(`categories.${cat.key}`)}
+                    </option>
+                  ))}
                 </select>
               </div>
 
               <div className="form-group">
-                <label className="label" htmlFor="vid-vis">Quyền riêng tư</label>
+                <label className="label" htmlFor="vid-vis">{t('upload.visibilityLabel')}</label>
                 <select
                   id="vid-vis"
                   name="visibility"
@@ -237,15 +247,15 @@ const VideoUpload = () => {
                   value={formData.visibility}
                   onChange={handleChange}
                 >
-                  <option value="public">Công khai</option>
-                  <option value="unlisted">Không liệt kê</option>
-                  <option value="private">Riêng tư</option>
+                  <option value="public">{t('visibility.public')}</option>
+                  <option value="unlisted">{t('visibility.unlisted')}</option>
+                  <option value="private">{t('visibility.private')}</option>
                 </select>
               </div>
             </div>
 
             <button className="btn btn-primary upload-submit" onClick={handleUpload} disabled={uploading}>
-              <FiUploadCloud /> {uploading ? 'Đang xử lý...' : 'Bắt đầu Upload'}
+              <FiUploadCloud /> {uploading ? t('upload.submitting') : t('upload.submit')}
             </button>
           </div>
         </div>
@@ -263,8 +273,8 @@ const VideoUpload = () => {
           </div>
           <p className="progress-text">
             {uploadProgress < 100
-              ? `Đang tải lên... ${uploadProgress}%`
-              : 'Upload hoàn tất! Đang chuyển hướng...'}
+              ? t('upload.progress', { percent: uploadProgress })
+              : t('upload.done')}
           </p>
           <div className="upload-progress-track">
             <div
