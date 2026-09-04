@@ -1,3 +1,4 @@
+const { t } = require('../config/i18n');
 /**
  * Global Error Handler Middleware
  * Catches all errors thrown in route handlers and services.
@@ -56,7 +57,7 @@ const errorHandler = (err, req, res, _next) => {
   const isUnexpected = statusCode >= 500;
   const clientMessage =
     isUnexpected && process.env.NODE_ENV === 'production'
-      ? 'Đã xảy ra lỗi từ phía máy chủ. Vui lòng thử lại sau.'
+      ? t(req, 'error.unexpected')
       : message;
 
   res.status(statusCode).json({

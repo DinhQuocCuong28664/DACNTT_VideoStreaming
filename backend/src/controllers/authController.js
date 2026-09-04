@@ -1,6 +1,7 @@
 const authService = require('../services/authService');
 const emailService = require('../services/emailService');
 const { clearPlaybackCookies } = require('../services/cloudfrontService');
+const { t, languageOf } = require('../config/i18n');
 
 /**
  * @route   POST /api/auth/logout
@@ -18,7 +19,7 @@ const { clearPlaybackCookies } = require('../services/cloudfrontService');
  */
 const logout = (req, res) => {
   clearPlaybackCookies(res);
-  res.status(200).json({ success: true, message: 'Đã đăng xuất' });
+  res.status(200).json({ success: true, message: t(req, 'auth.loggedOut') });
 };
 
 /**
@@ -143,8 +144,7 @@ const forgotPassword = async (req, res, next) => {
   // co do duoc ghi log day du phia server de con phat hien duoc.
   const genericResponse = {
     success: true,
-    message:
-      'Nếu email này có tài khoản, liên kết đặt lại mật khẩu đã được gửi tới hộp thư của bạn.',
+    message: t(req, 'auth.resetLinkSent'),
   };
 
   try {
@@ -163,7 +163,7 @@ const forgotPassword = async (req, res, next) => {
     const resetUrl = `${frontendUrl}/reset-password/${resetToken}`;
 
     try {
-      await emailService.sendPasswordResetEmail(user.email, resetUrl);
+      await emailService.sendPasswordResetEmail(user.email, resetUrl, languageOf(req));
     } catch (emailError) {
       // Gui mail hong thi thu hoi token vua cap, tranh de lai mot token
       // dat lai mat khau con hieu luc ma nguoi dung khong bao gio nhan duoc.

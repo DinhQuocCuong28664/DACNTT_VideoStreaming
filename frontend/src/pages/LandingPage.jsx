@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import {
   FiPlay,
   FiUploadCloud,
@@ -16,6 +17,8 @@ import {
 import './LandingPage.css';
 
 const LandingPage = () => {
+  const { t } = useTranslation();
+
   return (
     <div className="landing-container">
       {/* ── 1. Hero Section ────────────────────────────── */}
@@ -27,20 +30,19 @@ const LandingPage = () => {
         </div>
 
         <h1 className="hero-title">
-          Nền Tảng Chia Sẻ Video &amp; Chuyển Mã <span className="gradient-text">HLS Tự Động</span>
+          {t('landing.heroTitlePrefix')} <span className="gradient-text">{t('landing.heroTitleAccent')}</span>
         </h1>
 
         <p className="hero-subtitle">
-          Hệ thống chuyển mã đa độ phân giải Adaptive Bitrate (360p, 720p, 1080p) bất đồng bộ Event-Driven 
-          trên kiến trúc AWS Serverless Container (AWS Batch, Fargate SPOT &amp; CloudFront CDN).
+          {t('landing.heroSubtitle')}
         </p>
 
         <div className="hero-actions">
           <Link to="/" className="btn btn-hero-primary">
-            <FiPlay /> Khám Phá Trực Tiếp
+            <FiPlay /> {t('landing.heroExplore')}
           </Link>
           <Link to="/upload" className="btn btn-hero-secondary">
-            <FiUploadCloud /> Tải Video Lên S3
+            <FiUploadCloud /> {t('landing.heroUpload')}
           </Link>
         </div>
 
@@ -103,26 +105,26 @@ const LandingPage = () => {
         <div className="stats-grid">
           <div className="stat-card glass-panel">
             <div className="stat-value gradient-text">98.86%</div>
-            <div className="stat-label">Tiết Giảm Chi Phí AWS</div>
-            <p className="stat-desc">Mô hình Fargate SPOT Scale-to-0 so với máy chủ EC2 24/7 nhàn rỗi.</p>
+            <div className="stat-label">{t('landing.statCostLabel')}</div>
+            <p className="stat-desc">{t('landing.statCostDesc')}</p>
           </div>
 
           <div className="stat-card glass-panel">
             <div className="stat-value gradient-text">&lt; 1.2s</div>
             <div className="stat-label">Time-to-First-Frame</div>
-            <p className="stat-desc">Tốc độ phát video HLS mượt mà qua CloudFront CDN Origin Access Control.</p>
+            <p className="stat-desc">{t('landing.statCdnDesc')}</p>
           </div>
 
           <div className="stat-card glass-panel">
             <div className="stat-value gradient-text">360p - 1080p</div>
             <div className="stat-label">Adaptive Bitrate (ABR)</div>
-            <p className="stat-desc">Tự động điều chỉnh độ phân giải theo băng thông mạng người dùng.</p>
+            <p className="stat-desc">{t('landing.statAbrDesc')}</p>
           </div>
 
           <div className="stat-card glass-panel">
             <div className="stat-value gradient-text">100%</div>
-            <div className="stat-label">Tự Động Hóa CI/CD</div>
-            <p className="stat-desc">11 Terraform Modules (IaC) &amp; 5 GitHub Actions Workflows tích hợp DevSecOps.</p>
+            <div className="stat-label">{t('landing.statCicdLabel')}</div>
+            <p className="stat-desc">{t('landing.statCicdDesc')}</p>
           </div>
         </div>
       </section>
@@ -131,10 +133,10 @@ const LandingPage = () => {
       <section className="landing-features" id="features">
         <div className="section-header">
           <h2 className="section-title">
-            Tính Năng Nổi Bật Dành Cho <span className="gradient-text">Nền Tảng Video Thế Hệ Mới</span>
+            {t('landing.featuresTitlePrefix')} <span className="gradient-text">{t('landing.featuresTitleAccent')}</span>
           </h2>
           <p className="section-subtitle">
-            Giải pháp toàn diện từ khâu tải lên, nén video bất đồng bộ đến phân phối đa luồng bảo mật trên AWS Cloud.
+            {t('landing.featuresSubtitle')}
           </p>
         </div>
 
@@ -143,9 +145,9 @@ const LandingPage = () => {
             <div className="feature-icon icon-purple">
               <FiPlay />
             </div>
-            <h3 className="feature-title">Chuyển Mã HLS &amp; ABR Tự Động</h3>
+            <h3 className="feature-title">{t('landing.featureHlsTitle')}</h3>
             <p className="feature-desc">
-              Container FFmpeg tự động phân tách video gốc thành các đoạn `.ts` (6s) và khởi tạo file `master.m3u8` nén 3 độ phân giải (360p, 720p, 1080p).
+              {t('landing.featureHlsDesc')}
             </p>
           </div>
 
@@ -155,7 +157,7 @@ const LandingPage = () => {
             </div>
             <h3 className="feature-title">AWS Serverless Container</h3>
             <p className="feature-desc">
-              Khởi tạo AWS Batch Job trên Fargate SPOT giải phóng 100% tài nguyên khi không có video (Scale to 0), tối ưu hóa bài toán Idle Resource Cost.
+              {t('landing.featureScaleDesc')}
             </p>
           </div>
 
@@ -165,7 +167,7 @@ const LandingPage = () => {
             </div>
             <h3 className="feature-title">Event-Driven Architecture</h3>
             <p className="feature-desc">
-              Luồng xử lý bất đồng bộ kết nối Amazon S3 Event Notification, Amazon SQS Queue, AWS Lambda Submitter &amp; CSDL MongoDB Atlas.
+              {t('landing.featureEventDesc')}
             </p>
           </div>
 
@@ -173,9 +175,9 @@ const LandingPage = () => {
             <div className="feature-icon icon-amber">
               <FiGlobe />
             </div>
-            <h3 className="feature-title">Phân Phối CloudFront CDN &amp; OAC</h3>
+            <h3 className="feature-title">{t('landing.featureCdnTitle')}</h3>
             <p className="feature-desc">
-              Bảo mật S3 Processed Bucket bằng Origin Access Control (OAC), chặn hoàn toàn truy cập public trực tiếp, phát video tốc độ cao toàn cầu.
+              {t('landing.featureCdnDesc')}
             </p>
           </div>
 
@@ -183,9 +185,9 @@ const LandingPage = () => {
             <div className="feature-icon icon-blue">
               <FiMoon />
             </div>
-            <h3 className="feature-title">Giao Diện Dark / Light Theme</h3>
+            <h3 className="feature-title">{t('landing.featureThemeTitle')}</h3>
             <p className="feature-desc">
-              Thiết kế trải nghiệm người dùng hiện đại kiểu YouTube, hỗ trợ chuyển đổi chủ đề Sáng/Tối mượt mà tự động lưu bộ nhớ trình duyệt.
+              {t('landing.featureThemeDesc')}
             </p>
           </div>
 
@@ -195,7 +197,7 @@ const LandingPage = () => {
             </div>
             <h3 className="feature-title">DevSecOps &amp; Security Gate</h3>
             <p className="feature-desc">
-              Tự động hóa kiểm thử Jest Unit Tests (13/13 Pass), rà soát mã nguồn Gitleaks, quét container Trivy SCA và kiểm thử tải k6 Stress Test.
+              {t('landing.featureCicdDesc')}
             </p>
           </div>
         </div>
@@ -205,10 +207,10 @@ const LandingPage = () => {
       <section className="landing-architecture" id="architecture">
         <div className="section-header">
           <h2 className="section-title">
-            Kiến Trúc Hệ Thống <span className="gradient-text">Event-Driven &amp; Serverless</span>
+            {t('landing.archTitlePrefix')} <span className="gradient-text">{t('landing.archTitleAccent')}</span>
           </h2>
           <p className="section-subtitle">
-            Quy trình nén và phát video tự động 4 bước với các thành phần hạ tầng AWS Cloud tiên tiến.
+            {t('landing.archSubtitle')}
           </p>
         </div>
 
@@ -238,7 +240,7 @@ const LandingPage = () => {
 
             <h3 className="arch-card-title">1. Direct S3 Upload</h3>
             <p className="arch-card-desc">
-              Tải trực tiếp video từ trình duyệt người dùng lên Amazon S3 qua Pre-signed URL, loại bỏ nút thắt nghẽn Server Backend.
+              {t('landing.archStep1')}
             </p>
           </div>
 
@@ -269,7 +271,7 @@ const LandingPage = () => {
 
             <h3 className="arch-card-title">2. Event Notification Queue</h3>
             <p className="arch-card-desc">
-              S3 tự động gửi sự kiện sang Amazon SQS Queue, kích hoạt AWS Lambda khởi tạo Job chuyển mã bất đồng bộ.
+              {t('landing.archStep2')}
             </p>
           </div>
 
@@ -301,7 +303,7 @@ const LandingPage = () => {
 
             <h3 className="arch-card-title">3. Fargate SPOT Container</h3>
             <p className="arch-card-desc">
-              Container Docker FFmpeg tự động khởi tạo trên Fargate SPOT nén HLS m3u8 và tự giải phóng 100% tài nguyên sau khi làm xong.
+              {t('landing.archStep3')}
             </p>
           </div>
 
@@ -332,7 +334,7 @@ const LandingPage = () => {
 
             <h3 className="arch-card-title">4. CloudFront &amp; HLS Player</h3>
             <p className="arch-card-desc">
-              Phân phối luồng video HLS siêu mượt qua CloudFront CDN toàn cầu bảo mật OAC tới trình phát HLS.js trên Web UI.
+              {t('landing.archStep4')}
             </p>
           </div>
         </div>
@@ -344,7 +346,7 @@ const LandingPage = () => {
           <div className="code-showcase-header">
             <FiCode />
             <span>infrastructure/modules/lambda/src/index.js</span>
-            <span className="code-showcase-tag">Lambda Job Submitter — mã nguồn thật</span>
+            <span className="code-showcase-tag">{t('landing.codeTag')}</span>
           </div>
           <pre className="code-showcase-body font-mono">
             <code>{`const submitCommand = new SubmitJobCommand({
@@ -369,16 +371,16 @@ const response = await batchClient.send(submitCommand);
       {/* ── 5. Call To Action (CTA) ────────────────────── */}
       <section className="landing-cta glass-panel">
         <div className="cta-content">
-          <h2 className="cta-title">Sẵn Sàng Trải Nghiệm Hệ Thống Phát Video HLS Thế Hệ Mới?</h2>
+          <h2 className="cta-title">{t('landing.ctaTitle')}</h2>
           <p className="cta-desc">
-            Trải nghiệm nền tảng chia sẻ video trực tuyến với công nghệ chuyển mã HLS tự động và giao diện hiện đại ngay hôm nay.
+            {t('landing.ctaSubtitle')}
           </p>
           <div className="cta-buttons">
             <Link to="/register" className="btn btn-hero-primary">
-              <FiCheckCircle /> Đăng Ký Tài Khoản
+              <FiCheckCircle /> {t('landing.ctaRegister')}
             </Link>
             <Link to="/" className="btn btn-hero-secondary">
-              <FiPlay /> Xem Danh Sách Video
+              <FiPlay /> {t('landing.ctaBrowse')}
             </Link>
           </div>
         </div>

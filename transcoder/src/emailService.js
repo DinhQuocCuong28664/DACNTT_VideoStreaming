@@ -46,21 +46,31 @@ const emailStyles = {
 const sendVideoReadyEmail = async (to, { title, videoId, displayName }) => {
   const transporter = createTransporter();
   const watchUrl = `${config.frontendUrl}/watch/${videoId}`;
+  // Email này gửi từ một AWS Batch job, không phải từ một request, nên không
+  // có tiêu đề Accept-Language nào để suy ra ngôn ngữ người nhận và hồ sơ
+  // người dùng cũng chưa lưu tuỳ chọn ngôn ngữ. Cách đúng đắn duy nhất khi
+  // chưa biết là viết cả hai thứ tiếng; lưu tuỳ chọn ngôn ngữ trên tài khoản
+  // là hướng sửa triệt để, được ghi lại trong phần Future Work của báo cáo.
+  const greetingEn = displayName ? `Hello ${displayName},` : 'Hello,';
   const greeting = displayName ? `Xin chào ${displayName},` : 'Xin chào,';
 
   const mailOptions = {
     from: config.email.from,
     to,
-    subject: '✅ Video của bạn đã sẵn sàng — DACNTT Video Platform',
+    subject: '✅ Your video is ready · Video của bạn đã sẵn sàng — DACNTT Video Platform',
     html: `
       <div style="${emailStyles.wrapper}">
         <h2 style="${emailStyles.heading}">🎬 DACNTT Video Platform</h2>
         <hr style="${emailStyles.hr}" />
+        <p>${greetingEn}</p>
+        <p>Your video <strong>"${title}"</strong> has finished transcoding and is ready to watch.</p>
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${watchUrl}" style="${emailStyles.buttonSuccess}">Watch it now</a>
+        </div>
+        <p style="${emailStyles.muted}">It is available at several quality levels, chosen automatically from the viewer's connection speed.</p>
+        <hr style="${emailStyles.hr}" />
         <p>${greeting}</p>
         <p>Video <strong>"${title}"</strong> của bạn đã chuyển mã xong và sẵn sàng để xem.</p>
-        <div style="text-align: center; margin: 30px 0;">
-          <a href="${watchUrl}" style="${emailStyles.buttonSuccess}">Xem video ngay</a>
-        </div>
         <p style="${emailStyles.muted}">Video hiện hỗ trợ phát ở nhiều mức chất lượng, tự động điều chỉnh theo tốc độ mạng của người xem.</p>
         <hr style="${emailStyles.hr}" />
         <p style="${emailStyles.footer}">© 2026 DACNTT Video Platform — zelostech.site</p>
@@ -84,15 +94,20 @@ const sendVideoReadyEmail = async (to, { title, videoId, displayName }) => {
  */
 const sendVideoFailedEmail = async (to, { title, displayName }) => {
   const transporter = createTransporter();
+  const greetingEn = displayName ? `Hello ${displayName},` : 'Hello,';
   const greeting = displayName ? `Xin chào ${displayName},` : 'Xin chào,';
 
   const mailOptions = {
     from: config.email.from,
     to,
-    subject: '❌ Video xử lý thất bại — DACNTT Video Platform',
+    subject: '❌ Video processing failed · Video xử lý thất bại — DACNTT Video Platform',
     html: `
       <div style="${emailStyles.wrapper}">
         <h2 style="${emailStyles.heading}">🎬 DACNTT Video Platform</h2>
+        <hr style="${emailStyles.hr}" />
+        <p>${greetingEn}</p>
+        <p>Unfortunately your video <strong>"${title}"</strong> hit an error during processing and could not be completed.</p>
+        <p style="${emailStyles.muted}">Please check the file format (.mp4, .mov, .mkv and .webm are recommended) and try uploading again. If it keeps failing, contact support.</p>
         <hr style="${emailStyles.hr}" />
         <p>${greeting}</p>
         <p>Rất tiếc, video <strong>"${title}"</strong> của bạn đã gặp lỗi trong quá trình xử lý và không thể hoàn tất.</p>

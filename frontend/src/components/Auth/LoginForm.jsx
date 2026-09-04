@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/useAuth';
 import GoogleSignInButton from './GoogleSignInButton';
 import LogoIcon from '../Layout/LogoIcon';
 import './AuthForm.css';
 
 const LoginForm = () => {
+  const { t } = useTranslation();
   const { login, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
   const [formData, setFormData] = useState({ email: '', password: '' });
@@ -27,7 +29,7 @@ const LoginForm = () => {
       navigate('/');
     } catch (err) {
       setError(
-        err.response?.data?.message || 'Đăng nhập thất bại. Vui lòng thử lại.'
+        err.response?.data?.message || t('auth.loginFailed')
       );
     } finally {
       setLoading(false);
@@ -41,8 +43,8 @@ const LoginForm = () => {
           <div className="logo-icon"><LogoIcon /></div>
           <span className="logo-text">VidShare</span>
         </div>
-        <h1 className="auth-title">Đăng nhập</h1>
-        <p className="auth-subtitle">Chào mừng bạn quay lại</p>
+        <h1 className="auth-title">{t('auth.loginTitle')}</h1>
+        <p className="auth-subtitle">{t('auth.loginSubtitle')}</p>
 
         {error && <div className="auth-error">{error}</div>}
 
@@ -62,7 +64,7 @@ const LoginForm = () => {
           </div>
 
           <div className="form-group">
-            <label className="label" htmlFor="password">Mật khẩu</label>
+            <label className="label" htmlFor="password">{t('auth.passwordLabel')}</label>
             <input
               id="password"
               name="password"
@@ -75,16 +77,16 @@ const LoginForm = () => {
               minLength={6}
             />
             <Link to="/forgot-password" style={{ alignSelf: 'flex-end', fontSize: 'var(--font-size-xs)', color: 'var(--accent-primary)', marginTop: 4 }}>
-              Quên mật khẩu?
+              {t('auth.forgotPassword')}
             </Link>
           </div>
 
           <button type="submit" className="btn btn-primary" disabled={loading}>
-            {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
+            {loading ? t('auth.loginSubmitting') : t('auth.loginSubmit')}
           </button>
         </form>
 
-        <div className="auth-divider"><span>hoặc</span></div>
+        <div className="auth-divider"><span>{t('auth.or')}</span></div>
         <GoogleSignInButton
           onCredential={async (credential) => {
             await loginWithGoogle(credential);
@@ -94,7 +96,7 @@ const LoginForm = () => {
         />
 
         <p className="auth-footer">
-          Chưa có tài khoản? <Link to="/register">Đăng ký ngay</Link>
+          {t('auth.noAccount')} <Link to="/register">{t('auth.registerNow')}</Link>
         </p>
       </div>
     </div>

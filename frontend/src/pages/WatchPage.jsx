@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link, Navigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { FiEye, FiClock, FiShare2, FiUser, FiThumbsUp, FiThumbsDown, FiMessageSquare, FiTrash2 } from 'react-icons/fi';
 import { useAuth } from '../context/useAuth';
 import videoApi from '../api/videoApi';
@@ -7,6 +8,7 @@ import VideoPlayer from '../components/Video/VideoPlayer';
 import './WatchPage.css';
 
 const WatchPage = () => {
+  const { t } = useTranslation();
   const { id } = useParams();
   const { user: currentUser, isAuthenticated } = useAuth();
   const [video, setVideo] = useState(null);
@@ -130,7 +132,7 @@ const WatchPage = () => {
   }, [id]);
 
   const handleLike = async () => {
-    if (!isAuthenticated) return alert('Vui lòng đăng nhập để thích video');
+    if (!isAuthenticated) return alert(t('watch.loginToLike'));
     try {
       const res = await videoApi.toggleLike(id);
       setLikesCount(res.data.data.likesCount);
@@ -143,7 +145,7 @@ const WatchPage = () => {
   };
 
   const handleDislike = async () => {
-    if (!isAuthenticated) return alert('Vui lòng đăng nhập để không thích video');
+    if (!isAuthenticated) return alert(t('watch.loginToDislike'));
     try {
       const res = await videoApi.toggleDislike(id);
       setLikesCount(res.data.data.likesCount);
@@ -158,7 +160,7 @@ const WatchPage = () => {
   const handleAddComment = async (e) => {
     e.preventDefault();
     if (!newComment.trim()) return;
-    if (!isAuthenticated) return alert('Vui lòng đăng nhập để bình luận');
+    if (!isAuthenticated) return alert(t('watch.loginToComment'));
 
     setPostingComment(true);
     try {
@@ -173,7 +175,7 @@ const WatchPage = () => {
   };
 
   const handleDeleteComment = async (commentId) => {
-    if (!window.confirm('Bạn có chắc muốn xóa bình luận này?')) return;
+    if (!window.confirm(t('watch.confirmDeleteComment'))) return;
     try {
       await videoApi.deleteComment(commentId);
       setComments(comments.filter((c) => c._id !== commentId));
@@ -240,17 +242,17 @@ const WatchPage = () => {
           {video.status === 'PROCESSING' ? (
             <>
               <div className="spinner" />
-              <p>Video đang được chuyển mã…</p>
+              <p>{t('watch.transcoding')}</p>
               <span className="badge badge-processing">PROCESSING</span>
             </>
           ) : video.status === 'ERROR' ? (
             <>
-              <p className="player-placeholder-error">Xử lý video thất bại</p>
+              <p className="player-placeholder-error">{t('watch.processingFailed')}</p>
               <span className="badge badge-error">ERROR</span>
             </>
           ) : (
             <>
-              <p>Video đang chờ xử lý…</p>
+              <p>{t('watch.queued')}</p>
               <span className="badge badge-processing">UPLOADING</span>
             </>
           )}
@@ -264,7 +266,7 @@ const WatchPage = () => {
         <div className="watch-meta-row">
           <div className="watch-stats">
             <span>
-              <FiEye /> {formatViews(video.views)} lượt xem
+              <FiEye /> {t('watch.views', { value: formatViews(video.views) })}
             </span>
             <span aria-hidden="true">•</span>
             <span>
@@ -288,7 +290,7 @@ const WatchPage = () => {
               <FiThumbsDown /> {dislikesCount}
             </button>
             <button className="btn btn-secondary" onClick={handleShare}>
-              <FiShare2 /> {copied ? 'Đã sao chép' : 'Chia sẻ'}
+              <FiShare2 /> {copied ? t('watch.copied') : t('watch.share')}
             </button>
           </div>
         </div>
@@ -316,7 +318,7 @@ const WatchPage = () => {
         {/* Bình luận */}
         <section className="comments-section">
           <h3 className="comments-heading">
-            <FiMessageSquare /> Bình luận ({comments.length})
+            <FiMessageSquare /> {t('watch.commentsHeading', { count: comments.length })}
           </h3>
 
           {isAuthenticated ? (
@@ -324,18 +326,18 @@ const WatchPage = () => {
               <input
                 type="text"
                 className="form-control"
-                placeholder="Viết bình luận của bạn…"
+                placeholder={t('watch.commentPlaceholder')}
                 value={newComment}
                 onChange={(e) => setNewComment(e.target.value)}
-                aria-label="Nội dung bình luận"
+                aria-label={t('watch.commentAriaLabel')}
               />
               <button type="submit" className="btn btn-primary" disabled={postingComment}>
-                {postingComment ? 'Đang gửi…' : 'Gửi'}
+                {postingComment ? t('watch.commentSubmitting') : t('watch.commentSubmit')}
               </button>
             </form>
           ) : (
             <p className="comment-login-hint">
-              <Link to="/login">Đăng nhập</Link> để viết bình luận.
+              <Link to="/login">{t('nav.login')}</Link> {t('watch.loginPrompt')}
             </p>
           )}
 
@@ -356,8 +358,8 @@ const WatchPage = () => {
                           type="button"
                           className="comment-delete"
                           onClick={() => handleDeleteComment(c._id)}
-                          title="Xoá bình luận"
-                          aria-label="Xoá bình luận"
+                          title={t('watch.deleteComment')}
+                          aria-label={t('watch.deleteComment')}
                         >
                           <FiTrash2 size={14} />
                         </button>

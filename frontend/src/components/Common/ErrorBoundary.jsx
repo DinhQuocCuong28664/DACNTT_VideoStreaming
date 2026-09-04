@@ -1,4 +1,5 @@
 import { Component } from 'react';
+import { withTranslation } from 'react-i18next';
 import LogoIcon from '../Layout/LogoIcon';
 import './ErrorBoundary.css';
 
@@ -25,7 +26,7 @@ class ErrorBoundary extends Component {
 
   componentDidCatch(error, info) {
     // Giữ lại trong console để còn lần ra được khi người dùng báo lỗi.
-    console.error('Lỗi render không bắt được:', error, info?.componentStack);
+    console.error('Uncaught render error:', error, info?.componentStack);
   }
 
   handleReload = () => {
@@ -43,19 +44,17 @@ class ErrorBoundary extends Component {
             <span>VidShare</span>
           </div>
 
-          <h1 className="eb-title">Đã có lỗi xảy ra</h1>
+          <h1 className="eb-title">{this.props.t('errorBoundary.title')}</h1>
           <p className="eb-message">
-            Giao diện gặp sự cố ngoài dự kiến nên không hiển thị tiếp được.
-            Lỗi này nằm ở phía trình duyệt, video và dữ liệu của bạn không bị
-            ảnh hưởng.
+            {this.props.t('errorBoundary.body')}
           </p>
 
           <div className="eb-actions">
             <button type="button" className="btn btn-primary" onClick={this.handleReload}>
-              Về trang chủ
+              {this.props.t('errorBoundary.home')}
             </button>
             <button type="button" className="btn" onClick={() => window.location.reload()}>
-              Tải lại trang
+              {this.props.t('errorBoundary.reload')}
             </button>
           </div>
 
@@ -70,4 +69,8 @@ class ErrorBoundary extends Component {
   }
 }
 
-export default ErrorBoundary;
+// withTranslation cấp prop `t` cho component lớp, vì error boundary bắt buộc
+// phải là lớp và do đó không dùng được hook useTranslation.
+const TranslatedErrorBoundary = withTranslation()(ErrorBoundary);
+
+export default TranslatedErrorBoundary;

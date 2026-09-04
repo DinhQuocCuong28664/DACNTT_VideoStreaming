@@ -1,3 +1,4 @@
+const { t } = require('../config/i18n');
 /**
  * Request Validation Middleware Factory
  * Lightweight validation without external libraries (Joi, etc.)
@@ -82,7 +83,7 @@ const validateUploadMetadata = (req, res, next) => {
   if (!ALLOWED_VIDEO_MIME_TYPES.includes(mimeType)) {
     return res.status(400).json({
       success: false,
-      message: `Định dạng tệp không được hỗ trợ. Chỉ chấp nhận: ${ALLOWED_VIDEO_MIME_TYPES.join(', ')}`,
+      message: t(req, 'upload.badVideoType', { types: ALLOWED_VIDEO_MIME_TYPES.join(', ') }),
     });
   }
 
@@ -92,14 +93,14 @@ const validateUploadMetadata = (req, res, next) => {
     if (!Number.isFinite(size) || size <= 0) {
       return res.status(400).json({
         success: false,
-        message: 'Dung lượng tệp không hợp lệ',
+        message: t(req, 'upload.badSize'),
       });
     }
 
     if (size > MAX_VIDEO_SIZE_BYTES) {
       return res.status(400).json({
         success: false,
-        message: `Tệp vượt quá dung lượng tối đa cho phép (${MAX_VIDEO_SIZE_BYTES / (1024 * 1024 * 1024)} GB)`,
+        message: t(req, 'upload.videoTooLarge', { limit: MAX_VIDEO_SIZE_BYTES / (1024 * 1024 * 1024) }),
       });
     }
   }
@@ -126,7 +127,7 @@ const validateAvatarMetadata = (req, res, next) => {
   if (!ALLOWED_AVATAR_MIME_TYPES.includes(mimeType)) {
     return res.status(400).json({
       success: false,
-      message: `Định dạng ảnh không được hỗ trợ. Chỉ chấp nhận: ${ALLOWED_AVATAR_MIME_TYPES.join(', ')}`,
+      message: t(req, 'upload.badAvatarType', { types: ALLOWED_AVATAR_MIME_TYPES.join(', ') }),
     });
   }
 
@@ -136,14 +137,14 @@ const validateAvatarMetadata = (req, res, next) => {
     if (!Number.isFinite(size) || size <= 0) {
       return res.status(400).json({
         success: false,
-        message: 'Dung lượng tệp không hợp lệ',
+        message: t(req, 'upload.badSize'),
       });
     }
 
     if (size > MAX_AVATAR_SIZE_BYTES) {
       return res.status(400).json({
         success: false,
-        message: `Ảnh vượt quá dung lượng tối đa cho phép (${MAX_AVATAR_SIZE_BYTES / (1024 * 1024)} MB)`,
+        message: t(req, 'upload.avatarTooLarge', { limit: MAX_AVATAR_SIZE_BYTES / (1024 * 1024) }),
       });
     }
   }

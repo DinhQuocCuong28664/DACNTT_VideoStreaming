@@ -8,6 +8,7 @@
  */
 
 const rateLimit = require('express-rate-limit');
+const { t } = require('../config/i18n');
 
 // Bỏ qua giới hạn khi chạy test để không làm hỏng các bộ test tự động
 const skipInTest = () => process.env.NODE_ENV === 'test';
@@ -22,10 +23,7 @@ const authLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   skip: skipInTest,
-  message: {
-    success: false,
-    message: 'Quá nhiều lần thử. Vui lòng đợi 15 phút rồi thử lại.',
-  },
+  message: (req) => ({ success: false, message: t(req, 'rate.tooManyAttempts') }),
 });
 
 /**
@@ -38,10 +36,7 @@ const uploadLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   skip: skipInTest,
-  message: {
-    success: false,
-    message: 'Bạn đã tải lên quá nhiều video trong một giờ. Vui lòng thử lại sau.',
-  },
+  message: (req) => ({ success: false, message: t(req, 'rate.tooManyUploads') }),
 });
 
 /**
@@ -53,10 +48,7 @@ const apiLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   skip: skipInTest,
-  message: {
-    success: false,
-    message: 'Quá nhiều yêu cầu từ địa chỉ IP này. Vui lòng thử lại sau.',
-  },
+  message: (req) => ({ success: false, message: t(req, 'rate.tooManyRequests') }),
 });
 
 module.exports = { authLimiter, uploadLimiter, apiLimiter };

@@ -1,4 +1,5 @@
 const { getSignedCookies } = require('@aws-sdk/cloudfront-signer');
+const { translate, DEFAULT_LANGUAGE } = require('../config/i18n');
 
 /**
  * Dịch vụ cấp CloudFront Signed Cookie cho việc phát video.
@@ -68,7 +69,7 @@ const buildResourcePattern = (videoId) => {
  */
 const generatePlaybackCookies = (videoId) => {
   if (!isSigningEnabled()) {
-    const error = new Error('CloudFront signing chưa được cấu hình trên máy chủ');
+    const error = new Error(translate(DEFAULT_LANGUAGE, 'cloudfront.notConfigured'));
     error.statusCode = 503;
     throw error;
   }

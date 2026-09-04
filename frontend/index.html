@@ -5,7 +5,33 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>VidShare</title>
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <!--
+      Google Identity Services dựng chữ bên trong nút đăng nhập, và nó chốt
+      ngôn ngữ ngay lúc script được nạp chứ không đọc lại tuỳ chọn `locale`
+      truyền cho renderButton sau đó. Vì vậy ngôn ngữ phải đi kèm ngay trên URL
+      của script. Đọc lựa chọn đã lưu của người dùng (cùng khoá mà bộ dò ngôn
+      ngữ của i18next ghi) trước khi chèn thẻ script; nếu chưa có lựa chọn nào
+      thì bỏ trống để Google tự suy từ trình duyệt như trước.
+    -->
+    <script>
+      (function () {
+        var lang = null;
+        try {
+          lang = localStorage.getItem('vidshare-language');
+        } catch (e) {
+          lang = null;
+        }
+
+        var src = 'https://accounts.google.com/gsi/client';
+        if (lang === 'vi' || lang === 'en') src += '?hl=' + lang;
+
+        var s = document.createElement('script');
+        s.src = src;
+        s.async = true;
+        s.defer = true;
+        document.head.appendChild(s);
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

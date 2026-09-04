@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FiCheckCircle, FiCamera } from 'react-icons/fi';
 import { useAuth } from '../context/useAuth';
 import userApi from '../api/userApi';
@@ -9,6 +10,7 @@ const ALLOWED_AVATAR_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const MAX_AVATAR_SIZE_BYTES = 5 * 1024 * 1024;
 
 const SettingsPage = () => {
+  const { t } = useTranslation();
   const { user, linkGoogleAccount, updateUser } = useAuth();
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -20,7 +22,7 @@ const SettingsPage = () => {
     setError('');
     setSuccess('');
     await linkGoogleAccount(credential);
-    setSuccess('Đã liên kết tài khoản Google thành công.');
+    setSuccess(t('settings.googleLinkedNow'));
   };
 
   const handleAvatarFileChange = async (e) => {
@@ -31,11 +33,11 @@ const SettingsPage = () => {
     setAvatarError('');
 
     if (!ALLOWED_AVATAR_TYPES.includes(file.type)) {
-      setAvatarError('Chỉ chấp nhận ảnh JPEG, PNG hoặc WebP.');
+      setAvatarError(t('settings.avatarBadType'));
       return;
     }
     if (file.size > MAX_AVATAR_SIZE_BYTES) {
-      setAvatarError('Ảnh vượt quá dung lượng tối đa 5MB.');
+      setAvatarError(t('settings.avatarTooLarge'));
       return;
     }
 
@@ -50,7 +52,7 @@ const SettingsPage = () => {
       updateUser(confirmRes.data.data.user);
     } catch (err) {
       setAvatarError(
-        err.response?.data?.message || 'Tải ảnh đại diện thất bại. Vui lòng thử lại.'
+        err.response?.data?.message || t('settings.avatarFailed')
       );
     } finally {
       setUploading(false);
@@ -59,10 +61,10 @@ const SettingsPage = () => {
 
   return (
     <div className="container settings-page">
-      <h1 className="settings-title">Cài đặt tài khoản</h1>
+      <h1 className="settings-title">{t('settings.title')}</h1>
 
       <div className="card settings-card">
-        <h2 className="settings-section-title">Ảnh đại diện</h2>
+        <h2 className="settings-section-title">{t('settings.avatarSection')}</h2>
 
         <div className="settings-avatar-row">
           {user?.avatar ? (
@@ -80,10 +82,10 @@ const SettingsPage = () => {
               onClick={() => fileInputRef.current?.click()}
               disabled={uploading}
             >
-              <FiCamera /> {uploading ? 'Đang tải lên...' : 'Đổi ảnh đại diện'}
+              <FiCamera /> {uploading ? t('settings.uploadingAvatar') : t('settings.changeAvatar')}
             </button>
             <p className="settings-section-desc settings-avatar-hint">
-              JPEG, PNG hoặc WebP, tối đa 5MB.
+              {t('settings.avatarHint')}
             </p>
           </div>
 
@@ -100,10 +102,10 @@ const SettingsPage = () => {
       </div>
 
       <div className="card settings-card">
-        <h2 className="settings-section-title">Thông tin tài khoản</h2>
+        <h2 className="settings-section-title">{t('settings.accountSection')}</h2>
         <dl className="settings-info-list">
           <div>
-            <dt>Tên người dùng</dt>
+            <dt>{t('settings.usernameLabel')}</dt>
             <dd>{user?.username}</dd>
           </div>
           <div>
@@ -114,17 +116,16 @@ const SettingsPage = () => {
       </div>
 
       <div className="card settings-card">
-        <h2 className="settings-section-title">Đăng nhập bằng Google</h2>
+        <h2 className="settings-section-title">{t('settings.googleSection')}</h2>
 
         {user?.googleId ? (
           <p className="settings-linked-status">
-            <FiCheckCircle /> Đã liên kết với tài khoản Google ({user.email})
+            <FiCheckCircle /> {t('settings.googleLinked', { email: user.email })}
           </p>
         ) : (
           <>
             <p className="settings-section-desc">
-              Liên kết để có thể đăng nhập nhanh bằng Google thay vì mật khẩu,
-              dùng đúng địa chỉ email hiện tại của bạn ({user?.email}).
+              {t('settings.googleHint', { email: user?.email })}
             </p>
             {error && <div className="settings-error">{error}</div>}
             {success && <p className="settings-linked-status"><FiCheckCircle /> {success}</p>}
