@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { FiEye, FiClock } from 'react-icons/fi';
 import './VideoCard.css';
 
 const VideoCard = ({ video }) => {
+  const { t } = useTranslation();
   /**
    * Ảnh đại diện có thể tồn tại trong cơ sở dữ liệu nhưng không tải được:
    * tệp bị xoá khỏi kho lưu trữ, đường dẫn trỏ tới bucket cũ, hoặc quyền truy
@@ -22,15 +24,15 @@ const VideoCard = ({ video }) => {
 
   const formatTimeAgo = (dateStr) => {
     const seconds = Math.floor((Date.now() - new Date(dateStr)) / 1000);
-    if (seconds < 60) return 'Vừa xong';
+    if (seconds < 60) return t('videoCard.justNow');
     const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes} phút trước`;
+    if (minutes < 60) return t('videoCard.minutesAgo', { count: minutes });
     const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours} giờ trước`;
+    if (hours < 24) return t('videoCard.hoursAgo', { count: hours });
     const days = Math.floor(hours / 24);
-    if (days < 30) return `${days} ngày trước`;
+    if (days < 30) return t('videoCard.daysAgo', { count: days });
     const months = Math.floor(days / 30);
-    return `${months} tháng trước`;
+    return t('videoCard.monthsAgo', { count: months });
   };
 
   const user = video.user || {};
@@ -56,7 +58,7 @@ const VideoCard = ({ video }) => {
           </span>
         )}
         {video.status === 'PROCESSING' && (
-          <span className="video-status-badge">Đang xử lý...</span>
+          <span className="video-status-badge">{t('videoCard.processing')}</span>
         )}
       </div>
 
@@ -74,10 +76,10 @@ const VideoCard = ({ video }) => {
         <div className="video-card-details">
           <h3 className="video-card-title">{video.title}</h3>
           <p className="video-card-channel">
-            {user.displayName || user.username || 'Unknown'}
+            {user.displayName || user.username || t('videoCard.unknownChannel')}
           </p>
           <div className="video-card-meta">
-            <span><FiEye /> {formatViews(video.views)} lượt xem</span>
+            <span><FiEye /> {t('videoCard.views', { value: formatViews(video.views) })}</span>
             <span><FiClock /> {formatTimeAgo(video.createdAt)}</span>
           </div>
         </div>

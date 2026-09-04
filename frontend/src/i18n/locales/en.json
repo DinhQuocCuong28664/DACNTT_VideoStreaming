@@ -1,0 +1,97 @@
+{
+  "language": {
+    "label": "Language",
+    "vi": "Tiếng Việt",
+    "en": "English",
+    "switchTo": "Switch to {{lang}}"
+  },
+  "nav": {
+    "searchPlaceholder": "Search videos...",
+    "search": "Search",
+    "toggleMenu": "Toggle menu",
+    "about": "About",
+    "aboutTitle": "About the platform",
+    "upload": "Upload",
+    "uploadVideo": "Upload a video",
+    "myChannel": "My channel",
+    "settings": "Settings",
+    "logout": "Sign out",
+    "login": "Sign in",
+    "register": "Sign up",
+    "registerAccount": "Create an account",
+    "home": "Home",
+    "theme": "Theme: {{mode}}",
+    "themeMode": "Theme: {{mode}}",
+    "themeDark": "Dark",
+    "themeLight": "Light",
+    "switchToLight": "Switch to light theme",
+    "switchToDark": "Switch to dark theme"
+  },
+  "categories": {
+    "all": "All",
+    "technology": "Technology",
+    "education": "Education",
+    "entertainment": "Entertainment",
+    "music": "Music",
+    "game": "Gaming",
+    "other": "Other"
+  },
+  "home": {
+    "filterByCategory": "Filter by category",
+    "latest": "Latest videos",
+    "resultsFor": "Results for “{{query}}”",
+    "videoCount": "{{count}} videos",
+    "pagination": "Pagination",
+    "emptyFilteredTitle": "No matching videos",
+    "emptyFilteredDesc": "Try a different keyword, or pick another category to see more.",
+    "emptyTitle": "No videos yet",
+    "emptyDesc": "Be the first to share a video on the platform.",
+    "emptyAction": "Upload a video"
+  },
+  "videoCard": {
+    "processing": "Processing...",
+    "views": "{{value}} views",
+    "unknownChannel": "Unknown",
+    "justNow": "Just now",
+    "minutesAgo": "{{count}} min ago",
+    "hoursAgo": "{{count}} h ago",
+    "daysAgo": "{{count}} d ago",
+    "monthsAgo": "{{count}} mo ago"
+  },
+  "upload": {
+    "dropzone": "Drag a video here, or click to choose a file",
+    "dropzoneHint": "Supported: MP4, MOV, AVI, MKV",
+    "chooseAnother": "Choose another file",
+    "titleLabel": "Title *",
+    "titlePlaceholder": "Enter the video title",
+    "descriptionLabel": "Description",
+    "descriptionPlaceholder": "Describe what the video is about...",
+    "categoryLabel": "Category",
+    "visibilityLabel": "Visibility",
+    "submit": "Start upload",
+    "submitting": "Working...",
+    "progress": "Uploading... {{percent}}%",
+    "done": "Upload complete. Redirecting...",
+    "errorFormat": "Unsupported format. Please choose a .mp4, .mov, .avi or .mkv file",
+    "errorTooLarge": "The file exceeds the maximum size of {{max}}. The file you chose is {{actual}}.",
+    "errorNoTitle": "Please enter a video title",
+    "errorFailed": "Upload failed. Please try again."
+  },
+  "visibility": {
+    "public": "Public",
+    "unlisted": "Unlisted",
+    "private": "Private"
+  },
+  "channel": {
+    "yourVideos": "Your videos",
+    "videos": "Videos",
+    "empty": "No videos yet.",
+    "confirmDelete": "Delete this video?",
+    "deleteFailed": "Could not delete the video: {{message}}",
+    "visibilityFailed": "Could not change visibility: {{message}}",
+    "makePrivate": "Public, click to make it private",
+    "makePublic": "Private, click to make it public",
+    "deleteVideo": "Delete video",
+    "privateBadge": "Private"
+  }
+}

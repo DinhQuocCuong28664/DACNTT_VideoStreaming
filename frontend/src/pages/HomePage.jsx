@@ -1,22 +1,23 @@
 import { useState, useEffect } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { FiInbox, FiUploadCloud } from 'react-icons/fi';
 import videoApi from '../api/videoApi';
 import VideoCard from '../components/Video/VideoCard';
+import { CATEGORIES, ALL_CATEGORY, categoryLabel } from '../i18n/categories';
 import './HomePage.css';
-
-const CATEGORIES = ['Tất cả', 'Công nghệ', 'Giáo dục', 'Giải trí', 'Âm nhạc', 'Game', 'Khác'];
 
 const SKELETON_COUNT = 8;
 
 const HomePage = () => {
+  const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
   const [videos, setVideos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState(null);
 
-  const selectedCategory = searchParams.get('category') || 'Tất cả';
+  const selectedCategory = searchParams.get('category') || ALL_CATEGORY;
   const searchQuery = searchParams.get('q') || '';
 
   useEffect(() => {
@@ -26,7 +27,7 @@ const HomePage = () => {
         const params = {
           page,
           limit: 12,
-          category: selectedCategory !== 'Tất cả' ? selectedCategory : undefined,
+          category: selectedCategory !== ALL_CATEGORY ? selectedCategory : undefined,
           q: searchQuery || undefined,
         };
 
@@ -46,7 +47,7 @@ const HomePage = () => {
   const handleCategorySelect = (cat) => {
     setPage(1);
     const newParams = new URLSearchParams(searchParams);
-    if (cat === 'Tất cả') {
+    if (cat === ALL_CATEGORY) {
       newParams.delete('category');
     } else {
       newParams.set('category', cat);
@@ -55,10 +56,10 @@ const HomePage = () => {
   };
 
   const sectionTitle = searchQuery
-    ? `Kết quả cho “${searchQuery}”`
-    : selectedCategory !== 'Tất cả'
-      ? selectedCategory
-      : 'Video mới nhất';
+    ? t('home.resultsFor', { query: searchQuery })
+    : selectedCategory !== ALL_CATEGORY
+      ? categoryLabel(t, selectedCategory)
+      : t('home.latest');
 
   /**
    * Trạng thái rỗng nói đúng nguyên nhân thay vì một câu chung chung.
@@ -66,20 +67,20 @@ const HomePage = () => {
    * mới có ích; còn khi thư viện thật sự chưa có video nào thì lời khuyên đó
    * vô nghĩa, cái họ cần là nút tải video lên.
    */
-  const isFiltered = Boolean(searchQuery) || selectedCategory !== 'Tất cả';
+  const isFiltered = Boolean(searchQuery) || selectedCategory !== ALL_CATEGORY;
 
   return (
     <div className="container home-page">
-      <div className="category-bar" role="tablist" aria-label="Lọc theo danh mục">
+      <div className="category-bar" role="tablist" aria-label={t('home.filterByCategory')}>
         {CATEGORIES.map((cat) => (
           <button
-            key={cat}
+            key={cat.value}
             role="tab"
-            aria-selected={selectedCategory === cat}
-            className={`category-pill ${selectedCategory === cat ? 'active' : ''}`}
-            onClick={() => handleCategorySelect(cat)}
+            aria-selected={selectedCategory === cat.value}
+            className={`category-pill ${selectedCategory === cat.value ? 'active' : ''}`}
+            onClick={() => handleCategorySelect(cat.value)}
           >
-            {cat}
+            {t(`categories.${cat.key}`)}
           </button>
         ))}
       </div>
@@ -87,7 +88,9 @@ const HomePage = () => {
       <div className="home-section-header">
         <h2 className="home-section-title">{sectionTitle}</h2>
         {!loading && pagination?.total > 0 && (
-          <span className="home-section-count">{pagination.total} video</span>
+          <span className="home-section-count">
+            {t('home.videoCount', { count: pagination.total })}
+          </span>
         )}
       </div>
 
@@ -118,7 +121,7 @@ const HomePage = () => {
           </div>
 
           {pagination && pagination.pages > 1 && (
-            <nav className="pagination" aria-label="Phân trang">
+            <nav className="pagination" aria-label={t('home.pagination')}>
               {Array.from({ length: pagination.pages }).map((_, i) => (
                 <button
                   key={i}
@@ -138,16 +141,14 @@ const HomePage = () => {
             <FiInbox />
           </div>
           <p className="empty-state-title">
-            {isFiltered ? 'Không tìm thấy video phù hợp' : 'Chưa có video nào'}
+            {isFiltered ? t('home.emptyFilteredTitle') : t('home.emptyTitle')}
           </p>
           <p className="empty-state-desc">
-            {isFiltered
-              ? 'Thử từ khóa khác hoặc chọn một danh mục khác để xem thêm nội dung.'
-              : 'Hãy là người đầu tiên chia sẻ một video lên nền tảng.'}
+            {isFiltered ? t('home.emptyFilteredDesc') : t('home.emptyDesc')}
           </p>
           {!isFiltered && (
             <Link to="/upload" className="btn btn-primary empty-state-action">
-              <FiUploadCloud /> Tải video lên
+              <FiUploadCloud /> {t('home.emptyAction')}
             </Link>
           )}
         </div>

@@ -1,0 +1,97 @@
+{
+  "language": {
+    "label": "Ngôn ngữ",
+    "vi": "Tiếng Việt",
+    "en": "English",
+    "switchTo": "Chuyển sang {{lang}}"
+  },
+  "nav": {
+    "searchPlaceholder": "Tìm kiếm video...",
+    "search": "Tìm kiếm",
+    "toggleMenu": "Mở hoặc đóng menu",
+    "about": "Giới thiệu",
+    "aboutTitle": "Giới thiệu Nền tảng",
+    "upload": "Upload",
+    "uploadVideo": "Upload video",
+    "myChannel": "Kênh của tôi",
+    "settings": "Cài đặt",
+    "logout": "Đăng xuất",
+    "login": "Đăng nhập",
+    "register": "Đăng ký",
+    "registerAccount": "Đăng ký tài khoản",
+    "home": "Trang chủ",
+    "theme": "Giao diện: {{mode}}",
+    "themeMode": "Chế độ giao diện: {{mode}}",
+    "themeDark": "Tối",
+    "themeLight": "Sáng",
+    "switchToLight": "Chuyển sang Giao diện Sáng",
+    "switchToDark": "Chuyển sang Giao diện Tối"
+  },
+  "categories": {
+    "all": "Tất cả",
+    "technology": "Công nghệ",
+    "education": "Giáo dục",
+    "entertainment": "Giải trí",
+    "music": "Âm nhạc",
+    "game": "Game",
+    "other": "Khác"
+  },
+  "home": {
+    "filterByCategory": "Lọc theo danh mục",
+    "latest": "Video mới nhất",
+    "resultsFor": "Kết quả cho “{{query}}”",
+    "videoCount": "{{count}} video",
+    "pagination": "Phân trang",
+    "emptyFilteredTitle": "Không tìm thấy video phù hợp",
+    "emptyFilteredDesc": "Thử từ khóa khác hoặc chọn một danh mục khác để xem thêm nội dung.",
+    "emptyTitle": "Chưa có video nào",
+    "emptyDesc": "Hãy là người đầu tiên chia sẻ một video lên nền tảng.",
+    "emptyAction": "Tải video lên"
+  },
+  "videoCard": {
+    "processing": "Đang xử lý...",
+    "views": "{{value}} lượt xem",
+    "unknownChannel": "Không rõ",
+    "justNow": "Vừa xong",
+    "minutesAgo": "{{count}} phút trước",
+    "hoursAgo": "{{count}} giờ trước",
+    "daysAgo": "{{count}} ngày trước",
+    "monthsAgo": "{{count}} tháng trước"
+  },
+  "upload": {
+    "dropzone": "Kéo thả video vào đây hoặc nhấn để chọn file",
+    "dropzoneHint": "Hỗ trợ: MP4, MOV, AVI, MKV",
+    "chooseAnother": "Chọn file khác",
+    "titleLabel": "Tiêu đề *",
+    "titlePlaceholder": "Nhập tiêu đề video",
+    "descriptionLabel": "Mô tả",
+    "descriptionPlaceholder": "Mô tả nội dung video...",
+    "categoryLabel": "Danh mục Video",
+    "visibilityLabel": "Quyền riêng tư",
+    "submit": "Bắt đầu Upload",
+    "submitting": "Đang xử lý...",
+    "progress": "Đang tải lên... {{percent}}%",
+    "done": "Upload hoàn tất! Đang chuyển hướng...",
+    "errorFormat": "Định dạng không hỗ trợ. Vui lòng chọn file .mp4, .mov, .avi hoặc .mkv",
+    "errorTooLarge": "File vượt quá dung lượng tối đa {{max}}. File bạn chọn có dung lượng {{actual}}.",
+    "errorNoTitle": "Vui lòng điền tiêu đề video",
+    "errorFailed": "Upload thất bại. Vui lòng thử lại."
+  },
+  "visibility": {
+    "public": "Công khai",
+    "unlisted": "Không liệt kê",
+    "private": "Riêng tư"
+  },
+  "channel": {
+    "yourVideos": "Video của bạn",
+    "videos": "Video",
+    "empty": "Chưa có video nào.",
+    "confirmDelete": "Bạn có chắc muốn xóa video này?",
+    "deleteFailed": "Xóa video thất bại: {{message}}",
+    "visibilityFailed": "Đổi chế độ hiển thị thất bại: {{message}}",
+    "makePrivate": "Đang công khai, nhấn để chuyển sang riêng tư",
+    "makePublic": "Đang riêng tư, nhấn để chuyển sang công khai",
+    "deleteVideo": "Xóa video",
+    "privateBadge": "Riêng tư"
+  }
+}

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { FiUser, FiTrash2, FiGlobe, FiLock } from 'react-icons/fi';
 import { useAuth } from '../context/useAuth';
 import videoApi from '../api/videoApi';
@@ -7,6 +8,7 @@ import userApi from '../api/userApi';
 import VideoCard from '../components/Video/VideoCard';
 
 const ChannelPage = () => {
+  const { t } = useTranslation();
   const { userId } = useParams();
   const { user: currentUser } = useAuth();
   const [videos, setVideos] = useState([]);
@@ -47,12 +49,12 @@ const ChannelPage = () => {
   }, [userId, page, isOwner, currentUser]);
 
   const handleDelete = async (videoId) => {
-    if (!window.confirm('Bạn có chắc muốn xóa video này?')) return;
+    if (!window.confirm(t('channel.confirmDelete'))) return;
     try {
       await videoApi.deleteVideo(videoId);
       setVideos(videos.filter((v) => v._id !== videoId));
     } catch (err) {
-      alert('Xóa video thất bại: ' + (err.response?.data?.message || err.message));
+      alert(t('channel.deleteFailed', { message: err.response?.data?.message || err.message }));
     }
   };
 
@@ -74,7 +76,7 @@ const ChannelPage = () => {
       setVideos((prev) =>
         prev.map((v) => (v._id === video._id ? { ...v, visibility: video.visibility } : v))
       );
-      alert('Đổi chế độ hiển thị thất bại: ' + (err.response?.data?.message || err.message));
+      alert(t('channel.visibilityFailed', { message: err.response?.data?.message || err.message }));
     }
   };
 
@@ -123,7 +125,7 @@ const ChannelPage = () => {
 
       {/* Videos */}
       <h2 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 600, marginBottom: 'var(--space-lg)' }}>
-        Video {isOwner ? 'của bạn' : ''}
+        {isOwner ? t('channel.yourVideos') : t('channel.videos')}
       </h2>
 
       {loading ? (
@@ -155,8 +157,8 @@ const ChannelPage = () => {
                       onClick={(e) => { e.preventDefault(); handleToggleVisibility(video); }}
                       title={
                         video.visibility === 'public'
-                          ? 'Đang công khai — nhấn để chuyển sang riêng tư'
-                          : 'Đang riêng tư — nhấn để chuyển sang công khai'
+                          ? t('channel.makePrivate')
+                          : t('channel.makePublic')
                       }
                     >
                       {video.visibility === 'public' ? <FiGlobe size={14} /> : <FiLock size={14} />}
@@ -165,7 +167,7 @@ const ChannelPage = () => {
                       className="btn-icon"
                       style={{ background: 'rgba(0,0,0,0.7)', color: '#fff', width: 32, height: 32 }}
                       onClick={(e) => { e.preventDefault(); handleDelete(video._id); }}
-                      title="Xóa video"
+                      title={t('channel.deleteVideo')}
                     >
                       <FiTrash2 size={14} />
                     </button>
@@ -178,7 +180,7 @@ const ChannelPage = () => {
                     fontSize: 11, padding: '3px 8px', borderRadius: 'var(--radius-sm)',
                     display: 'inline-flex', alignItems: 'center', gap: 4,
                   }}>
-                    <FiLock size={11} /> Riêng tư
+                    <FiLock size={11} /> {t('channel.privateBadge')}
                   </span>
                 )}
               </div>
@@ -202,7 +204,7 @@ const ChannelPage = () => {
         </>
       ) : (
         <div style={{ textAlign: 'center', padding: 'var(--space-2xl)', color: 'var(--text-muted)' }}>
-          <p>Chưa có video nào.</p>
+          <p>{t('channel.empty')}</p>
         </div>
       )}
 

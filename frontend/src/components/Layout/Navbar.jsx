@@ -1,12 +1,15 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/useAuth';
 import { useTheme } from '../../context/useTheme';
 import { FiUpload, FiSearch, FiLogOut, FiVideo, FiMoon, FiSun, FiInfo, FiMenu, FiX, FiSettings } from 'react-icons/fi';
 import LogoIcon from './LogoIcon';
+import LanguageToggle from './LanguageToggle';
 import './Navbar.css';
 
 const Navbar = () => {
+  const { t } = useTranslation();
   const { user, isAuthenticated, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
@@ -62,7 +65,7 @@ const Navbar = () => {
           <button
             className="mobile-hamburger-btn"
             onClick={() => setShowMobileDrawer(!showMobileDrawer)}
-            aria-label="Toggle mobile menu"
+            aria-label={t('nav.toggleMenu')}
           >
             {showMobileDrawer ? <FiX /> : <FiMenu />}
           </button>
@@ -78,7 +81,7 @@ const Navbar = () => {
             <input
               type="text"
               className="search-input"
-              placeholder="Tìm kiếm video..."
+              placeholder={t('nav.searchPlaceholder')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -91,17 +94,19 @@ const Navbar = () => {
           <button
             className="mobile-search-toggle-btn"
             onClick={() => setShowMobileSearch(!showMobileSearch)}
-            aria-label="Toggle search"
+            aria-label={t('nav.search')}
           >
             {showMobileSearch ? <FiX /> : <FiSearch />}
           </button>
 
           {/* Desktop Actions */}
           <div className="navbar-actions">
-            <Link to="/landing" className="nav-landing-link" title="Giới thiệu Nền tảng">
+            <Link to="/landing" className="nav-landing-link" title={t('nav.aboutTitle')}>
               <FiInfo />
-              <span className="landing-text">Giới thiệu</span>
+              <span className="landing-text">{t('nav.about')}</span>
             </Link>
+
+            <LanguageToggle className="btn btn-secondary lang-toggle-btn" />
 
             {isAuthenticated ? (
               <>
@@ -110,7 +115,7 @@ const Navbar = () => {
                   onClick={() => navigate('/upload')}
                 >
                   <FiUpload />
-                  <span className="upload-text">Upload</span>
+                  <span className="upload-text">{t('nav.upload')}</span>
                 </button>
 
                 <div className="user-menu" ref={dropdownRef}>
@@ -144,30 +149,30 @@ const Navbar = () => {
                         className="dropdown-item"
                         onClick={() => setShowDropdown(false)}
                       >
-                        <FiVideo /> Kênh của tôi
+                        <FiVideo /> {t('nav.myChannel')}
                       </Link>
                       <Link
                         to="/upload"
                         className="dropdown-item"
                         onClick={() => setShowDropdown(false)}
                       >
-                        <FiUpload /> Upload video
+                        <FiUpload /> {t('nav.uploadVideo')}
                       </Link>
                       <Link
                         to="/settings"
                         className="dropdown-item"
                         onClick={() => setShowDropdown(false)}
                       >
-                        <FiSettings /> Cài đặt
+                        <FiSettings /> {t('nav.settings')}
                       </Link>
                       <div className="dropdown-divider" />
                       <button className="dropdown-item" onClick={toggleTheme}>
                         {theme === 'dark' ? <FiSun /> : <FiMoon />}
-                        <span>Giao diện: {theme === 'dark' ? 'Tối' : 'Sáng'}</span>
+                        <span>{t('nav.theme', { mode: theme === 'dark' ? t('nav.themeDark') : t('nav.themeLight') })}</span>
                       </button>
                       <div className="dropdown-divider" />
                       <button className="dropdown-item dropdown-logout" onClick={handleLogout}>
-                        <FiLogOut /> Đăng xuất
+                        <FiLogOut /> {t('nav.logout')}
                       </button>
                     </div>
                   )}
@@ -178,16 +183,16 @@ const Navbar = () => {
                 <button
                   className="btn btn-secondary theme-toggle-btn"
                   onClick={toggleTheme}
-                  title={theme === 'dark' ? 'Chuyển sang Giao diện Sáng' : 'Chuyển sang Giao diện Tối'}
+                  title={theme === 'dark' ? t('nav.switchToLight') : t('nav.switchToDark')}
                   style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', gap: '6px' }}
                 >
                   {theme === 'dark' ? <FiSun /> : <FiMoon />}
                 </button>
                 <Link to="/login" className="btn btn-secondary nav-login-btn">
-                  Đăng nhập
+                  {t('nav.login')}
                 </Link>
                 <Link to="/register" className="btn btn-primary nav-register-btn">
-                  Đăng ký
+                  {t('nav.register')}
                 </Link>
               </div>
             )}
@@ -201,7 +206,7 @@ const Navbar = () => {
               <input
                 type="text"
                 className="search-input"
-                placeholder="Tìm kiếm video..."
+                placeholder={t('nav.searchPlaceholder')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 autoFocus
@@ -243,38 +248,40 @@ const Navbar = () => {
 
               <nav className="mobile-nav-links">
                 <Link to="/" className="mobile-nav-item" onClick={() => setShowMobileDrawer(false)}>
-                  <FiVideo /> Trang chủ
+                  <FiVideo /> {t('nav.home')}
                 </Link>
                 <Link to="/landing" className="mobile-nav-item" onClick={() => setShowMobileDrawer(false)}>
-                  <FiInfo /> Giới thiệu Nền tảng
+                  <FiInfo /> {t('nav.aboutTitle')}
                 </Link>
 
                 {isAuthenticated ? (
                   <>
                     <Link to={`/channel/${user?._id}`} className="mobile-nav-item" onClick={() => setShowMobileDrawer(false)}>
-                      <FiVideo /> Kênh của tôi
+                      <FiVideo /> {t('nav.myChannel')}
                     </Link>
                     <Link to="/upload" className="mobile-nav-item" onClick={() => setShowMobileDrawer(false)}>
-                      <FiUpload /> Upload video
+                      <FiUpload /> {t('nav.uploadVideo')}
                     </Link>
                     <Link to="/settings" className="mobile-nav-item" onClick={() => setShowMobileDrawer(false)}>
-                      <FiSettings /> Cài đặt
+                      <FiSettings /> {t('nav.settings')}
                     </Link>
                   </>
                 ) : (
                   <>
                     <Link to="/login" className="mobile-nav-item" onClick={() => setShowMobileDrawer(false)}>
-                      Đăng nhập
+                      {t('nav.login')}
                     </Link>
                     <Link to="/register" className="mobile-nav-item" onClick={() => setShowMobileDrawer(false)}>
-                      Đăng ký tài khoản
+                      {t('nav.registerAccount')}
                     </Link>
                   </>
                 )}
 
+                <LanguageToggle className="mobile-nav-item theme-switch-item" />
+
                 <button className="mobile-nav-item theme-switch-item" onClick={toggleTheme}>
                   {theme === 'dark' ? <FiSun /> : <FiMoon />}
-                  <span>Chế độ giao diện: {theme === 'dark' ? 'Tối' : 'Sáng'}</span>
+                  <span>{t('nav.themeMode', { mode: theme === 'dark' ? t('nav.themeDark') : t('nav.themeLight') })}</span>
                 </button>
               </nav>
             </div>
@@ -282,7 +289,7 @@ const Navbar = () => {
             {isAuthenticated && (
               <div className="mobile-drawer-footer">
                 <button className="btn btn-secondary mobile-logout-btn" onClick={handleLogout}>
-                  <FiLogOut /> Đăng xuất
+                  <FiLogOut /> {t('nav.logout')}
                 </button>
               </div>
             )}
