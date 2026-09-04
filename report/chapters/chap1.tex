@@ -69,6 +69,61 @@ also does not attempt per-title bitrate ladder optimisation, using instead a fix
 three renditions; the rationale and the trade-off involved are discussed in
 Chapter~\ref{chap:conclusion}.
 
+\section{Research Methodology}
+\label{sec:methodology}
+
+The work combines a review of existing practice with an iterative build-and-measure cycle.
+
+The theoretical component established how the problem is solved at industrial scale before any
+code was written. Published engineering accounts from Netflix describe how a large platform
+decomposes video processing into microservices and how a bitrate ladder is optimised per title,
+and the AWS Video on Demand reference architecture describes the managed-service equivalent. The
+protocol itself was taken from its specification, RFC 8216, and the encoding parameters from the
+FFmpeg HLS muxer documentation, rather than from secondary sources. Peer-reviewed studies of
+serverless video processing supplied both the motivation for the architecture and the measurement
+vocabulary used later in the evaluation, and the multi-threaded H.264 literature supplied the
+expected bound against which the vCPU scaling results of Chapter~\ref{chap:implementation} are
+interpreted.
+
+The practical component followed an incremental development model. Each subsystem, comprising the
+backend API, the transcoding container, the frontend, and the cloud infrastructure, was built and
+integrated in turn, with the whole environment described as Terraform code so that every change to
+it is reviewable and reproducible rather than applied by hand. Correctness was checked by an
+automated test suite executed on every push through a continuous integration pipeline, which also
+runs dependency, container and infrastructure security scans.
+
+Evaluation was empirical rather than analytical. Every performance figure reported in
+Chapter~\ref{chap:implementation} was produced by a measurement script committed alongside the
+source code, executed against the deployed system rather than a local approximation of it, with
+the raw output stored as JSON under \path{docs/results/} so that any table in this report can be
+traced back to the run that produced it. Where a result could plausibly be an artefact of the
+measurement tool, it was reproduced with a second, independently implemented tool before being
+reported.
+
+\section{Practical Significance}
+\label{sec:significance}
+
+The immediate beneficiaries of this design are small teams and individual creators who need a
+video platform but cannot justify a permanently running transcoding cluster. The cost comparison
+in Section~\ref{sec:cost-analysis} estimates that processing three hundred videos a month costs
+roughly \$1.51 on the architecture built here against \$133.35 on an always-on instance sized for
+the same work, because compute exists only while a job runs. That difference is what makes video
+hosting feasible for a service whose upload volume is intermittent, which describes most
+platforms before they become large.
+
+The design also addresses a requirement that is easy to state and easy to implement incorrectly.
+Marking a video private is meaningless if the underlying storage remains publicly addressable, and
+Chapter~\ref{chap:design} shows that restricting the API alone does not achieve it. The two-layer
+scheme used here, keeping the bucket private and enforcing authorisation at the content delivery
+network, is directly reusable by any application that serves user-owned media from object storage.
+
+Beyond the product itself, the project serves as a worked reference for an event-driven serverless
+pipeline on AWS, covering the parts that are usually omitted from tutorials: how duplicate message
+delivery is made harmless, how the infrastructure is expressed as reviewable code across two
+environments, how security scanning is placed in the path of a merge rather than beside it, and
+how the resulting system is measured once it is running. Each of these is documented here in
+enough detail to be repeated.
+
 \section{Main Contributions}
 \label{sec:contributions}
 
@@ -93,8 +148,9 @@ The remainder of this report is organised as follows. Chapter~\ref{chap:literatu
 how comparable platforms solve the transcoding problem and justifies the technology choices
 made here. Chapter~\ref{chap:requirements} analyses the functional and non-functional
 requirements of the system and presents the use case model. Chapter~\ref{chap:design}
-describes the architecture, the data model, and the interaction design.
-Chapter~\ref{chap:implementation} details the implementation of each subsystem together with
-the infrastructure automation and the experimental results.
-Chapter~\ref{chap:conclusion} summarises what was achieved, states the limitations honestly,
-and outlines directions for future work.
+describes the architecture, the data model, the content protection scheme, and the interface
+design. Chapter~\ref{chap:implementation} details the implementation of each subsystem together
+with the infrastructure automation, the difficulties encountered during development and how they
+were resolved, the deployed user interface, and the experimental results.
+Chapter~\ref{chap:conclusion} summarises what was achieved, states the strengths and limitations
+of the delivered system, and outlines directions for future work.

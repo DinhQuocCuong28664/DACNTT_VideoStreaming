@@ -1,0 +1,32 @@
+graph TB
+    subgraph Always["Always-on cluster provisioned for peak load"]
+        direction TB
+        A1["Cluster runs continuously<br/>730 hours per month"]
+        A2["Actual transcoding work<br/>3.75 hours per month"]
+        A3["Utilisation about 0.5 percent"]
+        A4["Billed for all 730 hours<br/>USD 124.10 compute"]
+        A5["A burst above peak capacity<br/>is queued or rejected"]
+
+        A1 --> A2 --> A3 --> A4
+        A1 --> A5
+    end
+
+    subgraph OnDemand["Serverless containers, the model used in this project"]
+        direction TB
+        B1["No compute exists while idle"]
+        B2["Upload event enters<br/>the Amazon SQS queue"]
+        B3["Container starts, transcodes,<br/>then terminates"]
+        B4["Billed per vCPU-second<br/>USD 0.05 compute"]
+        B5["Queue absorbs the burst;<br/>concurrency bounded by max_vcpus"]
+
+        B1 --> B2 --> B3 --> B4
+        B2 --> B5
+    end
+
+    classDef waste fill:#fdecea,stroke:#c0392b,color:#1a1a1a
+    classDef good fill:#eef7ee,stroke:#3d8b40,color:#1a1a1a
+    classDef neutral fill:#f4f7fa,stroke:#2c7a9e,color:#1a1a1a
+    class A1,A2 neutral
+    class A3,A4,A5 waste
+    class B2,B3 neutral
+    class B1,B4,B5 good

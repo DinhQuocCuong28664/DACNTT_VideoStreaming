@@ -69,6 +69,28 @@ the developer provisioning or managing the underlying virtual machines, and in w
 based on execution time rather than allocated capacity. AWS Fargate is the implementation used
 in this project.
 
+Figure~\ref{fig:compute-models} contrasts this model with the conventional alternative for a
+transcoding workload of the size assumed in Section~\ref{sec:cost-analysis}. In the always-on
+arrangement on one side of the figure, a cluster is sized for the busiest moment the service
+expects and then runs continuously, so it is billed for all 730 hours in a month while performing
+roughly 3.75 hours of actual encoding, a utilisation of about half a percent. Its capacity is also
+a hard ceiling: an upload burst larger than the cluster was provisioned for must either wait or be
+rejected, and the only remedy is to provision for a still larger peak and waste correspondingly
+more. In the serverless arrangement on the other side, no compute exists between uploads. An
+upload event enters a queue, a container is started to serve it, and that container terminates
+when the job finishes, so charges accrue per vCPU-second of real work. The burst is absorbed by
+the queue rather than by spare capacity, and the degree of parallelism is a configured number
+rather than a fixed fleet size. The two figures shown, \$124.10 against \$0.05 of monthly compute,
+are the same workload priced under the two models.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{images/07-compute-models.png}
+\caption{\textit{Compute models for a bursty transcoding workload: an always-on cluster
+compared with on-demand serverless containers}}
+\label{fig:compute-models}
+\end{figure}
+
 The choice of Fargate over a function-as-a-service platform such as AWS Lambda deserves
 justification, because Lambda is the more common answer to serverless workloads. Video
 transcoding is unsuitable for Lambda in this context for two reasons. The first is duration:
@@ -106,6 +128,27 @@ fail processing are isolated for inspection rather than being retried indefinite
 HLS delivers a video as a master playlist referencing several rendition playlists, each of
 which lists the media segments for one quality level. The player measures throughput and
 switches between renditions at segment boundaries.
+
+Figure~\ref{fig:hls-abr} shows the artefacts this produces and the order in which a player
+retrieves them. A single source file of arbitrary container, codec and resolution is encoded once
+per rung of the ladder, and each rung yields both a rendition playlist and the sequence of
+transport stream segments it indexes. The master playlist sits above them and carries, for each
+rung, the bandwidth the client should expect to need in order to play it. A player therefore
+begins by fetching only the master playlist, which is a few hundred bytes, chooses a rung from the
+declared bandwidths and its own throughput estimate, and only then requests that rung's playlist
+and its segments. Because every rung is segmented on the same boundaries, the player may change
+its choice at any segment boundary without interrupting playback, which is the mechanism that lets
+quality fall rather than the video stall when a connection weakens. The consequence for the
+transcoding subsystem is that the cost of preparing a video scales with the number of rungs, since
+each is a separate encoding pass over the whole source.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.72\textwidth]{images/06-hls-abr.png}
+\caption{\textit{HLS artefacts produced from one source file and the order in which a player
+retrieves them}}
+\label{fig:hls-abr}
+\end{figure}
 
 The set of resolution and bitrate pairs offered is called the bitrate ladder, and its
 construction is an active research area. Netflix demonstrated that the optimal ladder is not
