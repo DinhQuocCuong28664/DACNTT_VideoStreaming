@@ -76,13 +76,13 @@ database writes described in Section~\ref{sec:transcoder-impl}, which is where i
 case, since Burrows' analysis of leases (Section~\ref{sec:testing}) shows that a renewal timer
 cannot by itself guarantee mutual exclusion. Retrying a failed job, which the heartbeat design
 delegated to SQS redelivery, has no equivalent unless AWS Batch is configured to provide it; that
-it originally was not is discussed in Section~\ref{sec:limitations}.
+it originally was not is discussed in Section~\ref{sec:challenges}.
 
 Retaining the worker-mode implementation is a deliberate choice rather than an oversight: it
 allows the transcoder to be run against the queue directly during development without provisioning
 Batch. Recording which of the two modes the evaluated system actually executes matters, though,
 because a mechanism present in the source but absent from the deployed path cannot be credited
-with the guarantees it would provide if it ran. Section~\ref{sec:limitations} draws the same
+with the guarantees it would provide if it ran. Section~\ref{sec:challenges} draws the same
 distinction about content protection.
 
 \section{Database Design}
@@ -125,16 +125,14 @@ Indexes are defined to match the actual query patterns. A compound index on visi
 and creation time supports the home page listing, which always filters on the first two fields
 and sorts on the third.
 
-Search is the exception, and it is worth stating plainly because the schema originally claimed
-otherwise. The collection carried a text index on title and description, described as supporting
+Search is the exception. The collection carried a text index on title and description, described as supporting
 the search feature, but no query ever used it: search is implemented as a case-insensitive regular
 expression matched against title, description and tags, and MongoDB cannot serve an unanchored
 regular expression from an index. Every search was a full collection scan, and the index cost
 write throughput and storage while serving nothing. The index has been removed rather than the
 query rewritten, because switching to a text search would change the feature's behaviour and not
 merely its cost: the regular expression matches substrings inside words and covers the tags field,
-neither of which a text index does. At the scale of this project a scan is acceptable; recording
-which of the two was actually chosen, and why, is what matters.
+neither of which a text index does. At the scale of this project a full scan is acceptable.
 
 \section{Content Protection Design}
 \label{sec:content-protection}

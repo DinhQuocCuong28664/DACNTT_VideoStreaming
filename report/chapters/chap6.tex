@@ -20,7 +20,7 @@ terminating. Conditional database writes prevent a duplicate delivery from overw
 job, failed jobs are retried by AWS Batch and, when they exhaust their attempts, raise an alert
 carrying the reason for the failure rather than terminating silently. Both mechanisms replaced
 earlier designs that held only for an execution mode the deployed system does not use; the
-reasoning is set out in Section~\ref{sec:pipeline-design} and Section~\ref{sec:limitations}.
+reasoning is set out in Section~\ref{sec:pipeline-design} and Section~\ref{sec:challenges}.
 
 Content protection was implemented in two layers. Origin Access Control keeps the storage
 bucket entirely private, and CloudFront Signed Cookies ensure that private videos are rejected
@@ -35,304 +35,90 @@ blocks merges on fixable critical findings rather than merely reporting them.
 
 The automated test suite grew to 117 tests across ten suites. Its practical value was demonstrated
 when it caught a defect in the cookie signing implementation that would have prevented every
-private video from playing once deployed. A second, related defect in that same subsystem, caught
-only later and by a different means, is discussed in Section~\ref{sec:limitations} below.
+private video from playing once deployed. A second defect in that same subsystem, which only
+appeared once the distribution was live, is described in Section~\ref{sec:challenges}.
+
+\section{Strengths of the System}
+\label{sec:strengths}
+
+The strongest property of the design is the separation between the application tier and the media
+path. The backend API issues pre-signed URLs, records metadata and answers queries, and never
+handles video bytes, which flow directly between the browser, Amazon S3 and CloudFront. The API's
+resource consumption is therefore independent of video size and upload concurrency, and a failure
+in the processing tier leaves already-published videos playable.
+
+The processing tier costs nothing while idle. Because transcoding runs on AWS Batch over Fargate
+rather than on a reserved instance, compute capacity exists only while a job runs.
+Section~\ref{sec:cost-analysis} estimates the monthly operating cost of this arrangement at
+\$1.51 against \$133.35 for an always-on instance sized for the same workload, a difference that
+originates entirely in the elimination of idle capacity.
+
+Content protection is enforced at the edge rather than only in the API. Origin Access Control
+keeps the storage bucket private and CloudFront Signed Cookies reject unauthorised requests before
+they reach it, which is what makes the private visibility setting meaningful, since an API can
+restrict its own responses but cannot restrict a content delivery network. The mechanism was
+verified against the deployed system rather than in code alone, as
+Section~\ref{sec:challenges} records.
+
+The infrastructure is reproducible. Eleven Terraform modules describe two environments in full,
+and seven GitHub Actions workflows automate linting, unit testing, static security analysis,
+container and dependency scanning, infrastructure validation and deployment. The security gate
+blocks a merge on fixable critical findings rather than merely reporting them, and the scanner
+itself is pinned to a release commit rather than to a moving branch.
+
+Finally, the performance claims in this report are measured rather than asserted.
+Time-to-First-Frame was measured from six AWS regions and from a consumer connection in Vietnam,
+and led to two corrections of the CloudFront price class that reduced the median latency seen from
+Vietnam by a factor of 6.6 and the median seen from Brazil by a factor of 32. Transcoding
+throughput was measured under one hundred concurrent uploads of real video and cross-validated
+with two independently implemented load generators. And the automated suite of 117 tests across
+ten suites caught a signing defect that would otherwise have prevented every private video from
+playing.
 
 \section{Limitations}
 \label{sec:limitations}
 
-Several limitations should be stated plainly.
+Several limitations remain in the delivered system.
 
 The bitrate ladder is fixed at three rungs regardless of content. As the literature reviewed in
-Section~\ref{sec:core-models} shows, the optimal ladder is content-dependent, and a fixed ladder
-therefore wastes bandwidth on simple content while under-serving complex content. Netflix
-reported bitrate reductions between 28\% and 38\% at equivalent perceptual quality by optimising
-the ladder per shot \cite{netflix2018dynamic}, which indicates the magnitude of the opportunity
-forgone.
+Section~\ref{sec:core-models} shows, the optimal ladder is content-dependent, so a fixed ladder
+wastes bandwidth on simple content while under-serving complex content. Netflix reported bitrate
+reductions between 28\% and 38\% at equivalent perceptual quality by optimising the ladder per
+shot \cite{netflix2018dynamic}, which indicates the magnitude of the opportunity forgone.
 
-Each video is transcoded by a single container, without the chunk-based parallelism that
-Netflix employs. Processing time consequently scales linearly with video duration, and a long
-video cannot be accelerated by adding capacity. This is acceptable at the scale of this project
-but would become the dominant constraint for longer content.
+Each video is transcoded by a single container, without the chunk-based parallelism that Netflix
+employs. Processing time therefore scales linearly with video duration, and a long video cannot be
+accelerated by adding capacity. Section~\ref{sec:drain-rate} measured roughly 66 seconds of
+wall-clock time per job for a three-second clip, which shows how far fixed overhead dominates for
+short content; for long content the encoder itself dominates instead, and it is that portion which
+the current design cannot parallelise.
 
-Signed cookies remain valid for two hours after issuance. If an owner switches a video from
-public to private, viewers holding unexpired cookies retain access until those cookies lapse.
-Immediate revocation would require rotating the signing key or introducing an edge function that
-performs a per-request check.
+Signed Cookies remain valid for two hours after issuance, so switching a video from public to
+private leaves viewers holding unexpired cookies with access until those cookies lapse. Immediate
+revocation would require rotating the signing key or introducing an edge function that performs a
+per-request check. The system also implements no digital rights management: an authorised viewer
+can capture the decrypted stream or share their cookies, and preventing this is outside the scope
+of the techniques used here.
 
-A related gap was narrower than that one and did prove fixable. Logging out cleared the token from
-browser storage and nothing else, so the playback cookies stayed in the browser for the remainder
-of their two hours; on a shared machine the next person could still fetch the previous user's
-private segments given a URL. The cookies are \texttt{httpOnly}, which is what makes them safe
-from scripted theft and equally what makes them impossible for the client to clear on its own, so
-a server endpoint now expires them explicitly. The delete has to repeat the domain, path and
-\texttt{sameSite} attributes used when issuing: a browser silently ignores a deletion whose
-attributes do not match while the server still returns a success, which is why the test asserts
-the two option sets against one another rather than against copied literals.
+Rate limiting and view deduplication hold their state in process memory. This is correct for the
+current single-instance deployment but would need to move to a shared store such as Redis before
+the backend could be scaled horizontally, since each instance would otherwise enforce its own
+independent limits. The backend itself remains one process on one instance in a single region and
+is the only single point of failure in the system, the transcoding and delivery tiers being
+managed services that scale and recover on their own.
 
-The same reasoning exposed a larger revocation gap in the session tokens themselves. The
-authentication middleware verified a token's signature and loaded its user, but never compared the
-token against the account's last password change, so changing a password issued a new token
-without invalidating any existing one. A password change is what somebody does when they believe
-their account is compromised, and here it did not evict the intruder; it merely gave the owner a
-second valid session alongside the attacker's, for up to the seven-day token lifetime. Recording
-a \texttt{passwordChangedAt} timestamp and rejecting tokens issued before it closes this. The
-detail worth recording is a unit mismatch that makes the fix fail in the most confusing possible
-direction: the \texttt{iat} claim is in whole seconds while the timestamp is in milliseconds, so
-without an offset the token issued immediately after a password change looks older than the change
-and logs the user straight back out. Statelessness is the property that makes JSON Web Tokens
-attractive, and it is exactly the property that makes revocation something that must be designed
-in rather than assumed.
+Two experimental results are narrower than the headline figures suggest. The comparison between
+1 and 4~vCPU allocations rests on a 1~vCPU baseline whose three runs span 56\%, so the estimated
+speedup varies between 3.3 and 4.9 times depending on which statistic is compared, and memory was
+raised at the same time as the vCPU count, so the experiment does not isolate either variable. The
+delivery latency figures were collected from probes running inside AWS regions rather than on
+residential connections, so they describe edge proximity under favourable network conditions
+rather than what a home viewer would experience.
 
-A more fundamental limitation surfaced during the preparation of the experimental results for
-this report. Verifying the deployed environment directly through the AWS command line interface
-revealed that no CloudFront distribution had ever been created in the development AWS account,
-and that the processed content bucket carried a manually added policy granting anonymous
-\texttt{s3:GetObject} access to any object. In other words, the content protection scheme
-described in Section~\ref{sec:content-protection} was fully implemented and validated in code
-but had never actually been deployed; every video, public or private, was directly retrievable
-from Amazon S3 without any authorisation check. Attempting to apply the Terraform configuration
-to correct this failed with an access-denied error, because AWS requires manual account
-verification before a new account may create CloudFront distributions, a restriction the project
-had encountered before and for which the \texttt{enable\_cloudfront} flag had originally been
-introduced as a workaround. A support request was filed with AWS to lift this restriction and, at
-the time, remained pending with no bound on how long it might take. This episode is reported here
-in the interest of honesty rather than omitted, and it illustrates a broader lesson about
-serverless and managed cloud services: correctness of the Infrastructure as Code is necessary but
-not sufficient, since provisioning can still be blocked by account-level policy outside the
-application's control, and verifying claims against the live environment rather than against the
-source code alone is essential before a security control can be considered in effect.
-
-Rather than wait indefinitely on the support ticket, the gap was closed by provisioning the
-distribution in a second AWS account that was not subject to the same restriction. Terraform
-supports this without duplicating any module: the distribution, its Origin Access Control, its
-cache and response-header policies, and its Signed Cookie trusted key group were given an explicit
-\texttt{provider} argument pointing at the second account's credentials, while the buckets, Batch,
-Lambda, and the database connection remained where they already were. Only one resource could not
-simply move with the rest: a bucket policy can only be attached by the account that owns the
-bucket, so the statement granting the distribution read access was kept on the original account's
-provider. This is not a special case requiring extra logic, because an Origin Access Control
-policy is already expressed as a service principal together with an \texttt{AWS:SourceArn}
-condition naming the distribution, a form that is indifferent to which account owns the ARN it
-names. With the cross-account distribution in place, the manually added public bucket policy was
-removed, and the bucket returned to being reachable only through CloudFront, exactly as
-Section~\ref{sec:content-protection} specifies. The workaround changes nothing about the security
-property being evaluated: the distribution, key group, and signing logic are identical to what
-would have been provisioned in the original account, and the account boundary a distribution
-happens to sit behind is invisible to a viewer.
-
-A second, more subtle defect emerged only once Signed Cookies were exercised against the newly
-deployed distribution, and it is worth recording because of how it evaded the existing test suite.
-The function constructing the resource pattern a cookie's policy authorises,
-\texttt{buildResourcePattern} in \texttt{cloudfrontService.js}, signed
-\texttt{videos/*/\{videoId\}/*}, with a wildcard segment between the fixed prefix and the video
-identifier. The transcoder, however, writes every rendition and the master playlist directly
-under \texttt{videos/\{videoId\}/}, with no such intermediate segment. Every cookie the backend
-issued was consequently well-formed and correctly signed, and CloudFront rejected every one of
-them, because the resource each cookie authorised never matched any URL a viewer could actually
-request; every private and public video alike returned \texttt{403 Forbidden}. The existing test
-for \texttt{buildResourcePattern} did not catch this because its assertion compared the function's
-output against a literal string obtained by reading the function itself, not against the
-transcoder's actual key layout, so the test could only confirm that the function had not changed,
-not that the pattern it produced was one CloudFront would ever match. This is the canned-policy
-defect from Section~\ref{sec:testing} recurring in a different guise: a test written by copying an
-implementation's current behaviour cannot detect a defect in that behaviour, only a later
-regression away from it. The fix corrects the pattern to \texttt{videos/\{videoId\}/*} and
-rewrites the test to assert against the key layout the transcoder actually produces.
-
-Two further consequences of finally exercising the deployed distribution are worth recording more
-briefly. Gating every object behind Signed Cookies also gated video thumbnails, which a catalogue
-listing must render for many videos at once even though a cookie authorises exactly one; the fix
-carves out a separate, unsigned cache behaviour for the thumbnail path specifically, since a
-thumbnail is not the content the mechanism is meant to protect. Separately, the frontend's own
-CloudFront distribution, provisioned around the same time for the unrelated reason that an Amazon
-S3 website endpoint cannot return \texttt{200} for a single-page application's client-side routes
-on a direct navigation, had no cache-invalidation step in its deployment workflow, so a fix already
-synced to the origin bucket continued to be served from the edge cache for hours afterward; the
-workflow now invalidates that distribution immediately after every deployment. Both were found the
-same way as the two defects above: by exercising the deployed system rather than trusting that a
-correct configuration change had taken effect once it merged.
-
-Signed Cookies were verified end to end after these corrections: a request for a manifest without
-a valid cookie returns \texttt{403 Forbidden} at the edge, and the identical request succeeds once
-the backend's playback-authorisation endpoint has issued cookies for that video, confirming the
-mechanism evaluated in Section~\ref{sec:content-protection} is now in effect on the deployed
-system and not merely present in its source code. Cloudflare continues to sit in front of the
-deployment as its DNS provider and edge TLS terminator, a role introduced as a stopgap while the
-distribution above did not yet exist; that role persists, but it now proxies to the real
-CloudFront distribution rather than substituting for it.
-
-The two-hour cookie lifetime also had a consequence in the player that no amount of reading the
-code would have revealed. The page requested cookies once, when the watch page mounted, and never
-again, so crossing the two-hour boundary produced a \texttt{403} on the next segment. The player's
-error handler responded to any fatal network error by calling \texttt{startLoad()} immediately,
-with no attempt counter and no delay, and since hls.js re-emits the error after each failed
-attempt, an error that does not resolve on its own becomes an unbounded retry loop against the
-CDN while the viewer watches a ``reconnecting'' message that will never change. Bounding the
-recovery and refreshing the cookies on a \texttt{403} is the obvious fix.
-
-What makes the episode instructive is that the obvious fix, written by reading the code, was
-wrong twice, and both errors were invisible until the path was actually executed. First, hls.js
-marks the initial \texttt{403} as non-fatal while it retries internally, so a handler that filters
-on the fatal flag before inspecting the status code discards precisely the error it exists to
-report. The player sat silently on the poster frame with no message at all. Second, refreshing
-the cookie and calling \texttt{startLoad()} does nothing, because that call resumes segment
-loading whereas an expired cookie fails at the manifest; the retry issued no request, produced no
-new error, and so never reached the give-up branch. Instrumenting the page made the contradiction
-plain in a way that inspection had not: two cookie refreshes against exactly one manifest request.
-Recovering required re-invoking \texttt{loadSource()}. Error-handling code is the least exercised
-part of any system and the part whose correctness is least visible from reading it, which is an
-argument for provoking the failure rather than reasoning about it.
-
-A hazard of a different kind was found the same way, by reading a plan rather than the code that
-produced it. The AMI for the backend instance is resolved through a data source with
-\texttt{most\_recent = true}, and the \texttt{ami} attribute forces replacement when it changes.
-Every Ubuntu security release therefore armed the next \texttt{terraform apply}, made for any
-unrelated reason, to destroy and rebuild the running server. The plan taken while adding
-the Batch configuration above showed exactly that, unprompted. What would have been lost is not an
-instance but the state on it that Terraform does not manage: the environment file holding the
-database URI, signing key and mail credentials, the nginx configuration, the TLS certificates, and
-the process manager's state, along with the public address that DNS points at. The address had in
-fact already moved once, in a rebuild three days earlier. Ignoring changes to the attribute makes
-an image upgrade deliberate, and an Elastic IP makes the address survive whatever rebuilds do
-occur. The general point is that Infrastructure as Code describes what should exist, not what a
-given apply will \emph{do} to what already exists, and those differ precisely when a resource
-holds state that the code never described.
-
-The system implements no digital rights management. An authorised viewer can capture the
-decrypted stream or share their cookies, and preventing this is outside the scope of the
-techniques used here.
-
-Finally, the rate limiting and view deduplication mechanisms hold their state in process memory.
-This is correct for the current single-instance deployment but would need to move to a shared
-store such as Redis before the backend could be scaled horizontally, since each instance would
-otherwise enforce its own independent limits.
-
-A defect found late in the evaluation deserves recording, both because it invalidated part of a
-measurement and because the way it evaded detection is instructive. The Terraform module for
-Secrets Manager created the entry holding the notification e-mail password unconditionally, but
-populated its value only when an e-mail password had actually been configured. Leaving e-mail
-unconfigured therefore produced an empty secret: a container with no version carrying the
-\texttt{AWSCURRENT} label. The Batch module, meanwhile, decided whether to declare that secret in
-the job definition by testing whether its ARN was non-empty, and the ARN of an empty secret is
-perfectly non-empty. Every transcoding task consequently failed at
-\texttt{ResourceInitializationError} before its entrypoint ran, and the transcoding pipeline was
-inoperative for as long as that job definition revision was active. The fix was to make the secret
-itself conditional so that the unconfigured state is internally consistent: no secret, an empty
-ARN, and no declaration in the job definition.
-
-What makes this worth reporting is why it went unnoticed. The only jobs submitted while the defect
-was live were those of the concurrency stress test, whose synthetic payloads were \emph{expected}
-to fail; a wall of failed jobs was precisely what the experiment predicted, so the failures were
-read as confirmation rather than as a symptom. The lesson generalises beyond this project: when an
-experiment is designed such that failure is the anticipated outcome, failure carries no
-information, and the reason for each failure must be inspected rather than assumed. Verifying the
-\emph{cause} recorded in \texttt{statusReason}, not merely the terminal state, would have surfaced
-the defect within minutes instead of hours.
-
-That account, given above, is accurate but incomplete, and the missing half is the more
-uncomfortable one. It explains why nobody looked. It does not explain why nothing told them, and
-a later audit of the deployed alerting showed that nothing could have. The system had two
-alarms, both on Amazon SQS metrics, and the one whose description read ``video transcoding
-failures detected'' watched the depth of the dead letter queue. No transcoding failure can reach
-that queue. The Lambda that consumes the message submits a Batch job and returns, so SQS deletes
-the message on successful \emph{submission}; whatever the container does afterwards is invisible
-to the queue, which no longer holds anything. The dead letter queue receives a message only when
-the Lambda itself fails to submit. Every one of those hundreds of failed jobs was therefore, from
-the queue's point of view, a complete success.
-
-The same structural gap accounted for the absent retry. The report states above that a failed job
-is retried until the message reaches the dead letter queue, which describes \texttt{worker} mode
-(Section~\ref{sec:pipeline-design}); on the deployed path SQS has already discarded the message,
-and the Batch job definition declared no \texttt{retryStrategy}. Nothing retried a failed job at
-any layer. A transient fault, such as a network fault while downloading the source or a reclaimed
-Spot task, lost the video outright, with no record beyond an \texttt{ERROR} row.
-
-Three changes close this. The job definition now declares three attempts, retrying only
-infrastructure faults and exiting immediately on an exit status indicating that FFmpeg rejected
-the content, since retrying such a job costs money and cannot change the outcome. It also declares
-a two-hour timeout, without which an FFmpeg process stalled on malformed input bills indefinitely.
-Detection moved to where the failures actually occur: AWS Batch publishes no CloudWatch metric for
-failed jobs, so an EventBridge rule matches job state transitions to \texttt{FAILED} and publishes
-to the alert topic, with the notification shaped to carry \texttt{statusReason}, the precise
-field whose absence turned a five-minute diagnosis into a multi-hour one. The misleading alarm
-description was corrected to state what it genuinely covers.
-
-The generalisation is worth stating carefully, because it is not the familiar observation that the
-system lacked monitoring. It had monitoring. The monitoring named the failure mode that occurred,
-in the alarm description, in the language an operator would search for, and yet it was wired to a
-signal that the architecture made incapable of carrying that information. An alarm that cannot
-fire is worse than an absent one, because its presence is taken as evidence that the case is
-covered, and its silence is read as good news.
-
-A later review found the same reasoning applied to a larger omission. After the corrections above
-the system had four alarms, and every one of them watched the transcoding pipeline. Nothing
-watched the backend API, the single component that every other part of the system depends on,
-running as one process on one instance. If the process died, the web server stopped, or the
-instance failed, no signal would have been produced at all.
-
-That gap was demonstrated during this work rather than reasoned about. Assigning the backend a
-static address moved its public IP, the DNS record continued to point at the released one, and
-the entire API returned \texttt{522} for several minutes, with the proxy in front of it reporting
-that it could not reach the origin at all. The instance was healthy throughout;
-every infrastructure-level indicator was green, because nothing at the infrastructure level was
-wrong. The outage was noticed only because someone happened to call the endpoint. This is the
-distinction that matters when choosing what to monitor: a check on the instance answers whether
-the server is running, and a check on the public domain answers whether the service is being
-delivered, which is the only question a user is asking.
-
-A scheduled function now calls the public domain every five minutes, traversing the same path a
-viewer does, and publishes a metric that an alarm watches; an instance status-check alarm sits
-alongside it, complementing rather than replacing it, since it would not have detected the failure
-just described. The choice of a self-hosted check over a managed one was decided on cost, since a
-managed health check on an endpoint outside the provider costs roughly 1.75 USD per month against
-zero for this approach within the free tier. The trade-off it accepts, that checks come from one
-location rather than several, is recorded alongside the implementation.
-
-Configuring that alarm produced a mistake worth reporting, because it is the first in this chapter
-that was introduced rather than discovered. The alarm was given an evaluation period equal to the
-interval between checks, so each period contained exactly one datapoint and no margin. Missing
-data is deliberately treated as a failure, on the principle that a monitor which dies must raise
-an alarm rather than fall silent. On first deployment, when only a single datapoint existed, the
-empty adjacent period was read as a breach and the alarm fired against a system that was working.
-The canary's
-own source comments state that a false alarm is the worst failure mode available to a monitor,
-because it teaches people to disregard the next one; the configuration contradicted the reasoning
-written beside it. Widening the evaluation period to three times the check interval gives each
-window several datapoints, so that one late execution cannot open a gap. The general lesson is
-narrow and practical: for any monitor evaluated over a window, the sampling rate and the
-evaluation window are a single joint decision, and choosing them independently produces a monitor
-that is either deaf or hysterical.
-
-Two smaller corrections came from the same review. The frontend had no error boundary, so any
-exception thrown during rendering unmounted the entire component tree and left a blank page,
-an outcome sitting oddly beside the deliberately designed pages for the 403 and 404 cases, and one
-that gave a user experiencing a real fault less information than one who requested a missing
-video. And the function submitting transcoding jobs was still running a language runtime past its
-end-of-life date, months after Section~\ref{sec:transcoder-impl} records upgrading the transcoder
-for precisely that reason; the upgrade had been applied to the component the report discusses and
-not to the one it does not.
-
-Several defects recorded in this chapter, together with two corrections made elsewhere in this
-report, share a single shape, and naming it is more useful than any of the individual fixes. In
-each case a mechanism was described correctly, and the description was then taken as evidence that
-the property the mechanism exists to provide was in force. It was not. The signing implementation
-was correct and never provisioned. The heartbeat is correct and runs in a mode the deployment does
-not use. The alarm named the failure it was meant to catch, in the words an operator would search
-for, and watched a signal that failure could not reach. The text index was declared, documented,
-and queried by nothing. In each instance the artefact and the guarantee were conflated, and the
-conflation survived review precisely because reading the artefact is what produced the belief in
-the first place.
-
-This report was not an outside observer of that pattern; it carried four such claims itself until
-they were checked. That is the uncomfortable part, and the reason the pattern is worth stating
-rather than quietly correcting: a requirement that names a mechanism, as the original wording of
-NFR-03 did, cannot be falsified once the mechanism changes, because it no longer describes
-anything the system could fail to do. The rule this suggests is narrow enough to act on. A claim
-about what a system guarantees is a claim about the deployed system, and the only evidence that
-settles it is the guarantee holding, or failing to hold, when the corresponding failure is
-actually provoked. Everything short of that, including the source, the configuration, the plan,
-and this report, describes intent.
+Finally, the CloudFront distributions are provisioned in a second AWS account, because the primary
+account was not permitted to create them. The arrangement is invisible to viewers and changes
+nothing about the security property being provided, but it splits the infrastructure across two
+sets of credentials and carries operational overhead that a verified account would not.
 
 \section{Future Work}
 \label{sec:future-work}

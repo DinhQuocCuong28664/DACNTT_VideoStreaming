@@ -76,7 +76,7 @@ mode, where the container holds no message to retain. The retry and dead-letter 
 described therefore governs only the Lambda that submits jobs, not the transcoding itself, and the
 recording of \texttt{ERROR} in the database is the sole part of this paragraph that applies to a
 deployed transcoding failure. The gap this left, and its consequences for how such failures were
-detected, is examined in Section~\ref{sec:limitations}.
+detected, is examined in Section~\ref{sec:challenges}.
 
 \section{Infrastructure as Code}
 \label{sec:iac}
@@ -149,15 +149,14 @@ Infrastructure code is validated in its own workflow, which checks formatting, i
 without a remote backend so that no credentials are required, validates both environments, and
 scans the configuration for insecure settings.
 
-A later audit of the pipeline itself found a weakness in the pipeline's own supply chain, and it
-is worth recording because of where it sat. All five workflows referenced the vulnerability
-scanner as \texttt{aquasecurity/trivy-action@master}. A branch reference resolves to whatever
-that repository's default branch contains at the moment a job runs, so a change made there,
-including one made by someone who had compromised the action, would execute inside this
-project's continuous integration, which holds AWS credentials. Every other action in the pipeline
-was pinned at least to a major version tag. The component pinned to nothing was the security
-scanner. The references are now pinned to a release commit hash, with the version tag retained in
-a comment so that upgrades remain deliberate and readable.
+A later audit of the pipeline found a weakness in its own supply chain. All five workflows
+referenced the vulnerability scanner as \texttt{aquasecurity/trivy-action@master}. A branch
+reference resolves to whatever that repository's default branch contains at the moment a job runs,
+so a change made there, including one made by someone who had compromised the action, would
+execute inside this project's continuous integration, which holds AWS credentials. Every other
+action in the pipeline was already pinned at least to a major version tag. The references are now
+pinned to a release commit hash, with the version tag retained in a comment so that upgrades
+remain deliberate and readable.
 
 The same audit narrowed one permission. The Lambda that submits transcoding jobs held
 \texttt{batch:SubmitJob} on \texttt{Resource: "*"}, which allowed it to submit to any job queue
@@ -166,9 +165,146 @@ definition. The scoping is expressed through the naming convention rather than b
 Batch module's outputs, because the Batch module already depends on the IAM module for its roles
 and referring back would introduce a dependency cycle; both modules carry a note recording the
 coupling that this creates. The companion action \texttt{batch:DescribeJobs} keeps the wildcard,
-because it accepts arbitrary job identifiers and AWS provides no resource-level control for it.
-That distinction is worth making explicitly, since a wildcard that is required and a wildcard that
-is merely convenient look identical in a policy document.
+because it accepts arbitrary job identifiers and AWS provides no resource-level control for it,
+and the module records that reason in a comment so the wildcard is not mistaken for an oversight.
+
+\section{Challenges During Development}
+\label{sec:challenges}
+
+Several difficulties arose between a design that was correct on paper and a system that behaved
+correctly once deployed. Each is recorded here with the resolution adopted, because those
+resolutions shaped parts of the final architecture.
+
+\subsection{Provisioning Blocked by Account Policy}
+
+The content protection scheme of Section~\ref{sec:content-protection} was implemented and covered
+by unit tests well before it could be provisioned. Applying the Terraform configuration failed
+with an access-denied error, because AWS requires manual account verification before a new account
+may create CloudFront distributions, and the request filed to lift that restriction remained
+pending with no bound on how long it might take. Until it was resolved the processed-content
+bucket was reachable directly over the public internet, so the private visibility setting had no
+effect at the storage layer.
+
+The restriction was worked around by provisioning the distribution in a second AWS account not
+subject to it. Terraform supports this without duplicating any module: the distribution, its
+Origin Access Control, its cache and response-header policies, and its Signed Cookie trusted key
+group were given an explicit \texttt{provider} argument pointing at the second account, while the
+buckets, Batch, Lambda and the database connection remained in the original one. Only the bucket
+policy could not move, since a bucket policy may be attached only by the account that owns the
+bucket. This required no special handling, because an Origin Access Control policy is expressed as
+a service principal together with an \texttt{AWS:SourceArn} condition naming the distribution, a
+form that is indifferent to which account owns the ARN. With the distribution in place, the
+temporary public bucket policy was removed and the bucket returned to being reachable only through
+CloudFront.
+
+\subsection{A Signed Cookie Policy That Matched Nothing}
+
+Exercising Signed Cookies against the new distribution revealed that every request returned
+\texttt{403 Forbidden}, for public and private videos alike. The function building the resource
+pattern that a cookie authorises, \texttt{buildResourcePattern}, signed
+\texttt{videos/*/\{videoId\}/*}, with a wildcard segment between the prefix and the identifier,
+whereas the transcoder writes every rendition and the master playlist directly under
+\texttt{videos/\{videoId\}/}. Each cookie was therefore well formed and correctly signed, and
+authorised a resource that no viewer could request.
+
+The existing unit test did not detect this because it compared the function's output against a
+literal string copied from the function itself rather than against the transcoder's key layout, so
+it could confirm only that the function had not changed. The pattern was corrected to
+\texttt{videos/\{videoId\}/*} and the test rewritten to assert against the layout the transcoder
+actually produces. Signed Cookies were then verified end to end against the deployed system: a
+manifest request without a valid cookie is rejected at the edge, and the identical request
+succeeds once the playback-authorisation endpoint has issued cookies for that video.
+
+\subsection{Two Consequences of Gating Every Object}
+
+Gating the whole bucket behind Signed Cookies also gated video thumbnails, which a catalogue
+listing must render for many videos at once even though a cookie authorises exactly one. A
+separate unsigned cache behaviour was carved out for the thumbnail path, since a thumbnail is not
+the content the mechanism exists to protect.
+
+Separately, the frontend's own CloudFront distribution, added because an Amazon S3 website
+endpoint cannot return \texttt{200} for a single-page application's client-side routes on direct
+navigation, had no cache-invalidation step in its deployment workflow, so a fix already synced to
+the origin bucket continued to be served from the edge for hours afterwards. The workflow now
+invalidates that distribution immediately after every deployment.
+
+\subsection{Playback Across the Cookie Expiry Boundary}
+
+Signed Cookies are valid for two hours, and the watch page requested them once when it mounted.
+Crossing that boundary produced a \texttt{403} on the next segment, and the player's error handler
+responded to any fatal network error by calling \texttt{startLoad()} with no attempt counter and
+no delay, so an error that does not resolve on its own became an unbounded retry loop behind a
+``reconnecting'' message that never changed.
+
+Two properties of hls.js governed the fix. The library marks the first \texttt{403} as non-fatal
+while it retries internally, so the handler must inspect the status code before filtering on the
+fatal flag, or it discards the very error it exists to report. And \texttt{startLoad()} resumes
+segment loading, whereas an expired cookie fails at the manifest, so recovery requires re-invoking
+\texttt{loadSource()}. The handler now refreshes the cookies on a \texttt{403}, reloads the source,
+and gives up after a bounded number of attempts with a message the viewer can act on.
+
+\subsection{An Empty Secret That Stopped the Pipeline}
+
+Every transcoding task began failing at \texttt{ResourceInitializationError} before its entrypoint
+ran. The Terraform module for Secrets Manager created the entry holding the notification e-mail
+password unconditionally but populated its value only when a password had been configured, so
+leaving e-mail unconfigured produced a secret with no version carrying the \texttt{AWSCURRENT}
+label. The Batch module decided whether to declare that secret in the job definition by testing
+whether its ARN was non-empty, and the ARN of an empty secret is non-empty. The fix made the
+secret itself conditional, so that the unconfigured state is internally consistent: no secret, an
+empty ARN, and no declaration in the job definition.
+
+The defect persisted longer than it should have because the only jobs submitted while it was live
+belonged to the concurrency stress test, whose synthetic payloads were expected to fail. Checking
+the cause recorded in \texttt{statusReason} rather than the terminal state alone would have
+identified it immediately, and the alerting described next was changed to carry that field.
+
+\subsection{Retry and Alerting on the Deployed Path}
+
+Section~\ref{sec:pipeline-design} describes retry as delegated to SQS redelivery, which holds in
+\texttt{worker} mode. On the deployed path the Lambda submitter deletes the message once the job
+is submitted, so SQS no longer holds anything to redeliver, and the Batch job definition declared
+no \texttt{retryStrategy}. Nothing retried a failed job at any layer, and a transient fault such
+as a network error while downloading the source lost the video with no record beyond an
+\texttt{ERROR} row.
+
+Detection had the same shape. The alarm whose description read ``video transcoding failures
+detected'' watched the depth of the dead letter queue, which receives a message only when the
+Lambda fails to submit, so a job that fails after submission is invisible to it. The job
+definition now declares three attempts, retrying infrastructure faults and exiting immediately
+when the exit status indicates that FFmpeg rejected the content, together with a two-hour timeout
+that bounds a process stalled on malformed input. Because AWS Batch publishes no CloudWatch metric
+for failed jobs, an EventBridge rule matches job state transitions to \texttt{FAILED} and
+publishes to the alert topic, with the notification carrying \texttt{statusReason}. The alarm
+description was corrected to state what it genuinely covers.
+
+\subsection{Monitoring the Service Rather Than the Server}
+
+All four alarms watched the transcoding pipeline and none watched the backend API, which runs as a
+single process on a single instance. The gap surfaced when assigning the backend a static address
+moved its public IP while DNS still pointed at the released one, and the API returned
+\texttt{522} for several minutes. Every infrastructure indicator stayed green, because nothing at
+the infrastructure level was wrong.
+
+A scheduled function now calls the public domain every five minutes along the same path a viewer
+takes and publishes a metric that an alarm watches, with an instance status-check alarm alongside
+it. A self-hosted check was chosen over a managed one on cost, since a managed health check on an
+endpoint outside the provider costs roughly 1.75 USD per month against zero within the free tier,
+and the trade-off it accepts, that checks originate from a single location, is recorded with the
+implementation. The alarm's evaluation period is three times the check interval, so that each
+window holds several datapoints and one late execution cannot open a gap that the missing-data
+policy would read as a breach.
+
+\subsection{Infrastructure Drift in the Instance Definition}
+
+The AMI for the backend instance is resolved through a data source with
+\texttt{most\_recent = true}, and the \texttt{ami} attribute forces replacement when it changes, so
+every Ubuntu security release armed the next \texttt{terraform apply} to destroy and rebuild the
+running server. What would have been lost is the state Terraform does not manage: the environment
+file holding the database URI, signing key and mail credentials, the nginx configuration, the TLS
+certificates, the process manager's state, and the public address that DNS points at. Changes to
+the attribute are now ignored, which makes an image upgrade deliberate, and an Elastic IP keeps
+the address stable across any rebuild that does occur.
 
 \section{Testing}
 \label{sec:testing}
@@ -256,7 +392,7 @@ First segment      & 108.76 & 87.04  & 322.20 & 78.41 & 322.20 \\
 \noindent\textit{Note: values in milliseconds, from Table~\ref{tab:ttff-results}, $n=20$ samples,
 populated from \texttt{docs/results/qoe-ttff.json}, produced by \texttt{scripts/benchmark-qoe.js}
 against a video served directly from the S3 bucket (source URL recorded in the result file), taken
-before the CloudFront distribution described in Section~\ref{sec:limitations} was deployed. These
+before the CloudFront distribution described in Section~\ref{sec:challenges} was deployed. These
 figures therefore represent origin latency without any CDN, and they serve here as the baseline
 against which Section~\ref{sec:cdn-measurement} compares the deployed system. The mean
 (292.93~ms) exceeds the median (251.52~ms) because one outlier sample (884.54~ms) inflates both
@@ -323,15 +459,12 @@ the gain lands: the manifest and rendition playlists, small files served from ca
 in single-digit milliseconds, while the segment continues to dominate because it is the only stage
 transferring a meaningful payload.
 
-Two observations are worth separating from the numbers. The first is that this defect was
-invisible to every form of inspection short of measurement from the right place: the
-infrastructure code was valid, the distribution was healthy, the cache hit rate was excellent, and
-each individual request succeeded. A measurement taken from Europe or North America would have
-shown the CDN performing well, and only the location of the observer made the fault apparent. The
-second is that the original setting was not careless. It was a deliberate, documented cost
-optimisation, and it was correct about cost. It was applied without asking where the traffic it
-governed would come from, which is the question that determined whether the component helped or
-hurt.
+Two properties of this defect are worth noting for the measurement methodology. It was invisible
+to every form of inspection short of measurement from the right place: the infrastructure code was
+valid, the distribution was healthy, the cache hit rate was excellent, and each individual request
+succeeded, so a measurement taken from Europe or North America would have shown the CDN performing
+well. And the original setting was a deliberate, documented cost optimisation that was correct
+about cost; what it did not account for was the geography of the traffic it governed.
 
 \subsection{Delivery Latency by Client Location}
 \label{sec:multiregion-measurement}
@@ -376,10 +509,10 @@ region, and is included for comparison rather than as a like-for-like sample.}
 
 Under \texttt{PriceClass\_200}, four of the five locations were indistinguishable, clustering
 between 55 and 60~ms and each served by an edge in its own region. That uniformity is the property
-a content delivery network is supposed to have, and it was better evidence that the price class
-correction worked than the single improved figure from Vietnam had been.
+a content delivery network is expected to provide, and it corroborates the price class correction
+more strongly than the single improved figure from Vietnam had.
 
-S\~{a}o Paulo was the exception, and it was the most instructive row in the table. Requests from
+S\~{a}o Paulo was the exception. Requests from
 Brazil were served by \texttt{CPT51} in Cape Town, South Africa, across the South Atlantic, at
 a median of 1196~ms, twenty-one times the latency of every other location and considerably worse
 than the 728~ms that prompted the correction in the first place. The cause was the same mechanism:
@@ -395,27 +528,21 @@ Sydney, the other previously excluded region, is served by \texttt{SYD3} at 52.3
 control locations moved by less than 4~ms, confirming that nothing else changed. Delivery is now
 uniform across every location measured.
 
-The basis for that decision should be stated honestly, because it is not the one the numbers
-suggest on their own. The system has no users in South America or Oceania, so this did not meet an
-existing need. It was adopted because the difference in cost is zero in practice: CloudFront's
-perpetual free tier covers one terabyte of transfer and ten million requests per month, well above
-anything this deployment approaches. With no cost to weigh against it, there is no reason to retain
-a region served an order of magnitude worse. Were traffic ever to exceed that allowance, this is
-the first setting that
-should be revisited, since South America and Oceania carry the highest per-gigabyte rates in the
-schedule. The general form of the decision is worth noting: the correct choice depended not on
-which configuration was better in the abstract but on where the traffic actually originates and
-what the alternative genuinely costs, and both of those are facts about the deployment rather than
-about CloudFront.
+The basis for that decision is narrower than the numbers alone suggest. The system has no users in
+South America or Oceania, so the change did not meet an existing need. It was adopted because the
+difference in cost is zero in practice: CloudFront's perpetual free tier covers one terabyte of
+transfer and ten million requests per month, well above anything this deployment approaches. With
+no cost to weigh against it, there is no reason to retain a region served an order of magnitude
+worse. Were traffic ever to exceed that allowance, this is the first setting that should be
+revisited, since South America and Oceania carry the highest per-gigabyte rates in the schedule.
 
-One methodological limit should be stated plainly. These probes ran inside AWS regions, reaching
+One methodological limit applies to the whole table. These probes ran inside AWS regions, reaching
 edges over well-provisioned network paths, which is why four of them report around 55~ms while the
 consumer connection in Ho Chi Minh City reports 110~ms to an edge in the same city. The figures
 therefore measure edge proximity under favourable conditions, not what a residential viewer in
 each location would experience; the last-mile difference is roughly a factor of two on this
-evidence. What the table does establish, and what a single vantage point could not, is the
-\emph{shape} of the delivery layer: uniform where the price class reaches, and an order of
-magnitude worse where it does not.
+evidence. Within that limit, the table establishes what a single vantage point could not: delivery
+is uniform wherever the price class reaches, and an order of magnitude worse where it does not.
 
 \section{Transcoding Pipeline Performance}
 \label{sec:pipeline-evaluation}
@@ -486,7 +613,7 @@ runs, and 4.86$\times$ comparing medians. Only the first of these is consistent 
 bound the theory predicts. The 1~GB comparison rests on a single 1~vCPU observation and so admits
 no variance estimate at all.
 
-The honest conclusion is therefore narrower than the headline numbers suggest: raising the
+The conclusion this data supports is therefore narrower than the headline numbers suggest: raising the
 allocation from 1 to 4~vCPU reduced pipeline latency by roughly a factor of four on this workload,
 but the present sample is too small and too noisy to establish whether the true scaling is
 sub-linear as theory requires, and the simultaneous memory change means the experiment does not
@@ -524,7 +651,7 @@ synthetic payload would have caused. The cause was a defect in the Terraform con
 Secrets Manager entry holding the notification e-mail password was created as an empty container
 without a value whenever e-mail was left unconfigured, while the Batch job definition still
 declared that secret, so every task failed before its entrypoint ran. The defect is described and
-its correction recorded in Section~\ref{sec:limitations}. Its consequence for this experiment is
+its correction recorded in Section~\ref{sec:challenges}. Its consequence for this experiment is
 specific: the control-plane observations below, that Amazon SQS retained and forwarded every
 message and that AWS Batch admitted exactly its configured number of concurrent tasks, are
 unaffected, because those mechanisms operate before and independently of the container's
@@ -629,7 +756,7 @@ and never above, its configured limit while consuming that backlog.
 \label{sec:real-throughput-validation}
 
 The caveat stated at the start of this section was closed once the Secrets Manager defect was
-corrected (Section~\ref{sec:limitations}) and the concurrency test was re-run with a genuine
+corrected (Section~\ref{sec:challenges}) and the concurrency test was re-run with a genuine
 three-second H.264 source file in place of the synthetic byte string that every earlier run in
 this section used. The scenario, executor, and concurrency were otherwise unchanged from
 Table~\ref{tab:load-crossvalidation}: fifty virtual users driving the
