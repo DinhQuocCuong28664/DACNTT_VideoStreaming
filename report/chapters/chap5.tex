@@ -121,12 +121,15 @@ manifests, which may change if the set of renditions changes.
 Seven GitHub Actions workflows automate verification and deployment, as shown in
 Figure~\ref{fig:cicd}.
 
-\begin{figure}[H]
+% Xoay ngang: bảy hàng workflow, hàng dài nhất có năm bước nối tiếp. Đặt vừa
+% bề rộng vùng chữ thì nhãn trong hình rơi xuống khoảng 4pt.
+\begin{sidewaysfigure}
 \centering
-\includegraphics[width=\textwidth]{images/03-cicd-pipeline.png}
-\caption{\textit{CI/CD workflows and the two-tier DevSecOps quality gate}}
+\includegraphics[width=\textheight]{images/03-cicd-pipeline.png}
+\caption{\textit{The seven GitHub Actions workflows, the file paths that trigger each of them,
+and the two-tier DevSecOps quality gate}}
 \label{fig:cicd}
-\end{figure}
+\end{sidewaysfigure}
 
 The security gate is structured in two tiers, and the reason is practical. Scanning at the
 combined critical and high severity levels and failing the build on any finding sounds

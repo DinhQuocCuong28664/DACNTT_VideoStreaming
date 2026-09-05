@@ -6,11 +6,11 @@ Thư mục này chứa các sơ đồ dùng cho báo cáo đồ án. Mã nguồn
 |---|---|---|
 | `01-architecture-overview.png` | Kiến trúc tổng thể, ranh giới triển khai và luồng dữ liệu đánh số | 4.1 |
 | `02-transcoding-sequence.png` | Sequence Diagram quy trình chuyển mã Event-Driven | 4.3 |
-| `03-cicd-pipeline.png` | Sơ đồ 7 workflow CI/CD và DevSecOps Quality Gate | 5.2 |
+| `03-cicd-pipeline.png` | Bảy workflow CI/CD, đường dẫn kích hoạt và cổng chất lượng hai tầng | 5.4 |
 | `04-database-erd.png` | ERD của MongoDB (User, Video, Comment) | 4.2 |
 | `05-use-case.png` | Sơ đồ Use Case với 3 tác nhân | 3.4 |
 | `06-hls-abr.png` | Các tệp HLS sinh ra từ một video nguồn và thứ tự player tải | 2.2 |
-| `07-compute-models.png` | So sánh cụm luôn bật với container serverless theo yêu cầu | 2.2 |
+| `07-compute-models.png` | So sánh cụm luôn bật với container serverless, kèm thanh tỉ lệ giờ tính tiền | 2.2 |
 | `08-user-flow.png` | Luồng người dùng từ lúc vào trang tới khi video được công bố | 4.5 |
 
 ## Tái sinh ảnh sau khi sửa sơ đồ
@@ -40,7 +40,7 @@ Icon lấy từ bộ `@iconify-json/logos`, đã trích sẵn phần cần dùng
 `svg/icons.json` (khoảng 80 KB) nên dựng lại hình không cần mạng.
 
 ```bash
-node docs/diagrams/svg/01-architecture-overview.mjs
+for f in docs/diagrams/svg/0*.mjs; do node "$f"; done
 ```
 
 Lệnh trên ghi ra cả `svg/01-architecture-overview.svg` (bản gốc vector, để sửa

@@ -83,9 +83,11 @@ the queue rather than by spare capacity, and the degree of parallelism is a conf
 rather than a fixed fleet size. The two figures shown, \$124.10 against \$0.05 of monthly compute,
 are the same workload priced under the two models.
 
-\begin{figure}[H]
+% Hình xếp dọc nên không cần xoay ngang, nhưng cũng không nên kéo hết bề rộng
+% vùng chữ: ở 0,82 lần thì cao khoảng 17 cm, vừa một trang mà nhãn vẫn trên 6pt.
+\begin{figure}[htbp]
 \centering
-\includegraphics[width=\textwidth]{images/07-compute-models.png}
+\includegraphics[width=0.82\textwidth]{images/07-compute-models.png}
 \caption{\textit{Compute models for a bursty transcoding workload: an always-on cluster
 compared with on-demand serverless containers}}
 \label{fig:compute-models}

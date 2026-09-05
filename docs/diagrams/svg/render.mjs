@@ -166,6 +166,60 @@ export function legend(x, y, entries) {
   return parts.join('');
 }
 
+/**
+ * Chip một bước trong quy trình: nhỏ hơn `card`, icon nằm bên trái chữ.
+ * Dùng cho sơ đồ CI/CD, nơi một hàng có tới năm bước nối tiếp nên thẻ vuông
+ * kiểu `card` sẽ không đủ chỗ.
+ */
+export function chip(spec) {
+  const { x, y, w = 150, h = 46, iconName, label, tone = 'plain', iconSize = 20 } = spec;
+  const c = PALETTE[tone] ?? PALETTE.plain;
+  const parts = [
+    `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="8" ` +
+    `fill="${c.fill}" stroke="${c.stroke}" stroke-width="1.4"/>`,
+  ];
+
+  const lines = Array.isArray(label) ? label : [label];
+  const textX = iconName ? x + iconSize + 20 : x + w / 2;
+  const anchor = iconName ? 'start' : 'middle';
+  if (iconName) parts.push(icon(iconName, x + 11, y + (h - iconSize) / 2, iconSize));
+
+  const startY = y + h / 2 + (lines.length === 1 ? 4.5 : -2);
+  parts.push(textLines(lines, textX, startY, { size: 13, anchor, lineHeight: 15 }));
+
+  return {
+    svg: parts.join(''),
+    box: { x, y, w, h, cx: x + w / 2, cy: y + h / 2, r: x + w, b: y + h },
+  };
+}
+
+/**
+ * Thanh tỉ lệ hai phần, dùng để so sánh hai đại lượng chênh nhau rất xa.
+ * Với mức sử dụng 0,5% thì một con số trong bảng không gây ấn tượng gì, còn
+ * một dải gần như trống thì nói ngay được vấn đề.
+ */
+export function bar(spec) {
+  const {
+    x, y, w, h = 26, fraction, fillColor = PALETTE.compute.stroke,
+    trackColor = '#e6e9ee', label, valueLabel,
+  } = spec;
+  const fillW = Math.max(w * fraction, 2);
+  const parts = [
+    `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="5" fill="${trackColor}"/>`,
+    `<rect x="${x}" y="${y}" width="${fillW.toFixed(2)}" height="${h}" rx="5" fill="${fillColor}"/>`,
+  ];
+  if (label) parts.push(textLines(label, x, y - 9, { size: 13, anchor: 'start', fill: PALETTE.muted }));
+  if (valueLabel) {
+    parts.push(textLines(valueLabel, x + w, y - 9, { size: 13, anchor: 'end', fill: PALETTE.ink, weight: 'bold' }));
+  }
+  return { svg: parts.join(''), box: { x, y, w, h, r: x + w, b: y + h } };
+}
+
+/** Nhãn chữ tự do, cho tiêu đề nhóm hoặc ghi chú ngoài thẻ. */
+export function text(str, x, y, opts = {}) {
+  return textLines(str, x, y, opts);
+}
+
 /** Ghép các phần thành một tài liệu SVG hoàn chỉnh. */
 export function document_({ width, height, body, title }) {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
