@@ -27,11 +27,10 @@ Tham số `-b white` bảo đảm nền trắng và `-s 3` xuất ảnh ở đ�
 
 Thư mục này dùng hai công cụ, chọn theo loại sơ đồ.
 
-**Mermaid** (`src/*.mmd`) cho sơ đồ tuần tự, luồng người dùng và các sơ đồ khái
-niệm. Đây là những loại Mermaid làm tốt và không cần icon.
+**Mermaid** (`src/*.mmd`) chỉ còn dùng cho sơ đồ tuần tự và sơ đồ luồng người
+dùng. Đây là hai loại Mermaid làm tốt và không cần icon dịch vụ.
 
-**Bộ sinh SVG riêng** (`svg/`) cho sơ đồ kiến trúc, CI/CD, so sánh mô hình tính
-toán, ERD và use case, vì các lý do sau. Thứ nhất,
+**Bộ sinh SVG riêng** (`svg/`) cho sáu hình còn lại, vì các lý do sau. Thứ nhất,
 Mermaid chỉ nạp được icon qua lời gọi JavaScript `registerIconPacks`, mà
 mermaid-cli không phơi hàm đó ra, nên chạy qua CLI thì mọi icon đều thành dấu
 hỏi. Thứ hai, bố cục tự động không đặt được các khối lồng nhau theo đúng ranh

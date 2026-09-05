@@ -142,11 +142,12 @@ and its segments. Because every rung is segmented on the same boundaries, the pl
 its choice at any segment boundary without interrupting playback, which is the mechanism that lets
 quality fall rather than the video stall when a connection weakens. The consequence for the
 transcoding subsystem is that the cost of preparing a video scales with the number of rungs, since
-each is a separate encoding pass over the whole source.
+each rung is encoded separately even though the source itself is decoded only once. The
+implementation exploits exactly that distinction, as Section~\ref{sec:transcoder-impl} describes.
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.72\textwidth]{images/06-hls-abr.png}
+\includegraphics[width=0.85\textwidth]{images/06-hls-abr.png}
 \caption{\textit{HLS artefacts produced from one source file and the order in which a player
 retrieves them}}
 \label{fig:hls-abr}
