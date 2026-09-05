@@ -215,6 +215,113 @@ export function bar(spec) {
   return { svg: parts.join(''), box: { x, y, w, h, r: x + w, b: y + h } };
 }
 
+/**
+ * Use case theo đúng ký hiệu UML: hình ellipse, không phải hình chữ nhật.
+ *
+ * Bản Mermaid trước vẽ bằng hình chữ nhật vì Mermaid không có kiểu sơ đồ use
+ * case, hình đó là một flowchart giả lập. Ký hiệu sai làm người chấm phải đoán
+ * xem đâu là use case, đâu là bước xử lý.
+ */
+export function usecase(spec) {
+  const { cx, cy, rx = 156, ry = 40, label, tone = 'network' } = spec;
+  const c = PALETTE[tone] ?? PALETTE.network;
+  const lines = Array.isArray(label) ? label : [label];
+  const startY = cy + (lines.length === 1 ? 5 : -3);
+
+  const svg =
+    `<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="${c.fill}" ` +
+    `stroke="${c.stroke}" stroke-width="1.6"/>` +
+    textLines(lines, cx, startY, { size: 15, lineHeight: 18 });
+
+  return { svg, box: { cx, cy, l: cx - rx, r: cx + rx, t: cy - ry, b: cy + ry, rx, ry } };
+}
+
+/** Tác nhân UML: hình người que kèm tên phía dưới. */
+export function actor(spec) {
+  const { cx, cy, label, scale = 1, color = PALETTE.ink } = spec;
+  const s = scale;
+  const head = 9 * s;
+  const bodyTop = cy - 6 * s;
+  const bodyBottom = cy + 20 * s;
+
+  const parts = [
+    `<circle cx="${cx}" cy="${cy - 17 * s}" r="${head}" fill="none" stroke="${color}" stroke-width="1.8"/>`,
+    `<path d="M ${cx} ${bodyTop} L ${cx} ${bodyBottom}" stroke="${color}" stroke-width="1.8"/>`,
+    `<path d="M ${cx - 15 * s} ${cy + 2 * s} L ${cx + 15 * s} ${cy + 2 * s}" stroke="${color}" stroke-width="1.8"/>`,
+    `<path d="M ${cx} ${bodyBottom} L ${cx - 12 * s} ${bodyBottom + 18 * s}" stroke="${color}" stroke-width="1.8"/>`,
+    `<path d="M ${cx} ${bodyBottom} L ${cx + 12 * s} ${bodyBottom + 18 * s}" stroke="${color}" stroke-width="1.8"/>`,
+  ];
+
+  const lines = Array.isArray(label) ? label : [label];
+  parts.push(textLines(lines, cx, bodyBottom + 18 * s + 22, { size: 14, weight: 'bold', lineHeight: 17 }));
+
+  return {
+    svg: parts.join(''),
+    box: { cx, cy, r: cx + 16 * s, l: cx - 16 * s, b: bodyBottom + 18 * s + 22 + lines.length * 17 },
+  };
+}
+
+/**
+ * Liên kết giữa tác nhân và use case: đường thẳng, KHÔNG có đầu mũi tên.
+ * UML chỉ dùng mũi tên cho quan hệ include và extend.
+ */
+export function assoc(points, opts = {}) {
+  const { color = PALETTE.line, width = 1.5 } = opts;
+  const d = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p[0]} ${p[1]}`).join(' ');
+  return `<path d="${d}" fill="none" stroke="${color}" stroke-width="${width}"/>`;
+}
+
+/**
+ * Bảng thực thể cho sơ đồ ERD: tiêu đề, rồi mỗi thuộc tính một dòng gồm kiểu,
+ * tên, khoá và ghi chú.
+ *
+ * Tự vẽ thay vì dùng `erDiagram` của Mermaid vì Mermaid xếp các bảng cạnh nhau
+ * theo chiều cao lớn nhất, mà ở đây bảng VIDEO có hai mươi dòng còn USER chỉ có
+ * mười bốn, nên gần bốn mươi phần trăm khung hình là khoảng trắng. Khung to hơn
+ * nội dung cần thì khi thu vừa trang chữ bị nhỏ theo.
+ */
+export function entity(spec) {
+  const {
+    x, y, name, rows, w = 470,
+    colType = 112, colName = 150, colKey = 44,
+    rowH = 27, headH = 34, tone = 'storage',
+  } = spec;
+  const c = PALETTE[tone] ?? PALETTE.storage;
+  const h = headH + rows.length * rowH;
+  const parts = [];
+
+  parts.push(`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="6" fill="#ffffff" ` +
+    `stroke="${c.stroke}" stroke-width="1.6"/>`);
+  parts.push(`<path d="M ${x} ${y + headH} h ${w}" stroke="${c.stroke}" stroke-width="1.6"/>`);
+  parts.push(`<rect x="${x}" y="${y}" width="${w}" height="${headH}" rx="6" fill="${c.fill}"/>`);
+  parts.push(`<rect x="${x}" y="${y + headH - 8}" width="${w}" height="8" fill="${c.fill}"/>`);
+  parts.push(textLines(name, x + w / 2, y + 23, { size: 16, weight: 'bold' }));
+
+  rows.forEach((r, i) => {
+    const ry = y + headH + i * rowH;
+    if (i % 2 === 1) {
+      parts.push(`<rect x="${x + 1}" y="${ry}" width="${w - 2}" height="${rowH}" fill="#f7f9fb"/>`);
+    }
+    const ty = ry + rowH / 2 + 4.5;
+    parts.push(textLines(r.type, x + 12, ty, { size: 13, anchor: 'start', fill: PALETTE.muted }));
+    parts.push(textLines(r.name, x + 12 + colType, ty, { size: 13, anchor: 'start' }));
+    if (r.key) {
+      parts.push(textLines(r.key, x + 12 + colType + colName + colKey / 2, ty,
+        { size: 12, weight: 'bold', fill: c.stroke }));
+    }
+    if (r.note) {
+      parts.push(textLines(r.note, x + 12 + colType + colName + colKey + 8, ty,
+        { size: 12, anchor: 'start', fill: PALETTE.muted }));
+    }
+  });
+
+  return {
+    svg: parts.join(''),
+    box: { x, y, w, h, r: x + w, b: y + h, cx: x + w / 2, cy: y + h / 2 },
+    rowY: (i) => y + headH + i * rowH + rowH / 2,
+  };
+}
+
 /** Nhãn chữ tự do, cho tiêu đề nhóm hoặc ghi chú ngoài thẻ. */
 export function text(str, x, y, opts = {}) {
   return textLines(str, x, y, opts);

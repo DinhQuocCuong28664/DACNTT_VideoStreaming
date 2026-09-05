@@ -1,35 +1,35 @@
 sequenceDiagram
     autonumber
-    actor User as User (Browser)
+    actor User as Browser
     participant API as Backend API
-    participant S3Raw as S3 Raw Bucket
+    participant S3Raw as S3 Raw
     participant SQS as Amazon SQS
-    participant Lambda as Lambda Submitter
-    participant Batch as AWS Batch (Fargate)
-    participant S3Proc as S3 Processed Bucket
-    participant DB as MongoDB Atlas
+    participant Lambda as Lambda
+    participant Batch as AWS Batch
+    participant S3Proc as S3 Processed
+    participant DB as MongoDB
 
-    User->>API: POST /api/videos/initiate-upload
-    API->>DB: Create record (status = UPLOADING)
-    API-->>User: Return pre-signed URL (TTL 15 min)
-    User->>S3Raw: PUT source video directly
+    User->>API: POST /initiate-upload
+    API->>DB: Create record, UPLOADING
+    API-->>User: Pre-signed URL, 15 min
+    User->>S3Raw: PUT source video
 
-    User->>API: PATCH /:id/confirm-upload
-    API->>DB: Set status = PROCESSING
+    User->>API: PATCH /confirm-upload
+    API->>DB: Set PROCESSING
 
-    S3Raw-->>SQS: Event notification (s3:ObjectCreated)
-    SQS-->>Lambda: Event source mapping triggers
-    Lambda->>Batch: SubmitJob (VIDEO_ID, RAW_S3_KEY)
-    Lambda-->>SQS: Handler returns, message deleted
-    Note over Lambda,SQS: Message is deleted when the job is SUBMITTED,<br/>not when transcoding completes
+    S3Raw-->>SQS: s3:ObjectCreated
+    SQS-->>Lambda: Event source mapping
+    Lambda->>Batch: SubmitJob
+    Lambda-->>SQS: Message deleted
+    Note over Lambda,SQS: Deleted at SUBMIT,<br/>not at completion
 
     activate Batch
-    Batch->>S3Raw: Download source into container
-    Batch->>Batch: FFmpeg transcode 360p / 720p / 1080p
-    Batch->>Batch: Emit master.m3u8 + thumbnail.jpg
-    Batch->>S3Proc: Upload all .ts segments and manifests
-    Batch->>DB: Conditional write status = READY
+    Batch->>S3Raw: Download source
+    Batch->>Batch: FFmpeg 360p, 720p, 1080p
+    Batch->>Batch: master.m3u8 + thumbnail
+    Batch->>S3Proc: Upload segments
+    Batch->>DB: Conditional write, READY
     deactivate Batch
 
-    Note over Batch,DB: The conditional write (only if not already READY)<br/>is what guards against duplicate jobs, since the<br/>container holds no SQS message to extend
-    Note over Batch: Container terminates, Fargate scales to zero
+    Note over Batch,DB: The conditional write is<br/>what guards duplicate jobs
+    Note over Batch: Container ends,<br/>Fargate scales to zero

@@ -15,7 +15,7 @@
  */
 import { card, chip, group, edge, text, document_, write, PALETTE } from './render.mjs';
 
-const W = 1560;
+const W = 1372;
 const H = 888;
 const p = [];
 
@@ -87,7 +87,7 @@ const rows = [
   },
   {
     y: 638, name: 'cd-staging.yml', on: 'on push to develop',
-    steps: [{ icon: 'aws-ec2', label: 'Deploy to dev environment', tone: 'network' }],
+    steps: [{ icon: 'aws-ec2', label: ['Deploy to the', 'dev environment'], tone: 'network' }],
   },
   {
     y: 750, name: 'cd-deploy.yml', on: 'on merge to main',
@@ -125,28 +125,29 @@ p.push(edge([[LANE_X, rows[0].firstY], [LANE_X, rows[rows.length - 1].firstY]], 
 // ── Cổng chất lượng hai tầng ────────────────────────────────────────────────
 const secRow = rows[4];
 const gate = group({
-  x: 1108, y: secRow.y + 4, w: 412, h: 108,
+  x: 1108, y: secRow.y + 4, w: 218, h: 160,
   label: 'Two-tier quality gate', stroke: PALETTE.secret.stroke, fill: '#fef7f6', dash: '6 4',
 });
 p.push(gate.svg);
 
 const block = chip({
-  x: 1126, y: secRow.y + 38, w: 186, h: 54,
+  x: 1124, y: secRow.y + 38, w: 186, h: 54,
   label: ['Fixable CRITICAL', 'blocks the merge'], tone: 'secret',
 });
 const report = chip({
-  x: 1326, y: secRow.y + 38, w: 176, h: 54,
+  x: 1124, y: secRow.y + 102, w: 186, h: 54,
   label: ['Everything else', 'is reported only'], tone: 'plain',
 });
 p.push(block.svg, report.svg);
 p.push(edge([[secRow.lastBox.r, secRow.lastBox.cy], [gate.box.x, secRow.lastBox.cy]]));
 
 p.push(text(
-  ['Failing on every high-severity finding means failing on',
-   'transitive dependencies that have no patch, and a gate like',
-   'that gets ignored. Blocking only where a fix exists keeps',
-   'each failure actionable. Section 5.4 gives the reasoning.'],
-  1108, secRow.y + 138,
+  ['Failing on every high-severity finding means',
+   'failing on transitive dependencies that have no',
+   'patch, and a gate like that gets ignored. Blocking',
+   'only where a fix exists keeps each failure',
+   'actionable. Section 5.4 gives the reasoning.'],
+  626, rows[5].y + 6,
   { size: 12.5, anchor: 'start', fill: PALETTE.muted, lineHeight: 18 }));
 
 // Ghi chú cho hai hàng triển khai
