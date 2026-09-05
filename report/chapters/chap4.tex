@@ -8,12 +8,16 @@ The system is organised into four tiers, shown in Figure~\ref{fig:architecture}:
 running in the browser, a delivery tier built on Amazon CloudFront, an application tier
 comprising the backend API and the database, and a processing tier that performs transcoding.
 
-\begin{figure}[H]
+% Xoay ngang vì cùng lý do với sơ đồ tuần tự: đặt vừa chiều rộng vùng chữ
+% (16 cm) thì nhãn trong hình chỉ còn khoảng 4pt, nhỏ hơn mức đọc được khi in.
+% Dùng chiều cao trang làm chiều rộng hình cho thêm 54% kích thước.
+\begin{sidewaysfigure}
 \centering
-\includegraphics[width=\textwidth]{images/01-architecture-overview.png}
-\caption{\textit{Overall system architecture and the eleven-step data flow}}
+\includegraphics[width=\textheight]{images/01-architecture-overview.png}
+\caption{\textit{Overall system architecture, showing the deployment boundaries and the numbered
+data flow from an anonymous visit through upload, transcoding and signed delivery}}
 \label{fig:architecture}
-\end{figure}
+\end{sidewaysfigure}
 
 The separation between the application tier and the processing tier is the defining
 characteristic of this design. The backend API never touches video content: it issues
