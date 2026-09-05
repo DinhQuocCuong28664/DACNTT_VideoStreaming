@@ -95,12 +95,14 @@ distinction about content protection.
 The persistence layer uses MongoDB Atlas with three collections, shown in
 Figure~\ref{fig:erd}.
 
-\begin{figure}[htbp]
+% Xoay ngang: bảng VIDEO có mười chín thuộc tính kèm ghi chú. Đặt vừa bề rộng
+% vùng chữ thì tên trường rơi xuống khoảng 5pt.
+\begin{sidewaysfigure}
 \centering
-\includegraphics[width=\textwidth]{images/04-database-erd.png}
+\includegraphics[width=\textheight]{images/04-database-erd.png}
 \caption{\textit{Entity relationship diagram of the MongoDB data model}}
 \label{fig:erd}
-\end{figure}
+\end{sidewaysfigure}
 
 The \texttt{Video} document carries a \texttt{status} field that acts as a state machine with
 four values. A record begins as \texttt{UPLOADING} when the pre-signed URL is issued, moves to
@@ -211,9 +213,12 @@ public catalogue. The interface consequently has to represent a video that exist
 be played, which is why the state machine of Section~\ref{sec:database-design} is modelled
 explicitly rather than inferred.
 
-\begin{figure}[H]
+% Hình cao và hẹp, nên ràng buộc thật là chiều cao chứ không phải chiều rộng.
+% Đặt theo bề rộng thì phải thu về 0,55 lần và chữ chỉ còn 4,8pt; đặt theo
+% chiều cao trang thì hình rộng 124mm và chữ lên khoảng 6,8pt.
+\begin{figure}[htbp]
 \centering
-\includegraphics[width=0.55\textwidth]{images/08-user-flow.png}
+\includegraphics[height=0.92\textheight]{images/08-user-flow.png}
 \caption{\textit{User flow through the application, from an anonymous visit to a published video}}
 \label{fig:user-flow}
 \end{figure}

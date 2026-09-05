@@ -7,8 +7,8 @@ Thư mục này chứa các sơ đồ dùng cho báo cáo đồ án. Mã nguồn
 | `01-architecture-overview.png` | Kiến trúc tổng thể, ranh giới triển khai và luồng dữ liệu đánh số | 4.1 |
 | `02-transcoding-sequence.png` | Sequence Diagram quy trình chuyển mã Event-Driven | 4.3 |
 | `03-cicd-pipeline.png` | Bảy workflow CI/CD, đường dẫn kích hoạt và cổng chất lượng hai tầng | 5.4 |
-| `04-database-erd.png` | ERD của MongoDB (User, Video, Comment) | 4.2 |
-| `05-use-case.png` | Sơ đồ Use Case với 3 tác nhân | 3.4 |
+| `04-database-erd.png` | ERD của MongoDB (User, Video, Comment) | 4.3 |
+| `05-use-case.png` | Sơ đồ Use Case với 3 tác nhân, ký hiệu UML chuẩn | 3.4 |
 | `06-hls-abr.png` | Các tệp HLS sinh ra từ một video nguồn và thứ tự player tải | 2.2 |
 | `07-compute-models.png` | So sánh cụm luôn bật với container serverless, kèm thanh tỉ lệ giờ tính tiền | 2.2 |
 | `08-user-flow.png` | Luồng người dùng từ lúc vào trang tới khi video được công bố | 4.5 |
@@ -27,10 +27,11 @@ Tham số `-b white` bảo đảm nền trắng và `-s 3` xuất ảnh ở đ�
 
 Thư mục này dùng hai công cụ, chọn theo loại sơ đồ.
 
-**Mermaid** (`src/*.mmd`) cho sơ đồ tuần tự, ERD, use case, luồng người dùng và
-các sơ đồ khái niệm. Đây là những loại Mermaid làm tốt và không cần icon.
+**Mermaid** (`src/*.mmd`) cho sơ đồ tuần tự, luồng người dùng và các sơ đồ khái
+niệm. Đây là những loại Mermaid làm tốt và không cần icon.
 
-**Bộ sinh SVG riêng** (`svg/`) cho sơ đồ kiến trúc, vì hai lý do. Thứ nhất,
+**Bộ sinh SVG riêng** (`svg/`) cho sơ đồ kiến trúc, CI/CD, so sánh mô hình tính
+toán, ERD và use case, vì các lý do sau. Thứ nhất,
 Mermaid chỉ nạp được icon qua lời gọi JavaScript `registerIconPacks`, mà
 mermaid-cli không phơi hàm đó ra, nên chạy qua CLI thì mọi icon đều thành dấu
 hỏi. Thứ hai, bố cục tự động không đặt được các khối lồng nhau theo đúng ranh
@@ -50,3 +51,12 @@ icon mới thì bổ sung tên vào `WANTED` trong `svg/extract-icons.mjs` rồi
 ```bash
 cd docs/diagrams/svg && npm i --no-save @iconify-json/logos @resvg/resvg-js && node extract-icons.mjs
 ```
+
+## Cỡ chữ khi in
+
+Mỗi hình được đặt kích thước theo cỡ chữ nhỏ nhất còn đọc được trên bản in, chứ
+không theo thói quen dùng `	extwidth`. Cỡ chữ hiện ra trên giấy bằng
+`font_px / canvas_px × bề_rộng_in`, nên hình có nhiều nội dung phải xoay ngang
+để dùng chiều cao trang (247 mm) làm bề rộng, còn hình cao và hẹp thì phải ràng
+buộc theo chiều cao chứ không theo chiều rộng. Toàn bộ tám hình hiện ở mức
+6,2pt trở lên.
