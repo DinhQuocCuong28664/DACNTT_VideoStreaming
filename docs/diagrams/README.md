@@ -4,7 +4,7 @@ Thư mục này chứa các sơ đồ dùng cho báo cáo đồ án. Mã nguồn
 
 | Tệp | Nội dung | Dùng cho chương |
 |---|---|---|
-| `01-architecture-overview.png` | Kiến trúc tổng thể 4 tầng và luồng dữ liệu 11 bước | 4.1 |
+| `01-architecture-overview.png` | Kiến trúc tổng thể, ranh giới triển khai và luồng dữ liệu đánh số | 4.1 |
 | `02-transcoding-sequence.png` | Sequence Diagram quy trình chuyển mã Event-Driven | 4.3 |
 | `03-cicd-pipeline.png` | Sơ đồ 7 workflow CI/CD và DevSecOps Quality Gate | 5.2 |
 | `04-database-erd.png` | ERD của MongoDB (User, Video, Comment) | 4.2 |
@@ -22,3 +22,31 @@ for f in docs/diagrams/src/*.mmd; do npx --yes @mermaid-js/mermaid-cli -i "$f" -
 ```
 
 Tham số `-b white` bảo đảm nền trắng và `-s 3` xuất ảnh ở độ phân giải gấp ba lần, đáp ứng yêu cầu hình ảnh nét khi in báo cáo. Cấu hình màu sắc và phông chữ nằm trong `mermaid-config.json`.
+
+## Hai bộ sinh hình khác nhau
+
+Thư mục này dùng hai công cụ, chọn theo loại sơ đồ.
+
+**Mermaid** (`src/*.mmd`) cho sơ đồ tuần tự, ERD, use case, luồng người dùng và
+các sơ đồ khái niệm. Đây là những loại Mermaid làm tốt và không cần icon.
+
+**Bộ sinh SVG riêng** (`svg/`) cho sơ đồ kiến trúc, vì hai lý do. Thứ nhất,
+Mermaid chỉ nạp được icon qua lời gọi JavaScript `registerIconPacks`, mà
+mermaid-cli không phơi hàm đó ra, nên chạy qua CLI thì mọi icon đều thành dấu
+hỏi. Thứ hai, bố cục tự động không đặt được các khối lồng nhau theo đúng ranh
+giới tài khoản AWS mà sơ đồ cần thể hiện.
+
+Icon lấy từ bộ `@iconify-json/logos`, đã trích sẵn phần cần dùng vào
+`svg/icons.json` (khoảng 80 KB) nên dựng lại hình không cần mạng.
+
+```bash
+node docs/diagrams/svg/01-architecture-overview.mjs
+```
+
+Lệnh trên ghi ra cả `svg/01-architecture-overview.svg` (bản gốc vector, để sửa
+sau này) lẫn `01-architecture-overview.png` ở độ phân giải gấp ba lần. Cần thêm
+icon mới thì bổ sung tên vào `WANTED` trong `svg/extract-icons.mjs` rồi chạy:
+
+```bash
+cd docs/diagrams/svg && npm i --no-save @iconify-json/logos @resvg/resvg-js && node extract-icons.mjs
+```
