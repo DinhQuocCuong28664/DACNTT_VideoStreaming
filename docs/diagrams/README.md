@@ -1,21 +1,21 @@
 # Sơ đồ kiến trúc hệ thống
 
-Thư mục này chứa các sơ đồ dùng cho báo cáo đồ án. Mã nguồn Mermaid được lưu trong `src/`, ảnh PNG xuất ra nằm ở thư mục gốc để chèn trực tiếp vào LaTeX.
+Thư mục này chứa các sơ đồ dùng cho báo cáo đồ án. Ảnh PNG xuất ra nằm ở thư mục gốc để chèn trực tiếp vào LaTeX. Mã nguồn sơ đồ nằm ở hai nơi tuỳ công cụ sinh ra nó, xem mục *Hai bộ sinh hình khác nhau* bên dưới.
 
-| Tệp | Nội dung | Dùng cho chương |
+| Tệp | Nội dung | Hình số trong báo cáo |
 |---|---|---|
 | `01-architecture-overview.png` | Kiến trúc tổng thể, ranh giới triển khai và luồng dữ liệu đánh số | 4.1 |
-| `02-transcoding-sequence.png` | Sequence Diagram quy trình chuyển mã Event-Driven | 4.3 |
-| `03-cicd-pipeline.png` | Bảy workflow CI/CD, đường dẫn kích hoạt và cổng chất lượng hai tầng | 5.4 |
+| `02-transcoding-sequence.png` | Sequence Diagram quy trình chuyển mã Event-Driven | 4.2 |
+| `03-cicd-pipeline.png` | Bảy workflow CI/CD, đường dẫn kích hoạt và cổng chất lượng hai tầng | 5.1 |
 | `04-database-erd.png` | ERD của MongoDB (User, Video, Comment) | 4.3 |
-| `05-use-case.png` | Sơ đồ Use Case với 3 tác nhân, ký hiệu UML chuẩn | 3.4 |
+| `05-use-case.png` | Sơ đồ Use Case với 3 tác nhân, ký hiệu UML chuẩn | 3.1 |
 | `06-hls-abr.png` | Các tệp HLS sinh ra từ một video nguồn và thứ tự player tải | 2.2 |
-| `07-compute-models.png` | So sánh cụm luôn bật với container serverless, kèm thanh tỉ lệ giờ tính tiền | 2.2 |
-| `08-user-flow.png` | Luồng người dùng từ lúc vào trang tới khi video được công bố | 4.5 |
+| `07-compute-models.png` | So sánh cụm luôn bật với container serverless, kèm thanh tỉ lệ giờ tính tiền | 2.1 |
+| `08-user-flow.png` | Luồng người dùng từ lúc vào trang tới khi video được công bố | 4.4 |
 
 ## Tái sinh ảnh sau khi sửa sơ đồ
 
-Sau khi chỉnh sửa tệp `.mmd` trong `src/`, chạy lệnh sau tại thư mục gốc của dự án để xuất lại toàn bộ ảnh:
+Sau khi chỉnh sửa tệp `.mmd` trong `src/`, chạy lệnh sau tại thư mục gốc của dự án để xuất lại hai ảnh dựng bằng Mermaid (hình 4.2 và 4.4). Sáu ảnh còn lại dựng bằng công cụ khác, lệnh riêng nằm ở mục kế tiếp:
 
 ```bash
 for f in docs/diagrams/src/*.mmd; do npx --yes @mermaid-js/mermaid-cli -i "$f" -o "docs/diagrams/$(basename "$f" .mmd).png" -c docs/diagrams/mermaid-config.json -b white -s 3; done
@@ -54,7 +54,7 @@ cd docs/diagrams/svg && npm i --no-save @iconify-json/logos @resvg/resvg-js && n
 ## Cỡ chữ khi in
 
 Mỗi hình được đặt kích thước theo cỡ chữ nhỏ nhất còn đọc được trên bản in, chứ
-không theo thói quen dùng `	extwidth`. Cỡ chữ hiện ra trên giấy bằng
+không theo thói quen dùng `\textwidth`. Cỡ chữ hiện ra trên giấy bằng
 `font_px / canvas_px × bề_rộng_in`, nên hình có nhiều nội dung phải xoay ngang
 để dùng chiều cao trang (247 mm) làm bề rộng, còn hình cao và hẹp thì phải ràng
 buộc theo chiều cao chứ không theo chiều rộng. Toàn bộ tám hình hiện ở mức
