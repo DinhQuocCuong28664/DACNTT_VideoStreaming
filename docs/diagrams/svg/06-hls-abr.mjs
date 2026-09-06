@@ -32,9 +32,12 @@ const src = card({
   title: 'Uploaded source file', sub: ['any container, codec and resolution'],
   tone: 'storage',
 });
+// Không đặt `title`: logo FFmpeg vốn đã là chữ "FFmpeg", nên thêm dòng tiêu đề
+// là in cùng một từ hai lần và bắt cả hai phải nhỏ lại để chia chỗ cho nhau. Bỏ
+// dòng chữ đi thì logo phóng được lên bảy lần bề rộng cũ.
 const ff = card({
-  x: CX - 180, y: 176, w: 360, h: 108, iconName: 'ffmpeg', iconSize: 30,
-  title: 'FFmpeg', sub: ['a single invocation, source decoded once'],
+  x: CX - 180, y: 176, w: 360, h: 108, iconName: 'ffmpeg', iconSize: 210,
+  sub: ['a single invocation, source decoded once'],
   tone: 'compute',
 });
 p.push(src.svg, ff.svg);

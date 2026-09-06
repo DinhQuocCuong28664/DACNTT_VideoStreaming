@@ -53,6 +53,31 @@ function icon(name, x, y, size) {
   return `<g transform="translate(${dx.toFixed(2)} ${dy.toFixed(2)}) scale(${k.toFixed(5)})">${ic.body}</g>`;
 }
 
+/**
+ * Như `icon` nhưng không nhét vào ô vuông: scale theo cạnh dài rồi trả về đúng
+ * bề rộng và chiều cao sau khi scale, căn giữa quanh `cx`, mép trên đặt tại `y`.
+ *
+ * Cần thiết cho logo dạng chữ. FFmpeg rộng 512 cao 138, tức rộng gần gấp bốn
+ * lần chiều cao; căn giữa nó trong ô vuông cạnh `size` sẽ chừa ra hai khoảng
+ * trắng, mỗi khoảng cao hơn chính cái logo. Trả về `h` để chỗ gọi biết đặt dòng
+ * kế tiếp ở đâu thay vì đoán.
+ */
+function iconDims(name, size) {
+  const ic = ICONS.icons[name];
+  if (!ic) throw new Error(`Khong co icon "${name}" trong icons.json`);
+  const k = size / Math.max(ic.width, ic.height);
+  return { ic, k, w: ic.width * k, h: ic.height * k };
+}
+
+function iconTight(name, cx, y, size) {
+  const { ic, k, w, h } = iconDims(name, size);
+  const dx = cx - w / 2;
+  return {
+    svg: `<g transform="translate(${dx.toFixed(2)} ${y.toFixed(2)}) scale(${k.toFixed(5)})">${ic.body}</g>`,
+    w, h,
+  };
+}
+
 function textLines(str, x, y, opts = {}) {
   const {
     size = 14, weight = 'normal', fill = PALETTE.ink,
@@ -70,6 +95,11 @@ function textLines(str, x, y, opts = {}) {
  * Thẻ một thành phần: icon ở trên, tên đậm ở dưới, chú thích nhỏ tuỳ chọn.
  * Trả về cả hình vẽ lẫn hộp bao, để cạnh nối bám vào mép thẻ chứ không phải
  * vào một toạ độ đoán chừng.
+ *
+ * Bỏ `title` thì chính logo đứng thay cho tên, và được phóng to lên cỡ
+ * `iconSize`. Dùng cho những logo bản thân đã là chữ, như FFmpeg: vẽ logo rồi
+ * viết thêm dòng "FFmpeg" ngay dưới là in cùng một từ hai lần, mà lần nào cũng
+ * nhỏ đi vì phải chia chỗ cho lần kia.
  */
 export function card(spec) {
   const {
@@ -81,20 +111,36 @@ export function card(spec) {
   parts.push(
     `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="10" ` +
     `fill="${c.fill}" stroke="${c.stroke}" stroke-width="1.6"/>`);
-  if (iconName) parts.push(icon(iconName, x + w / 2 - iconSize / 2, y + 12, iconSize));
 
-  const titleY = y + 12 + (iconName ? iconSize + 20 : 26);
-  const titles = Array.isArray(title) ? title : [title];
-  parts.push(textLines(titles, x + w / 2, titleY, { size: 16, weight: 'bold' }));
+  const cx = x + w / 2;
+  let cursor = y + 12;  // đường cơ sở cho phần sẽ vẽ tiếp
+
+  if (iconName && !title) {
+    // Không có dòng tiêu đề thì cũng không còn cái neo quen thuộc để căn theo,
+    // nên căn giữa cả khối logo cộng chú thích trong thẻ. Tính từ mép trên logo
+    // xuống hết phần chữ thò xuống của chú thích, chứ không tính theo đường cơ
+    // sở, nếu không thẻ sẽ nặng phần trên.
+    const GAP = 22;
+    const dim = iconDims(iconName, iconSize);
+    const blockH = dim.h + (sub ? GAP + 3 : 0);
+    const top = y + (h - blockH) / 2;
+    parts.push(iconTight(iconName, cx, top, iconSize).svg);
+    cursor = top + dim.h + GAP;
+  } else {
+    if (iconName) parts.push(icon(iconName, cx - iconSize / 2, cursor, iconSize));
+    cursor += iconName ? iconSize + 20 : 26;
+    const titles = Array.isArray(title) ? title : [title];
+    parts.push(textLines(titles, cx, cursor, { size: 16, weight: 'bold' }));
+    cursor += titles.length * 20 + 3;
+  }
 
   if (sub) {
-    const subY = titleY + titles.length * 20 + 3;
-    parts.push(textLines(sub, x + w / 2, subY, { size: 13.5, fill: PALETTE.muted, lineHeight: 16.5 }));
+    parts.push(textLines(sub, cx, cursor, { size: 13.5, fill: PALETTE.muted, lineHeight: 16.5 }));
   }
 
   return {
     svg: parts.join(''),
-    box: { x, y, w, h, cx: x + w / 2, cy: y + h / 2, r: x + w, b: y + h },
+    box: { x, y, w, h, cx, cy: y + h / 2, r: x + w, b: y + h },
   };
 }
 
@@ -341,7 +387,15 @@ ${body}
 </svg>`;
 }
 
-/** Ghi SVG ra đĩa và rasterize ở độ phân giải gấp `scale` lần cho bản in. */
+/**
+ * Ghi SVG ra đĩa và rasterize ở độ phân giải gấp `scale` lần cho bản in.
+ *
+ * Ghi PNG ra cả hai nơi: `docs/diagrams/` để xem nhanh, và `report/images/` là
+ * chỗ LaTeX thật sự đọc. Trước đây phải tự chép tay bước sau, mà quên chép thì
+ * không có lỗi nào báo: lệnh dựng vẫn chạy xong, báo cáo vẫn biên dịch sạch, chỉ
+ * là hình trong PDF vẫn là bản cũ. Kiểu sai đó chỉ lộ ra khi mở PDF nhìn tận
+ * mắt, nên để máy chép luôn.
+ */
 export function write(name, svg, scale = 3) {
   const svgPath = path.join(HERE, `${name}.svg`);
   fs.writeFileSync(svgPath, svg);
@@ -351,5 +405,9 @@ export function write(name, svg, scale = 3) {
   const pngPath = path.join(HERE, '..', `${name}.png`);
   fs.writeFileSync(pngPath, png);
 
-  return { svgPath, pngPath, bytes: png.length };
+  const reportDir = path.join(HERE, '..', '..', '..', 'report', 'images');
+  const copied = fs.existsSync(reportDir);
+  if (copied) fs.writeFileSync(path.join(reportDir, `${name}.png`), png);
+
+  return { svgPath, pngPath, bytes: png.length, copied };
 }
