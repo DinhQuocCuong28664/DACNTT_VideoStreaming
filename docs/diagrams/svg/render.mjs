@@ -32,6 +32,52 @@ export const PALETTE = {
   groupFill: '#fbfcfd',
 };
 
+/**
+ * Bang co chu, tinh bang px tren canvas.
+ *
+ * Co chu hien ra tren giay khong phai la con so o day, ma la
+ * `font_px / canvas_px x be_rong_in_ra`. Vi vay hai hinh co canvas rong khac
+ * nhau dung chung mot con so se cho ra hai co chu khac nhau khi in: hinh kien
+ * truc rong 1740px in ra 247mm thi 13px chi con 5,2pt, trong khi hinh HLS rong
+ * 792px in ra 136mm thi cung 13px lai duoc 6,3pt.
+ *
+ * Hinh nao co canvas rong thi ghi de bang o dau tep, kem phep tinh, thay vi sua
+ * trong than ham va lam anh huong toi bay hinh con lai. Moi tep .mjs la mot tien
+ * trinh rieng dung dung mot hinh, nen ghi de o day khong ro ri sang hinh khac.
+ */
+/**
+ * Nhan cua cac canh duoc gom lai day va ve sau cung.
+ *
+ * Truoc day moi canh tu ve nhan cua no ngay tai cho, nen mot canh khai bao sau
+ * se son de len nhan cua canh khai bao truoc: trong hinh kien truc, duong
+ * "6 upload straight to S3" chay qua lan doc x=300 va gach thang qua chu
+ * "pre-signed" cua nhan phia tren. Nen trang cua nhan khong cuu duoc, vi van de
+ * la thu tu ve chu khong phai do trong suot.
+ *
+ * Moi tep .mjs la mot tien trinh rieng chi dung mot hinh, nen hang doi o cap
+ * module khong ro ri sang hinh khac.
+ */
+const LABELS = [];
+
+export const TYPE = {
+  cardTitle: 16,
+  cardSub: 13.5,
+  cardSubLH: 16.5,
+  groupLabel: 15,
+  edgeLabel: 13,
+  legendLabel: 13.5,
+  chipLabel: 13,
+  chipLabelLH: 15,
+  barLabel: 13,
+  usecaseLabel: 15,
+  usecaseLabelLH: 18,
+  actorLabel: 14,
+  actorLabelLH: 17,
+  entityName: 16,
+  entityRow: 13,
+  entityKey: 12,
+};
+
 const esc = (s) =>
   String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
@@ -130,12 +176,12 @@ export function card(spec) {
     if (iconName) parts.push(icon(iconName, cx - iconSize / 2, cursor, iconSize));
     cursor += iconName ? iconSize + 20 : 26;
     const titles = Array.isArray(title) ? title : [title];
-    parts.push(textLines(titles, cx, cursor, { size: 16, weight: 'bold' }));
+    parts.push(textLines(titles, cx, cursor, { size: TYPE.cardTitle, weight: 'bold' }));
     cursor += titles.length * 20 + 3;
   }
 
   if (sub) {
-    parts.push(textLines(sub, cx, cursor, { size: 13.5, fill: PALETTE.muted, lineHeight: 16.5 }));
+    parts.push(textLines(sub, cx, cursor, { size: TYPE.cardSub, fill: PALETTE.muted, lineHeight: TYPE.cardSubLH }));
   }
 
   return {
@@ -154,9 +200,9 @@ export function group(spec) {
   const lx = x + 16;
   if (iconName) {
     parts.push(icon(iconName, lx, y + 10, 20));
-    parts.push(textLines(label, lx + 30, y + 26, { size: 15, weight: 'bold', anchor: 'start', fill: stroke }));
+    parts.push(textLines(label, lx + 30, y + 26, { size: TYPE.groupLabel, weight: 'bold', anchor: 'start', fill: stroke }));
   } else {
-    parts.push(textLines(label, lx, y + 26, { size: 15, weight: 'bold', anchor: 'start', fill: stroke }));
+    parts.push(textLines(label, lx, y + 26, { size: TYPE.groupLabel, weight: 'bold', anchor: 'start', fill: stroke }));
   }
   return { svg: parts.join(''), box: { x, y, w, h, r: x + w, b: y + h } };
 }
@@ -189,12 +235,20 @@ export function edge(points, opts = {}) {
     const lx = a[0] + (b[0] - a[0]) * labelAt + labelDx;
     const ly = a[1] + (b[1] - a[1]) * labelAt + labelDy;
     const text = String(label);
+    const lab = [];
     if (labelBg) {
-      const wpx = text.length * 7.2 + 14;
-      parts.push(`<rect x="${(lx - wpx / 2).toFixed(1)}" y="${(ly - 13).toFixed(1)}" width="${wpx.toFixed(1)}" ` +
-        `height="19" rx="4" fill="#ffffff" fill-opacity="0.93"/>`);
+      // Nen tray phai co dan theo co chu. Truoc day be rong la
+      // `text.length * 7.2 + 14`, do dac cho co chu 13px; hinh kien truc nang
+      // nhan len 15,5px thi chu tho ra khoi tam nen va cac duong doc ke sau
+      // gach thang qua giua chu. Giu nguyen ti le do duoc o 13px nen cac hinh
+      // khong doi co chu van dung ra y het nhu cu.
+      const wpx = text.length * TYPE.edgeLabel * (7.2 / 13) + 14;
+      const hpx = TYPE.edgeLabel * (19 / 13);
+      lab.push(`<rect x="${(lx - wpx / 2).toFixed(1)}" y="${(ly - TYPE.edgeLabel).toFixed(1)}" width="${wpx.toFixed(1)}" ` +
+        `height="${hpx.toFixed(1)}" rx="4" fill="#ffffff" fill-opacity="0.93"/>`);
     }
-    parts.push(textLines(text, lx, ly, { size: 13, fill: PALETTE.muted }));
+    lab.push(textLines(text, lx, ly, { size: TYPE.edgeLabel, fill: PALETTE.muted }));
+    LABELS.push(lab.join(''));
   }
   return parts.join('');
 }
@@ -206,7 +260,7 @@ export function legend(x, y, entries) {
   for (const e of entries) {
     parts.push(`<path d="M ${cx} ${y} L ${cx + 30} ${y}" stroke="${e.color ?? PALETTE.line}" stroke-width="1.8" ` +
       `${e.dashed ? 'stroke-dasharray="6 4" ' : ''}marker-end="url(#arrow)"/>`);
-    parts.push(textLines(e.label, cx + 38, y + 5, { size: 13.5, anchor: 'start', fill: PALETTE.muted }));
+    parts.push(textLines(e.label, cx + 38, y + 5, { size: TYPE.legendLabel, anchor: 'start', fill: PALETTE.muted }));
     cx += 38 + e.label.length * 7.3 + 34;
   }
   return parts.join('');
@@ -231,7 +285,7 @@ export function chip(spec) {
   if (iconName) parts.push(icon(iconName, x + 11, y + (h - iconSize) / 2, iconSize));
 
   const startY = y + h / 2 + (lines.length === 1 ? 4.5 : -2);
-  parts.push(textLines(lines, textX, startY, { size: 13, anchor, lineHeight: 15 }));
+  parts.push(textLines(lines, textX, startY, { size: TYPE.chipLabel, anchor, lineHeight: TYPE.chipLabelLH }));
 
   return {
     svg: parts.join(''),
@@ -254,9 +308,9 @@ export function bar(spec) {
     `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="5" fill="${trackColor}"/>`,
     `<rect x="${x}" y="${y}" width="${fillW.toFixed(2)}" height="${h}" rx="5" fill="${fillColor}"/>`,
   ];
-  if (label) parts.push(textLines(label, x, y - 9, { size: 13, anchor: 'start', fill: PALETTE.muted }));
+  if (label) parts.push(textLines(label, x, y - 9, { size: TYPE.barLabel, anchor: 'start', fill: PALETTE.muted }));
   if (valueLabel) {
-    parts.push(textLines(valueLabel, x + w, y - 9, { size: 13, anchor: 'end', fill: PALETTE.ink, weight: 'bold' }));
+    parts.push(textLines(valueLabel, x + w, y - 9, { size: TYPE.barLabel, anchor: 'end', fill: PALETTE.ink, weight: 'bold' }));
   }
   return { svg: parts.join(''), box: { x, y, w, h, r: x + w, b: y + h } };
 }
@@ -277,7 +331,7 @@ export function usecase(spec) {
   const svg =
     `<ellipse cx="${cx}" cy="${cy}" rx="${rx}" ry="${ry}" fill="${c.fill}" ` +
     `stroke="${c.stroke}" stroke-width="1.6"/>` +
-    textLines(lines, cx, startY, { size: 15, lineHeight: 18 });
+    textLines(lines, cx, startY, { size: TYPE.usecaseLabel, lineHeight: TYPE.usecaseLabelLH });
 
   return { svg, box: { cx, cy, l: cx - rx, r: cx + rx, t: cy - ry, b: cy + ry, rx, ry } };
 }
@@ -299,7 +353,7 @@ export function actor(spec) {
   ];
 
   const lines = Array.isArray(label) ? label : [label];
-  parts.push(textLines(lines, cx, bodyBottom + 18 * s + 22, { size: 14, weight: 'bold', lineHeight: 17 }));
+  parts.push(textLines(lines, cx, bodyBottom + 18 * s + 22, { size: TYPE.actorLabel, weight: 'bold', lineHeight: TYPE.actorLabelLH }));
 
   return {
     svg: parts.join(''),
@@ -341,7 +395,7 @@ export function entity(spec) {
   parts.push(`<path d="M ${x} ${y + headH} h ${w}" stroke="${c.stroke}" stroke-width="1.6"/>`);
   parts.push(`<rect x="${x}" y="${y}" width="${w}" height="${headH}" rx="6" fill="${c.fill}"/>`);
   parts.push(`<rect x="${x}" y="${y + headH - 8}" width="${w}" height="8" fill="${c.fill}"/>`);
-  parts.push(textLines(name, x + w / 2, y + 23, { size: 16, weight: 'bold' }));
+  parts.push(textLines(name, x + w / 2, y + 23, { size: TYPE.entityName, weight: 'bold' }));
 
   rows.forEach((r, i) => {
     const ry = y + headH + i * rowH;
@@ -349,15 +403,15 @@ export function entity(spec) {
       parts.push(`<rect x="${x + 1}" y="${ry}" width="${w - 2}" height="${rowH}" fill="#f7f9fb"/>`);
     }
     const ty = ry + rowH / 2 + 4.5;
-    parts.push(textLines(r.type, x + 12, ty, { size: 13, anchor: 'start', fill: PALETTE.muted }));
-    parts.push(textLines(r.name, x + 12 + colType, ty, { size: 13, anchor: 'start' }));
+    parts.push(textLines(r.type, x + 12, ty, { size: TYPE.entityRow, anchor: 'start', fill: PALETTE.muted }));
+    parts.push(textLines(r.name, x + 12 + colType, ty, { size: TYPE.entityRow, anchor: 'start' }));
     if (r.key) {
       parts.push(textLines(r.key, x + 12 + colType + colName + colKey / 2, ty,
-        { size: 12, weight: 'bold', fill: c.stroke }));
+        { size: TYPE.entityKey, weight: 'bold', fill: c.stroke }));
     }
     if (r.note) {
       parts.push(textLines(r.note, x + 12 + colType + colName + colKey + 8, ty,
-        { size: 12, anchor: 'start', fill: PALETTE.muted }));
+        { size: TYPE.entityKey, anchor: 'start', fill: PALETTE.muted }));
     }
   });
 
@@ -384,6 +438,7 @@ export function document_({ width, height, body, title }) {
 <rect width="${width}" height="${height}" fill="#ffffff"/>
 ${title ? textLines(title, width / 2, 34, { size: 18, weight: 'bold' }) : ''}
 ${body}
+${LABELS.join('')}
 </svg>`;
 }
 

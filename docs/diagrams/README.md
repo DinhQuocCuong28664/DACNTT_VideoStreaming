@@ -51,6 +51,20 @@ icon mới thì bổ sung tên vào `WANTED` trong `svg/extract-icons.mjs` rồi
 cd docs/diagrams/svg && npm i --no-save @iconify-json/logos @resvg/resvg-js && node extract-icons.mjs
 ```
 
+## Kiểm tra cỡ chữ khi in
+
+```bash
+node docs/diagrams/check-print-size.mjs
+```
+
+Lệnh này in ra cỡ chữ nhỏ nhất của từng hình khi lên giấy và thoát với mã lỗi
+nếu có hình nào tụt xuống dưới 6,2pt. Nên chạy sau mỗi lần sửa sơ đồ hoặc sửa
+hệ số `\includegraphics` trong chương.
+
+Có script vì việc này rất dễ nhầm: chữ nhỏ nhất trong hình thường là nhãn của
+các cạnh, không phải dòng tiêu đề, mà nhìn bằng mắt thì hay bắt vào dòng tiêu
+đề rồi kết luận hình đạt trong khi thực tế chưa đạt.
+
 ## Cỡ chữ khi in
 
 Mỗi hình được đặt kích thước theo cỡ chữ nhỏ nhất còn đọc được trên bản in, chứ
@@ -59,3 +73,8 @@ không theo thói quen dùng `\textwidth`. Cỡ chữ hiện ra trên giấy b�
 để dùng chiều cao trang (247 mm) làm bề rộng, còn hình cao và hẹp thì phải ràng
 buộc theo chiều cao chứ không theo chiều rộng. Toàn bộ tám hình hiện ở mức
 6,2pt trở lên.
+
+Cỡ chữ của bộ sinh SVG khai báo trong bảng `TYPE` ở `svg/render.mjs`. Hình nào
+có canvas rộng thì ghi đè bảng này ở đầu tệp của nó kèm phép tính, thay vì sửa
+trong thân hàm và kéo theo cả bảy hình còn lại. Hình kiến trúc và hình use case
+đang ghi đè vì canvas của chúng rộng hơn hẳn.
