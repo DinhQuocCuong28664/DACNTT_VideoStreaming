@@ -13,15 +13,30 @@
  *
  * Nội dung giữ nguyên từ bản cũ, kể cả các ghi chú giải thích cột.
  */
-import { entity, edge, text, document_, write, PALETTE } from './render.mjs';
+import { entity, edge, text, document_, write, PALETTE, TYPE } from './render.mjs';
 
-const W = 1300;
+// Canvas rộng 1300px, xoay ngang nên in ra 247mm, tức 1px là 0,19mm. Chữ nhỏ
+// nhất là nhãn khoá PK/UK ở cỡ mặc định 12px, chỉ in ra 6,46pt. Bề rộng đã kịch
+// trần nên cần gạt còn lại là font. Nâng lên 13,5px thì cột ghi chú tràn ra
+// ngoài viền, vì cột đó bắt đầu ở x+326 nên chỗ còn lại chỉ bằng bề rộng thực
+// thể trừ 326. Nới USER 470 lên 490 và VIDEO 570 lên 600 là vừa, và nới được
+// vì canvas còn lề chưa dùng. Riêng dòng liệt kê bốn trạng thái là chữ hoa,
+// mà chữ hoa rộng hơn chữ thường chừng một phần tư, nên nó cần tới 325px và
+// canvas phải nới từ 1300 lên 1345. Nới canvas thì cỡ chữ in ra tụt nhẹ từ
+// 7,27 xuống 7,05pt, vẫn trên mức nhắm.
+Object.assign(TYPE, {
+  entityKey: 13.5,
+  entityRow: 13.5,
+  edgeLabel: 13.5,
+});
+
+const W = 1345;
 const H = 764;
 const p = [];
 
 const LEFT = 40;
 const RIGHT = 670;
-const COL_W = 470;
+const COL_W = 490;
 
 // ── USER ────────────────────────────────────────────────────────────────────
 const user = entity({
@@ -30,15 +45,15 @@ const user = entity({
     { type: 'ObjectId', name: '_id', key: 'PK' },
     { type: 'string', name: 'username', key: 'UK' },
     { type: 'string', name: 'email', key: 'UK' },
-    { type: 'string', name: 'password', note: 'bcrypt hash, select false' },
-    { type: 'string', name: 'googleId', note: 'sub claim, sparse unique' },
+    { type: 'string', name: 'password', note: 'bcrypt, select false' },
+    { type: 'string', name: 'googleId', note: 'sub claim, sparse' },
     { type: 'string', name: 'displayName' },
     { type: 'string', name: 'avatar' },
     { type: 'string', name: 'channelDescription' },
     { type: 'number', name: 'subscribers' },
     { type: 'string', name: 'resetPasswordToken', note: 'SHA-256' },
     { type: 'Date', name: 'resetPasswordExpire' },
-    { type: 'Date', name: 'passwordChangedAt', note: 'invalidates earlier JWTs' },
+    { type: 'Date', name: 'passwordChangedAt', note: 'invalidates old JWTs' },
     { type: 'Date', name: 'createdAt' },
     { type: 'Date', name: 'updatedAt' },
   ],
@@ -61,7 +76,7 @@ p.push(comment.svg);
 
 // ── VIDEO ───────────────────────────────────────────────────────────────────
 const video = entity({
-  x: RIGHT, y: 44, w: 570, name: 'VIDEO', tone: 'compute',
+  x: RIGHT, y: 44, w: 655, name: 'VIDEO', tone: 'compute',
   rows: [
     { type: 'ObjectId', name: '_id', key: 'PK' },
     { type: 'ObjectId', name: 'user', key: 'FK' },
@@ -102,7 +117,7 @@ p.push(edge([[video.box.x, video.rowY(17)], [LANE, video.rowY(17)], [LANE, comme
 
 p.push(text(
   ['PK primary key  ·  UK unique key  ·  FK foreign key  ·  [] array of references'],
-  LEFT, H - 22, { size: 12.5, anchor: 'start', fill: PALETTE.muted }));
+  LEFT, H - 22, { size: 13.5, anchor: 'start', fill: PALETTE.muted }));
 
 const svg = document_({ width: W, height: H, body: p.join('\n') });
 const out = write('04-database-erd', svg, 3);

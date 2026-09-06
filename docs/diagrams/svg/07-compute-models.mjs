@@ -103,7 +103,7 @@ const tickX = (BAR_X + usefulW / 2).toFixed(1);
 p.push(`<rect x="${BAR_X}" y="${barsY}" width="${usefulW.toFixed(2)}" height="28" fill="#ffffff" stroke="#7d2018" stroke-width="1.2"/>`);
 p.push(`<path d="M ${tickX} ${barsY + 28} L ${tickX} ${barsY + 46}" stroke="#7d2018" stroke-width="1.2"/>`);
 p.push(text('3.75 h of useful work', BAR_X + usefulW / 2 + 6, barsY + 60,
-  { size: 12.5, anchor: 'start', fill: PALETTE.muted }));
+  { size: 13, anchor: 'start', fill: PALETTE.muted }));
 
 p.push(text('Serverless', M, barsY + 108, { size: 13.5, weight: 'bold', anchor: 'start' }));
 p.push(bar({
@@ -114,7 +114,7 @@ p.push(bar({
 p.push(text(
   ['The saving comes entirely from the empty part of the upper bar.',
    'Figures from Table 6.7.'],
-  M, barsY + 156, { size: 12.5, anchor: 'start', fill: PALETTE.muted, lineHeight: 17 }));
+  M, barsY + 156, { size: 13, anchor: 'start', fill: PALETTE.muted, lineHeight: 17.5 }));
 
 const svg = document_({ width: W, height: H, body: p.join('\n') });
 const out = write('07-compute-models', svg, 3);

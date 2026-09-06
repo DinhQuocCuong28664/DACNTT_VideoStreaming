@@ -83,11 +83,12 @@ the queue rather than by spare capacity, and the degree of parallelism is a conf
 rather than a fixed fleet size. The two figures shown, \$124.10 against \$0.05 of monthly compute,
 are the same workload priced under the two models.
 
-% Hình xếp dọc nên không cần xoay ngang, nhưng cũng không nên kéo hết bề rộng
-% vùng chữ: ở 0,82 lần thì cao khoảng 17 cm, vừa một trang mà nhãn vẫn trên 6pt.
+% Kéo hết bề rộng vùng chữ. Ở 0,82 lần thì chữ nhỏ nhất chỉ in ra 6,21pt, sát
+% sàn tới mức thêm một chữ vào nhãn dài nhất là rơi xuống dưới. Ở mức đầy thì
+% hình cao 20,7 cm, vẫn vừa một trang cùng chú thích, mà chữ lên 7,58pt.
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=0.82\textwidth]{images/07-compute-models.png}
+\includegraphics[width=\textwidth]{images/07-compute-models.png}
 \caption{\textit{Compute models for a bursty transcoding workload: an always-on cluster
 compared with on-demand serverless containers}}
 \label{fig:compute-models}
@@ -147,7 +148,7 @@ implementation exploits exactly that distinction, as Section~\ref{sec:transcoder
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.85\textwidth]{images/06-hls-abr.png}
+\includegraphics[width=\textwidth]{images/06-hls-abr.png}
 \caption{\textit{HLS artefacts produced from one source file and the order in which a player
 retrieves them}}
 \label{fig:hls-abr}
