@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/useAuth';
+import useAuthRedirect from '../../hooks/useAuthRedirect';
 import GoogleSignInButton from './GoogleSignInButton';
 import LogoIcon from '../Layout/LogoIcon';
 import './AuthForm.css';
@@ -9,7 +10,8 @@ import './AuthForm.css';
 const RegisterForm = () => {
   const { t } = useTranslation();
   const { register, loginWithGoogle } = useAuth();
-  const navigate = useNavigate();
+  const goAfterAuth = useAuthRedirect();
+  const location = useLocation();
   const [formData, setFormData] = useState({
     username: '',
     email: '',
@@ -37,7 +39,7 @@ const RegisterForm = () => {
 
     try {
       await register(formData.username, formData.email, formData.password);
-      navigate('/');
+      goAfterAuth();
     } catch (err) {
       setError(
         err.response?.data?.message || t('auth.registerFailed')
@@ -128,13 +130,13 @@ const RegisterForm = () => {
         <GoogleSignInButton
           onCredential={async (credential) => {
             await loginWithGoogle(credential);
-            navigate('/');
+            goAfterAuth();
           }}
           onError={setError}
         />
 
         <p className="auth-footer">
-          {t('auth.haveAccount')} <Link to="/login">{t('auth.loginLink')}</Link>
+          {t('auth.haveAccount')} <Link to="/login" state={location.state}>{t('auth.loginLink')}</Link>
         </p>
       </div>
     </div>

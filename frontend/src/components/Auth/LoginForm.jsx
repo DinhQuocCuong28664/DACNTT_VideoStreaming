@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/useAuth';
+import useAuthRedirect from '../../hooks/useAuthRedirect';
 import GoogleSignInButton from './GoogleSignInButton';
 import LogoIcon from '../Layout/LogoIcon';
 import './AuthForm.css';
@@ -9,7 +10,8 @@ import './AuthForm.css';
 const LoginForm = () => {
   const { t } = useTranslation();
   const { login, loginWithGoogle } = useAuth();
-  const navigate = useNavigate();
+  const goAfterAuth = useAuthRedirect();
+  const location = useLocation();
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -26,7 +28,7 @@ const LoginForm = () => {
 
     try {
       await login(formData.email, formData.password);
-      navigate('/');
+      goAfterAuth();
     } catch (err) {
       setError(
         err.response?.data?.message || t('auth.loginFailed')
@@ -76,7 +78,7 @@ const LoginForm = () => {
               required
               minLength={6}
             />
-            <Link to="/forgot-password" style={{ alignSelf: 'flex-end', fontSize: 'var(--font-size-xs)', color: 'var(--accent-primary)', marginTop: 4 }}>
+            <Link to="/forgot-password" state={location.state} style={{ alignSelf: 'flex-end', fontSize: 'var(--font-size-xs)', color: 'var(--accent-primary)', marginTop: 4 }}>
               {t('auth.forgotPassword')}
             </Link>
           </div>
@@ -90,13 +92,13 @@ const LoginForm = () => {
         <GoogleSignInButton
           onCredential={async (credential) => {
             await loginWithGoogle(credential);
-            navigate('/');
+            goAfterAuth();
           }}
           onError={setError}
         />
 
         <p className="auth-footer">
-          {t('auth.noAccount')} <Link to="/register">{t('auth.registerNow')}</Link>
+          {t('auth.noAccount')} <Link to="/register" state={location.state}>{t('auth.registerNow')}</Link>
         </p>
       </div>
     </div>
