@@ -203,7 +203,7 @@ CloudFront.
 \subsection{A Signed Cookie Policy That Matched Nothing}
 
 Exercising Signed Cookies against the new distribution revealed that every request returned
-\texttt{403 Forbidden}, for public and private videos alike. The function building the resource
+\texttt{403 Forbidden}, whatever the video's visibility. The function building the resource
 pattern that a cookie authorises, \texttt{buildResourcePattern}, signed
 \texttt{videos/*/\{videoId\}/*}, with a wildcard segment between the prefix and the identifier,
 whereas the transcoder writes every rendition and the master playlist directly under

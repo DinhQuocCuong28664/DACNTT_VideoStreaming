@@ -13,7 +13,8 @@ graph TB
     PRESIGN["Browser transfers the file<br/>directly to Amazon S3"]
     PROC["Video shown as PROCESSING<br/>on the owner's channel"]
     READY["Video reaches READY<br/>and appears in the catalogue"]
-    CHANNEL["Channel management<br/>edit, change visibility, delete"]
+    FAILED["Video reaches ERROR<br/>the watch page reports the failure"]
+    CHANNEL["Channel management<br/>change visibility, delete"]
 
     START --> HOME
     HOME --> WATCH
@@ -28,6 +29,8 @@ graph TB
     UPLOAD --> PRESIGN
     PRESIGN --> PROC
     PROC -->|"transcoding pipeline completes"| READY
+    PROC -->|"transcoding fails"| FAILED
+    FAILED --> CHANNEL
     READY --> WATCH
     PROC --> CHANNEL
     CHANNEL --> WATCH
@@ -39,4 +42,4 @@ graph TB
     class HOME,WATCH public
     class LOGIN,REG,RESET account
     class UPLOAD,PRESIGN,PROC,READY,CHANNEL owner
-    class AUTH gate
+    class AUTH,FAILED gate

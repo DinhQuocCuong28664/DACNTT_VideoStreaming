@@ -50,6 +50,7 @@
   },
   "videoCard": {
     "processing": "Đang xử lý...",
+    "failed": "Xử lý thất bại",
     "views": "{{value}} lượt xem",
     "unknownChannel": "Không rõ",
     "justNow": "Vừa xong",
@@ -89,10 +90,8 @@
     "confirmDelete": "Bạn có chắc muốn xóa video này?",
     "deleteFailed": "Xóa video thất bại: {{message}}",
     "visibilityFailed": "Đổi chế độ hiển thị thất bại: {{message}}",
-    "makePrivate": "Đang công khai, nhấn để chuyển sang riêng tư",
-    "makePublic": "Đang riêng tư, nhấn để chuyển sang công khai",
     "deleteVideo": "Xóa video",
-    "privateBadge": "Riêng tư"
+    "visibilityHint": "Đang {{current}}, nhấn để chuyển sang {{next}}"
   },
   "auth": {
     "or": "hoặc",

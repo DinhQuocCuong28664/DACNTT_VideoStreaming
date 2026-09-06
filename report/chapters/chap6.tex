@@ -78,7 +78,8 @@ until the pipeline marks it ready.
 \begin{figure}[H]
 \centering
 \screenshotplaceholder{0.92\textwidth}{6.2cm}{Upload page: metadata form with title, description,
-category and public or private visibility; the direct-to-S3 upload progress indicator}
+category and the choice of public, unlisted or private visibility; the direct-to-S3 upload
+progress indicator}
 \caption{\textit{Upload page, showing direct-to-storage transfer with a pre-signed URL}}
 \label{fig:ui-upload}
 \end{figure}
@@ -86,13 +87,15 @@ category and public or private visibility; the direct-to-S3 upload progress indi
 Figure~\ref{fig:ui-channel} shows the channel management view, which lists the signed-in user's
 own videos regardless of visibility, together with the state of each. This is the only place a
 video in the \texttt{PROCESSING} or \texttt{ERROR} state is visible, since the public catalogue
-lists only videos that have reached \texttt{READY}, and it is where a video is edited, switched
-between public and private, or deleted.
+lists only videos that have reached \texttt{READY}, and it is where a video has its visibility
+changed or is deleted. Editing the title or description of a video already uploaded is
+supported by the API but is not exposed in the interface, a gap recorded in
+Section~\ref{sec:limitations}.
 
 \begin{figure}[H]
 \centering
 \screenshotplaceholder{0.92\textwidth}{6.2cm}{Channel management page: the owner's videos with
-status, visibility, and the edit, visibility and delete controls}
+status, visibility, and the visibility and delete controls}
 \caption{\textit{Channel management view, including videos still being processed}}
 \label{fig:ui-channel}
 \end{figure}

@@ -1,11 +1,27 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { FiUser, FiTrash2, FiGlobe, FiLock } from 'react-icons/fi';
+import { FiUser, FiTrash2, FiGlobe, FiLock, FiLink } from 'react-icons/fi';
 import { useAuth } from '../context/useAuth';
 import videoApi from '../api/videoApi';
 import userApi from '../api/userApi';
 import VideoCard from '../components/Video/VideoCard';
+
+/**
+ * Ba chế độ hiển thị, đi vòng theo đúng thứ tự này mỗi lần nhấn nút.
+ *
+ * Trước đây nút chỉ bật tắt giữa hai trạng thái: `visibility === 'public'` thì
+ * chuyển sang riêng tư, còn lại thì chuyển sang công khai. Nghĩa là một video
+ * đặt "không liệt kê" lúc tải lên mà bấm nút này sẽ thành công khai và không
+ * còn đường quay lại, dù biểu mẫu tải lên vẫn cho chọn cả ba. Chọn được đúng
+ * một lần rồi mất.
+ */
+const VISIBILITY_CYCLE = ['public', 'unlisted', 'private'];
+const VISIBILITY_ICON = { public: FiGlobe, unlisted: FiLink, private: FiLock };
+
+// indexOf trả về -1 với giá trị lạ, nên nhánh đó rơi về 'public'.
+const nextVisibility = (current) =>
+  VISIBILITY_CYCLE[(VISIBILITY_CYCLE.indexOf(current) + 1) % VISIBILITY_CYCLE.length];
 
 const ChannelPage = () => {
   const { t } = useTranslation();
@@ -59,12 +75,12 @@ const ChannelPage = () => {
   };
 
   /**
-   * Chuyển đổi chế độ hiển thị giữa công khai và riêng tư.
+   * Chuyển chế độ hiển thị sang trạng thái kế tiếp trong vòng ba chế độ.
    * Cập nhật lạc quan (optimistic update) để giao diện phản hồi tức thì,
    * và khôi phục trạng thái cũ nếu máy chủ trả về lỗi.
    */
-  const handleToggleVisibility = async (video) => {
-    const next = video.visibility === 'public' ? 'private' : 'public';
+  const handleCycleVisibility = async (video) => {
+    const next = nextVisibility(video.visibility);
 
     setVideos((prev) =>
       prev.map((v) => (v._id === video._id ? { ...v, visibility: next } : v))
@@ -146,7 +162,9 @@ const ChannelPage = () => {
             {videos.map((video) => (
               <div key={video._id} style={{ position: 'relative' }}>
                 <VideoCard video={video} />
-                {isOwner && (
+                {isOwner && (() => {
+                  const VisibilityIcon = VISIBILITY_ICON[video.visibility] ?? FiGlobe;
+                  return (
                   <div style={{
                     position: 'absolute', top: 8, right: 8,
                     display: 'flex', gap: 4, zIndex: 5,
@@ -154,14 +172,13 @@ const ChannelPage = () => {
                     <button
                       className="btn-icon"
                       style={{ background: 'rgba(0,0,0,0.7)', color: '#fff', width: 32, height: 32 }}
-                      onClick={(e) => { e.preventDefault(); handleToggleVisibility(video); }}
-                      title={
-                        video.visibility === 'public'
-                          ? t('channel.makePrivate')
-                          : t('channel.makePublic')
-                      }
+                      onClick={(e) => { e.preventDefault(); handleCycleVisibility(video); }}
+                      title={t('channel.visibilityHint', {
+                        current: t(`visibility.${video.visibility}`),
+                        next: t(`visibility.${nextVisibility(video.visibility)}`),
+                      })}
                     >
-                      {video.visibility === 'public' ? <FiGlobe size={14} /> : <FiLock size={14} />}
+                      <VisibilityIcon size={14} />
                     </button>
                     <button
                       className="btn-icon"
@@ -172,7 +189,11 @@ const ChannelPage = () => {
                       <FiTrash2 size={14} />
                     </button>
                   </div>
-                )}
+                  );
+                })()}
+                {/* Nhãn góc trái nói đúng chế độ đang đặt. Trước đây mọi video
+                    không công khai đều bị dán nhãn "riêng tư", nên video không
+                    liệt kê hiện sai trạng thái của chính nó. */}
                 {isOwner && video.visibility !== 'public' && (
                   <span style={{
                     position: 'absolute', top: 8, left: 8, zIndex: 5,
@@ -180,7 +201,8 @@ const ChannelPage = () => {
                     fontSize: 11, padding: '3px 8px', borderRadius: 'var(--radius-sm)',
                     display: 'inline-flex', alignItems: 'center', gap: 4,
                   }}>
-                    <FiLock size={11} /> {t('channel.privateBadge')}
+                    {video.visibility === 'unlisted' ? <FiLink size={11} /> : <FiLock size={11} />}
+                    {t(`visibility.${video.visibility}`)}
                   </span>
                 )}
               </div>

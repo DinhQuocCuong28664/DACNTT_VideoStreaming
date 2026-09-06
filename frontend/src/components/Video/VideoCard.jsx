@@ -60,6 +60,15 @@ const VideoCard = ({ video }) => {
         {video.status === 'PROCESSING' && (
           <span className="video-status-badge">{t('videoCard.processing')}</span>
         )}
+        {/* Chỉ chủ kênh nhìn thấy video hỏng, vì danh mục công khai chỉ liệt kê
+            video đã READY. Không có nhãn này thì video chuyển mã thất bại trông
+            y hệt video bình thường trên kênh, và chủ kênh chỉ biết khi bấm vào
+            xem. NFR-03 yêu cầu job hỏng không được biến mất lặng lẽ. */}
+        {video.status === 'ERROR' && (
+          <span className="video-status-badge video-status-badge-error">
+            {t('videoCard.failed')}
+          </span>
+        )}
       </div>
 
       <div className="video-card-info">

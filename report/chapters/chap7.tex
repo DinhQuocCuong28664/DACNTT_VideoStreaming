@@ -10,7 +10,8 @@ delivers the cost and scalability benefits it promises.
 
 The functional platform was completed. Users can register, authenticate, upload videos directly
 to Amazon S3 through pre-signed URLs, watch them with adaptive bitrate playback across three
-renditions, control whether each video is public or private, manage their channel, search and
+renditions, control whether each video is public, unlisted or private, manage their channel,
+search and
 filter the catalogue, and interact through likes and comments.
 
 The transcoding pipeline operates without manual intervention. An upload emits an S3 event that
@@ -106,6 +107,13 @@ the backend could be scaled horizontally, since each instance would otherwise en
 independent limits. The backend itself remains one process on one instance in a single region and
 is the only single point of failure in the system, the transcoding and delivery tiers being
 managed services that scale and recover on their own.
+
+One capability stops at the API. The update endpoint accepts a new title, description,
+category, tag list or visibility for a video already uploaded, and enforces ownership before
+applying any of them, but the channel management view calls it only to change visibility. A
+user who mistypes a title therefore has to delete the video and upload it again, which also
+discards its view count and comments. The work remaining is a form in the interface rather
+than anything in the backend.
 
 Two experimental results are narrower than the headline figures suggest. The comparison between
 1 and 4~vCPU allocations rests on a 1~vCPU baseline whose three runs span 56\%, so the estimated
