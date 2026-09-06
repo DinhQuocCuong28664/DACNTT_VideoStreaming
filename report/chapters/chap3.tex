@@ -9,7 +9,8 @@ Three groups interact with the system, and their differing needs shape the requi
 The \emph{anonymous visitor} arrives without an account. This group needs to browse public
 videos, search and filter by category, and watch content immediately, because requiring
 registration before any content can be seen would deter adoption. The \emph{registered user}
-additionally needs to upload videos, control whether each video is public or private, manage
+additionally needs to upload videos, control whether each video is public, unlisted or
+private, manage
 the videos on their own channel, and interact through likes and comments. The
 \emph{system administrator}, in the context of this project the development team itself,
 needs the platform to be observable and deployable without manual intervention.
@@ -35,7 +36,7 @@ FR-02 & Password recovery & Users request a reset link by email; the token is si
 FR-03 & Direct upload to S3 & The client requests a pre-signed URL from the backend and transfers the file directly to Amazon S3 without routing the payload through the application server. \\
 FR-04 & Automatic transcoding & Once the upload completes, the system transcodes the source into HLS renditions without any manual trigger. \\
 FR-05 & Adaptive playback & The player switches automatically among 360p, 720p, and 1080p according to available bandwidth. \\
-FR-06 & Visibility control & Each video is public or private, and the owner can change this setting after upload. \\
+FR-06 & Visibility control & Each video is public, unlisted, or private. A public video is listed in the catalogue; an unlisted one is reachable only by its direct link and appears in no listing; a private one is visible to its owner alone. The owner can change the setting after upload. \\
 FR-07 & Channel management & Users view their own uploads, including those still processing, and may delete a video together with all of its stored artefacts. \\
 FR-08 & Search and filtering & Users search by title, description, or tags, and filter by category. \\
 FR-09 & Engagement & Users express likes and dislikes and post comments; a comment may be removed by its author or by the video owner. \\

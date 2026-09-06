@@ -175,10 +175,10 @@ no more.
 
 One consequence of this design deserves stating precisely, because it is easy to describe the
 scheme as protecting private videos and thereby understate it. The edge does not distinguish
-public content from private: \emph{every} manifest and segment requires a valid signature, and a
-request without one is refused whatever the video's visibility. What visibility governs is the
-authorisation decision made earlier, when the backend decides whether to issue cookies at all.
-Public and private videos are thus protected identically at the edge and differ only in who can
+one visibility level from another: \emph{every} manifest and segment requires a valid signature,
+and a request without one is refused whatever the video's visibility. What visibility governs is
+the authorisation decision made earlier, when the backend decides whether to issue cookies at
+all. All three levels are thus protected identically at the edge and differ only in who can
 obtain the credential.
 
 That uniformity has a limit that the design has to accommodate. A cookie authorises exactly one

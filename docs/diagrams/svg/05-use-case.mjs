@@ -91,7 +91,7 @@ place('thumb', 13, ['Generate a thumbnail', 'and metadata'], 'compute', 38);
 // ── Hai đích của quan hệ include, đặt lệch phải ─────────────────────────────
 const visibility = usecase({
   cx: OFF_X, cy: at(7), rx: OFF_RX, ry: RY,
-  label: ['Set public or', 'private visibility'],
+  label: ['Set visibility: public,', 'unlisted or private'],
 });
 const del = usecase({
   cx: OFF_X, cy: at(8) + 46, rx: OFF_RX, ry: RY, label: 'Delete a video',

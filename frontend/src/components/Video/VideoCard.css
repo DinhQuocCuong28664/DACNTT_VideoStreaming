@@ -68,6 +68,10 @@
   font-weight: 600;
 }
 
+.video-status-badge-error {
+  background: rgba(192, 57, 43, 0.9);
+}
+
 /* Info */
 .video-card-info {
   display: flex;

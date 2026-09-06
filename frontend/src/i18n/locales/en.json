@@ -50,6 +50,7 @@
   },
   "videoCard": {
     "processing": "Processing...",
+    "failed": "Processing failed",
     "views": "{{value}} views",
     "unknownChannel": "Unknown",
     "justNow": "Just now",
@@ -89,10 +90,8 @@
     "confirmDelete": "Delete this video?",
     "deleteFailed": "Could not delete the video: {{message}}",
     "visibilityFailed": "Could not change visibility: {{message}}",
-    "makePrivate": "Public, click to make it private",
-    "makePublic": "Private, click to make it public",
     "deleteVideo": "Delete video",
-    "privateBadge": "Private"
+    "visibilityHint": "{{current}}, click to switch to {{next}}"
   },
   "auth": {
     "or": "or",
