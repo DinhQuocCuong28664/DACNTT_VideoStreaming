@@ -34,9 +34,14 @@ const src = card({
 });
 // Không đặt `title`: logo FFmpeg vốn đã là chữ "FFmpeg", nên thêm dòng tiêu đề
 // là in cùng một từ hai lần và bắt cả hai phải nhỏ lại để chia chỗ cho nhau. Bỏ
-// dòng chữ đi thì logo phóng được lên bảy lần bề rộng cũ.
+// dòng chữ đi thì logo đứng một mình được.
+//
+// Cỡ logo chọn theo chiều cao chữ hoa chứ không theo bề rộng ô: chữ trong logo
+// FFmpeg cao bằng 79/138 chiều cao ảnh, nên ở 110px thì chữ hoa cao 17px, tức
+// gấp 1,5 lần chữ hoa của dòng tiêu đề 16px ở các thẻ bên cạnh. Đủ để thấy đây
+// là một logo mà không lấn át những thẻ còn lại.
 const ff = card({
-  x: CX - 180, y: 176, w: 360, h: 108, iconName: 'ffmpeg', iconSize: 210,
+  x: CX - 180, y: 176, w: 360, h: 98, iconName: 'ffmpeg', iconSize: 110,
   sub: ['a single invocation, source decoded once'],
   tone: 'compute',
 });

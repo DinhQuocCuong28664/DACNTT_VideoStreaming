@@ -14,7 +14,20 @@
  * LANE. Không có làn riêng thì các đường chồng lên nhau và nhãn của chúng đè cả
  * lên tiêu đề của khối bên dưới, đó là lỗi của bản dựng đầu tiên.
  */
-import { card, group, edge, legend, document_, write, PALETTE } from './render.mjs';
+import { card, group, edge, legend, document_, write, PALETTE, TYPE } from './render.mjs';
+
+// Canvas rong 1740px, in ra 247mm (xoay ngang, an het chieu cao trang), nen mot
+// px canvas chi con 0,142mm tren giay. O co chu cu, nhan cua cac cang nho nhat
+// la 13px chi in ra 5,2pt, nho hon ca chu chan trang. Muon dat 6,2pt (2,19mm)
+// thi can 15,4px, lam tron thanh 15,5.
+Object.assign(TYPE, {
+  cardTitle: 18,
+  cardSub: 15.5,
+  cardSubLH: 19,
+  groupLabel: 16.5,
+  edgeLabel: 15.5,
+  legendLabel: 15.5,
+});
 
 const W = 1740;
 const H = 1012;
