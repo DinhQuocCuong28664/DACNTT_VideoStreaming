@@ -22,6 +22,7 @@ graph TB
     LOGIN -->|"no account"| REG
     LOGIN -->|"forgot password"| RESET
     REG --> UPLOAD
+    LOGIN --> UPLOAD
     RESET --> LOGIN
     AUTH -->|"yes"| UPLOAD
     UPLOAD --> PRESIGN

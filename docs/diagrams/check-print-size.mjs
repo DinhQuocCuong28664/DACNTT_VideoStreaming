@@ -32,7 +32,7 @@ const FLOOR = 6.2;
  */
 const MEASURED = {
   '02-transcoding-sequence': { pt: 6.54, note: 'Mermaid, đo chữ hoa trên ảnh: 34/5079 px' },
-  '08-user-flow': { pt: 6.72, note: 'Mermaid, đo chữ hoa trên ảnh: 32/2340 px' },
+  '08-user-flow': { pt: 7.01, note: 'Mermaid, đo chữ hoa trên ảnh: 33/2352 px' },
 };
 
 const inc = /\\includegraphics\[(width|height)=([0-9.]*)\\(textwidth|textheight)\]\{images\/([^}]+)\.png\}/g;

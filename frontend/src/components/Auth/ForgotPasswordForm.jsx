@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { Trans, useTranslation } from 'react-i18next';
 import authApi from '../../api/authApi';
 import LogoIcon from '../Layout/LogoIcon';
@@ -7,6 +7,11 @@ import './AuthForm.css';
 
 const ForgotPasswordForm = () => {
   const { t } = useTranslation();
+  // Trang này đến từ trang đăng nhập nên trang đích vẫn còn trong state; giữ
+  // lại để lúc quay về đăng nhập người dùng không mất chỗ họ định vào. Trang
+  // đặt lại mật khẩu thì không giữ được, vì mở từ liên kết trong e-mail, tức
+  // một ngữ cảnh trình duyệt mới không mang theo state nào.
+  const location = useLocation();
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -70,7 +75,7 @@ const ForgotPasswordForm = () => {
         )}
 
         <p className="auth-footer">
-          <Link to="/login">← {t('auth.backToLogin')}</Link>
+          <Link to="/login" state={location.state}>← {t('auth.backToLogin')}</Link>
         </p>
       </div>
     </div>

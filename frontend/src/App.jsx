@@ -1,7 +1,8 @@
 import { useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from './context/useAuth';
 import { registerNavigator } from './api/axiosClient';
+import { isInternalPath } from './hooks/useAuthRedirect';
 import MainLayout from './components/Layout/MainLayout';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
@@ -18,9 +19,14 @@ import ForbiddenPage from './pages/ForbiddenPage';
 
 /**
  * Protected Route — redirects to /login if not authenticated
+ *
+ * Ghi kèm trang đích vào state của router để sau khi đăng nhập xong người dùng
+ * quay lại đúng chỗ họ định vào, thay vì bị bỏ ở trang danh mục và phải tự tìm
+ * lại. Xem `useAuthRedirect`, nơi đọc lại state này.
  */
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
+  const location = useLocation();
 
   if (loading) {
     return (
@@ -31,7 +37,8 @@ const ProtectedRoute = ({ children }) => {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    const from = `${location.pathname}${location.search}`;
+    return <Navigate to="/login" state={{ from }} replace />;
   }
 
   return children;
@@ -39,9 +46,16 @@ const ProtectedRoute = ({ children }) => {
 
 /**
  * Guest Route — redirects to / if already authenticated
+ *
+ * Cũng phải tôn trọng trang đích như `ProtectedRoute`. Ngay khi đăng nhập thành
+ * công thì `isAuthenticated` đổi sang true, và route này có thể chuyển hướng
+ * trước cả khi biểu mẫu kịp gọi điều hướng của nó. Nếu ở đây cứ về "/" thì tuỳ
+ * bên nào chạy trước mà người dùng lúc quay lại đúng chỗ, lúc lại rơi về trang
+ * chủ. Cho cả hai cùng một đích thì kết quả không phụ thuộc thứ tự nữa.
  */
 const GuestRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
+  const location = useLocation();
 
   if (loading) {
     return (
@@ -52,7 +66,8 @@ const GuestRoute = ({ children }) => {
   }
 
   if (isAuthenticated) {
-    return <Navigate to="/" replace />;
+    const from = location.state?.from;
+    return <Navigate to={isInternalPath(from) ? from : '/'} replace />;
   }
 
   return children;
