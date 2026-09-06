@@ -26,9 +26,12 @@ import { usecase, actor, assoc, edge, group, text, document_, write, PALETTE, TY
 // Chu nho nhat phai tu 14,9px tro len moi dat 6,2pt; lay 15px cho tron. Nhan
 // cang va nhan tac nhan truoc day la 13 va 14px, tuc 5,4 va 5,8pt.
 Object.assign(TYPE, {
-  edgeLabel: 15,
-  actorLabel: 15,
-  actorLabelLH: 18,
+  edgeLabel: 16,
+  actorLabel: 16,
+  actorLabelLH: 19,
+  usecaseLabel: 16,
+  usecaseLabelLH: 19,
+  groupLabel: 16,
 });
 
 const W = 1000;
@@ -142,7 +145,7 @@ p.push(text(
   ['Association lines carry no arrowhead, as UML specifies. Only «include» and',
    '«trigger» relationships are directed. The transcoding use cases attach to the',
    'system actor because events start them, not a human action.'],
-  40, H - 74, { size: 15, anchor: 'start', fill: PALETTE.muted, lineHeight: 19 }));
+  40, H - 78, { size: 16, anchor: 'start', fill: PALETTE.muted, lineHeight: 20 }));
 
 const svg = document_({ width: W, height: H, body: p.join('\n') });
 const out = write('05-use-case', svg, 3);

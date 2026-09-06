@@ -13,7 +13,18 @@
  * mục 5.4 dành hẳn một đoạn giải thích vì sao nó chỉ chặn ở mức critical đã có
  * bản vá chứ không chặn mọi phát hiện.
  */
-import { card, chip, group, edge, text, document_, write, PALETTE } from './render.mjs';
+import { card, chip, group, edge, text, document_, write, PALETTE, TYPE } from './render.mjs';
+
+// Canvas rộng 1372px, xoay ngang nên in ra 247mm: 1px là 0,18mm. Muốn chữ nhỏ
+// nhất đạt 7pt thì phải từ 13,7px trở lên, nên nâng mọi cỡ mặc định dưới mức đó.
+Object.assign(TYPE, {
+  chipLabel: 14,
+  chipLabelLH: 16,
+  edgeLabel: 14,
+  cardSub: 14.5,
+  cardSubLH: 17.5,
+  legendLabel: 14.5,
+});
 
 const W = 1372;
 const H = 888;
@@ -102,7 +113,7 @@ for (const row of rows) {
   // Tên workflow và điều kiện kích hoạt nằm trên một dòng, phía trên hàng bước
   p.push(text(row.name, STEP_X, row.y + 14, { size: 14, weight: 'bold', anchor: 'start' }));
   p.push(text(row.on, STEP_X + row.name.length * 8.4 + 14, row.y + 14,
-    { size: 12.5, anchor: 'start', fill: PALETTE.muted }));
+    { size: 14, anchor: 'start', fill: PALETTE.muted }));
 
   const chipY = row.y + HEADER;
   let prev = null;
@@ -142,17 +153,18 @@ p.push(block.svg, report.svg);
 p.push(edge([[secRow.lastBox.r, secRow.lastBox.cy], [gate.box.x, secRow.lastBox.cy]]));
 
 p.push(text(
-  ['Failing on every high-severity finding means',
-   'failing on transitive dependencies that have no',
-   'patch, and a gate like that gets ignored. Blocking',
-   'only where a fix exists keeps each failure',
-   'actionable. Section 5.4 gives the reasoning.'],
-  626, rows[5].y + 6,
-  { size: 12.5, anchor: 'start', fill: PALETTE.muted, lineHeight: 18 }));
+  ['Failing on every high-severity finding means failing on',
+   'transitive dependencies that have no patch, and a gate',
+   'like that gets ignored. Blocking only where a fix exists',
+   'keeps each failure actionable. Section 5.4 gives the reasoning.'],
+  // Hạ xuống ngang thân thẻ thay vì ngang dòng tên workflow: ở cỡ chữ 14px thì
+  // dòng "on push to develop" và dòng đầu của khối này gần như chạm nhau.
+  626, rows[5].y + 40,
+  { size: 14, anchor: 'start', fill: PALETTE.muted, lineHeight: 18 }));
 
 // Ghi chú cho hai hàng triển khai
 p.push(text('Deployment runs only after every check on the branch has passed.',
-  STEP_X, rows[5].y - 6, { size: 12.5, anchor: 'start', fill: PALETTE.muted }));
+  STEP_X, rows[5].y - 6, { size: 14, anchor: 'start', fill: PALETTE.muted }));
 
 const svg = document_({ width: W, height: H, body: p.join('\n') });
 const out = write('03-cicd-pipeline', svg, 3);

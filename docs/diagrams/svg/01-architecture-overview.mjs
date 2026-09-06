@@ -20,6 +20,15 @@ import { card, group, edge, legend, document_, write, PALETTE, TYPE } from './re
 // px canvas chi con 0,142mm tren giay. O co chu cu, nhan cua cac cang nho nhat
 // la 13px chi in ra 5,2pt, nho hon ca chu chan trang. Muon dat 6,2pt (2,19mm)
 // thi can 15,4px, lam tron thanh 15,5.
+// Trần của hình này là 15,5px, không phải do chữ mà do khe giữa các thẻ trong
+// tầng xử lý chỉ rộng 36px. Nhãn cạnh có nền trắng rộng bằng
+// `số_ký_tự × font × 0,554 + 14`, nên ở 15,5px thì "8  trigger" rộng 92px, vừa
+// đủ tràn sang phần đệm hai bên mà chưa chạm tiêu đề thẻ. Lên 17,5px thì nó rộng
+// 101px và cắt mất chữ "S" của Amazon SQS lẫn chữ "A" của AWS Lambda.
+//
+// Muốn nâng tiếp thì phải giãn lại khoảng cách các thẻ trong tầng xử lý, mà giãn
+// thì khung bao rộng ra và cỡ chữ in ra lại tụt xuống, nên phải thu hẹp bề ngang
+// từng thẻ để bù. Đó là việc sửa bố cục, không phải đổi một con số.
 Object.assign(TYPE, {
   cardTitle: 18,
   cardSub: 15.5,
@@ -53,7 +62,7 @@ const cloudflare = card({
 });
 const atlas = card({
   x: 62, y: 458, w: 172, h: 128, iconName: 'mongodb', iconSize: 34,
-  title: 'MongoDB Atlas', sub: ['Users, Videos,', 'Comments'], tone: 'storage',
+  title: 'MongoDB Atlas', sub: ['Users, videos,', 'comments'], tone: 'storage',
 });
 p.push(browser.svg, cloudflare.svg, atlas.svg);
 
@@ -75,7 +84,7 @@ const cfWeb = card({
 });
 const s3Web = card({
   x: 712, y: 146, w: 196, h: 114, iconName: 'aws-s3', iconSize: 32,
-  title: 'Amazon S3', sub: ['Static website hosting'], tone: 'storage',
+  title: 'Amazon S3', sub: ['Static site hosting'], tone: 'storage',
 });
 p.push(cfWeb.svg, s3Web.svg);
 
@@ -95,7 +104,7 @@ const secrets = card({
 });
 const canary = card({
   x: 962, y: 342, w: 196, h: 136, iconName: 'aws-cloudwatch', iconSize: 32,
-  title: 'CloudWatch', sub: ['Canary calls the public', 'domain every 5 minutes'], tone: 'plain',
+  title: 'CloudWatch', sub: ['Canary probes the site', 'every 5 minutes'], tone: 'plain',
 });
 p.push(api.svg, secrets.svg, canary.svg);
 
@@ -111,7 +120,7 @@ const s3Raw = card({
 });
 const sqs = card({
   x: 664, y: 562, w: 178, h: 116, iconName: 'aws-sqs', iconSize: 30,
-  title: 'Amazon SQS', sub: ['Transcode Queue', 'and Dead Letter Queue'], tone: 'network',
+  title: 'Amazon SQS', sub: ['Transcode queue', 'plus dead letter queue'], tone: 'network',
 });
 const lambda = card({
   x: 878, y: 562, w: 178, h: 116, iconName: 'aws-lambda', iconSize: 30,
