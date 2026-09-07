@@ -283,7 +283,8 @@ description was corrected to state what it genuinely covers.
 
 \subsection{Monitoring the Service Rather Than the Server}
 
-All four alarms watched the transcoding pipeline and none watched the backend API, which runs as a
+Both of the alarms defined at that point watched the transcoding pipeline, the dead letter queue
+and the queue depth, and neither watched the backend API, which runs as a
 single process on a single instance. The gap surfaced when assigning the backend a static address
 moved its public IP while DNS still pointed at the released one, and the API returned
 \texttt{522} for several minutes. Every infrastructure indicator stayed green, because nothing at

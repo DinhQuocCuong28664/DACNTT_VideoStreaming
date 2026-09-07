@@ -11,7 +11,7 @@
  * còn tự mâu thuẫn với phụ lục của chính báo cáo.
  *
  * Sai cơ chế: bản cũ ghi "one encoding pass per rung", trong khi mục 5.2 và
- * phụ lục A đều nói FFmpeg chạy một lần duy nhất với `split=3`, giải mã nguồn
+ * phụ lục A đều nói FFmpeg chạy một lần duy nhất, giải mã nguồn
  * đúng một lần rồi mã hoá song song ba rung. Đó chính là lý do chọn cách làm
  * này, nên vẽ sai là làm mất lập luận.
  *
@@ -55,9 +55,9 @@ const rowX = CX - (RW * 3 + RGAP * 2) / 2;
 const RY = 372;
 
 const rungs = [
-  { name: '360p', v: '400 kbps', a: '64 kbps', dir: '360p/index.m3u8' },
-  { name: '720p', v: '1500 kbps', a: '128 kbps', dir: '720p/index.m3u8' },
-  { name: '1080p', v: '4000 kbps', a: '192 kbps', dir: '1080p/index.m3u8' },
+  { name: '360p', v: '400 kbps', a: '64 kbps', dir: '360p/playlist.m3u8' },
+  { name: '720p', v: '1500 kbps', a: '128 kbps', dir: '720p/playlist.m3u8' },
+  { name: '1080p', v: '4000 kbps', a: '192 kbps', dir: '1080p/playlist.m3u8' },
 ];
 
 const boxes = rungs.map((r, i) => {
@@ -78,7 +78,7 @@ p.push(edge([[ff.box.cx, ff.box.b], [ff.box.cx, FAN_Y]], { arrow: false }));
 boxes.forEach((b) => {
   p.push(edge([[ff.box.cx, FAN_Y], [b.box.cx, FAN_Y], [b.box.cx, b.box.y]]));
 });
-p.push(text('split=3, encoded in parallel', ff.box.cx + 122, FAN_Y - 10,
+p.push(text('one input, three output blocks', ff.box.cx + 122, FAN_Y - 10,
   { size: 13, anchor: 'start', fill: PALETTE.muted }));
 
 // ── Master playlist và trình phát ───────────────────────────────────────────

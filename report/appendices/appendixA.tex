@@ -23,23 +23,30 @@ DACNTT_VideoStreaming/
 \section{FFmpeg Transcoding Command}
 \label{app:ffmpeg}
 
-The following invocation produces all three renditions in a single pass, decoding the source
-only once. The parameters shown are abbreviated for readability.
+The following invocation produces all three renditions from one read of the source. A single
+input is followed by three output blocks, each carrying its own scaling filter and encoder
+settings, so FFmpeg decodes the source once and feeds all three filter chains from it. The
+second and third blocks are abbreviated here; in the source they repeat the first block in
+full. The master playlist is not written by FFmpeg: the worker generates it afterwards from
+the rendition list, which is why no \texttt{-master\_pl\_name} argument appears.
 
 \begin{lstlisting}[language=bash]
-ffmpeg -i input.mp4 \
-  -filter_complex "[0:v]split=3[v1][v2][v3]; \
-     [v1]scale=w=640:h=360[v1out]; \
-     [v2]scale=w=1280:h=720[v2out]; \
-     [v3]scale=w=1920:h=1080[v3out]" \
-  -map "[v1out]" -c:v:0 libx264 -b:v:0 400k  \
-  -map "[v2out]" -c:v:1 libx264 -b:v:1 1500k \
-  -map "[v3out]" -c:v:2 libx264 -b:v:2 4000k \
-  -map a:0 -map a:0 -map a:0 -c:a aac \
-  -f hls -hls_time 6 -hls_playlist_type vod \
-  -master_pl_name master.m3u8 \
-  -var_stream_map "v:0,a:0 v:1,a:1 v:2,a:2" \
-  output/stream_%v/playlist.m3u8
+ffmpeg -i input.mp4 -hide_banner -loglevel warning -y \
+  -vf "scale=640:360:force_original_aspect_ratio=decrease, \
+         pad=640:360:(ow-iw)/2:(oh-ih)/2" \
+  -c:v libx264 -b:v 400k  -maxrate 500k  -bufsize 800k  \
+  -preset fast -profile:v main -level 3.1 -g 180 -keyint_min 180 -sc_threshold 0 \
+  -c:a aac -b:a 64k  -ar 44100 -ac 2 \
+  -f hls -hls_time 6 -hls_list_size 0 \
+  -hls_segment_filename 360p/segment_%03d.ts  360p/playlist.m3u8 \
+  \
+  -vf "scale=1280:720:..."  -c:v libx264 -b:v 1500k -maxrate 2000k -bufsize 3000k \
+  -c:a aac -b:a 128k -f hls -hls_time 6 \
+  -hls_segment_filename 720p/segment_%03d.ts  720p/playlist.m3u8 \
+  \
+  -vf "scale=1920:1080:..." -c:v libx264 -b:v 4000k -maxrate 5000k -bufsize 8000k \
+  -c:a aac -b:a 192k -f hls -hls_time 6 \
+  -hls_segment_filename 1080p/segment_%03d.ts 1080p/playlist.m3u8
 \end{lstlisting}
 
 \section{Signed Cookie Custom Policy}
