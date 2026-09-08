@@ -59,7 +59,7 @@ path covers the manifest and every segment of one specific video, and nothing be
 {
   "Statement": [
     {
-      "Resource": "https://cdn.zelostech.site/videos/*/<videoId>/*",
+      "Resource": "https://cdn.zelostech.site/videos/<videoId>/*",
       "Condition": {
         "DateLessThan": { "AWS:EpochTime": 1786300347 }
       }

@@ -37,7 +37,14 @@ const VideoUpload = () => {
     const selected = e.target.files[0];
     if (!selected) return;
 
-    const allowed = ['video/mp4', 'video/quicktime', 'video/x-msvideo', 'video/x-matroska'];
+    const allowed = [
+      'video/mp4',
+      'video/quicktime',
+      'video/x-msvideo',
+      'video/x-matroska',
+      'video/webm',
+      'video/mpeg',
+    ];
     if (!allowed.includes(selected.type)) {
       setError(t('upload.errorFormat'));
       return;
