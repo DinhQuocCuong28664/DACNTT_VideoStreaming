@@ -106,25 +106,35 @@ const ChannelPage = () => {
   };
 
   /**
+   * Đặt trực tiếp chế độ hiển thị mong muốn (public, unlisted, private)
+   * Cập nhật lạc quan (optimistic update) để phản hồi tức thì.
+   */
+  const handleSetVisibility = async (video, targetVisibility) => {
+    if (video.visibility === targetVisibility) return;
+
+    const oldVisibility = video.visibility;
+    setVideos((prev) =>
+      prev.map((v) => (v._id === video._id ? { ...v, visibility: targetVisibility } : v))
+    );
+
+    try {
+      await videoApi.updateVideo(video._id, { visibility: targetVisibility });
+    } catch (err) {
+      setVideos((prev) =>
+        prev.map((v) => (v._id === video._id ? { ...v, visibility: oldVisibility } : v))
+      );
+      alert(t('channel.visibilityFailed', { message: err.response?.data?.message || err.message }));
+    }
+  };
+
+  /**
    * Chuyển chế độ hiển thị sang trạng thái kế tiếp trong vòng ba chế độ.
    * Cập nhật lạc quan (optimistic update) để giao diện phản hồi tức thì,
    * và khôi phục trạng thái cũ nếu máy chủ trả về lỗi.
    */
   const handleCycleVisibility = async (video) => {
     const next = nextVisibility(video.visibility);
-
-    setVideos((prev) =>
-      prev.map((v) => (v._id === video._id ? { ...v, visibility: next } : v))
-    );
-
-    try {
-      await videoApi.updateVideo(video._id, { visibility: next });
-    } catch (err) {
-      setVideos((prev) =>
-        prev.map((v) => (v._id === video._id ? { ...v, visibility: video.visibility } : v))
-      );
-      alert(t('channel.visibilityFailed', { message: err.response?.data?.message || err.message }));
-    }
+    handleSetVisibility(video, next);
   };
 
   const handleOpenEdit = (video) => {
@@ -260,23 +270,24 @@ const ChannelPage = () => {
                             <span>{t('channel.editVideo')}</span>
                           </button>
 
-                          <button
-                            className="dropdown-item"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              setActiveMenuId(null);
-                              handleCycleVisibility(video);
-                            }}
-                            title={t('channel.visibilityHint', {
-                              current: t(`visibility.${video.visibility}`),
-                              next: t(`visibility.${nextVisibility(video.visibility)}`),
-                            })}
-                          >
-                            <VisibilityIcon size={15} />
-                            <span>
-                              {t(`visibility.${video.visibility}`)} ({t('channel.quickSwitch', 'Đổi nhanh')})
-                            </span>
-                          </button>
+                          {/* Danh sách các chế độ hiển thị khác mà người dùng có thể chọn trực tiếp */}
+                          {VISIBILITY_CYCLE.filter((mode) => mode !== video.visibility).map((mode) => {
+                            const ModeIcon = VISIBILITY_ICON[mode] ?? FiGlobe;
+                            return (
+                              <button
+                                key={mode}
+                                className="dropdown-item"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  setActiveMenuId(null);
+                                  handleSetVisibility(video, mode);
+                                }}
+                              >
+                                <ModeIcon size={15} />
+                                <span>{t('channel.setVisibilityTo', { mode: t(`visibility.${mode}`) })}</span>
+                              </button>
+                            );
+                          })}
 
                           <div className="dropdown-divider" />
 

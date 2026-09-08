@@ -97,6 +97,7 @@
     "visibilityFailed": "Could not change visibility: {{message}}",
     "deleteVideo": "Delete video",
     "visibilityHint": "{{current}}, click to switch to {{next}}",
+    "setVisibilityTo": "Set as {{mode}}",
     "editVideo": "Edit video",
     "editModalTitle": "Edit Video Details",
     "editTitleLabel": "Video title",
