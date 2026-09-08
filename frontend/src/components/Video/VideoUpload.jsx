@@ -101,22 +101,33 @@ const VideoUpload = () => {
     return `${s}s`;
   };
 
-  const handleCancelUpload = async () => {
+  /**
+   * Xoa bản ghi nháp mà `initiateUpload` đã tạo trước khi tệp kịp lên S3.
+   *
+   * Gọi ở cả ba lối thoát khỏi luồng tải lên — bấm Huỷ, chọn tệp khác, và
+   * tải lên thất bại — vì lối nào cũng bỏ lại đúng một bản ghi `UPLOADING`
+   * mà không gì dọn hộ: hệ thống không có TTL index cũng không có tác vụ
+   * quét định kỳ. Chạy nền chứ không chờ, để giao diện phản hồi ngay cả khi
+   * lệnh xoá chậm; nếu xoá hỏng thì bản ghi chỉ nằm lại ở trang kênh của
+   * chính chủ, nơi nút xoá vẫn dùng được.
+   */
+  const discardDraftVideo = () => {
+    const danglingId = currentVideoIdRef.current;
+    if (!danglingId) return;
+    currentVideoIdRef.current = null;
+    videoApi.deleteVideo(danglingId).catch((delErr) => {
+      console.warn('Could not clean up draft video record:', delErr);
+    });
+  };
+
+  const handleCancelUpload = () => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
-    }
-    const danglingId = currentVideoIdRef.current;
-    if (danglingId) {
-      try {
-        await videoApi.deleteVideo(danglingId);
-      } catch (delErr) {
-        console.warn('Could not clean up canceled upload record:', delErr);
-      }
-      currentVideoIdRef.current = null;
     }
     setUploading(false);
     setStep(2);
     setError(t('upload.errorCancelled'));
+    discardDraftVideo();
   };
 
   const handleUpload = async () => {
@@ -195,6 +206,9 @@ const VideoUpload = () => {
       );
       setStep(2);
       setUploading(false);
+      // Không có dòng này thì mỗi lần bấm Upload lại sau khi hỏng sẽ tạo
+      // thêm một bản ghi nháp nữa, còn bản ghi lần trước mất dấu vĩnh viễn.
+      discardDraftVideo();
     }
   };
 
@@ -202,13 +216,7 @@ const VideoUpload = () => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
-    const danglingId = currentVideoIdRef.current;
-    if (danglingId) {
-      videoApi.deleteVideo(danglingId).catch((delErr) => {
-        console.warn('Could not clean up draft video record:', delErr);
-      });
-      currentVideoIdRef.current = null;
-    }
+    discardDraftVideo();
     setFile(null);
     setStep(1);
     setUploadProgress(0);
