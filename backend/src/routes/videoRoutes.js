@@ -12,6 +12,7 @@ const {
   getPlaybackAuth,
   registerView,
   getUserVideos,
+  getRelatedVideos,
   toggleLike,
   toggleDislike,
   getComments,
@@ -25,6 +26,7 @@ const {
 router.get('/', getAllVideos);
 router.get('/user/:userId', optionalAuth, getUserVideos);
 router.get('/:id', optionalAuth, getVideoById);
+router.get('/:id/related', getRelatedVideos);
 router.get('/:id/playback-auth', optionalAuth, getPlaybackAuth);
 router.post('/:id/view', optionalAuth, registerView);
 router.get('/:id/comments', optionalAuth, getComments);

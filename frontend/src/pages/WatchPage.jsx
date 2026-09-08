@@ -5,6 +5,7 @@ import { FiEye, FiClock, FiShare2, FiUser, FiThumbsUp, FiThumbsDown, FiMessageSq
 import { useAuth } from '../context/useAuth';
 import videoApi from '../api/videoApi';
 import VideoPlayer from '../components/Video/VideoPlayer';
+import VideoCard from '../components/Video/VideoCard';
 import './WatchPage.css';
 
 const WatchPage = () => {
@@ -29,19 +30,24 @@ const WatchPage = () => {
   const [newComment, setNewComment] = useState('');
   const [postingComment, setPostingComment] = useState(false);
 
+  // Related videos state
+  const [relatedVideos, setRelatedVideos] = useState([]);
+
   useEffect(() => {
     const fetchVideoAndComments = async () => {
       setLoading(true);
       try {
-        const [videoRes, commentsRes] = await Promise.all([
+        const [videoRes, commentsRes, relatedRes] = await Promise.all([
           videoApi.getVideoById(id),
           videoApi.getComments(id),
+          videoApi.getRelatedVideos(id, 6).catch(() => ({ data: { data: { videos: [] } } })),
         ]);
 
         const v = videoRes.data.data.video;
         setVideo(v);
         setLikesCount(v.likes?.length || 0);
         setDislikesCount(v.dislikes?.length || 0);
+        setRelatedVideos(relatedRes.data?.data?.videos || []);
 
         if (currentUser) {
           setHasLiked(v.likes?.includes(currentUser._id));
@@ -227,17 +233,19 @@ const WatchPage = () => {
 
   return (
     <div className="container watch-page">
-      {/* Trình phát */}
-      {playbackDenied ? (
-        <Navigate to="/403" replace />
-      ) : isReady ? (
-        <VideoPlayer
-          src={videoSrc}
-          poster={video.thumbnailUrl}
-          onViewThreshold={handleViewThreshold}
-          onAuthExpired={handleAuthExpired}
-        />
-      ) : (
+      <div className="watch-layout">
+        <div className="watch-main">
+          {/* Trình phát */}
+          {playbackDenied ? (
+            <Navigate to="/403" replace />
+          ) : isReady ? (
+            <VideoPlayer
+              src={videoSrc}
+              poster={video.thumbnailUrl}
+              onViewThreshold={handleViewThreshold}
+              onAuthExpired={handleAuthExpired}
+            />
+          ) : (
         <div className="player-placeholder">
           {video.status === 'PROCESSING' ? (
             <>
@@ -314,12 +322,13 @@ const WatchPage = () => {
         {video.description && (
           <div className="watch-description">{video.description}</div>
         )}
+      </div>
 
-        {/* Bình luận */}
-        <section className="comments-section">
-          <h3 className="comments-heading">
-            <FiMessageSquare /> {t('watch.commentsHeading', { count: comments.length })}
-          </h3>
+      {/* Bình luận */}
+      <section className="comments-section">
+        <h3 className="comments-heading">
+          <FiMessageSquare /> {t('watch.commentsHeading', { count: comments.length })}
+        </h3>
 
           {isAuthenticated ? (
             <form onSubmit={handleAddComment} className="comment-form">
@@ -371,9 +380,23 @@ const WatchPage = () => {
             ))}
           </div>
         </section>
+        </div>
+
+        {/* Cột video đề xuất bên phải */}
+        {relatedVideos.length > 0 && (
+          <aside className="watch-sidebar">
+            <h3 className="watch-sidebar-heading">{t('watch.relatedVideos')}</h3>
+            <div className="watch-sidebar-list">
+              {relatedVideos.map((item) => (
+                <VideoCard key={item._id} video={item} />
+              ))}
+            </div>
+          </aside>
+        )}
       </div>
     </div>
   );
 };
 
 export default WatchPage;
+

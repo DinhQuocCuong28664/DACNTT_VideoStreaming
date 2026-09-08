@@ -180,7 +180,8 @@
     "commentSubmit": "Post",
     "commentSubmitting": "Posting…",
     "loginPrompt": "to write a comment.",
-    "deleteComment": "Delete comment"
+    "deleteComment": "Delete comment",
+    "relatedVideos": "Related Videos"
   },
   "player": {
     "authFailed": "Could not authorise this playback session. Please reload the page.",

@@ -14,6 +14,9 @@ export const videoApi = {
   getVideoById: (id) =>
     axiosClient.get(`/videos/${id}`),
 
+  getRelatedVideos: (id, limit = 8) =>
+    axiosClient.get(`/videos/${id}/related`, { params: { limit } }),
+
   /**
    * Ghi nhận một lượt xem. Chỉ gọi sau khi video đã thực sự bắt đầu phát,
    * không gọi ngay khi tải trang, để số lượt xem phản ánh đúng lượt xem thật.

@@ -6,9 +6,43 @@
    ──────────────────────────────────────────────────────────── */
 
 .watch-page {
-  max-width: 960px;
+  max-width: 1320px;
   padding-top: var(--space-xl);
   padding-bottom: var(--space-2xl);
+}
+
+.watch-layout {
+  display: grid;
+  grid-template-columns: 1fr 360px;
+  gap: var(--space-xl);
+  align-items: start;
+}
+
+.watch-main {
+  min-width: 0;
+}
+
+.watch-sidebar {
+  min-width: 0;
+}
+
+.watch-sidebar-heading {
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  margin-bottom: var(--space-md);
+  color: var(--text-primary);
+}
+
+.watch-sidebar-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+@media (max-width: 1024px) {
+  .watch-layout {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* ── Khung thay thế trình phát (đang xử lý / lỗi / bị từ chối) ── */
