@@ -408,14 +408,14 @@ const registerView = async (videoId, requesterUser, clientIp) => {
 
 /**
  * Get related/recommended videos based on category and tags
+ *
+ * Quyền xem video gốc được kiểm tra bằng chính `getVideoById`, tức là dùng
+ * lại đúng một nguồn quy tắc với endpoint xem chi tiết video. Nếu tự viết
+ * lại phần kiểm tra ở đây thì người lạ sẽ dò được ID nào có thật chỉ bằng
+ * cách so sánh 404 với 200, dù nội dung trả về vẫn chỉ toàn video công khai.
  */
-const getRelatedVideos = async (videoId, limit = 8) => {
-  const currentVideo = await Video.findById(videoId);
-  if (!currentVideo) {
-    const error = new Error('Video not found');
-    error.statusCode = 404;
-    throw error;
-  }
+const getRelatedVideos = async (videoId, limit = 8, requesterUser = null) => {
+  const currentVideo = await getVideoById(videoId, requesterUser);
 
   const query = {
     _id: { $ne: currentVideo._id },

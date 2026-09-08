@@ -313,7 +313,7 @@ the address stable across any rebuild that does occur.
 \section{Testing}
 \label{sec:testing}
 
-The automated test suite comprises 117 tests across ten suites, summarised in
+The automated test suite comprises 127 tests across eleven suites, summarised in
 Table~\ref{tab:test-coverage}.
 
 \begin{table}[H]
@@ -333,6 +333,7 @@ Table~\ref{tab:test-coverage}.
 \texttt{uploadValidation}   & 11 & HTTP-level validation of file type and size \\
 \texttt{cloudfrontService}  & 24 & Cookie signing, policy scope, cookie attributes, and that revocation repeats the attributes used when issuing \\
 \texttt{forgotPassword}     & 5  & That the response is identical whether or not the address has an account, including when e-mail delivery fails \\
+\texttt{relatedVideos}      & 10 & That the recommendation endpoint reuses the same authorisation rule as the detail endpoint, and never surfaces a private or unlisted video \\
 \texttt{transcoder/dbHandler} & 6 & Conditional writes preventing duplicate-job overwrites \\
 \path{transcoder/emailService} & 6 & READY/ERROR notification content and recipient targeting, and that raw failure detail is never exposed to the viewer \\
 \bottomrule
