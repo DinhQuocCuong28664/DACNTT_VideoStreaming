@@ -122,6 +122,11 @@ const VideoPlayer = ({
   const [settingsView, setSettingsView] = useState('main'); // 'main' | 'speed' | 'quality'
   const [playbackError, setPlaybackError] = useState(null);
 
+  // Timeline scrubbing tooltip state
+  const [hoverTime, setHoverTime] = useState(0);
+  const [hoverPos, setHoverPos] = useState(0);
+  const [isHoveringProgress, setIsHoveringProgress] = useState(false);
+
   // Giữ tham chiếu callback luôn mới mà không phải gắn lại event listener
   useEffect(() => {
     onViewThresholdRef.current = onViewThreshold;
@@ -432,6 +437,18 @@ const VideoPlayer = ({
     seekTo((e.clientX - rect.left) / rect.width);
   };
 
+  const handleProgressMouseMove = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const fraction = Math.min(Math.max((e.clientX - rect.left) / rect.width, 0), 1);
+    setHoverPos(fraction * 100);
+    setHoverTime(fraction * (duration || 0));
+    setIsHoveringProgress(true);
+  };
+
+  const handleProgressMouseLeave = () => {
+    setIsHoveringProgress(false);
+  };
+
   const toggleMute = () => {
     const video = videoRef.current;
     if (!video) return;
@@ -577,7 +594,22 @@ const VideoPlayer = ({
       )}
 
       <div className="video-controls-bar" onClick={(e) => e.stopPropagation()}>
-        <div className="player-progress-container" onClick={handleSeekClick}>
+        <div
+          className="player-progress-container"
+          onClick={handleSeekClick}
+          onMouseMove={handleProgressMouseMove}
+          onMouseLeave={handleProgressMouseLeave}
+        >
+          {isHoveringProgress && (
+            <div className="player-scrub-tooltip" style={{ left: `${hoverPos}%` }}>
+              {poster && (
+                <div className="player-scrub-preview">
+                  <img src={poster} alt="" />
+                </div>
+              )}
+              <span className="player-scrub-time">{formatTime(hoverTime)}</span>
+            </div>
+          )}
           <div className="player-progress-track" />
           <div className="player-progress-buffered" style={{ width: `${bufferedPct}%` }} />
           <div className="player-progress-played" style={{ width: `${playedPct}%` }} />
