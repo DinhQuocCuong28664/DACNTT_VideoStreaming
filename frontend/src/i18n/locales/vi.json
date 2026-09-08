@@ -180,7 +180,8 @@
     "commentSubmit": "Gửi",
     "commentSubmitting": "Đang gửi…",
     "loginPrompt": "để viết bình luận.",
-    "deleteComment": "Xoá bình luận"
+    "deleteComment": "Xoá bình luận",
+    "relatedVideos": "Video đề xuất"
   },
   "player": {
     "authFailed": "Không xác thực được phiên xem video. Vui lòng tải lại trang.",

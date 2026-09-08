@@ -318,6 +318,25 @@ const deleteVideo = async (req, res, next) => {
   }
 };
 
+/**
+ * @route   GET /api/videos/:id/related
+ * @desc    Get related videos based on category and tags
+ * @access  Public
+ */
+const getRelatedVideos = async (req, res, next) => {
+  try {
+    const limit = parseInt(req.query.limit, 10) || 8;
+    const related = await videoService.getRelatedVideos(req.params.id, limit);
+
+    res.status(200).json({
+      success: true,
+      data: { videos: related },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   initiateUpload,
   confirmUpload,
@@ -326,6 +345,7 @@ module.exports = {
   getPlaybackAuth,
   registerView,
   getUserVideos,
+  getRelatedVideos,
   toggleLike,
   toggleDislike,
   getComments,
@@ -334,3 +354,4 @@ module.exports = {
   updateVideo,
   deleteVideo,
 };
+

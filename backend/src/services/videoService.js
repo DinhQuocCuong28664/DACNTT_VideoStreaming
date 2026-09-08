@@ -406,12 +406,60 @@ const registerView = async (videoId, requesterUser, clientIp) => {
   return { counted: true, views: updated.views };
 };
 
+/**
+ * Get related/recommended videos based on category and tags
+ */
+const getRelatedVideos = async (videoId, limit = 8) => {
+  const currentVideo = await Video.findById(videoId);
+  if (!currentVideo) {
+    const error = new Error('Video not found');
+    error.statusCode = 404;
+    throw error;
+  }
+
+  const query = {
+    _id: { $ne: currentVideo._id },
+    status: 'READY',
+    visibility: 'public',
+  };
+
+  if (currentVideo.category || (currentVideo.tags && currentVideo.tags.length > 0)) {
+    query.$or = [
+      { category: currentVideo.category },
+      { tags: { $in: currentVideo.tags || [] } },
+    ];
+  }
+
+  let related = await Video.find(query)
+    .populate('user', 'username displayName avatar')
+    .sort({ views: -1, createdAt: -1 })
+    .limit(limit);
+
+  // If fewer than limit, backfill with most viewed public READY videos
+  if (related.length < limit) {
+    const existingIds = [currentVideo._id, ...related.map((v) => v._id)];
+    const backfill = await Video.find({
+      _id: { $nin: existingIds },
+      status: 'READY',
+      visibility: 'public',
+    })
+      .populate('user', 'username displayName avatar')
+      .sort({ views: -1, createdAt: -1 })
+      .limit(limit - related.length);
+
+    related = [...related, ...backfill];
+  }
+
+  return related;
+};
+
 module.exports = {
   initiateUpload,
   confirmUpload,
   getVideoById,
   getAllVideos,
   getVideosByUser,
+  getRelatedVideos,
   toggleLike,
   toggleDislike,
   getComments,
@@ -422,3 +470,4 @@ module.exports = {
   registerView,
   VIEW_DEDUPE_WINDOW_MS,
 };
+
