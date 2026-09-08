@@ -91,7 +91,16 @@
     "deleteFailed": "Xóa video thất bại: {{message}}",
     "visibilityFailed": "Đổi chế độ hiển thị thất bại: {{message}}",
     "deleteVideo": "Xóa video",
-    "visibilityHint": "Đang {{current}}, nhấn để chuyển sang {{next}}"
+    "visibilityHint": "Đang {{current}}, nhấn để chuyển sang {{next}}",
+    "editVideo": "Chỉnh sửa video",
+    "editModalTitle": "Chỉnh sửa thông tin video",
+    "editTitleLabel": "Tiêu đề video",
+    "editDescLabel": "Mô tả nội dung",
+    "editCategoryLabel": "Danh mục",
+    "editSave": "Lưu thay đổi",
+    "editSaving": "Đang lưu...",
+    "editCancel": "Hủy",
+    "editSuccess": "Cập nhật video thành công!"
   },
   "auth": {
     "or": "hoặc",

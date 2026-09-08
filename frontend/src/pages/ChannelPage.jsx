@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { FiUser, FiTrash2, FiGlobe, FiLock, FiLink } from 'react-icons/fi';
+import { FiUser, FiTrash2, FiGlobe, FiLock, FiLink, FiEdit2 } from 'react-icons/fi';
 import { useAuth } from '../context/useAuth';
 import videoApi from '../api/videoApi';
 import userApi from '../api/userApi';
@@ -32,6 +32,13 @@ const ChannelPage = () => {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState(null);
+
+  // Edit Video state
+  const [editingVideo, setEditingVideo] = useState(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editCategory, setEditCategory] = useState('');
+  const [savingEdit, setSavingEdit] = useState(false);
 
   const isOwner = currentUser && currentUser._id === userId;
 
@@ -93,6 +100,35 @@ const ChannelPage = () => {
         prev.map((v) => (v._id === video._id ? { ...v, visibility: video.visibility } : v))
       );
       alert(t('channel.visibilityFailed', { message: err.response?.data?.message || err.message }));
+    }
+  };
+
+  const handleOpenEdit = (video) => {
+    setEditingVideo(video);
+    setEditTitle(video.title || '');
+    setEditDescription(video.description || '');
+    setEditCategory(video.category || 'technology');
+  };
+
+  const handleSaveEdit = async (e) => {
+    e.preventDefault();
+    if (!editingVideo) return;
+    setSavingEdit(true);
+    try {
+      const res = await videoApi.updateVideo(editingVideo._id, {
+        title: editTitle,
+        description: editDescription,
+        category: editCategory,
+      });
+      const updated = res.data.data.video;
+      setVideos((prev) =>
+        prev.map((v) => (v._id === editingVideo._id ? { ...v, ...updated } : v))
+      );
+      setEditingVideo(null);
+    } catch (err) {
+      alert(err.response?.data?.message || err.message);
+    } finally {
+      setSavingEdit(false);
     }
   };
 
@@ -183,6 +219,14 @@ const ChannelPage = () => {
                     <button
                       className="btn-icon"
                       style={{ background: 'rgba(0,0,0,0.7)', color: '#fff', width: 32, height: 32 }}
+                      onClick={(e) => { e.preventDefault(); handleOpenEdit(video); }}
+                      title={t('channel.editVideo')}
+                    >
+                      <FiEdit2 size={14} />
+                    </button>
+                    <button
+                      className="btn-icon"
+                      style={{ background: 'rgba(0,0,0,0.7)', color: '#fff', width: 32, height: 32 }}
                       onClick={(e) => { e.preventDefault(); handleDelete(video._id); }}
                       title={t('channel.deleteVideo')}
                     >
@@ -227,6 +271,91 @@ const ChannelPage = () => {
       ) : (
         <div style={{ textAlign: 'center', padding: 'var(--space-2xl)', color: 'var(--text-muted)' }}>
           <p>{t('channel.empty')}</p>
+        </div>
+      )}
+
+      {/* Edit Video Modal */}
+      {editingVideo && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0, 0, 0, 0.7)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 1000, padding: 'var(--space-md)',
+        }}>
+          <div style={{
+            background: 'var(--bg-card)',
+            border: '1px solid var(--border-color)',
+            borderRadius: 'var(--radius-xl)',
+            width: '100%', maxWidth: 500,
+            padding: 'var(--space-xl)',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)',
+          }}>
+            <h3 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 700, marginBottom: 'var(--space-lg)' }}>
+              {t('channel.editModalTitle')}
+            </h3>
+            <form onSubmit={handleSaveEdit}>
+              <div style={{ marginBottom: 'var(--space-md)' }}>
+                <label style={{ display: 'block', fontSize: 'var(--font-size-sm)', fontWeight: 600, marginBottom: 4 }}>
+                  {t('channel.editTitleLabel')}
+                </label>
+                <input
+                  type="text"
+                  className="form-control"
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div style={{ marginBottom: 'var(--space-md)' }}>
+                <label style={{ display: 'block', fontSize: 'var(--font-size-sm)', fontWeight: 600, marginBottom: 4 }}>
+                  {t('channel.editDescLabel')}
+                </label>
+                <textarea
+                  className="form-control"
+                  rows={3}
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                />
+              </div>
+
+              <div style={{ marginBottom: 'var(--space-xl)' }}>
+                <label style={{ display: 'block', fontSize: 'var(--font-size-sm)', fontWeight: 600, marginBottom: 4 }}>
+                  {t('channel.editCategoryLabel')}
+                </label>
+                <select
+                  className="form-control"
+                  value={editCategory}
+                  onChange={(e) => setEditCategory(e.target.value)}
+                >
+                  <option value="technology">{t('categories.technology')}</option>
+                  <option value="education">{t('categories.education')}</option>
+                  <option value="entertainment">{t('categories.entertainment')}</option>
+                  <option value="music">{t('categories.music')}</option>
+                  <option value="game">{t('categories.game')}</option>
+                  <option value="other">{t('categories.other')}</option>
+                </select>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-md)' }}>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setEditingVideo(null)}
+                  disabled={savingEdit}
+                >
+                  {t('channel.editCancel')}
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={savingEdit}
+                >
+                  {savingEdit ? t('channel.editSaving') : t('channel.editSave')}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 
