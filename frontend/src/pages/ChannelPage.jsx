@@ -49,6 +49,7 @@ const ChannelPage = () => {
   const [editTitle, setEditTitle] = useState('');
   const [editDescription, setEditDescription] = useState('');
   const [editCategory, setEditCategory] = useState('');
+  const [editVisibility, setEditVisibility] = useState('public');
   const [savingEdit, setSavingEdit] = useState(false);
   const [activeMenuId, setActiveMenuId] = useState(null);
 
@@ -131,6 +132,7 @@ const ChannelPage = () => {
     setEditTitle(video.title || '');
     setEditDescription(video.description || '');
     setEditCategory(video.category || UPLOAD_CATEGORIES[0].value);
+    setEditVisibility(video.visibility || 'public');
   };
 
   const handleSaveEdit = async (e) => {
@@ -142,6 +144,7 @@ const ChannelPage = () => {
         title: editTitle,
         description: editDescription,
         category: editCategory,
+        visibility: editVisibility,
       });
       const updated = res.data.data.video;
       setVideos((prev) =>
@@ -264,13 +267,14 @@ const ChannelPage = () => {
                               setActiveMenuId(null);
                               handleCycleVisibility(video);
                             }}
+                            title={t('channel.visibilityHint', {
+                              current: t(`visibility.${video.visibility}`),
+                              next: t(`visibility.${nextVisibility(video.visibility)}`),
+                            })}
                           >
                             <VisibilityIcon size={15} />
                             <span>
-                              {t('channel.visibilityHint', {
-                                current: t(`visibility.${video.visibility}`),
-                                next: t(`visibility.${nextVisibility(video.visibility)}`),
-                              })}
+                              {t(`visibility.${video.visibility}`)} ({t('channel.quickSwitch', 'Đổi nhanh')})
                             </span>
                           </button>
 
@@ -396,6 +400,22 @@ const ChannelPage = () => {
                       {t(`categories.${cat.key}`)}
                     </option>
                   ))}
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label" htmlFor="edit-visibility">
+                  {t('channel.editVisibilityLabel', 'Chế độ hiển thị')}
+                </label>
+                <select
+                  id="edit-visibility"
+                  className="form-control"
+                  value={editVisibility}
+                  onChange={(e) => setEditVisibility(e.target.value)}
+                >
+                  <option value="public">{t('visibility.public')}</option>
+                  <option value="unlisted">{t('visibility.unlisted')}</option>
+                  <option value="private">{t('visibility.private')}</option>
                 </select>
               </div>
 
