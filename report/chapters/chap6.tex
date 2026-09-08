@@ -49,17 +49,19 @@ an account; the difference appears only when an action requires ownership or ide
 Selecting a card opens the watch page in Figure~\ref{fig:ui-watch}. The player is a custom
 component rather than the browser's native controls, for the reason given in
 Section~\ref{sec:interface-design}: the quality selector that HLS.js exposes cannot be merged into
-the browser's own menu, so play and pause, seeking, volume, fullscreen, playback speed,
-picture-in-picture and rendition selection are all reimplemented behind a single settings control.
+the browser's own menu, so play and pause, seeking with a real-time thumbnail and timestamp preview
+tooltip on timeline scrubbing, volume, fullscreen, playback speed, picture-in-picture and rendition
+selection are all reimplemented behind a custom control bar.
 Before the stream can load, the page calls the playback-authorisation endpoint, which returns the
 Signed Cookies the content delivery network requires; only then does the player fetch the master
 playlist. Below the player sit the title, view count and publication date, the like and dislike
-controls, a share control, the uploading channel, and the comment thread.
+controls, a share control, the uploading channel, and the comment thread. To the right of the player
+area, a responsive sidebar displays recommended related videos filtered by category and author.
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.92\textwidth]{images/player.png}
-\caption{\textit{Watch page with the custom player and its rendition selector}}
+\caption{\textit{Watch page with custom player, rendition selector and related videos sidebar}}
 \label{fig:ui-watch}
 \end{figure}
 
@@ -67,14 +69,16 @@ Figure~\ref{fig:ui-upload} shows the upload flow, which is where the architectur
 Chapter~\ref{chap:design} becomes visible to the user. The form collects the title, description,
 category and visibility, and on submission the browser receives a pre-signed URL and transfers the
 file directly to Amazon S3, so the progress indicator reflects a transfer that never passes
-through the backend. Once the transfer completes the page returns control immediately rather than
-waiting for transcoding, and the video appears on the uploader's channel in a processing state
-until the pipeline marks it ready.
+through the backend. During upload, the interface displays live transfer telemetry including uploaded
+bytes, instantaneous transfer speed, and estimated time to completion (ETA), while providing a cancel
+button backed by an \texttt{AbortController} to abort the in-flight S3 PUT request immediately. Once
+the transfer completes the page returns control immediately rather than waiting for transcoding, and
+the video appears on the uploader's channel in a processing state until the pipeline marks it ready.
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.92\textwidth]{images/upload.png}
-\caption{\textit{Upload page, showing direct-to-storage transfer with a pre-signed URL}}
+\caption{\textit{Upload page, showing direct-to-storage transfer with live telemetry}}
 \label{fig:ui-upload}
 \end{figure}
 
@@ -82,9 +86,7 @@ Figure~\ref{fig:ui-channel} shows the channel management view, which lists the s
 own videos regardless of visibility, together with the state of each. This is the only place a
 video in the \texttt{PROCESSING} or \texttt{ERROR} state is visible, since the public catalogue
 lists only videos that have reached \texttt{READY}, and it is where a video has its visibility
-changed or is deleted. Editing the title or description of a video already uploaded is
-supported by the API but is not exposed in the interface, a gap recorded in
-Section~\ref{sec:limitations}.
+changed, is updated via a modal editing form (modifying title, description and category), or is deleted.
 
 \begin{figure}[H]
 \centering
