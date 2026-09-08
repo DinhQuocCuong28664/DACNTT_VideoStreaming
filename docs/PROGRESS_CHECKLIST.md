@@ -1,6 +1,6 @@
 # Checklist tiến độ thực tế (đối chiếu với README)
 
-> Cập nhật: 2026-08-30. README mô tả đề tài ở dạng "dự kiến" (ngôn ngữ đề xuất/báo cáo học thuật);
+> Cập nhật: 2026-09-08. README mô tả đề tài ở dạng "dự kiến" (ngôn ngữ đề xuất/báo cáo học thuật);
 > checklist này ghi lại trạng thái **thực tế đã triển khai** tại thời điểm hiện tại, đối chiếu
 > trực tiếp với code/hạ tầng đang chạy, không phải chỉ dựa vào mô tả trong README.
 
