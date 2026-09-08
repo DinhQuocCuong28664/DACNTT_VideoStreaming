@@ -97,6 +97,7 @@
     "visibilityFailed": "Đổi chế độ hiển thị thất bại: {{message}}",
     "deleteVideo": "Xóa video",
     "visibilityHint": "Đang {{current}}, nhấn để chuyển sang {{next}}",
+    "setVisibilityTo": "Chuyển sang {{mode}}",
     "editVideo": "Chỉnh sửa video",
     "editModalTitle": "Chỉnh sửa thông tin video",
     "editTitleLabel": "Tiêu đề video",
