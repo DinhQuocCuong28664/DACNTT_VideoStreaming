@@ -34,7 +34,7 @@ environments, and seven GitHub Actions workflows automate linting, unit testing,
 analysis, container scanning, infrastructure validation, and deployment. The security gate
 blocks merges on fixable critical findings rather than merely reporting them.
 
-The automated test suite grew to 117 tests across ten suites. Its practical value was demonstrated
+The automated test suite grew to 127 tests across eleven suites. Its practical value was demonstrated
 when it caught a defect in the cookie signing implementation that would have prevented every
 private video from playing once deployed. A second defect in that same subsystem, which only
 appeared once the distribution was live, is described in Section~\ref{sec:challenges}.
@@ -72,8 +72,8 @@ Time-to-First-Frame was measured from six AWS regions and from a consumer connec
 and led to two corrections of the CloudFront price class that reduced the median latency seen from
 Vietnam by a factor of 6.6 and the median seen from Brazil by a factor of 32. Transcoding
 throughput was measured under one hundred concurrent uploads of real video and cross-validated
-with two independently implemented load generators. And the automated suite of 117 tests across
-ten suites caught a signing defect that would otherwise have prevented every private video from
+with two independently implemented load generators. And the automated suite of 127 tests across
+eleven suites caught a signing defect that would otherwise have prevented every private video from
 playing.
 
 \section{Limitations}

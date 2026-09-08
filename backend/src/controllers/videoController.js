@@ -321,12 +321,16 @@ const deleteVideo = async (req, res, next) => {
 /**
  * @route   GET /api/videos/:id/related
  * @desc    Get related videos based on category and tags
- * @access  Public
+ * @access  Public cho video công khai và video chỉ có liên kết;
+ *          video riêng tư chỉ chủ sở hữu mới gọi được
  */
 const getRelatedVideos = async (req, res, next) => {
   try {
-    const limit = parseInt(req.query.limit, 10) || 8;
-    const related = await videoService.getRelatedVideos(req.params.id, limit);
+    // Chặn trên 24 để một tham số `?limit=` tuỳ ý không kéo được cả bảng
+    // video ra trong một lần gọi.
+    const requested = parseInt(req.query.limit, 10);
+    const limit = Number.isFinite(requested) && requested > 0 ? Math.min(requested, 24) : 8;
+    const related = await videoService.getRelatedVideos(req.params.id, limit, req.user);
 
     res.status(200).json({
       success: true,

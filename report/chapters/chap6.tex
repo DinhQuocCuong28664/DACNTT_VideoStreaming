@@ -49,9 +49,11 @@ an account; the difference appears only when an action requires ownership or ide
 Selecting a card opens the watch page in Figure~\ref{fig:ui-watch}. The player is a custom
 component rather than the browser's native controls, for the reason given in
 Section~\ref{sec:interface-design}: the quality selector that HLS.js exposes cannot be merged into
-the browser's own menu, so play and pause, seeking with a real-time thumbnail and timestamp preview
-tooltip on timeline scrubbing, volume, fullscreen, playback speed, picture-in-picture and rendition
-selection are all reimplemented behind a custom control bar.
+the browser's own menu, so play and pause, seeking with a timestamp tooltip that follows the cursor
+along the timeline, volume, fullscreen, playback speed, picture-in-picture and rendition selection
+are all reimplemented behind a custom control bar. The tooltip reports the time under the cursor
+alongside the video poster frame; it does not show the frame at that position, since the transcoder
+extracts a single thumbnail rather than the sprite sheet a frame-accurate preview would require.
 Before the stream can load, the page calls the playback-authorisation endpoint, which returns the
 Signed Cookies the content delivery network requires; only then does the player fetch the master
 playlist. Below the player sit the title, view count and publication date, the like and dislike
