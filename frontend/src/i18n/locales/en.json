@@ -91,7 +91,16 @@
     "deleteFailed": "Could not delete the video: {{message}}",
     "visibilityFailed": "Could not change visibility: {{message}}",
     "deleteVideo": "Delete video",
-    "visibilityHint": "{{current}}, click to switch to {{next}}"
+    "visibilityHint": "{{current}}, click to switch to {{next}}",
+    "editVideo": "Edit video",
+    "editModalTitle": "Edit Video Details",
+    "editTitleLabel": "Video title",
+    "editDescLabel": "Description",
+    "editCategoryLabel": "Category",
+    "editSave": "Save changes",
+    "editSaving": "Saving...",
+    "editCancel": "Cancel",
+    "editSuccess": "Video updated successfully!"
   },
   "auth": {
     "or": "or",
