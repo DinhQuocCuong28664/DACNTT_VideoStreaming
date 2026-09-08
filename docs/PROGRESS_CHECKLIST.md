@@ -1,6 +1,6 @@
 # Checklist tiến độ thực tế (đối chiếu với README)
 
-> Cập nhật: 2026-09-08. README mô tả đề tài ở dạng "dự kiến" (ngôn ngữ đề xuất/báo cáo học thuật);
+> Cập nhật: 2026-09-09. README mô tả đề tài ở dạng "dự kiến" (ngôn ngữ đề xuất/báo cáo học thuật);
 > checklist này ghi lại trạng thái **thực tế đã triển khai** tại thời điểm hiện tại, đối chiếu
 > trực tiếp với code/hạ tầng đang chạy, không phải chỉ dựa vào mô tả trong README.
 
@@ -34,18 +34,24 @@
       rằng chưa deploy được vì account AWS chính bị chặn tạo CloudFront (`AccessDenied`, chờ AWS
       Support). **Đã giải quyết trong phiên này**: chạy CloudFront trên 1 AWS account phụ (account
       A) trong khi S3/Batch/Lambda vẫn ở account chính — không cần đợi ticket được duyệt nữa.
-      → **README §7 cần cập nhật lại, đoạn cảnh báo "chưa deploy được" đã lỗi thời.**
+      → README §7 đã được viết lại cho đúng thực tế, đoạn cảnh báo "chưa deploy được" không còn nữa.
 - [x] **CloudFront cho frontend (`zelostech.site`)** — hạng mục **không có trong README gốc**,
       phát sinh vì phát hiện lỗi thật: site cũ dùng S3 static website hosting, không xử lý được
       SPA client-side routes, F5/chia sẻ link trực tiếp tới `/watch/:id` trả 404 thật. Đã dựng
       CloudFront riêng (cùng cơ chế multi-account), cấp chứng chỉ ACM phủ cả `zelostech.site` và
       `www.zelostech.site`.
-- [ ] **CloudFront Signed Cookies cho video riêng tư** — mã nguồn Terraform đã viết đầy đủ
-      (`enable_signed_urls`, Trusted Key Group, `docs/PRIVATE_VIDEO_SIGNED_COOKIES.md`) nhưng
-      **vẫn đang tắt** (`enable_signed_urls = false`). Video riêng tư hiện được phân phối qua
-      CloudFront giống hệt video công khai — đúng như README §7 đã tự nhận là hạn chế, đến giờ
-      vẫn còn nguyên, chỉ khác là bucket đã private thật (không còn public bucket policy tạm thời
-      như ghi trong cảnh báo cũ).
+- [x] **CloudFront Signed Cookies — ĐÃ BẬT VÀ ĐANG CHẶN THẬT trên production.**
+      `enable_signed_urls = true`; Trusted Key Group `dacntt-dev-signing-key-group`
+      (public key `K2KJYTIG6SBJUI`) đã gắn vào default cache behaviour của distribution
+      `E2CMTN7QBKADP3` từ 2026-08-30. Kiểm chứng lại ngày 2026-09-09: gọi
+      `https://cdn.zelostech.site/<bất kỳ>/master.m3u8` khi không kèm cookie trả về
+      **HTTP 403 `MissingKey: Missing Key-Pair-Id query parameter or cookie value`**, header
+      `Server: CloudFront` — tức là bị chặn ngay tại Edge Location, chưa chạm tới S3.
+      Lưu ý phạm vi: cổng ký phủ **toàn bộ video, kể cả video công khai**, không riêng video
+      riêng tư; chỉ đường dẫn `*/thumbnail.jpg` được cố ý miễn trừ để trang danh mục vẫn hiển
+      thị được ảnh đại diện. Backend cấp cookie qua `GET /api/videos/:id/playback-auth`, dùng
+      lại đúng quy tắc phân quyền của `videoService.getVideoById` nên API và CDN không thể lệch
+      nhau. Khoá riêng nằm ngoài git, backend đọc qua biến môi trường `CLOUDFRONT_PRIVATE_KEY`.
 - [x] HTTPS cho `api.zelostech.site` bằng chứng chỉ **Let's Encrypt thật** (thay self-signed) +
       renewal hook tự reload nginx — hạng mục vận hành phát sinh khi bật Cloudflare "Full/Full
       Strict" cho phần CloudFront frontend ở trên
@@ -62,15 +68,20 @@
       giữa VideoPlayer/VideoUpload/LandingPage, `.textarea` và `.skeleton-card` chưa từng được
       định nghĩa
 - [x] Sửa lỗi CORS video không phát được: `VideoPlayer` mặc định gửi cookie (`withCredentials`)
-      dù CloudFront chưa bật Signed Cookie, khiến mọi request bị trình duyệt chặn
+      trong khi CloudFront lúc đó chưa bật Signed Cookie, khiến mọi request bị trình
+      duyệt chặn (nay đã bật cookie nên `withCredentials` là bắt buộc, xem mục 2)
 - [x] Thêm rồi gỡ lại quyền truy cập LAN cho dev server (test xong không cần dùng nữa)
 - [x] Sửa `<title>` trang từ mặc định `frontend` (do Vite sinh ra lúc khởi tạo) thành `VidShare`
 
 ## 4. Còn tồn đọng / chưa làm
 
-- [ ] Bật `enable_signed_urls = true` để Signed Cookies thật sự bảo vệ video riêng tư (xem mục 2)
+- [x] Đã bật `enable_signed_urls = true`; Signed Cookies đang chặn thật ở Edge Location, đã
+      kiểm chứng lại bằng `curl` ngày 2026-09-09 (xem mục 2)
 - [x] README §7 và §9 đã sửa lại 2 chỗ lỗi thời (cảnh báo CloudFront "chưa deploy được" và mô tả
       `cd-deploy.yml` deploy "qua SSH") — cập nhật đúng thực tế hiện tại
-- [ ] Chưa xác nhận trong phiên này: kịch bản `scripts/k6-load-test.js` (stress test 50–100 video
-      đồng thời) đã có sẵn nhưng không được chạy lại để lấy số liệu mới — số liệu hiện có trong
-      `docs/results/` là dữ liệu cũ, chưa phản ánh hạ tầng CloudFront mới
+- [x] Đã chạy lại stress test trên hạ tầng mới: `scripts/k6-load-test.js` chạy ngày 2026-08-30
+      (100 iteration / 50 VUs, 300 request, tỉ lệ lỗi 0%, p95 = 1827 ms —
+      `docs/results/k6-summary.json`), và ngày 2026-09-02 chạy thêm một vòng 100 upload bằng
+      video H.264 thật để đo tốc độ xả hàng đợi 7.26 job/phút với trần 8 container song song
+      (`docs/results/drain-rate-real-payload.json`). Số liệu TTFF qua CloudFront cũng đã đo lại
+      (`qoe-ttff-cloudfront.json`, `qoe-ttff-multiregion.json`)
