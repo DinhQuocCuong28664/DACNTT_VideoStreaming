@@ -102,6 +102,7 @@
     "editTitleLabel": "Video title",
     "editDescLabel": "Description",
     "editCategoryLabel": "Category",
+    "editVisibilityLabel": "Visibility",
     "editSave": "Save changes",
     "editSaving": "Saving...",
     "editCancel": "Cancel",
