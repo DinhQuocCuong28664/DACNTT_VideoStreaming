@@ -60,18 +60,20 @@ export const videoApi = {
    * Upload file directly to S3 using Pre-signed URL
    * @param {string} presignedUrl - S3 Pre-signed PUT URL
    * @param {File} file - File object to upload
-   * @param {function} onProgress - Callback (percentage: number) for progress updates
+   * @param {function} onProgress - Callback ({ percent, loaded, total }) for progress updates
+   * @param {AbortSignal} signal - Optional abort signal for cancellation
    */
-  uploadToS3: (presignedUrl, file, onProgress) =>
+  uploadToS3: (presignedUrl, file, onProgress, signal) =>
     axios.put(presignedUrl, file, {
+      signal,
       headers: {
         'Content-Type': file.type,
       },
       onUploadProgress: (progressEvent) => {
-        const percentage = Math.round(
-          (progressEvent.loaded * 100) / progressEvent.total
-        );
-        if (onProgress) onProgress(percentage);
+        const total = progressEvent.total || file.size;
+        const loaded = progressEvent.loaded || 0;
+        const percent = total > 0 ? Math.min(100, Math.round((loaded * 100) / total)) : 0;
+        if (onProgress) onProgress({ percent, loaded, total });
       },
     }),
 };

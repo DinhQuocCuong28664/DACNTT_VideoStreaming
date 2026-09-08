@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { FiUploadCloud, FiFile, FiX, FiCheck } from 'react-icons/fi';
+import { FiUploadCloud, FiFile, FiX, FiCheck, FiXCircle } from 'react-icons/fi';
 import videoApi from '../../api/videoApi';
 import { UPLOAD_CATEGORIES } from '../../i18n/categories';
 import './VideoUpload.css';
@@ -13,6 +13,8 @@ const VideoUpload = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
+  const abortControllerRef = useRef(null);
+  const uploadStartTimeRef = useRef(null);
 
   const [file, setFile] = useState(null);
   const [formData, setFormData] = useState({
@@ -24,6 +26,9 @@ const VideoUpload = () => {
   });
   const [step, setStep] = useState(1); // 1=select file, 2=fill info, 3=uploading
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadSpeed, setUploadSpeed] = useState('');
+  const [remainingTime, setRemainingTime] = useState('');
+  const [uploadedStats, setUploadedStats] = useState({ loaded: 0, total: 0 });
   const [error, setError] = useState('');
   const [uploading, setUploading] = useState(false);
 
@@ -81,6 +86,29 @@ const VideoUpload = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  const formatSpeed = (bytesPerSec) => {
+    if (bytesPerSec >= 1048576) return `${(bytesPerSec / 1048576).toFixed(1)} MB/s`;
+    if (bytesPerSec >= 1024) return `${(bytesPerSec / 1024).toFixed(0)} KB/s`;
+    return `${Math.round(bytesPerSec)} B/s`;
+  };
+
+  const formatEta = (seconds) => {
+    if (!Number.isFinite(seconds) || seconds <= 0) return '0s';
+    const m = Math.floor(seconds / 60);
+    const s = Math.floor(seconds % 60);
+    if (m > 0) return `${m}m ${s}s`;
+    return `${s}s`;
+  };
+
+  const handleCancelUpload = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    setUploading(false);
+    setStep(2);
+    setError(t('upload.errorCancelled'));
+  };
+
   const handleUpload = async () => {
     if (!file || !formData.title.trim()) {
       setError(t('upload.errorNoTitle'));
@@ -90,6 +118,14 @@ const VideoUpload = () => {
     setUploading(true);
     setStep(3);
     setError('');
+    setUploadProgress(0);
+    setUploadSpeed('');
+    setRemainingTime('');
+    setUploadedStats({ loaded: 0, total: file.size });
+
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+    uploadStartTimeRef.current = Date.now();
 
     try {
       const tagsArray = formData.tags
@@ -112,10 +148,25 @@ const VideoUpload = () => {
       const { video, uploadUrl } = initRes.data.data;
       const videoId = video._id;
 
-      // Step 2: Upload file directly to S3 via Pre-signed URL
-      await videoApi.uploadToS3(uploadUrl, file, (progress) => {
-        setUploadProgress(progress);
-      });
+      // Step 2: Upload file directly to S3 via Pre-signed URL with telemetry & cancellation
+      await videoApi.uploadToS3(
+        uploadUrl,
+        file,
+        ({ percent, loaded, total }) => {
+          setUploadProgress(percent);
+          setUploadedStats({ loaded, total });
+
+          const elapsedSec = (Date.now() - uploadStartTimeRef.current) / 1000;
+          if (elapsedSec > 0.5 && loaded > 0) {
+            const bytesPerSec = loaded / elapsedSec;
+            setUploadSpeed(formatSpeed(bytesPerSec));
+            const remainingBytes = total - loaded;
+            const eta = remainingBytes / bytesPerSec;
+            setRemainingTime(formatEta(eta));
+          }
+        },
+        controller.signal
+      );
 
       // Step 3: Confirm upload complete → transition status UPLOADING → PROCESSING
       await videoApi.confirmUpload(videoId);
@@ -123,6 +174,10 @@ const VideoUpload = () => {
       // Step 4: Navigate to WatchPage
       navigate(`/watch/${videoId}`);
     } catch (err) {
+      if (err.name === 'CanceledError' || err.code === 'ERR_CANCELED') {
+        // Handled by handleCancelUpload
+        return;
+      }
       setError(
         err.response?.data?.message || t('upload.errorFailed')
       );
@@ -132,9 +187,15 @@ const VideoUpload = () => {
   };
 
   const resetUpload = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
     setFile(null);
     setStep(1);
     setUploadProgress(0);
+    setUploadSpeed('');
+    setRemainingTime('');
+    setUploadedStats({ loaded: 0, total: 0 });
     setError('');
     setFormData({
       title: '',
@@ -289,6 +350,32 @@ const VideoUpload = () => {
               style={{ width: `${uploadProgress}%` }}
             />
           </div>
+
+          {uploadProgress < 100 && (
+            <div className="upload-telemetry">
+              <div className="upload-telemetry-item">
+                <span>{t('upload.uploaded', { loaded: formatFileSize(uploadedStats.loaded), total: formatFileSize(uploadedStats.total || file.size) })}</span>
+              </div>
+              {uploadSpeed && (
+                <div className="upload-telemetry-item">
+                  <span>{t('upload.speed', { speed: uploadSpeed })}</span>
+                </div>
+              )}
+              {remainingTime && (
+                <div className="upload-telemetry-item">
+                  <span>{t('upload.remaining', { time: remainingTime })}</span>
+                </div>
+              )}
+
+              <button
+                type="button"
+                className="btn btn-secondary upload-cancel-btn"
+                onClick={handleCancelUpload}
+              >
+                <FiXCircle /> {t('upload.cancelUpload')}
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
