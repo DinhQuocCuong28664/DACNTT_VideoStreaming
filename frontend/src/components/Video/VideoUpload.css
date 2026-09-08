@@ -179,6 +179,39 @@
   transition: width 0.3s ease;
 }
 
+.upload-telemetry {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-xs);
+  margin-top: var(--space-lg);
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+
+.upload-telemetry-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--bg-secondary);
+  padding: 0.25rem 0.75rem;
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-xs);
+}
+
+.upload-cancel-btn {
+  margin-top: var(--space-md);
+  font-size: var(--font-size-xs);
+  padding: 0.4rem 1rem;
+  color: var(--danger);
+  border-color: rgba(235, 87, 87, 0.3);
+}
+
+.upload-cancel-btn:hover {
+  background: rgba(235, 87, 87, 0.1);
+  border-color: var(--danger);
+}
+
 @media (max-width: 600px) {
   .form-row {
     grid-template-columns: 1fr;
