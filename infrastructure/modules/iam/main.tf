@@ -167,6 +167,7 @@ resource "aws_iam_role_policy_attachment" "lambda_basic" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
+
 # ── EC2 Backend API Instance Role (read secrets from Secrets Manager) ──
 # Attach this role's instance profile to the EC2 instance running the
 # Express backend so scripts/ec2-userdata.sh can fetch MONGODB_URI and
@@ -298,6 +299,7 @@ resource "aws_iam_role_policy" "lambda_sqs_batch" {
         # batch doi thi phai sua o day — rang buoc do duoc ghi ro o ca hai noi.
         Resource = [
           "arn:aws:batch:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:job-queue/${var.project_name}-transcode-queue",
+          "arn:aws:batch:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:job-definition/${var.project_name}-transcoder-job",
           "arn:aws:batch:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:job-definition/${var.project_name}-transcoder-job:*"
         ]
       },
