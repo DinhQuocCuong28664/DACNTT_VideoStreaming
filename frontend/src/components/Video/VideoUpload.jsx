@@ -15,6 +15,7 @@ const VideoUpload = () => {
   const fileInputRef = useRef(null);
   const abortControllerRef = useRef(null);
   const uploadStartTimeRef = useRef(null);
+  const currentVideoIdRef = useRef(null);
 
   const [file, setFile] = useState(null);
   const [formData, setFormData] = useState({
@@ -100,9 +101,18 @@ const VideoUpload = () => {
     return `${s}s`;
   };
 
-  const handleCancelUpload = () => {
+  const handleCancelUpload = async () => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
+    }
+    const danglingId = currentVideoIdRef.current;
+    if (danglingId) {
+      try {
+        await videoApi.deleteVideo(danglingId);
+      } catch (delErr) {
+        console.warn('Could not clean up canceled upload record:', delErr);
+      }
+      currentVideoIdRef.current = null;
     }
     setUploading(false);
     setStep(2);
@@ -147,6 +157,7 @@ const VideoUpload = () => {
 
       const { video, uploadUrl } = initRes.data.data;
       const videoId = video._id;
+      currentVideoIdRef.current = videoId;
 
       // Step 2: Upload file directly to S3 via Pre-signed URL with telemetry & cancellation
       await videoApi.uploadToS3(
@@ -170,6 +181,7 @@ const VideoUpload = () => {
 
       // Step 3: Confirm upload complete → transition status UPLOADING → PROCESSING
       await videoApi.confirmUpload(videoId);
+      currentVideoIdRef.current = null;
 
       // Step 4: Navigate to WatchPage
       navigate(`/watch/${videoId}`);
@@ -189,6 +201,13 @@ const VideoUpload = () => {
   const resetUpload = () => {
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
+    }
+    const danglingId = currentVideoIdRef.current;
+    if (danglingId) {
+      videoApi.deleteVideo(danglingId).catch((delErr) => {
+        console.warn('Could not clean up draft video record:', delErr);
+      });
+      currentVideoIdRef.current = null;
     }
     setFile(null);
     setStep(1);
