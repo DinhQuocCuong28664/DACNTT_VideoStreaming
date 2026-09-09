@@ -73,9 +73,11 @@ category and visibility, and on submission the browser receives a pre-signed URL
 file directly to Amazon S3, so the progress indicator reflects a transfer that never passes
 through the backend. During upload, the interface displays live transfer telemetry including uploaded
 bytes, instantaneous transfer speed, and estimated time to completion (ETA), while providing a cancel
-button backed by an \texttt{AbortController} to abort the in-flight S3 PUT request immediately. Once
-the transfer completes the page returns control immediately rather than waiting for transcoding, and
-the video appears on the uploader's channel in a processing state until the pipeline marks it ready.
+button backed by an \texttt{AbortController} to abort the in-flight S3 PUT request immediately and
+asynchronously discard the draft \texttt{UPLOADING} database record to prevent orphaned records from
+accumulating. Once the transfer completes the page returns control immediately rather than waiting for
+transcoding, and the video appears on the uploader's channel in a processing state until the pipeline
+marks it ready.
 
 \begin{figure}[H]
 \centering
@@ -88,7 +90,8 @@ Figure~\ref{fig:ui-channel} shows the channel management view, which lists the s
 own videos regardless of visibility, together with the state of each. This is the only place a
 video in the \texttt{PROCESSING} or \texttt{ERROR} state is visible, since the public catalogue
 lists only videos that have reached \texttt{READY}, and it is where a video has its visibility
-changed, is updated via a modal editing form (modifying title, description and category), or is deleted.
+changed (either directly via the actions menu or through a modal editing form that updates title,
+description, category, and visibility), or is deleted.
 
 \begin{figure}[H]
 \centering
