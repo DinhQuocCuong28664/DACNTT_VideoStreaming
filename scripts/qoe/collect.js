@@ -1,0 +1,336 @@
+/**
+ * Thu thập chỉ số QoE thật bằng Playwright điều khiển Chromium headless.
+ *
+ * ============================================================================
+ * VÌ SAO ĐO BẰNG TRÌNH DUYỆT THẬT
+ * ============================================================================
+ * `scripts/benchmark-qoe.js` chỉ dùng `fetch`, nên nó đo được Time-to-First-
+ * Frame nhưng KHÔNG thể quan sát tỉ lệ nghẽn hay số lần đổi bitrate: nó không
+ * có bộ đệm, không có đồng hồ phát, và không chạy thuật toán ABR nào. Ba chỉ
+ * số đó chỉ tồn tại khi có một trình phát thật đang chạy. Vì trình phát của
+ * dự án dùng hls.js, điều khiển chính hls.js trong Chromium là cách duy nhất
+ * đo được đúng thứ người dùng trải nghiệm, thay vì mô phỏng lại nó.
+ *
+ * ============================================================================
+ * VÌ SAO KHÔNG ĐỘNG VÀO MÃ TRÌNH PHÁT
+ * ============================================================================
+ * `VideoPlayer.jsx` giữ đối tượng hls.js trong một React ref, không phơi ra
+ * `window`, và nó được import trong bundle nên cũng không chặn được từ ngoài.
+ * Thay vì sửa mã production chỉ để phục vụ việc đo, kịch bản này lấy tín hiệu
+ * từ chính phần tử `<video>` — vốn là chuẩn HTML và không phụ thuộc thư viện:
+ *
+ *   nghẽn / khởi động  ← sự kiện `waiting`, `playing`, `ended`
+ *   mức chất lượng     ← `videoHeight` đổi (360 / 720 / 1080), qua sự kiện `resize`
+ *   đối chiếu chéo     ← đường dẫn segment `.ts` trong nhật ký mạng
+ *
+ * ĐÁNH ĐỔI cần ghi rõ khi báo cáo: `videoHeight` phản ánh mức đang được HIỂN
+ * THỊ, trễ hơn mức đang được TẢI VỀ đúng bằng độ sâu bộ đệm. Với QoE thì mức
+ * hiển thị mới là mức người xem thật sự nhìn thấy, nên đây là lựa chọn có
+ * chủ đích; nhật ký mạng được ghi kèm để đối chiếu.
+ *
+ * ============================================================================
+ * SIGNED COOKIES
+ * ============================================================================
+ * Không cần xử lý thủ công. Trang tự gọi `/api/videos/:id/playback-auth`, và
+ * Chromium giữ cookie như trình duyệt thật — đây là một lợi thế nữa so với
+ * cách dùng `fetch`, vốn phải tự đọc `Set-Cookie` rồi ghép lại bằng tay.
+ *
+ * ============================================================================
+ * CÁCH CHẠY
+ * ============================================================================
+ *   cd scripts/qoe && npm install && npx playwright install chromium
+ *   node collect.js --url https://zelostech.site/watch/<videoId>
+ *
+ * Tuỳ chọn:
+ *   --runs <n>        số lần đo (mặc định 5), chưa kể một lần chạy khởi động
+ *   --duration <s>    số giây phát mỗi lần đo (mặc định 60)
+ *   --profile <tên>   hồ sơ mạng: unthrottled | fast3g | slow3g | dsl
+ *   --out <đường dẫn> nơi ghi kết quả JSON
+ *   --headed          hiện cửa sổ trình duyệt để quan sát
+ */
+
+const fs = require('fs');
+const path = require('path');
+const { summarise, aggregate, toP1203Mode0Input } = require('./metrics');
+
+/**
+ * Hồ sơ giới hạn mạng, áp qua Chrome DevTools Protocol.
+ *
+ * `Network.emulateNetworkConditions` chỉ có ở Chromium — đây là lý do kịch
+ * bản này cố định dùng Chromium chứ không chạy đa trình duyệt.
+ */
+const NETWORK_PROFILES = {
+  unthrottled: null,
+  dsl: { downloadThroughput: (2 * 1024 * 1024) / 8, uploadThroughput: (1 * 1024 * 1024) / 8, latency: 20 },
+  fast3g: { downloadThroughput: (1.6 * 1024 * 1024) / 8, uploadThroughput: (750 * 1024) / 8, latency: 150 },
+  slow3g: { downloadThroughput: (500 * 1024) / 8, uploadThroughput: (500 * 1024) / 8, latency: 400 },
+};
+
+/**
+ * Kịch bản cài vào trang TRƯỚC khi mã ứng dụng chạy.
+ *
+ * Phần tử `<video>` chưa tồn tại lúc tải trang vì React dựng nó sau, nên phải
+ * chờ bằng MutationObserver. Gắn muộn hơn (sau khi trang tải xong) sẽ bỏ lỡ
+ * đúng những sự kiện quan trọng nhất ở đầu phiên phát.
+ */
+const RECORDER = `
+(() => {
+  window.__qoe = { events: [], attached: false };
+
+  const now = () => performance.now() / 1000;
+  const push = (type, extra) => window.__qoe.events.push({ t: now(), type, ...(extra || {}) });
+
+  const levelOf = (video) => ({
+    level: video.videoHeight,
+    width: video.videoWidth,
+    height: video.videoHeight,
+  });
+
+  const attach = (video) => {
+    if (window.__qoe.attached) return;
+    window.__qoe.attached = true;
+
+    // Tắt tiếng để chính sách autoplay của Chromium không chặn phát tự động.
+    // Không ảnh hưởng gì tới các chỉ số hình ảnh đang đo.
+    video.muted = true;
+
+    video.addEventListener('playing', () => push('playing'));
+    video.addEventListener('waiting', () => push('waiting'));
+    video.addEventListener('ended', () => push('ended'));
+    video.addEventListener('error', () => push('error'));
+
+    // 'resize' phát khi videoWidth/videoHeight đổi, tức là hls.js vừa chuyển
+    // sang một rendition khác và khung hình mới đã lên màn hình.
+    video.addEventListener('resize', () => {
+      if (video.videoHeight > 0) push('levelSwitched', levelOf(video));
+    });
+
+    // Mức khởi tạo: ghi ngay khi biết được kích thước đầu tiên.
+    const recordInitial = () => {
+      if (video.videoHeight > 0) push('levelSwitched', levelOf(video));
+    };
+    if (video.readyState >= 1) recordInitial();
+    else video.addEventListener('loadedmetadata', recordInitial, { once: true });
+
+    window.__qoe.video = video;
+  };
+
+  const scan = () => {
+    const video = document.querySelector('video');
+    if (video) { attach(video); return true; }
+    return false;
+  };
+
+  if (!scan()) {
+    const observer = new MutationObserver(() => { if (scan()) observer.disconnect(); });
+    observer.observe(document.documentElement, { childList: true, subtree: true });
+  }
+})();
+`;
+
+const RENDITION_PATTERN = /\/(\d+p)\/segment_\d+\.ts/;
+
+/**
+ * Một lần đo: mở trang, phát trong `durationSec`, thu nhật ký sự kiện.
+ */
+const collectOnce = async (context, url, durationSec) => {
+  const page = await context.newPage();
+  const segmentRequests = [];
+
+  page.on('request', (request) => {
+    const match = RENDITION_PATTERN.exec(request.url());
+    if (match) segmentRequests.push({ rendition: match[1], url: request.url() });
+  });
+
+  await page.addInitScript(RECORDER);
+
+  const client = await context.newCDPSession(page);
+  await client.send('Network.enable');
+
+  await page.goto(url, { waitUntil: 'domcontentloaded' });
+
+  // Chờ phần tử video xuất hiện rồi chủ động gọi play(): trang có thể đang
+  // đợi thao tác người dùng, mà ở chế độ headless thì không có ai bấm.
+  await page.waitForSelector('video', { timeout: 30000 });
+  await page.evaluate(() => {
+    const video = document.querySelector('video');
+    if (video) {
+      video.muted = true;
+      const attempt = video.play();
+      if (attempt && attempt.catch) attempt.catch(() => {});
+    }
+  });
+
+  await page.waitForTimeout(durationSec * 1000);
+
+  const log = await page.evaluate(() => ({
+    events: window.__qoe ? window.__qoe.events : [],
+    attached: window.__qoe ? window.__qoe.attached : false,
+  }));
+
+  const endTime = await page.evaluate(() => performance.now() / 1000);
+  await page.close();
+
+  return {
+    events: log.events,
+    attached: log.attached,
+    endTime,
+    segmentRequests,
+    renditionsDownloaded: [...new Set(segmentRequests.map((s) => s.rendition))],
+  };
+};
+
+/**
+ * Chạy trọn phép đo: một lần khởi động rồi `runs` lần đo thật.
+ */
+const runMeasurement = async (options) => {
+  const {
+    url,
+    runs = 5,
+    durationSec = 60,
+    profile = 'unthrottled',
+    headed = false,
+  } = options;
+
+  // `require` đặt trong hàm để phần còn lại của module (và bộ test của
+  // metrics.js) vẫn nạp được khi chưa cài Playwright.
+  const { chromium } = require('playwright');
+
+  if (!(profile in NETWORK_PROFILES)) {
+    throw new Error(`Hồ sơ mạng không hợp lệ: ${profile}. Chọn một trong ${Object.keys(NETWORK_PROFILES).join(', ')}`);
+  }
+
+  const browser = await chromium.launch({
+    headless: !headed,
+    args: ['--autoplay-policy=no-user-gesture-required'],
+  });
+
+  const conditions = NETWORK_PROFILES[profile];
+  const summaries = [];
+  const rawLogs = [];
+
+  try {
+    const context = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+
+    if (conditions) {
+      // Áp giới hạn mạng cho mọi trang trong context này.
+      context.on('page', async (page) => {
+        const client = await context.newCDPSession(page);
+        await client.send('Network.enable');
+        await client.send('Network.emulateNetworkConditions', { offline: false, ...conditions });
+      });
+    }
+
+    // Lần chạy khởi động, KHÔNG tính vào kết quả: lần tải trang đầu tiên sau
+    // khi mở trình duyệt luôn chậm hơn hẳn (biên dịch JIT, cache DNS/TLS còn
+    // rỗng), đưa vào sẽ làm lệch trung vị.
+    console.log('⏳ Chạy khởi động (không tính vào kết quả)...');
+    await collectOnce(context, url, Math.min(15, durationSec));
+
+    for (let i = 1; i <= runs; i += 1) {
+      process.stdout.write(`📊 Lần đo ${i}/${runs}... `);
+      const log = await collectOnce(context, url, durationSec);
+      const summary = summarise(log);
+
+      if (!log.attached) {
+        console.log('⚠️  không gắn được vào phần tử video');
+      } else if (summary.startupDelaySec === null) {
+        console.log('⚠️  video không phát');
+      } else {
+        console.log(
+          `khởi động ${summary.startupDelaySec.toFixed(2)}s · ` +
+          `nghẽn ${(summary.rebufferingRatio * 100).toFixed(2)}% · ` +
+          `${summary.bitrateSwitchCount} lần đổi mức`
+        );
+      }
+
+      summaries.push(summary);
+      rawLogs.push(log);
+    }
+
+    await context.close();
+  } finally {
+    await browser.close();
+  }
+
+  return { summaries, rawLogs, aggregate: aggregate(summaries) };
+};
+
+const parseArgs = (argv) => {
+  const options = { runs: 5, durationSec: 60, profile: 'unthrottled', headed: false, out: null };
+
+  for (let i = 0; i < argv.length; i += 1) {
+    const arg = argv[i];
+    if (arg === '--url') options.url = argv[++i];
+    else if (arg === '--runs') options.runs = parseInt(argv[++i], 10);
+    else if (arg === '--duration') options.durationSec = parseInt(argv[++i], 10);
+    else if (arg === '--profile') options.profile = argv[++i];
+    else if (arg === '--out') options.out = argv[++i];
+    else if (arg === '--headed') options.headed = true;
+  }
+
+  return options;
+};
+
+const main = async () => {
+  const options = parseArgs(process.argv.slice(2));
+
+  if (!options.url) {
+    console.error('Thiếu --url. Ví dụ:\n  node collect.js --url https://zelostech.site/watch/<videoId>');
+    process.exit(1);
+  }
+
+  console.log('════════════════════════════════════════');
+  console.log('  ĐO QoE BẰNG TRÌNH DUYỆT THẬT');
+  console.log('════════════════════════════════════════');
+  console.log(`  URL       : ${options.url}`);
+  console.log(`  Số lần đo : ${options.runs}`);
+  console.log(`  Mỗi lần   : ${options.durationSec}s`);
+  console.log(`  Mạng      : ${options.profile}`);
+  console.log('');
+
+  const { summaries, rawLogs, aggregate: agg } = await runMeasurement(options);
+
+  console.log('');
+  console.log('──────── KẾT QUẢ (trung vị) ────────');
+  console.log(`  Chờ khởi động     : ${agg.startupDelaySec?.toFixed(3) ?? 'n/a'} s`);
+  console.log(`  Tỉ lệ nghẽn       : ${agg.rebufferingRatio !== null ? (agg.rebufferingRatio * 100).toFixed(3) + ' %' : 'n/a'}`);
+  console.log(`  Số lần nghẽn      : ${agg.stallCount ?? 'n/a'}`);
+  console.log(`  Số lần đổi bitrate: ${agg.bitrateSwitchCount ?? 'n/a'}`);
+  console.log(`  Bitrate trung bình: ${agg.averageBitrateBps ? (agg.averageBitrateBps / 1000).toFixed(0) + ' kbit/s' : 'n/a'}`);
+
+  const outPath = options.out
+    ? path.resolve(options.out)
+    : path.resolve(__dirname, '../../docs/results', `qoe-playback-${options.profile}.json`);
+
+  const payload = {
+    measuredAt: new Date().toISOString(),
+    url: options.url,
+    networkProfile: options.profile,
+    runs: options.runs,
+    durationSec: options.durationSec,
+    tool: 'Playwright + Chromium headless',
+    note:
+      'Tỉ lệ nghẽn loại trừ thời gian chờ khởi động. Mức chất lượng suy ra từ ' +
+      'videoHeight của phần tử <video>, tức là mức đang hiển thị chứ không ' +
+      'phải mức đang tải về. Đầu vào P.1203 ở đây là Mode 0 (chỉ siêu dữ liệu); ' +
+      'điểm MOS phải do bản cài đặt tham chiếu itu-p1203 tính, kịch bản này ' +
+      'không tự tính MOS.',
+    aggregate: agg,
+    runsDetail: summaries,
+    p1203Mode0Input: rawLogs.map((log) => toP1203Mode0Input(log)),
+  };
+
+  fs.mkdirSync(path.dirname(outPath), { recursive: true });
+  fs.writeFileSync(outPath, JSON.stringify(payload, null, 2), 'utf-8');
+  console.log(`\n💾 Đã ghi kết quả: ${outPath}`);
+};
+
+if (require.main === module) {
+  main().catch((err) => {
+    console.error('❌ Lỗi:', err.message);
+    process.exit(1);
+  });
+}
+
+module.exports = { runMeasurement, collectOnce, NETWORK_PROFILES, RECORDER };
