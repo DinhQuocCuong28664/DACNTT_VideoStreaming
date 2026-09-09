@@ -122,21 +122,13 @@ const countBitrateSwitches = (events) => {
  * phản ánh thứ người xem thật sự nhận được.
  */
 const computeAverageBitrate = (events, explicitEnd = null) => {
-  const endTime = resolveEndTime(events, explicitEnd);
-  const switches = events.filter((e) => e.type === 'levelSwitched');
-  if (endTime === null || switches.length === 0) return null;
+  const periods = buildLevelPeriods(events, explicitEnd).filter(
+    (p) => typeof p.bitrate === 'number' && Number.isFinite(p.bitrate)
+  );
+  if (periods.length === 0) return null;
 
-  let weighted = 0;
-  let total = 0;
-
-  for (let i = 0; i < switches.length; i += 1) {
-    const from = switches[i].t;
-    const to = i + 1 < switches.length ? switches[i + 1].t : endTime;
-    const span = to - from;
-    if (span <= 0) continue;
-    weighted += switches[i].bitrate * span;
-    total += span;
-  }
+  const weighted = periods.reduce((sum, p) => sum + p.bitrate * p.duration, 0);
+  const total = periods.reduce((sum, p) => sum + p.duration, 0);
 
   return total > 0 ? weighted / total : null;
 };
@@ -144,12 +136,25 @@ const computeAverageBitrate = (events, explicitEnd = null) => {
 /**
  * Các quãng thời gian giữ nguyên một mức chất lượng.
  *
+ * Hai sự kiện liên tiếp cùng một mức được GỘP làm một quãng. Trình duyệt phát
+ * `resize` và `loadedmetadata` gần như cùng lúc lúc khởi tạo, tạo ra hai sự
+ * kiện cách nhau vài phần nghìn giây; để nguyên thì đầu vào P.1203 sẽ có một
+ * segment dài 0 giây, mà mô hình không nhận segment rỗng.
+ *
  * Dùng cho cả `computeAverageBitrate` lẫn việc dựng đầu vào P.1203.
  */
 const buildLevelPeriods = (events, explicitEnd = null) => {
   const endTime = resolveEndTime(events, explicitEnd);
-  const switches = events.filter((e) => e.type === 'levelSwitched');
   if (endTime === null) return [];
+
+  // Gộp các sự kiện liên tiếp cùng mức, giữ lại mốc thời gian SỚM NHẤT.
+  const switches = [];
+  for (const event of events) {
+    if (event.type !== 'levelSwitched') continue;
+    const previous = switches[switches.length - 1];
+    if (previous && previous.level === event.level) continue;
+    switches.push(event);
+  }
 
   return switches
     .map((event, i) => {
@@ -266,19 +271,46 @@ const median = (values) => {
   return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
 };
 
+const mean = (values) => {
+  const clean = values.filter((v) => typeof v === 'number' && Number.isFinite(v));
+  return clean.length ? clean.reduce((a, b) => a + b, 0) / clean.length : null;
+};
+
+const max = (values) => {
+  const clean = values.filter((v) => typeof v === 'number' && Number.isFinite(v));
+  return clean.length ? Math.max(...clean) : null;
+};
+
 /**
  * Tổng hợp nhiều lần đo thành một dòng kết quả.
+ *
+ * Tỉ lệ nghẽn được báo cáo bằng CẢ trung vị, trung bình và giá trị lớn nhất,
+ * kèm số lần đo thực sự có nghẽn. Lý do: nghẽn là hiện tượng thưa nhưng nặng —
+ * trong một loạt 5 lần đo có thể 3 lần bằng 0 và 2 lần khoảng 20%, khi ấy
+ * trung vị bằng 0 và báo cáo "không nghẽn" là sai sự thật. Trung vị vẫn hữu
+ * ích cho các đại lượng liên tục như thời gian chờ khởi động, nhưng riêng
+ * nghẽn thì phải nhìn cả phân bố.
  */
-const aggregate = (summaries) => ({
-  runs: summaries.length,
-  startupDelaySec: median(summaries.map((s) => s.startupDelaySec)),
-  rebufferingRatio: median(summaries.map((s) => s.rebufferingRatio)),
-  stallCount: median(summaries.map((s) => s.stallCount)),
-  bitrateSwitchCount: median(summaries.map((s) => s.bitrateSwitchCount)),
-  averageBitrateBps: median(summaries.map((s) => s.averageBitrateBps)),
-});
+const aggregate = (summaries) => {
+  const ratios = summaries.map((s) => s.rebufferingRatio);
+
+  return {
+    runs: summaries.length,
+    startupDelaySec: median(summaries.map((s) => s.startupDelaySec)),
+    startupDelayMaxSec: max(summaries.map((s) => s.startupDelaySec)),
+    rebufferingRatio: median(ratios),
+    rebufferingRatioMean: mean(ratios),
+    rebufferingRatioMax: max(ratios),
+    runsWithStalls: summaries.filter((s) => s.stallCount > 0).length,
+    stallCount: median(summaries.map((s) => s.stallCount)),
+    bitrateSwitchCount: median(summaries.map((s) => s.bitrateSwitchCount)),
+    averageBitrateBps: median(summaries.map((s) => s.averageBitrateBps)),
+  };
+};
 
 module.exports = {
+  mean,
+  max,
   computeStartupDelay,
   extractStalls,
   resolveEndTime,

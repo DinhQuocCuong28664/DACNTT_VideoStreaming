@@ -48,11 +48,28 @@ node collect.js --url https://zelostech.site/watch/<videoId> --runs 5 --duration
 | Tuỳ chọn | Mặc định | Ý nghĩa |
 |---|---|---|
 | `--url` | *(bắt buộc)* | Trang xem video |
-| `--runs` | 5 | Số lần đo, chưa kể một lần chạy khởi động |
+| `--runs` | 5 | Số lần đo thật |
 | `--duration` | 60 | Số giây phát mỗi lần |
 | `--profile` | `unthrottled` | `unthrottled` \| `dsl` \| `fast3g` \| `slow3g` |
+| `--warmups` | 2 | Số lượt chạy khởi động bị loại khỏi kết quả |
 | `--out` | `docs/results/qoe-playback-<profile>.json` | Nơi ghi kết quả |
 | `--headed` | tắt | Hiện cửa sổ trình duyệt để quan sát |
+
+### Vì sao mặc định là **hai** lượt khởi động
+
+Một lượt không đủ, và điều này đo được chứ không phải phỏng đoán. Trên `slow3g`,
+với một lượt khởi động thì lần đo thứ nhất có thời gian chờ **26,04 giây** trong
+khi bốn lần còn lại đều quanh **1,9 giây**. Thêm lượt khởi động thứ hai thì điểm
+lệch biến mất hoàn toàn — cả năm lần đều nằm trong khoảng 1,88–1,90 giây:
+
+| | Lần 1 | Các lần sau | Lớn nhất |
+|---|---|---|---|
+| 1 lượt khởi động | 26,04 s | ~1,90 s | 26,04 s |
+| 2 lượt khởi động | 1,90 s | ~1,89 s | **1,90 s** |
+
+Nguyên nhân là cache cần hai lượt mới nóng hẳn (cache trình duyệt và Edge Location
+của CloudFront). Trên mạng nhanh hiệu ứng này không thấy được, nên nếu chỉ thử ở
+`unthrottled` sẽ tưởng một lượt là đủ.
 
 Muốn thấy ABR hoạt động thì phải **giới hạn băng thông** — mạng không giới hạn thì trình phát
 chọn 1080p ngay từ đầu rồi giữ nguyên, và số lần đổi bitrate sẽ luôn bằng 0:
@@ -97,8 +114,11 @@ bình cộng hai mức thì không phản ánh thứ người xem nhận đượ
 **Một lần chạy khởi động bị loại.** Lần tải trang đầu sau khi mở trình duyệt luôn chậm hơn hẳn
 (JIT chưa nóng, cache DNS/TLS còn rỗng).
 
-**Trung vị, không phải trung bình cộng.** Một lần đo dính nhiễu mạng có thể kéo lệch hẳn trung
-bình cộng.
+**Trung vị cho thời gian chờ — nhưng KHÔNG chỉ trung vị cho tỉ lệ nghẽn.** Nghẽn là hiện tượng
+thưa nhưng nặng: trong một loạt 5 lần đo trên `slow3g`, có 3 lần bằng 0 và 2 lần khoảng 20%.
+Trung vị khi ấy bằng 0, và viết "không nghẽn" vào báo cáo là **sai sự thật**. Vì vậy kết quả
+luôn in kèm trung bình, giá trị lớn nhất, và số lần đo thực sự có nghẽn; kịch bản còn tự cảnh
+báo khi trung vị bằng 0 mà vẫn có lần đo bị nghẽn.
 
 **Signed Cookies tự động.** Trang tự gọi `/api/videos/:id/playback-auth` và Chromium giữ cookie
 như trình duyệt thật — không phải tự đọc `Set-Cookie` rồi ghép tay như bản `fetch`.

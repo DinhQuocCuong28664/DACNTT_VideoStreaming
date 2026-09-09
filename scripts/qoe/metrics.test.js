@@ -17,6 +17,7 @@ const {
   computeRebufferingRatio,
   countBitrateSwitches,
   computeAverageBitrate,
+  buildLevelPeriods,
   summarise,
   toP1203Mode0Input,
   median,
@@ -182,6 +183,61 @@ describe('computeAverageBitrate — trung bình có trọng số thời gian', (
 
   it('trả null khi chưa từng chọn được mức nào', () => {
     expect(computeAverageBitrate([{ t: 1, type: 'playing' }])).toBeNull();
+  });
+
+  it('trả null khi không tra được bitrate của mức nào', () => {
+    // Xảy ra khi không đọc được master playlist: thà báo null còn hơn trả
+    // về NaN rồi lặng lẽ đi vào bảng số liệu của báo cáo.
+    const events = [
+      { t: 0, type: 'levelSwitched', level: 720, width: 1280, height: 720, bitrate: null },
+      { t: 30, type: 'ended' },
+    ];
+
+    expect(computeAverageBitrate(events)).toBeNull();
+  });
+});
+
+describe('buildLevelPeriods — gộp sự kiện trùng mức', () => {
+  it('gộp hai sự kiện liên tiếp cùng mức thành một quãng', () => {
+    // Trình duyệt phát 'resize' và 'loadedmetadata' gần như cùng lúc lúc khởi
+    // tạo. Không gộp thì P.1203 nhận một segment dài 0 giây và từ chối.
+    const events = [
+      lvl(1.063, L1080),
+      lvl(1.064, L1080),
+      lvl(8.407, L720),
+      { t: 29.137, type: 'ended' },
+    ];
+
+    const periods = buildLevelPeriods(events);
+
+    expect(periods).toHaveLength(2);
+    expect(periods[0].start).toBeCloseTo(1.063, 3);
+    expect(periods[0].height).toBe(1080);
+    expect(periods[1].height).toBe(720);
+  });
+
+  it('không quãng nào có thời lượng bằng 0', () => {
+    const events = [lvl(1.0, L360), lvl(1.0, L360), lvl(5.0, L720), { t: 20, type: 'ended' }];
+
+    for (const period of buildLevelPeriods(events)) {
+      expect(period.duration).toBeGreaterThan(0);
+    }
+  });
+
+  it('giữ lại mốc sớm nhất của chuỗi sự kiện trùng mức', () => {
+    const events = [lvl(2.0, L720), lvl(2.5, L720), lvl(3.0, L720), { t: 20, type: 'ended' }];
+    const periods = buildLevelPeriods(events);
+
+    expect(periods).toHaveLength(1);
+    expect(periods[0].start).toBe(2.0);
+    expect(periods[0].duration).toBe(18);
+  });
+
+  it('vẫn tách quãng khi mức quay lại giá trị cũ sau khi đã đổi', () => {
+    // 720 → 360 → 720 là ba quãng, không phải hai.
+    const events = [lvl(0, L720), lvl(5, L360), lvl(10, L720), { t: 20, type: 'ended' }];
+
+    expect(buildLevelPeriods(events)).toHaveLength(3);
   });
 });
 

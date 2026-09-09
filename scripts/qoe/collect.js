@@ -42,11 +42,17 @@
  *   node collect.js --url https://zelostech.site/watch/<videoId>
  *
  * Tuỳ chọn:
- *   --runs <n>        số lần đo (mặc định 5), chưa kể một lần chạy khởi động
+ *   --runs <n>        số lần đo thật (mặc định 5)
  *   --duration <s>    số giây phát mỗi lần đo (mặc định 60)
  *   --profile <tên>   hồ sơ mạng: unthrottled | fast3g | slow3g | dsl
+ *   --warmups <n>     số lượt khởi động bị loại khỏi kết quả (mặc định 2)
  *   --out <đường dẫn> nơi ghi kết quả JSON
  *   --headed          hiện cửa sổ trình duyệt để quan sát
+ *
+ * Mặc định hai lượt khởi động vì một lượt không đủ, và điều này đo được: trên
+ * slow3g với một lượt, lần đo thứ nhất có thời gian chờ 26,04 giây trong khi
+ * bốn lần sau đều quanh 1,9 giây; thêm lượt thứ hai thì cả năm lần nằm gọn
+ * trong 1,88–1,90 giây. Trên mạng nhanh hiệu ứng này không lộ ra.
  */
 
 const fs = require('fs');
@@ -121,9 +127,23 @@ const RECORDER = `
     return false;
   };
 
+  // Cho phep collect.js goi cuong buc sau khi da cho thay the video.
+  window.__qoeAttach = scan;
+
   if (!scan()) {
+    // Quan sat chinh doi tuong document, KHONG phai document.documentElement.
+    // Kich ban nay chay o thoi diem document-start, luc do the html chua duoc
+    // dung nen documentElement con null; observe(null) nem TypeError va giet
+    // ca bo ghi ngay tu dau. Doi tuong document thi luon ton tai.
     const observer = new MutationObserver(() => { if (scan()) observer.disconnect(); });
-    observer.observe(document.documentElement, { childList: true, subtree: true });
+    observer.observe(document, { childList: true, subtree: true });
+
+    // Luoi an toan thu hai: van do thu dinh ky phong khi quan sat DOM khong
+    // bat kip cach React dung the video.
+    const timer = setInterval(() => {
+      if (scan()) { clearInterval(timer); observer.disconnect(); }
+    }, 100);
+    setTimeout(() => clearInterval(timer), 30000);
   }
 })();
 `;
@@ -131,15 +151,49 @@ const RECORDER = `
 const RENDITION_PATTERN = /\/(\d+p)\/segment_\d+\.ts/;
 
 /**
+ * Đọc bảng "độ phân giải → bitrate" từ master playlist.
+ *
+ * Phần tử `<video>` chỉ cho biết độ phân giải đang hiển thị, không cho biết
+ * bitrate. Thay vì gán cứng ladder trong kịch bản đo — sẽ sai ngay khi ai đó
+ * chỉnh `transcoder/src/config.js` — bảng này lấy thẳng từ chỉ thị
+ * `#EXT-X-STREAM-INF` của chính luồng đang phát. Đó cũng là con số hls.js dùng
+ * để quyết định đổi mức, và là bitrate mà P.1203 cần.
+ */
+const parseMasterPlaylist = (text) => {
+  const map = new Map();
+  const pattern = /#EXT-X-STREAM-INF:[^\n]*BANDWIDTH=(\d+)[^\n]*RESOLUTION=(\d+)x(\d+)/g;
+  let match = pattern.exec(text);
+
+  while (match !== null) {
+    map.set(Number(match[3]), Number(match[1])); // chiều cao → bitrate
+    match = pattern.exec(text);
+  }
+
+  return map;
+};
+
+/**
  * Một lần đo: mở trang, phát trong `durationSec`, thu nhật ký sự kiện.
  */
 const collectOnce = async (context, url, durationSec) => {
   const page = await context.newPage();
   const segmentRequests = [];
+  let bitrateByHeight = new Map();
 
   page.on('request', (request) => {
     const match = RENDITION_PATTERN.exec(request.url());
     if (match) segmentRequests.push({ rendition: match[1], url: request.url() });
+  });
+
+  page.on('response', async (response) => {
+    if (!response.url().includes('master.m3u8') || !response.ok()) return;
+    try {
+      const parsed = parseMasterPlaylist(await response.text());
+      if (parsed.size > 0) bitrateByHeight = parsed;
+    } catch {
+      // Không đọc được thân phản hồi thì bỏ qua; bitrate sẽ báo null chứ
+      // không làm hỏng cả phép đo.
+    }
   });
 
   await page.addInitScript(RECORDER);
@@ -152,6 +206,10 @@ const collectOnce = async (context, url, durationSec) => {
   // Chờ phần tử video xuất hiện rồi chủ động gọi play(): trang có thể đang
   // đợi thao tác người dùng, mà ở chế độ headless thì không có ai bấm.
   await page.waitForSelector('video', { timeout: 30000 });
+
+  // Lop bao dam thu ba: goi thang ham gan neu hai lop tren chua kip.
+  await page.evaluate(() => { if (window.__qoeAttach) window.__qoeAttach(); });
+
   await page.evaluate(() => {
     const video = document.querySelector('video');
     if (video) {
@@ -171,12 +229,26 @@ const collectOnce = async (context, url, durationSec) => {
   const endTime = await page.evaluate(() => performance.now() / 1000);
   await page.close();
 
+  // Gắn bitrate vào từng lần đổi mức. Làm ở đây chứ không làm trong trang, vì
+  // master playlist chỉ đọc được từ phía Playwright.
+  const events = log.events.map((event) =>
+    event.type === 'levelSwitched'
+      ? { ...event, bitrate: bitrateByHeight.get(event.height) ?? null }
+      : event
+  );
+
+  const missingBitrate = events.filter((e) => e.type === 'levelSwitched' && e.bitrate === null);
+
   return {
-    events: log.events,
+    events,
     attached: log.attached,
     endTime,
     segmentRequests,
     renditionsDownloaded: [...new Set(segmentRequests.map((s) => s.rendition))],
+    bitrateLadder: Object.fromEntries(bitrateByHeight),
+    warnings: missingBitrate.length
+      ? [`${missingBitrate.length} lần đổi mức không tra được bitrate trong master playlist`]
+      : [],
   };
 };
 
@@ -189,6 +261,7 @@ const runMeasurement = async (options) => {
     runs = 5,
     durationSec = 60,
     profile = 'unthrottled',
+    warmups = 2,
     headed = false,
   } = options;
 
@@ -223,9 +296,17 @@ const runMeasurement = async (options) => {
 
     // Lần chạy khởi động, KHÔNG tính vào kết quả: lần tải trang đầu tiên sau
     // khi mở trình duyệt luôn chậm hơn hẳn (biên dịch JIT, cache DNS/TLS còn
-    // rỗng), đưa vào sẽ làm lệch trung vị.
-    console.log('⏳ Chạy khởi động (không tính vào kết quả)...');
-    await collectOnce(context, url, Math.min(15, durationSec));
+    // rỗng, và Edge Location của CloudFront chưa có segment nào), đưa vào sẽ
+    // làm lệch kết quả.
+    //
+    // Chạy ĐỦ thời lượng chứ không cắt ngắn: bản đầu chỉ chạy 15 giây, và
+    // trên hồ sơ mạng chậm thì từng đó chưa đủ tải hết các rendition, nên lần
+    // đo thứ nhất vẫn dính cache lạnh — quan sát được rõ ở slow3g với thời
+    // gian chờ khởi động 26 giây so với 1,9 giây của bốn lần còn lại.
+    for (let w = 1; w <= warmups; w += 1) {
+      console.log(`⏳ Chạy khởi động ${w}/${warmups} (không tính vào kết quả)...`);
+      await collectOnce(context, url, durationSec);
+    }
 
     for (let i = 1; i <= runs; i += 1) {
       process.stdout.write(`📊 Lần đo ${i}/${runs}... `);
@@ -257,7 +338,7 @@ const runMeasurement = async (options) => {
 };
 
 const parseArgs = (argv) => {
-  const options = { runs: 5, durationSec: 60, profile: 'unthrottled', headed: false, out: null };
+  const options = { runs: 5, durationSec: 60, profile: 'unthrottled', warmups: 2, headed: false, out: null };
 
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
@@ -266,6 +347,7 @@ const parseArgs = (argv) => {
     else if (arg === '--duration') options.durationSec = parseInt(argv[++i], 10);
     else if (arg === '--profile') options.profile = argv[++i];
     else if (arg === '--out') options.out = argv[++i];
+    else if (arg === '--warmups') options.warmups = parseInt(argv[++i], 10);
     else if (arg === '--headed') options.headed = true;
   }
 
@@ -291,13 +373,22 @@ const main = async () => {
 
   const { summaries, rawLogs, aggregate: agg } = await runMeasurement(options);
 
+  const pct = (v) => (v === null || v === undefined ? 'n/a' : (v * 100).toFixed(3) + ' %');
+
   console.log('');
-  console.log('──────── KẾT QUẢ (trung vị) ────────');
-  console.log(`  Chờ khởi động     : ${agg.startupDelaySec?.toFixed(3) ?? 'n/a'} s`);
-  console.log(`  Tỉ lệ nghẽn       : ${agg.rebufferingRatio !== null ? (agg.rebufferingRatio * 100).toFixed(3) + ' %' : 'n/a'}`);
-  console.log(`  Số lần nghẽn      : ${agg.stallCount ?? 'n/a'}`);
-  console.log(`  Số lần đổi bitrate: ${agg.bitrateSwitchCount ?? 'n/a'}`);
-  console.log(`  Bitrate trung bình: ${agg.averageBitrateBps ? (agg.averageBitrateBps / 1000).toFixed(0) + ' kbit/s' : 'n/a'}`);
+  console.log('──────── KẾT QUẢ ────────');
+  console.log(`  Chờ khởi động      : ${agg.startupDelaySec?.toFixed(3) ?? 'n/a'} s (trung vị) · ${agg.startupDelayMaxSec?.toFixed(3) ?? 'n/a'} s (lớn nhất)`);
+  console.log(`  Tỉ lệ nghẽn        : ${pct(agg.rebufferingRatio)} (trung vị) · ${pct(agg.rebufferingRatioMean)} (trung bình) · ${pct(agg.rebufferingRatioMax)} (lớn nhất)`);
+  console.log(`  Số lần đo bị nghẽn : ${agg.runsWithStalls}/${agg.runs}`);
+  console.log(`  Số lần đổi bitrate : ${agg.bitrateSwitchCount ?? 'n/a'} (trung vị)`);
+  console.log(`  Bitrate trung bình : ${agg.averageBitrateBps ? (agg.averageBitrateBps / 1000).toFixed(0) + ' kbit/s' : 'n/a'}`);
+
+  if (agg.runsWithStalls > 0 && agg.rebufferingRatio === 0) {
+    console.log('');
+    console.log(`  ⚠️  Trung vị bằng 0 nhưng ${agg.runsWithStalls}/${agg.runs} lần đo CÓ nghẽn.`);
+    console.log('     Khi báo cáo phải nêu cả trung bình và giá trị lớn nhất,');
+    console.log('     nói riêng trung vị sẽ thành "không nghẽn" — sai sự thật.');
+  }
 
   const outPath = options.out
     ? path.resolve(options.out)
