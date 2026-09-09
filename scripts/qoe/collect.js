@@ -259,10 +259,11 @@ const measureRenditionBitrates = (segmentBytes, segmentDurations) => {
     // phỏng đoán sai làm lệch bitrate còn khó phát hiện hơn là thiếu số liệu.
     if (!duration || duration <= 0 || !bytes || bytes <= 0) continue;
 
-    const acc = totals.get(rendition) || { bytes: 0, seconds: 0, segments: 0 };
+    const acc = totals.get(rendition) || { bytes: 0, seconds: 0, segments: 0, peak: 0 };
     acc.bytes += bytes;
     acc.seconds += duration;
     acc.segments += 1;
+    acc.peak = Math.max(acc.peak, (bytes * 8) / duration);
     totals.set(rendition, acc);
   }
 
@@ -271,6 +272,7 @@ const measureRenditionBitrates = (segmentBytes, segmentDurations) => {
     if (acc.seconds <= 0) continue;
     byHeight.set(renditionToHeight(rendition), {
       bitrate: Math.round((acc.bytes * 8) / acc.seconds),
+      peak: Math.ceil(acc.peak),
       segments: acc.segments,
       bytes: acc.bytes,
       seconds: Number(acc.seconds.toFixed(3)),
@@ -299,10 +301,13 @@ const collectLadderComparison = (rawLogs) => {
 
     for (const [height, stats] of Object.entries(log.measuredBitrateLadder || {})) {
       const key = Number(height);
-      const acc = totals.get(key) || { bytes: 0, seconds: 0, segments: 0 };
+      const acc = totals.get(key) || { bytes: 0, seconds: 0, segments: 0, peak: 0 };
       acc.bytes += stats.bytes || 0;
       acc.seconds += stats.seconds || 0;
       acc.segments += stats.segments || 0;
+      // Đỉnh gộp bằng MAX chứ không cộng dồn: nó là giá trị lớn nhất từng
+      // thấy, nên nhiều lượt đo chỉ có thể làm nó tăng chứ không pha loãng.
+      acc.peak = Math.max(acc.peak, stats.peak || 0);
       totals.set(key, acc);
     }
   }
@@ -314,10 +319,17 @@ const collectLadderComparison = (rawLogs) => {
     const measured = acc && acc.seconds > 0 ? Math.round((acc.bytes * 8) / acc.seconds) : null;
     const declared = advertised.get(height) ?? null;
 
+    const peak = acc && acc.peak > 0 ? Math.ceil(acc.peak) : null;
+
     return {
       height,
       advertised: declared,
       measured,
+      peak,
+      // Tỉ lệ đối chiếu với chuẩn phải dùng ĐỈNH, vì RFC 8216 §4.3.4.2 định
+      // nghĩa BANDWIDTH là bitrate đỉnh. So trung bình với đỉnh thì bao giờ
+      // cũng ra dưới 100% và chẳng nói lên điều gì.
+      peakRatio: peak !== null && declared ? peak / declared : null,
       ratio: measured !== null && declared ? measured / declared : null,
       segments: acc ? acc.segments : 0,
     };
@@ -631,40 +643,42 @@ const main = async () => {
   const ladder = collectLadderComparison(rawLogs);
   if (ladder.length > 0) {
     console.log('');
-    console.log('  Bậc thang bitrate (khai báo → đo được từ số byte thật):');
+    const kb = (v) => (v ? (v / 1000).toFixed(0) : 'n/a');
+    console.log('  Bậc thang bitrate — kbit/s, đo từ số byte thật:');
+    console.log('    mức     khai   TB đo  đỉnh đo  đỉnh/khai  segment');
     for (const rung of ladder) {
-      const advertised = rung.advertised ? (rung.advertised / 1000).toFixed(0) : 'n/a';
-      const measured = rung.measured ? (rung.measured / 1000).toFixed(0) : 'n/a';
-      const share = rung.ratio ? `${(rung.ratio * 100).toFixed(0)}%` : '—';
+      const share = rung.peakRatio ? `${(rung.peakRatio * 100).toFixed(0)}%` : '—';
       console.log(
-        `    ${String(rung.height + 'p').padEnd(6)} ${String(advertised).padStart(5)} → ` +
-          `${String(measured).padStart(5)} kbit/s  (${share}, ${rung.segments} segment)`
+        `    ${String(rung.height + 'p').padEnd(6)} ${kb(rung.advertised).padStart(6)} ` +
+          `${kb(rung.measured).padStart(7)} ${kb(rung.peak).padStart(8)} ` +
+          `${share.padStart(10)} ${String(rung.segments).padStart(8)}`
       );
     }
 
-    // Hai chiều lệch có hệ quả khác hẳn nhau, nên tách riêng.
+    // Phép đối chiếu với chuẩn phải dùng ĐỈNH, vì RFC 8216 §4.3.4.2 định nghĩa
+    // BANDWIDTH là bitrate đỉnh của segment. So trung bình với đỉnh thì luôn ra
+    // dưới 100% và không nói lên điều gì.
     //
-    // Vượt lên trên là chiều NGUY HIỂM: RFC 8216 §4.3.4.2 bắt BANDWIDTH phải
-    // là bitrate đỉnh của segment, tức một cận trên. Nếu ngay cả bitrate TRUNG
-    // BÌNH đã vượt con số khai, thì đỉnh chắc chắn vượt — và hls.js vốn dựa
-    // vào BANDWIDTH để đoán một mức có vừa băng thông hay không sẽ chọn nhầm
-    // mức quá nặng rồi nghẽn.
-    const overshoot = ladder.filter((r) => r.ratio !== null && r.ratio > 1);
-    const undershoot = ladder.filter((r) => r.ratio !== null && r.ratio < 0.9);
+    // Kết luận ở đây BẤT ĐỐI XỨNG, và cố ý như vậy. Bộ đo chỉ nhìn thấy những
+    // segment trình phát thật sự tải về, nên đỉnh đo được là một CẬN DƯỚI của
+    // đỉnh thật. Vượt ngưỡng thì kết luận chắc chắn; không vượt thì chưa chứng
+    // minh được là hợp chuẩn, chỉ là chưa bắt được segment nặng nhất.
+    const violating = ladder.filter((r) => r.peakRatio !== null && r.peakRatio > 1);
+    const borderline = ladder.filter(
+      (r) => r.peakRatio !== null && r.peakRatio > 0.95 && r.peakRatio <= 1
+    );
 
-    if (overshoot.length > 0) {
+    if (violating.length > 0) {
       console.log('');
-      console.log(`  ⚠️  ${overshoot.length}/${ladder.length} bậc thang có bitrate thật CAO HƠN`);
-      console.log('     con số khai trong master playlist. RFC 8216 §4.3.4.2 bắt BANDWIDTH');
-      console.log('     phải là bitrate ĐỈNH của segment, tức cận trên — khai thấp hơn thực');
-      console.log('     tế khiến hls.js chọn mức quá nặng so với băng thông rồi nghẽn.');
-    }
-
-    if (undershoot.length > 0) {
+      console.log(`  ⚠️  ${violating.length}/${ladder.length} bậc thang có ĐỈNH thật vượt con số khai.`);
+      console.log('     RFC 8216 §4.3.4.2 bắt BANDWIDTH phải là bitrate đỉnh của segment,');
+      console.log('     tức một cận trên. Khai thấp hơn thực tế khiến hls.js chọn mức nặng');
+      console.log('     hơn đường truyền chịu được rồi nghẽn.');
+    } else if (borderline.length > 0) {
       console.log('');
-      console.log(`  ⚠️  ${undershoot.length}/${ladder.length} bậc thang có bitrate thật thấp hơn`);
-      console.log('     con số khai báo. Kết quả ở trên đã dùng giá trị ĐO ĐƯỢC; báo cáo');
-      console.log('     không được trích BANDWIDTH làm "bitrate thực nhận".');
+      console.log(`  ℹ️  ${borderline.length} bậc thang có đỉnh sát ngưỡng khai báo (>95%).`);
+      console.log('     Chưa vượt, nhưng bộ đo chỉ thấy các segment đã tải nên đỉnh đo được');
+      console.log('     là cận dưới của đỉnh thật — chưa kết luận được là hợp chuẩn.');
     }
   }
 

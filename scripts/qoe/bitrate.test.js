@@ -315,3 +315,93 @@ describe('collectLadderComparison', () => {
     expect(collectLadderComparison([{}])).toEqual([]);
   });
 });
+
+describe('đỉnh bitrate — phép đối chiếu với RFC 8216 §4.3.4.2', () => {
+  const durations = (entries) => new Map(Object.entries(entries));
+  const log = (advertised, measured) => ({
+    bitrateLadder: advertised,
+    measuredBitrateLadder: measured,
+  });
+
+  it('đỉnh tách khỏi trung bình, không phải cùng một số', () => {
+    // 4 042 500 byte / 6 s = 5 390 000 bit/s là segment nặng nhất.
+    // Trung bình của cả ba thấp hơn hẳn.
+    const result = measureRenditionBitrates(
+      [
+        { rendition: '1080p', file: 'segment_000.ts', bytes: 4_042_500 },
+        { rendition: '1080p', file: 'segment_001.ts', bytes: 3_000_000 },
+        { rendition: '1080p', file: 'segment_002.ts', bytes: 3_000_000 },
+      ],
+      new Map([
+        [
+          '1080p',
+          durations({ 'segment_000.ts': 6, 'segment_001.ts': 6, 'segment_002.ts': 6 }),
+        ],
+      ])
+    );
+
+    expect(result.get(1080).peak).toBe(5_390_000);
+    expect(result.get(1080).bitrate).toBe(4_463_333);
+    expect(result.get(1080).peak).toBeGreaterThan(result.get(1080).bitrate);
+  });
+
+  it('đỉnh làm tròn LÊN, vì BANDWIDTH là cận trên', () => {
+    const result = measureRenditionBitrates(
+      [{ rendition: '360p', file: 'segment_000.ts', bytes: 1000 }],
+      new Map([['360p', durations({ 'segment_000.ts': 3 })]])
+    );
+
+    expect(result.get(360).peak).toBe(2667); // 2666,67 làm tròn lên
+  });
+
+  it('gộp nhiều lượt đo bằng MAX chứ không cộng dồn', () => {
+    // Cộng dồn sẽ cho 9 390 000 — vô nghĩa, vì đỉnh là giá trị lớn nhất từng
+    // quan sát chứ không phải tổng.
+    const result = collectLadderComparison([
+      log({ 1080: 5_390_000 }, { 1080: { bitrate: 4_000_000, peak: 4_000_000, bytes: 3_000_000, seconds: 6, segments: 1 } }),
+      log({ 1080: 5_390_000 }, { 1080: { bitrate: 4_463_333, peak: 5_390_000, bytes: 10_042_500, seconds: 18, segments: 3 } }),
+    ]);
+
+    expect(result[0].peak).toBe(5_390_000);
+  });
+
+  it('peakRatio ≤ 1 khi master playlist khai đúng đỉnh', () => {
+    // Trạng thái sau khi sửa transcoder: BANDWIDTH = 5 390 000 = đúng đỉnh.
+    const result = collectLadderComparison([
+      log({ 1080: 5_390_000 }, { 1080: { bitrate: 4_337_617, peak: 5_390_000, bytes: 142_834_128, seconds: 263.433, segments: 44 } }),
+    ]);
+
+    expect(result[0].peakRatio).toBeCloseTo(1, 5);
+    expect(result[0].peakRatio).toBeLessThanOrEqual(1);
+  });
+
+  it('peakRatio > 1 khi master playlist khai thiếu — phát hiện vi phạm chuẩn', () => {
+    // Trạng thái TRƯỚC khi sửa: khai 4 192 000 trong khi đỉnh thật 5 390 000.
+    const result = collectLadderComparison([
+      log({ 1080: 4_192_000 }, { 1080: { bitrate: 4_337_617, peak: 5_390_000, bytes: 142_834_128, seconds: 263.433, segments: 44 } }),
+    ]);
+
+    expect(result[0].peakRatio).toBeGreaterThan(1);
+    expect(result[0].peakRatio).toBeCloseTo(1.286, 3);
+  });
+
+  it('trung bình thấp hơn đỉnh KHÔNG bị coi là vi phạm', () => {
+    // Đây là hồi quy cần chặn: bản đầu so trung bình với đỉnh nên cảnh báo sai
+    // nổ ở mọi lượt chạy sau khi transcoder đã được sửa đúng.
+    const result = collectLadderComparison([
+      log({ 720: 2_148_464 }, { 720: { bitrate: 1_713_000, peak: 2_100_000, bytes: 56_451_700, seconds: 263.433, segments: 44 } }),
+    ]);
+
+    expect(result[0].ratio).toBeLessThan(1); // trung bình thấp hơn — bình thường
+    expect(result[0].peakRatio).toBeLessThan(1); // đỉnh vẫn trong ngưỡng — không vi phạm
+  });
+
+  it('peak null khi lượt đo không ghi lại đỉnh', () => {
+    const result = collectLadderComparison([
+      log({ 360: 637_446 }, { 360: { bitrate: 510_000, bytes: 382_500, seconds: 6, segments: 1 } }),
+    ]);
+
+    expect(result[0].peak).toBeNull();
+    expect(result[0].peakRatio).toBeNull();
+  });
+});

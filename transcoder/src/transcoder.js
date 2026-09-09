@@ -212,20 +212,142 @@ const buildFFmpegArgs = (inputPath, outputDir, renditions, fps = DEFAULT_FPS) =>
 };
 
 /**
- * Generate master.m3u8 that references all rendition playlists
+ * Đọc cặp (tên tệp segment, thời lượng) từ một Media Playlist.
+ *
+ * Dòng URI là dòng đầu tiên không rỗng và không bắt đầu bằng `#` nằm sau
+ * `#EXTINF`. Bám đúng quy tắc đó thay vì "lấy dòng kế tiếp" để không nuốt
+ * nhầm `#EXT-X-ENDLIST` hay một chỉ thị nào khác chen vào giữa.
+ */
+const parseMediaPlaylist = (text) => {
+  const segments = [];
+  const lines = String(text).split('\n');
+
+  for (let i = 0; i < lines.length; i += 1) {
+    const extinf = /^#EXTINF:([\d.]+)/.exec(lines[i].trim());
+    if (!extinf) continue;
+
+    for (let j = i + 1; j < lines.length; j += 1) {
+      const candidate = lines[j].trim();
+      if (candidate === '') continue;
+      if (candidate.startsWith('#')) break;
+      segments.push({ file: candidate, duration: Number(extinf[1]) });
+      break;
+    }
+  }
+
+  return segments;
+};
+
+/**
+ * Đo bitrate ĐỈNH và TRUNG BÌNH của một rendition từ chính các segment đã tạo.
+ *
+ * Trả về `null` khi không đo được (thiếu playlist, thiếu tệp, thời lượng bằng
+ * 0) để nơi gọi tự quyết định phương án dự phòng.
+ */
+const measureVariantBitrates = (renditionDir) => {
+  const playlistPath = path.join(renditionDir, 'playlist.m3u8');
+  if (!fs.existsSync(playlistPath)) return null;
+
+  const segments = parseMediaPlaylist(fs.readFileSync(playlistPath, 'utf-8'));
+
+  let totalBytes = 0;
+  let totalSeconds = 0;
+  let peak = 0;
+  let counted = 0;
+
+  for (const { file, duration } of segments) {
+    const segmentPath = path.join(renditionDir, file);
+    if (!duration || duration <= 0 || !fs.existsSync(segmentPath)) continue;
+
+    const bytes = fs.statSync(segmentPath).size;
+    if (bytes <= 0) continue;
+
+    totalBytes += bytes;
+    totalSeconds += duration;
+    peak = Math.max(peak, (bytes * 8) / duration);
+    counted += 1;
+  }
+
+  if (counted === 0 || totalSeconds <= 0) return null;
+
+  return {
+    // Làm tròn LÊN: BANDWIDTH là cận trên, làm tròn xuống sẽ đưa nó trở lại
+    // dưới giá trị thật của segment nặng nhất — đúng cái lỗi đang sửa.
+    peak: Math.ceil(peak),
+    average: Math.round((totalBytes * 8) / totalSeconds),
+    segments: counted,
+  };
+};
+
+/**
+ * Sinh master.m3u8 trỏ tới playlist của từng rendition.
+ *
+ * ════════════════════════════════════════════════════════════════════════
+ * VÌ SAO BANDWIDTH PHẢI ĐO, KHÔNG ĐƯỢC LẤY TỪ CONFIG
+ * ════════════════════════════════════════════════════════════════════════
+ * Bản trước cộng thẳng hai hằng số mục tiêu trong `config.js`
+ * (`videoBitrate + audioBitrate`) và không hề nhìn tới sản phẩm thật. Điều đó
+ * vi phạm RFC 8216 §4.3.4.2, vốn dùng chữ MUST:
+ *
+ *   "It represents the peak segment bit rate of the Variant Stream."
+ *   "If all the Media Segments in a Variant Stream have already been
+ *    created, the BANDWIDTH value MUST be the largest sum of peak segment
+ *    bit rates that is produced by any playable combination of Renditions."
+ *
+ * Ở đây segment ĐÃ được tạo xong trước khi hàm này chạy, nên vế điều kiện
+ * thoả và MUST có hiệu lực.
+ *
+ * Hậu quả không chỉ là hình thức. Đo trên video 6aa1dd6f822dec77e188e56b
+ * (clip dọc 576×1024, 4:23, 44 segment mỗi rendition):
+ *
+ *            khai báo   TB thật   đỉnh thật   đỉnh/khai
+ *   360p       464       514        637         137%
+ *   720p      1628      1714       2148         132%
+ *   1080p     4192      4338       5390         129%
+ *
+ * Con số khai nằm DƯỚI đỉnh thật 29–37%. hls.js dùng BANDWIDTH để phán đoán
+ * một mức có vừa băng thông hay không, nên nó chọn mức nặng hơn mức đường
+ * truyền chịu được rồi nghẽn. Phép đo QoE bắt được đúng hiện tượng đó: ở hồ
+ * sơ fast3g (trần 1678 kbit/s), 720p khai 1628 nên "lọt", trong khi segment
+ * thật là 1701 nên không lọt — kết quả là 2/5 lượt đo bị nghẽn và một lượt
+ * mất 16,8 giây mới ra hình. Xem `scripts/qoe/README.md`.
+ *
+ * Khi không đo được thì vẫn lùi về con số cấu hình: một master playlist có
+ * giá trị gần đúng còn dùng được, chứ không có BANDWIDTH thì playlist sai
+ * chuẩn hẳn (RFC bắt buộc mọi EXT-X-STREAM-INF phải mang thuộc tính này).
  */
 const generateMasterPlaylist = (outputDir, renditions) => {
   let content = '#EXTM3U\n#EXT-X-VERSION:3\n\n';
+  const measured = [];
 
   for (const r of renditions) {
-    const bandwidth = parseInt(r.videoBitrate) * 1000 + parseInt(r.audioBitrate) * 1000;
+    const stats = measureVariantBitrates(path.join(outputDir, r.name));
+    const declared = parseInt(r.videoBitrate) * 1000 + parseInt(r.audioBitrate) * 1000;
+    const bandwidth = stats ? stats.peak : declared;
+
+    if (!stats) {
+      console.warn(
+        `⚠️  ${r.name}: không đo được bitrate từ segment, dùng giá trị cấu hình ${declared} bit/s`
+      );
+    }
+
+    measured.push({ name: r.name, declared, bandwidth, stats });
+
     content += `#EXT-X-STREAM-INF:BANDWIDTH=${bandwidth},RESOLUTION=${r.width}x${r.height},NAME="${r.name}"\n`;
     content += `${r.name}/playlist.m3u8\n\n`;
   }
 
   const masterPath = path.join(outputDir, 'master.m3u8');
   fs.writeFileSync(masterPath, content);
+
   console.log(`📋 Generated master.m3u8 with ${renditions.length} renditions`);
+  for (const m of measured) {
+    if (!m.stats) continue;
+    console.log(
+      `   ${m.name.padEnd(6)} BANDWIDTH=${m.bandwidth} bit/s ` +
+        `(đỉnh thật; TB ${m.stats.average}, cấu hình ${m.declared}, ${m.stats.segments} segment)`
+    );
+  }
 };
 
 /**
@@ -362,4 +484,7 @@ module.exports = {
   buildForceKeyFramesExpr,
   buildFFmpegArgs,
   DEFAULT_FPS,
+  parseMediaPlaylist,
+  measureVariantBitrates,
+  generateMasterPlaylist,
 };
