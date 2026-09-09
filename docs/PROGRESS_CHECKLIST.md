@@ -19,8 +19,10 @@
       luồng tải lên (bấm Hủy, chọn tệp khác, và tải lên hỏng do rớt mạng/S3 lỗi) — ngăn triệt để
       tình trạng rò rỉ bản ghi nháp mồ côi khi người dùng bấm Upload lại
 - [x] Xem video bằng HLS.js + Adaptive Bitrate Streaming (360p/720p/1080p)
-- [x] Trình phát video tuỳ biến với **Hover Preview Tooltip** hiển thị mốc thời gian và ảnh đại
-      diện xem trước bám theo vị trí con trỏ chuột trên thanh tua (timeline scrubber)
+- [x] Trình phát video tuỳ biến với **Hover Preview Tooltip** bám theo vị trí con trỏ chuột trên
+      thanh tua (timeline scrubber), hiển thị mốc thời gian tại điểm đang trỏ kèm ảnh xem trước
+      (ảnh bìa cố định, không phải khung hình tại vị trí tua: transcoder chỉ trích một ảnh tại
+      giây thứ 5, không sinh sprite sheet nên chưa xem trước theo khung hình được)
 - [x] **Gợi ý video liên quan (Related Videos)** ở thanh bên trang xem video (`GET /api/videos/:id/related`),
       thuật toán đề xuất theo tag và danh mục tương đồng, sắp theo lượt xem giảm dần (kèm bù
       bằng video xem nhiều nhất khi chưa đủ số lượng); bảo
