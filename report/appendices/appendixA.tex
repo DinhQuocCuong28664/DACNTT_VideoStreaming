@@ -30,12 +30,30 @@ second and third blocks are abbreviated here; in the source they repeat the firs
 full. The master playlist is not written by FFmpeg: the worker generates it afterwards from
 the rendition list, which is why no \texttt{-master\_pl\_name} argument appears.
 
+The keyframe interval is derived from the source rather than assumed. The worker probes the
+first video stream and reads \texttt{avg\_frame\_rate}, preferring it over
+\texttt{r\_frame\_rate} because the latter is a base rate FFmpeg infers from the
+timing grid and can report values such as 1000/1 for variable-frame-rate recordings. The group
+of pictures is then \texttt{floor(fps} $\times$ \texttt{6)} frames, floored rather than rounded so that
+it never exceeds the segment length: at 29.97~fps, rounding would give 180 frames, or 6.006
+seconds, and the segment boundary would drift past the point where a keyframe exists. The value
+shown below, 144, is what a 24~fps source produces.
+
+Two further arguments keep the boundaries aligned. Scene detection is disabled, because letting
+the encoder place keyframes at scene changes would allow the three renditions to cut at
+different points, and RFC~8216 requires that matching content in variant streams carry matching
+timestamps. \texttt{-force\_key\_frames} then pins a keyframe to every sixth second of
+media time; unlike \texttt{-g}, which only bounds the interval from above, it is absolute and
+independent of the detected frame rate, so a misdetected source still yields aligned segments.
+
 \begin{lstlisting}[language=bash]
 ffmpeg -i input.mp4 -hide_banner -loglevel warning -y \
   -vf "scale=640:360:force_original_aspect_ratio=decrease, \
          pad=640:360:(ow-iw)/2:(oh-ih)/2" \
   -c:v libx264 -b:v 400k  -maxrate 500k  -bufsize 800k  \
-  -preset fast -profile:v main -level 3.1 -g 180 -keyint_min 180 -sc_threshold 0 \
+  -preset fast -profile:v main -level 3.1 \
+  -g 144 -keyint_min 144 -sc_threshold 0 \
+  -force_key_frames "expr:gte(t,n_forced*6)" \
   -c:a aac -b:a 64k  -ar 44100 -ac 2 \
   -f hls -hls_time 6 -hls_list_size 0 \
   -hls_segment_filename 360p/segment_%03d.ts  360p/playlist.m3u8 \

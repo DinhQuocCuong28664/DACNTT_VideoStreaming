@@ -4,6 +4,99 @@ const path = require('path');
 const config = require('./config');
 
 /**
+ * Khoảng framerate được coi là thật.
+ *
+ * Nằm ngoài khoảng này gần như chắc chắn là tạo tác của timebase chứ không
+ * phải tốc độ khung hình: tệp VFR quay từ điện thoại thường khai
+ * `r_frame_rate` là 1000/1 hoặc 90000/1. Nếu tin con số đó thì GOP tính ra
+ * sẽ là 6000 khung hình, và FFmpeg sẽ không còn keyframe nào rơi đúng biên
+ * segment nữa.
+ */
+const MIN_PLAUSIBLE_FPS = 1;
+const MAX_PLAUSIBLE_FPS = 240;
+const DEFAULT_FPS = 30;
+
+/**
+ * Đọc chuỗi phân số ffprobe trả về ("30000/1001", "25/1") thành số thực.
+ *
+ * Trả về `null` khi không đọc được, gồm cả "0/0" — giá trị ffprobe dùng để
+ * báo "không xác định được" chứ không phải framerate bằng không.
+ */
+const parseFrameRate = (value) => {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) && value > 0 ? value : null;
+  }
+  if (typeof value !== 'string') return null;
+
+  const text = value.trim();
+  const fraction = text.match(/^(\d+(?:\.\d+)?)\/(\d+(?:\.\d+)?)$/);
+  if (fraction) {
+    const numerator = Number(fraction[1]);
+    const denominator = Number(fraction[2]);
+    if (!denominator || !numerator) return null;
+    return numerator / denominator;
+  }
+
+  const plain = Number(text);
+  return Number.isFinite(plain) && plain > 0 ? plain : null;
+};
+
+/**
+ * Chọn framerate đáng tin nhất từ một video stream của ffprobe.
+ *
+ * `avg_frame_rate` là tổng khung hình chia thời lượng nên phản ánh tốc độ
+ * thật, kể cả với nội dung VFR. `r_frame_rate` chỉ dùng khi `avg` không đọc
+ * được, và cũng phải qua kiểm tra khoảng hợp lý. Khi cả hai đều không dùng
+ * được thì lùi về 30 fps — đúng giá trị hardcode cũ, nên trường hợp xấu nhất
+ * cũng không tệ hơn hành vi trước đây.
+ */
+const resolveFrameRate = (stream) => {
+  const candidates = [
+    { source: 'avg_frame_rate', fps: parseFrameRate(stream && stream.avg_frame_rate) },
+    { source: 'r_frame_rate', fps: parseFrameRate(stream && stream.r_frame_rate) },
+  ];
+
+  for (const candidate of candidates) {
+    const { fps } = candidate;
+    if (fps !== null && fps >= MIN_PLAUSIBLE_FPS && fps <= MAX_PLAUSIBLE_FPS) {
+      return candidate;
+    }
+  }
+
+  return { source: 'default', fps: DEFAULT_FPS };
+};
+
+/**
+ * Số khung hình mỗi GOP.
+ *
+ * Bất biến cần giữ: GOP quy ra giây KHÔNG được vượt quá độ dài segment, vì
+ * chỉ khi đó mới chắc chắn có một keyframe tại hoặc trước mỗi biên segment.
+ * Vì vậy dùng `Math.floor` chứ không phải `Math.round`: với các tốc độ NTSC,
+ * làm tròn lên sẽ cho GOP 6,006 giây — dài hơn segment 6 giây và làm độ dài
+ * segment trôi dần.
+ *
+ *   23.976 fps → floor(143.856) = 143 khung hình = 5,965 giây
+ *   29.97  fps → floor(179.820) = 179 khung hình = 5,973 giây
+ *
+ * Không bao giờ trả về 0 vì `-g 0` khiến libx264 chỉ sinh đúng một keyframe
+ * ở khung hình đầu tiên.
+ */
+const computeGopSize = (fps, segmentDuration = config.ffmpeg.segmentDuration) =>
+  Math.max(1, Math.floor(fps * segmentDuration));
+
+/**
+ * Biểu thức ép keyframe theo mốc thời gian tuyệt đối.
+ *
+ * `-g` chỉ đặt giới hạn trên của khoảng cách keyframe; encoder vẫn được phép
+ * lệch khỏi giá trị đó. Biểu thức này ép cứng một keyframe tại giây 0, 6,
+ * 12... nên biên segment luôn rơi đúng chỗ dù fps dò sai hay encoder tự tối
+ * ưu. Cả ba rendition cùng nhận một biểu thức nên điểm cắt trùng khít nhau —
+ * điều kiện RFC 8216 §6.2.4 bắt buộc để chuyển mức ABR không vỡ hình.
+ */
+const buildForceKeyFramesExpr = (segmentDuration = config.ffmpeg.segmentDuration) =>
+  `expr:gte(t,n_forced*${segmentDuration})`;
+
+/**
  * ★ Core FFmpeg HLS Transcoder
  *
  * Transcode a video file into HLS format with multiple renditions (ABR).
@@ -27,9 +120,13 @@ const transcodeToHLS = async (inputPath, outputDir) => {
   console.log('   FFmpeg HLS Transcoding Starting...');
   console.log('════════════════════════════════════════\n');
 
-  // Step 1: Probe input file for duration
-  const duration = await getVideoDuration(inputPath);
+  // Step 1: Probe input file for duration and real framerate
+  const { duration, fps, fpsSource } = await probeVideo(inputPath);
   console.log(`📊 Input video duration: ${duration.toFixed(1)}s`);
+  console.log(`📊 Input framerate: ${fps.toFixed(3)} fps (nguồn: ${fpsSource})`);
+  if (fpsSource === 'default') {
+    console.warn('⚠️  Không đọc được framerate từ ffprobe, dùng mặc định 30 fps');
+  }
 
   // Step 2: Create output directories
   const renditions = config.ffmpeg.renditions;
@@ -39,7 +136,7 @@ const transcodeToHLS = async (inputPath, outputDir) => {
   }
 
   // Step 3: Build FFmpeg command for all renditions simultaneously
-  const args = buildFFmpegArgs(inputPath, outputDir, renditions);
+  const args = buildFFmpegArgs(inputPath, outputDir, renditions, fps);
   console.log(`🔧 FFmpeg command: ffmpeg ${args.join(' ').substring(0, 200)}...`);
 
   await runFFmpeg(args, duration);
@@ -54,14 +151,17 @@ const transcodeToHLS = async (inputPath, outputDir) => {
   console.log('   Transcoding Complete!');
   console.log('════════════════════════════════════════\n');
 
-  return { duration };
+  return { duration, fps };
 };
 
 /**
  * Build FFmpeg arguments for multi-rendition HLS output
  * Single-pass encoding with one input read → multiple outputs
  */
-const buildFFmpegArgs = (inputPath, outputDir, renditions) => {
+const buildFFmpegArgs = (inputPath, outputDir, renditions, fps = DEFAULT_FPS) => {
+  const gopSize = computeGopSize(fps);
+  const forceKeyFrames = buildForceKeyFramesExpr();
+
   const args = [
     '-i', inputPath,
     '-hide_banner',
@@ -84,9 +184,14 @@ const buildFFmpegArgs = (inputPath, outputDir, renditions) => {
       '-preset', 'fast',
       '-profile:v', 'main',
       '-level', '3.1',
-      '-g', String(config.ffmpeg.segmentDuration * 30), // GOP = segment * framerate
-      '-keyint_min', String(config.ffmpeg.segmentDuration * 30),
+      // GOP tính theo framerate thật của nguồn, không phải 30 fps cố định.
+      '-g', String(gopSize),
+      '-keyint_min', String(gopSize),
+      // Tắt scene detection: để encoder tự chèn keyframe theo cảnh thì ba
+      // rendition có thể cắt lệch nhau, vi phạm RFC 8216 §6.2.4.
       '-sc_threshold', '0',
+      // Lớp bảo đảm cuối: ép keyframe theo mốc thời gian, độc lập với fps.
+      '-force_key_frames', forceKeyFrames,
 
       // Audio settings
       '-c:a', 'aac',
@@ -159,14 +264,19 @@ const extractThumbnail = async (inputPath, outputDir) => {
 };
 
 /**
- * Get video duration using ffprobe
+ * Đọc thời lượng và framerate của video bằng một lần gọi ffprobe.
+ *
+ * `-select_streams v:0` giới hạn ở luồng video đầu tiên nên không nhầm sang
+ * luồng âm thanh hay phụ đề.
  */
-const getVideoDuration = (inputPath) => {
+const probeVideo = (inputPath) => {
   return new Promise((resolve, reject) => {
     const args = [
       '-v', 'quiet',
       '-print_format', 'json',
       '-show_format',
+      '-show_streams',
+      '-select_streams', 'v:0',
       inputPath,
     ];
 
@@ -181,7 +291,13 @@ const getVideoDuration = (inputPath) => {
       }
       try {
         const info = JSON.parse(stdout);
-        resolve(parseFloat(info.format.duration) || 0);
+        const stream = (info.streams || [])[0];
+        const { fps, source } = resolveFrameRate(stream);
+        resolve({
+          duration: parseFloat(info.format && info.format.duration) || 0,
+          fps,
+          fpsSource: source,
+        });
       } catch (e) {
         reject(new Error(`Failed to parse ffprobe output: ${e.message}`));
       }
@@ -189,6 +305,11 @@ const getVideoDuration = (inputPath) => {
     proc.on('error', reject);
   });
 };
+
+/**
+ * Giữ lại cho các nơi chỉ cần thời lượng.
+ */
+const getVideoDuration = async (inputPath) => (await probeVideo(inputPath)).duration;
 
 /**
  * Run FFmpeg process with progress logging
@@ -232,5 +353,13 @@ const runFFmpeg = (args, totalDuration) => {
 
 module.exports = {
   transcodeToHLS,
+  probeVideo,
   getVideoDuration,
+  // Xuất ra để kiểm thử được phần tính toán mà không cần chạy ffprobe/ffmpeg
+  parseFrameRate,
+  resolveFrameRate,
+  computeGopSize,
+  buildForceKeyFramesExpr,
+  buildFFmpegArgs,
+  DEFAULT_FPS,
 };

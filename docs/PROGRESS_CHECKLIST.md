@@ -39,9 +39,9 @@
 - [x] Email thông báo video chuyển mã xong (READY) hoặc thất bại (ERROR) — code có sẵn từ trước
       nhưng **chưa từng gửi được** do thiếu `ref: 'User'` trong schema transcoder khiến populate
       luôn trả `email: undefined`; đã sửa và verify bằng data thật trong phiên này
-- [x] **Bộ kiểm thử tự động toàn diện:** 127/127 tests PASS trên 11 test suites toàn dự án (115
+- [x] **Bộ kiểm thử tự động toàn diện:** 159/159 tests PASS trên 12 test suites toàn dự án (115
       backend tests bao gồm `relatedVideos`, `cloudfrontService`, `uploadValidation`, `authService`...
-      và 12 transcoder tests)
+      và 44 transcoder tests gồm `framerate` — GOP bám theo framerate thật của video nguồn)
 
 ## 2. Pipeline xử lý video & Hạ tầng (README §6–§10)
 

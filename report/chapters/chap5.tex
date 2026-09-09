@@ -313,7 +313,7 @@ the address stable across any rebuild that does occur.
 \section{Testing}
 \label{sec:testing}
 
-The automated test suite comprises 127 tests across eleven suites, summarised in
+The automated test suite comprises 159 tests across twelve suites, summarised in
 Table~\ref{tab:test-coverage}.
 
 \begin{table}[H]
@@ -336,6 +336,7 @@ Table~\ref{tab:test-coverage}.
 \texttt{relatedVideos}      & 10 & That the recommendation endpoint reuses the same authorisation rule as the detail endpoint, and never surfaces a private or unlisted video \\
 \texttt{transcoder/dbHandler} & 6 & Conditional writes preventing duplicate-job overwrites \\
 \path{transcoder/emailService} & 6 & READY/ERROR notification content and recipient targeting, and that raw failure detail is never exposed to the viewer \\
+\path{transcoder/framerate} & 32 & That the group of pictures follows the real source frame rate, that a variable-frame-rate file cannot poison it, and that every rendition is forced to cut at the same instant \\
 \bottomrule
 \end{tabularx}
 \end{table}
