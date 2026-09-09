@@ -78,7 +78,7 @@
     "remaining": "Remaining: ~{{time}}",
     "uploaded": "Uploaded: {{loaded}} / {{total}}",
     "errorCancelled": "Video upload was cancelled.",
-    "errorFormat": "Unsupported format. Please choose a .mp4, .mov, .avi or .mkv file",
+    "errorFormat": "Unsupported format. Please choose a .mp4, .mov, .avi, .mkv, .webm or .mpeg file",
     "errorTooLarge": "The file exceeds the maximum size of {{max}}. The file you chose is {{actual}}.",
     "errorNoTitle": "Please enter a video title",
     "errorFailed": "Upload failed. Please try again."
