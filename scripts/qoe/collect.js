@@ -148,7 +148,7 @@ const RECORDER = `
 })();
 `;
 
-const RENDITION_PATTERN = /\/(\d+p)\/segment_\d+\.ts/;
+const RENDITION_PATTERN = /\/(\d+p)\/(segment_\d+\.ts)/;
 
 /**
  * Đọc bảng "độ phân giải → bitrate" từ master playlist.
@@ -172,27 +172,218 @@ const parseMasterPlaylist = (text) => {
   return map;
 };
 
+/** Đường dẫn playlist của một rendition, ví dụ `.../1080p/playlist.m3u8`. */
+const RENDITION_PLAYLIST_PATTERN = /\/(\d+p)\/playlist\.m3u8/;
+
+/**
+ * Đọc thời lượng thật của từng segment từ playlist của một rendition.
+ *
+ * Cần con số này để quy đổi "số byte đã tải" thành bitrate. Không dùng hằng số
+ * 6 giây được: segment cuối luôn ngắn hơn, và nếu đem chia cho 6 thì rendition
+ * nào cũng bị kéo tụt bitrate một cách giả tạo.
+ *
+ * Trả về Map "tên tệp segment → thời lượng (giây)".
+ */
+const parseRenditionPlaylist = (text) => {
+  const map = new Map();
+  const lines = text.split('\n');
+
+  for (let i = 0; i < lines.length; i += 1) {
+    const extinf = /^#EXTINF:([\d.]+)/.exec(lines[i].trim());
+    if (!extinf) continue;
+
+    // Dòng URI là dòng không rỗng, không phải chỉ thị, ngay sau #EXTINF.
+    for (let j = i + 1; j < lines.length; j += 1) {
+      const candidate = lines[j].trim();
+      if (candidate === '') continue;
+      if (candidate.startsWith('#')) break;
+      map.set(candidate, Number(extinf[1]));
+      break;
+    }
+  }
+
+  return map;
+};
+
+/** `"1080p"` → `1080`, để khớp với bảng đánh theo chiều cao của master playlist. */
+const renditionToHeight = (name) => Number(name.replace(/p$/, ''));
+
+/**
+ * Bitrate ĐO ĐƯỢC của từng rendition: 8 × tổng byte ÷ tổng thời lượng.
+ *
+ * ────────────────────────────────────────────────────────────────────────
+ * VÌ SAO KHÔNG DÙNG THẲNG BANDWIDTH CỦA MASTER PLAYLIST
+ * ────────────────────────────────────────────────────────────────────────
+ * `transcoder/src/transcoder.js` sinh BANDWIDTH bằng cách cộng cứng hai giá
+ * trị đặt trong config (`videoBitrate + audioBitrate`), không hề đo lại sản
+ * phẩm thật. x264 chạy ở chế độ ABR thì bám mục tiêu chứ không đạt đúng mục
+ * tiêu, và mức chênh KHÔNG đồng đều giữa các bậc thang. Đo thử 30 giây trên
+ * một clip dọc 576×1024 (đúng loại nội dung đang có trong thư viện):
+ *
+ *   360p   khai 464 kbit/s   thật 421   → 91%
+ *   720p   khai 1628         thật 1340  → 82%
+ *   1080p  khai 4192         thật 3242  → 77%
+ *
+ * Lấy BANDWIDTH làm "bitrate thực nhận" vì thế thổi phồng kết quả khoảng
+ * 20–25%, và vì sai lệch tăng dần theo bậc nên chạy thêm bao nhiêu lần đo
+ * cũng không trung hoà được — đây là sai số hệ thống, không phải nhiễu.
+ *
+ * ────────────────────────────────────────────────────────────────────────
+ * ĐÂY LÀ BITRATE CỦA BẢN MÃ HOÁ, KHÔNG PHẢI THÔNG LƯỢNG MẠNG
+ * ────────────────────────────────────────────────────────────────────────
+ * Mẫu số là tổng thời lượng của chính những segment đã tải, không phải thời
+ * gian của phiên đo. Cách này cố ý: trình phát luôn tải trước, nên chia cho
+ * thời gian phiên sẽ trộn lẫn độ sâu bộ đệm vào con số. Thứ cần cho P.1203
+ * là bitrate của representation, và nó được lấy trọng số theo thời gian hiển
+ * thị ở bước sau trong `metrics.js`.
+ */
+const measureRenditionBitrates = (segmentBytes, segmentDurations) => {
+  const totals = new Map();
+
+  for (const { rendition, file, bytes } of segmentBytes) {
+    const duration = segmentDurations.get(rendition)?.get(file);
+    // Không tra được thời lượng thì bỏ qua hẳn, thay vì đoán 6 giây: một
+    // phỏng đoán sai làm lệch bitrate còn khó phát hiện hơn là thiếu số liệu.
+    if (!duration || duration <= 0 || !bytes || bytes <= 0) continue;
+
+    const acc = totals.get(rendition) || { bytes: 0, seconds: 0, segments: 0 };
+    acc.bytes += bytes;
+    acc.seconds += duration;
+    acc.segments += 1;
+    totals.set(rendition, acc);
+  }
+
+  const byHeight = new Map();
+  for (const [rendition, acc] of totals) {
+    if (acc.seconds <= 0) continue;
+    byHeight.set(renditionToHeight(rendition), {
+      bitrate: Math.round((acc.bytes * 8) / acc.seconds),
+      segments: acc.segments,
+      bytes: acc.bytes,
+      seconds: Number(acc.seconds.toFixed(3)),
+    });
+  }
+
+  return byHeight;
+};
+
+/**
+ * Gộp bậc thang bitrate của mọi lần đo thành một bảng đối chiếu.
+ *
+ * Cộng dồn byte và giây qua tất cả các lần đo rồi mới chia, chứ không lấy
+ * trung bình của các bitrate từng lần: lần đo nào tải được nhiều segment hơn
+ * thì phải có trọng số lớn hơn. Lấy trung bình cộng sẽ cho một lần đo chỉ kịp
+ * tải đúng một segment cùng tiếng nói với lần tải được ba mươi segment.
+ */
+const collectLadderComparison = (rawLogs) => {
+  const advertised = new Map();
+  const totals = new Map();
+
+  for (const log of rawLogs || []) {
+    for (const [height, bitrate] of Object.entries(log.bitrateLadder || {})) {
+      advertised.set(Number(height), bitrate);
+    }
+
+    for (const [height, stats] of Object.entries(log.measuredBitrateLadder || {})) {
+      const key = Number(height);
+      const acc = totals.get(key) || { bytes: 0, seconds: 0, segments: 0 };
+      acc.bytes += stats.bytes || 0;
+      acc.seconds += stats.seconds || 0;
+      acc.segments += stats.segments || 0;
+      totals.set(key, acc);
+    }
+  }
+
+  const heights = [...new Set([...advertised.keys(), ...totals.keys()])].sort((a, b) => a - b);
+
+  return heights.map((height) => {
+    const acc = totals.get(height);
+    const measured = acc && acc.seconds > 0 ? Math.round((acc.bytes * 8) / acc.seconds) : null;
+    const declared = advertised.get(height) ?? null;
+
+    return {
+      height,
+      advertised: declared,
+      measured,
+      ratio: measured !== null && declared ? measured / declared : null,
+      segments: acc ? acc.segments : 0,
+    };
+  });
+};
+
 /**
  * Một lần đo: mở trang, phát trong `durationSec`, thu nhật ký sự kiện.
  */
 const collectOnce = async (context, url, durationSec) => {
   const page = await context.newPage();
   const segmentRequests = [];
+  const segmentBytes = [];
+  const segmentDurations = new Map(); // rendition → (tên tệp → giây)
   let bitrateByHeight = new Map();
+
+  // Các handler `response` chạy bất đồng bộ. Nếu đóng trang trước khi chúng
+  // đọc xong thân phản hồi thì số liệu bị mất lặng lẽ, nên gom lại để chờ.
+  const pending = [];
 
   page.on('request', (request) => {
     const match = RENDITION_PATTERN.exec(request.url());
     if (match) segmentRequests.push({ rendition: match[1], url: request.url() });
   });
 
-  page.on('response', async (response) => {
-    if (!response.url().includes('master.m3u8') || !response.ok()) return;
-    try {
-      const parsed = parseMasterPlaylist(await response.text());
-      if (parsed.size > 0) bitrateByHeight = parsed;
-    } catch {
-      // Không đọc được thân phản hồi thì bỏ qua; bitrate sẽ báo null chứ
-      // không làm hỏng cả phép đo.
+  page.on('response', (response) => {
+    if (!response.ok()) return;
+    const url = response.url();
+
+    if (url.includes('master.m3u8')) {
+      pending.push(
+        response
+          .text()
+          .then((text) => {
+            const parsed = parseMasterPlaylist(text);
+            if (parsed.size > 0) bitrateByHeight = parsed;
+          })
+          // Không đọc được thân phản hồi thì bỏ qua; bitrate sẽ báo null chứ
+          // không làm hỏng cả phép đo.
+          .catch(() => {})
+      );
+      return;
+    }
+
+    const playlistMatch = RENDITION_PLAYLIST_PATTERN.exec(url);
+    if (playlistMatch) {
+      pending.push(
+        response
+          .text()
+          .then((text) => {
+            const parsed = parseRenditionPlaylist(text);
+            if (parsed.size > 0) segmentDurations.set(playlistMatch[1], parsed);
+          })
+          .catch(() => {})
+      );
+      return;
+    }
+
+    const segmentMatch = RENDITION_PATTERN.exec(url);
+    if (segmentMatch) {
+      // Ưu tiên `content-length`: rẻ hơn nhiều so với giữ lại thân phản hồi
+      // của hàng trăm segment, và CloudFront luôn đặt header này.
+      const declared = Number(response.headers()['content-length']);
+      if (Number.isFinite(declared) && declared > 0) {
+        segmentBytes.push({ rendition: segmentMatch[1], file: segmentMatch[2], bytes: declared });
+        return;
+      }
+      pending.push(
+        response
+          .body()
+          .then((buffer) => {
+            segmentBytes.push({
+              rendition: segmentMatch[1],
+              file: segmentMatch[2],
+              bytes: buffer.length,
+            });
+          })
+          .catch(() => {})
+      );
     }
   });
 
@@ -227,17 +418,56 @@ const collectOnce = async (context, url, durationSec) => {
   }));
 
   const endTime = await page.evaluate(() => performance.now() / 1000);
+
+  // Phải chờ TRƯỚC khi đóng trang: đóng rồi thì không đọc được thân phản hồi
+  // nữa, và `response.body()` sẽ ném lỗi thay vì trả về dữ liệu.
+  await Promise.all(pending);
   await page.close();
+
+  const measuredByHeight = measureRenditionBitrates(segmentBytes, segmentDurations);
 
   // Gắn bitrate vào từng lần đổi mức. Làm ở đây chứ không làm trong trang, vì
   // master playlist chỉ đọc được từ phía Playwright.
-  const events = log.events.map((event) =>
-    event.type === 'levelSwitched'
-      ? { ...event, bitrate: bitrateByHeight.get(event.height) ?? null }
-      : event
-  );
+  //
+  // `bitrate` — trường mà metrics.js dùng — ưu tiên giá trị ĐO ĐƯỢC, chỉ lùi
+  // về giá trị khai báo khi không tải đủ segment để đo (chẳng hạn một mức chỉ
+  // hiển thị thoáng qua). Cả hai đều được ghi lại để báo cáo đối chiếu được.
+  const events = log.events.map((event) => {
+    if (event.type !== 'levelSwitched') return event;
+
+    const advertised = bitrateByHeight.get(event.height) ?? null;
+    const measured = measuredByHeight.get(event.height)?.bitrate ?? null;
+
+    return {
+      ...event,
+      bitrate: measured ?? advertised,
+      measuredBitrate: measured,
+      advertisedBitrate: advertised,
+      bitrateSource: measured !== null ? 'measured' : 'advertised',
+    };
+  });
 
   const missingBitrate = events.filter((e) => e.type === 'levelSwitched' && e.bitrate === null);
+  const warnings = [];
+
+  if (missingBitrate.length) {
+    warnings.push(`${missingBitrate.length} lần đổi mức không tra được bitrate`);
+  }
+
+  // Chênh lệch giữa con số khai báo và con số đo được là thứ phải nêu trong
+  // báo cáo, không phải thứ để lặng lẽ nuốt đi.
+  for (const [height, stats] of measuredByHeight) {
+    const advertised = bitrateByHeight.get(height);
+    if (!advertised) continue;
+    const ratio = stats.bitrate / advertised;
+    if (Math.abs(1 - ratio) > 0.1) {
+      warnings.push(
+        `${height}p: đo được ${Math.round(stats.bitrate / 1000)} kbit/s ` +
+          `so với ${Math.round(advertised / 1000)} kbit/s khai trong master playlist ` +
+          `(${(ratio * 100).toFixed(0)}%, ${stats.segments} segment)`
+      );
+    }
+  }
 
   return {
     events,
@@ -246,9 +476,8 @@ const collectOnce = async (context, url, durationSec) => {
     segmentRequests,
     renditionsDownloaded: [...new Set(segmentRequests.map((s) => s.rendition))],
     bitrateLadder: Object.fromEntries(bitrateByHeight),
-    warnings: missingBitrate.length
-      ? [`${missingBitrate.length} lần đổi mức không tra được bitrate trong master playlist`]
-      : [],
+    measuredBitrateLadder: Object.fromEntries(measuredByHeight),
+    warnings,
   };
 };
 
@@ -383,6 +612,33 @@ const main = async () => {
   console.log(`  Số lần đổi bitrate : ${agg.bitrateSwitchCount ?? 'n/a'} (trung vị)`);
   console.log(`  Bitrate trung bình : ${agg.averageBitrateBps ? (agg.averageBitrateBps / 1000).toFixed(0) + ' kbit/s' : 'n/a'}`);
 
+  // Bảng đối chiếu "khai báo so với đo được". In ra vì đây là chỗ dễ viết sai
+  // nhất trong báo cáo: BANDWIDTH của master playlist là con số MỤC TIÊU lấy
+  // từ config của transcoder, không phải sản phẩm thật của bộ mã hoá.
+  const ladder = collectLadderComparison(rawLogs);
+  if (ladder.length > 0) {
+    console.log('');
+    console.log('  Bậc thang bitrate (khai báo → đo được từ số byte thật):');
+    for (const rung of ladder) {
+      const advertised = rung.advertised ? (rung.advertised / 1000).toFixed(0) : 'n/a';
+      const measured = rung.measured ? (rung.measured / 1000).toFixed(0) : 'n/a';
+      const share = rung.ratio ? `${(rung.ratio * 100).toFixed(0)}%` : '—';
+      console.log(
+        `    ${String(rung.height + 'p').padEnd(6)} ${String(advertised).padStart(5)} → ` +
+          `${String(measured).padStart(5)} kbit/s  (${share}, ${rung.segments} segment)`
+      );
+    }
+
+    const understated = ladder.filter((r) => r.ratio !== null && r.ratio < 0.9);
+    if (understated.length > 0) {
+      console.log('');
+      console.log('  ⚠️  Bitrate thật thấp hơn con số khai báo trên ' +
+        `${understated.length}/${ladder.length} bậc thang.`);
+      console.log('     Kết quả ở trên đã dùng giá trị ĐO ĐƯỢC. Báo cáo không được');
+      console.log('     trích BANDWIDTH của master playlist làm "bitrate thực nhận".');
+    }
+  }
+
   if (agg.runsWithStalls > 0 && agg.rebufferingRatio === 0) {
     console.log('');
     console.log(`  ⚠️  Trung vị bằng 0 nhưng ${agg.runsWithStalls}/${agg.runs} lần đo CÓ nghẽn.`);
@@ -408,6 +664,7 @@ const main = async () => {
       'điểm MOS phải do bản cài đặt tham chiếu itu-p1203 tính, kịch bản này ' +
       'không tự tính MOS.',
     aggregate: agg,
+    bitrateLadder: ladder,
     runsDetail: summaries,
     p1203Mode0Input: rawLogs.map((log) => toP1203Mode0Input(log)),
   };
@@ -424,4 +681,19 @@ if (require.main === module) {
   });
 }
 
-module.exports = { runMeasurement, collectOnce, NETWORK_PROFILES, RECORDER };
+module.exports = {
+  runMeasurement,
+  collectOnce,
+  NETWORK_PROFILES,
+  RECORDER,
+  // Các hàm thuần dưới đây tách riêng để test được mà không cần Chromium.
+  // `require('playwright')` nằm bên trong `runMeasurement`, không ở đầu tệp,
+  // nên nạp module này trong Jest không kéo theo trình duyệt.
+  parseMasterPlaylist,
+  parseRenditionPlaylist,
+  collectLadderComparison,
+  measureRenditionBitrates,
+  renditionToHeight,
+  RENDITION_PATTERN,
+  RENDITION_PLAYLIST_PATTERN,
+};

@@ -23,9 +23,13 @@ Hai bộ **bổ sung cho nhau**, không thay thế nhau.
 
 ```
 metrics.js       Tính toán thuần — không phụ thuộc Playwright, test được không cần trình duyệt
-metrics.test.js  29 test khoá lại định nghĩa của từng chỉ số
+metrics.test.js  34 test khoá lại định nghĩa của từng chỉ số
 collect.js       Điều khiển Playwright, sinh ra nhật ký sự kiện cho metrics.js
+bitrate.test.js  30 test khoá lại cách quy đổi số byte đã tải thành bitrate
 ```
+
+`collect.js` gọi `require('playwright')` bên trong hàm chứ không ở đầu tệp, nên các hàm
+thuần của nó (đọc playlist, quy đổi bitrate) vẫn test được mà không cần cài Chromium.
 
 Tách đôi như vậy để phần dễ sai nhất — **định nghĩa** của từng chỉ số — được kiểm chứng bằng
 dữ liệu dựng sẵn, không lệ thuộc vào việc mạng hôm đó nhanh hay chậm.
@@ -110,6 +114,28 @@ lần đổi mức.
 
 **Bitrate trung bình có trọng số thời gian.** Phát 1080p 1 giây rồi 360p 59 giây mà lấy trung
 bình cộng hai mức thì không phản ánh thứ người xem nhận được.
+
+**Bitrate lấy từ số byte thật, không lấy từ BANDWIDTH.** `transcoder/src/transcoder.js` sinh
+`BANDWIDTH` bằng cách cộng cứng hai giá trị trong config (`videoBitrate + audioBitrate`), không
+hề đo lại sản phẩm thật. x264 ở chế độ ABR chỉ *bám* mục tiêu, và mức chênh **không đồng đều
+giữa các bậc thang**. Đo thử 30 giây trên một clip dọc 576×1024 — đúng loại nội dung đang có
+trong thư viện:
+
+| Bậc | Khai trong master | Đo được | Đạt |
+|---|---|---|---|
+| 360p | 464 kbit/s | 421 | 91% |
+| 720p | 1.628 kbit/s | 1.340 | 82% |
+| 1080p | 4.192 kbit/s | 3.242 | 77% |
+
+Lấy `BANDWIDTH` làm "bitrate thực nhận" vì thế thổi phồng kết quả khoảng 20–25%. Sai lệch tăng
+dần theo bậc nên **chạy thêm bao nhiêu lần đo cũng không trung hoà được** — đây là sai số hệ
+thống, không phải nhiễu ngẫu nhiên. Vì vậy bộ đo cộng số byte thật của từng segment rồi chia cho
+tổng `#EXTINF` của chính những segment đó, và in ra bảng đối chiếu "khai báo → đo được" sau mỗi
+lượt chạy.
+
+Mẫu số là thời lượng của các segment đã tải, **không phải** thời gian của phiên đo: trình phát
+luôn tải trước, nên chia cho thời gian phiên sẽ trộn độ sâu bộ đệm vào con số. Thứ P.1203 cần là
+bitrate của representation, và nó được lấy trọng số theo thời gian hiển thị ở bước sau.
 
 **Một lần chạy khởi động bị loại.** Lần tải trang đầu sau khi mở trình duyệt luôn chậm hơn hẳn
 (JIT chưa nóng, cache DNS/TLS còn rỗng).
