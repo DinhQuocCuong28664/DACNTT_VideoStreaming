@@ -78,7 +78,7 @@
     "remaining": "Còn lại khoảng: {{time}}",
     "uploaded": "Đã tải: {{loaded}} / {{total}}",
     "errorCancelled": "Đã hủy tải lên video.",
-    "errorFormat": "Định dạng không hỗ trợ. Vui lòng chọn file .mp4, .mov, .avi hoặc .mkv",
+    "errorFormat": "Định dạng không hỗ trợ. Vui lòng chọn file .mp4, .mov, .avi, .mkv, .webm hoặc .mpeg",
     "errorTooLarge": "File vượt quá dung lượng tối đa {{max}}. File bạn chọn có dung lượng {{actual}}.",
     "errorNoTitle": "Vui lòng điền tiêu đề video",
     "errorFailed": "Upload thất bại. Vui lòng thử lại."

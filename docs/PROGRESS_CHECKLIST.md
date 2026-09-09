@@ -22,7 +22,8 @@
 - [x] Trình phát video tuỳ biến với **Hover Preview Tooltip** hiển thị mốc thời gian và ảnh đại
       diện xem trước bám theo vị trí con trỏ chuột trên thanh tua (timeline scrubber)
 - [x] **Gợi ý video liên quan (Related Videos)** ở thanh bên trang xem video (`GET /api/videos/:id/related`),
-      thuật toán đề xuất thông minh theo tag và danh mục tương đồng (kèm bù video mới nhất); bảo
+      thuật toán đề xuất theo tag và danh mục tương đồng, sắp theo lượt xem giảm dần (kèm bù
+      bằng video xem nhiều nhất khi chưa đủ số lượng); bảo
       vệ 2 lớp: khoá cứng bộ lọc `visibility: 'public'` và `status: 'READY'`, đồng thời đóng kín
       lỗ hổng existence oracle (trả 404 cho video nguồn không có quyền xem thay vì lộ sự tồn tại)
 - [x] Tự động chuyển sang phát video ngay khi transcode xong, không cần F5 (polling trạng thái)
@@ -30,7 +31,8 @@
 - [x] Trang cá nhân (Channel) — quản lý video, xem lượt xem, theo dõi trạng thái xử lý, xoá video
 - [x] **Quản lý video nâng cao**: Menu 3 chấm (3-dot dropdown) thao tác nhanh đổi trạng thái hiển
       thị trực tiếp (Public, Unlisted, Private); Modal chỉnh sửa video (Edit Modal) giao diện
-      glassmorphic hỗ trợ sửa Tiêu đề, Mô tả, Danh mục, Tags và Quyền riêng tư ngay trên web
+      glassmorphic hỗ trợ sửa Tiêu đề, Mô tả, Danh mục và Quyền riêng tư ngay trên web
+      (Tags vẫn chỉ đặt được ở biểu mẫu tải lên — `handleSaveEdit` không gửi trường này)
 - [x] Tìm kiếm & lọc video, Like/Dislike, Bình luận, Danh mục, Đa ngôn ngữ (i18n), Responsive Mobile
 - [x] Email thông báo video chuyển mã xong (READY) hoặc thất bại (ERROR) — code có sẵn từ trước
       nhưng **chưa từng gửi được** do thiếu `ref: 'User'` trong schema transcoder khiến populate
