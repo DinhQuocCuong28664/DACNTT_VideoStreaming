@@ -1,0 +1,16 @@
+{
+  "name": "vidshare-qoe-harness",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Đo QoE thật (tỉ lệ nghẽn, số lần đổi bitrate, bitrate trung bình) bằng Playwright điều khiển trình phát hls.js của VidShare",
+  "main": "collect.js",
+  "scripts": {
+    "test": "jest",
+    "setup": "npm install && npx playwright install chromium",
+    "measure": "node collect.js"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "playwright": "^1.49.0"
+  }
+}
