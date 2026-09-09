@@ -217,16 +217,29 @@ const renditionToHeight = (name) => Number(name.replace(/p$/, ''));
  * `transcoder/src/transcoder.js` sinh BANDWIDTH bằng cách cộng cứng hai giá
  * trị đặt trong config (`videoBitrate + audioBitrate`), không hề đo lại sản
  * phẩm thật. x264 chạy ở chế độ ABR thì bám mục tiêu chứ không đạt đúng mục
- * tiêu, và mức chênh KHÔNG đồng đều giữa các bậc thang. Đo thử 30 giây trên
- * một clip dọc 576×1024 (đúng loại nội dung đang có trong thư viện):
+ * tiêu, và mức chênh KHÔNG đồng đều giữa các bậc thang.
  *
- *   360p   khai 464 kbit/s   thật 421   → 91%
- *   720p   khai 1628         thật 1340  → 82%
- *   1080p  khai 4192         thật 3242  → 77%
+ * Đo trên bản chuyển mã thật của một clip dọc 576×1024 dài 4:23 — đúng loại
+ * nội dung đang có trong thư viện (video 6aa1dd6f822dec77e188e56b, 44 segment
+ * mỗi rendition):
  *
- * Lấy BANDWIDTH làm "bitrate thực nhận" vì thế thổi phồng kết quả khoảng
- * 20–25%, và vì sai lệch tăng dần theo bậc nên chạy thêm bao nhiêu lần đo
- * cũng không trung hoà được — đây là sai số hệ thống, không phải nhiễu.
+ *            khai báo   TB thật   đỉnh thật   đỉnh/khai
+ *   360p       464       514        637         137%
+ *   720p      1628      1714       2148         132%
+ *   1080p     4192      4338       5390         129%
+ *
+ * Chiều lệch ở đây quan trọng hơn độ lớn. RFC 8216 §4.3.4.2 quy định BANDWIDTH
+ * PHẢI là bitrate ĐỈNH của segment, tức một cận trên. Con số đang khai lại nằm
+ * DƯỚI đỉnh thật 29–37%, tức là vi phạm đúng chiều nguy hiểm: hls.js dùng
+ * BANDWIDTH để phán đoán một mức có vừa băng thông không, nên nó tưởng 1080p
+ * cần 4192 kbit/s trong khi segment nặng nhất đòi 5390. Trên đường truyền
+ * quanh ngưỡng đó, trình phát chọn 1080p rồi nghẽn.
+ *
+ * Mức chênh phụ thuộc nội dung và có thể đảo chiều: một lát cắt 30 giây của
+ * chính clip trên, mã hoá ra MP4, cho kết quả 77–91% — tức là thấp hơn con số
+ * khai báo. Hai khác biệt giải thích chuyện đó: 30 giây không đại diện cho
+ * 4:23, và MP4 không mang phần bao gói của MPEG-TS. Bài học là KHÔNG suy ra
+ * hướng lệch từ một mẫu ngắn, và cũng không tin con số khai báo.
  *
  * ────────────────────────────────────────────────────────────────────────
  * ĐÂY LÀ BITRATE CỦA BẢN MÃ HOÁ, KHÔNG PHẢI THÔNG LƯỢNG MẠNG
@@ -629,13 +642,29 @@ const main = async () => {
       );
     }
 
-    const understated = ladder.filter((r) => r.ratio !== null && r.ratio < 0.9);
-    if (understated.length > 0) {
+    // Hai chiều lệch có hệ quả khác hẳn nhau, nên tách riêng.
+    //
+    // Vượt lên trên là chiều NGUY HIỂM: RFC 8216 §4.3.4.2 bắt BANDWIDTH phải
+    // là bitrate đỉnh của segment, tức một cận trên. Nếu ngay cả bitrate TRUNG
+    // BÌNH đã vượt con số khai, thì đỉnh chắc chắn vượt — và hls.js vốn dựa
+    // vào BANDWIDTH để đoán một mức có vừa băng thông hay không sẽ chọn nhầm
+    // mức quá nặng rồi nghẽn.
+    const overshoot = ladder.filter((r) => r.ratio !== null && r.ratio > 1);
+    const undershoot = ladder.filter((r) => r.ratio !== null && r.ratio < 0.9);
+
+    if (overshoot.length > 0) {
       console.log('');
-      console.log('  ⚠️  Bitrate thật thấp hơn con số khai báo trên ' +
-        `${understated.length}/${ladder.length} bậc thang.`);
-      console.log('     Kết quả ở trên đã dùng giá trị ĐO ĐƯỢC. Báo cáo không được');
-      console.log('     trích BANDWIDTH của master playlist làm "bitrate thực nhận".');
+      console.log(`  ⚠️  ${overshoot.length}/${ladder.length} bậc thang có bitrate thật CAO HƠN`);
+      console.log('     con số khai trong master playlist. RFC 8216 §4.3.4.2 bắt BANDWIDTH');
+      console.log('     phải là bitrate ĐỈNH của segment, tức cận trên — khai thấp hơn thực');
+      console.log('     tế khiến hls.js chọn mức quá nặng so với băng thông rồi nghẽn.');
+    }
+
+    if (undershoot.length > 0) {
+      console.log('');
+      console.log(`  ⚠️  ${undershoot.length}/${ladder.length} bậc thang có bitrate thật thấp hơn`);
+      console.log('     con số khai báo. Kết quả ở trên đã dùng giá trị ĐO ĐƯỢC; báo cáo');
+      console.log('     không được trích BANDWIDTH làm "bitrate thực nhận".');
     }
   }
 
