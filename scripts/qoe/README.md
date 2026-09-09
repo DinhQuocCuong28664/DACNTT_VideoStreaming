@@ -25,7 +25,7 @@ Hai bộ **bổ sung cho nhau**, không thay thế nhau.
 metrics.js       Tính toán thuần — không phụ thuộc Playwright, test được không cần trình duyệt
 metrics.test.js  34 test khoá lại định nghĩa của từng chỉ số
 collect.js       Điều khiển Playwright, sinh ra nhật ký sự kiện cho metrics.js
-bitrate.test.js  30 test khoá lại cách quy đổi số byte đã tải thành bitrate
+bitrate.test.js  31 test khoá lại cách quy đổi số byte đã tải thành bitrate
 ```
 
 `collect.js` gọi `require('playwright')` bên trong hàm chứ không ở đầu tệp, nên các hàm
@@ -117,21 +117,33 @@ bình cộng hai mức thì không phản ánh thứ người xem nhận đượ
 
 **Bitrate lấy từ số byte thật, không lấy từ BANDWIDTH.** `transcoder/src/transcoder.js` sinh
 `BANDWIDTH` bằng cách cộng cứng hai giá trị trong config (`videoBitrate + audioBitrate`), không
-hề đo lại sản phẩm thật. x264 ở chế độ ABR chỉ *bám* mục tiêu, và mức chênh **không đồng đều
-giữa các bậc thang**. Đo thử 30 giây trên một clip dọc 576×1024 — đúng loại nội dung đang có
-trong thư viện:
+hề đo lại sản phẩm thật. x264 ở chế độ ABR chỉ *bám* mục tiêu chứ không đạt đúng mục tiêu, và
+mức chênh **không đồng đều giữa các bậc thang**.
 
-| Bậc | Khai trong master | Đo được | Đạt |
-|---|---|---|---|
-| 360p | 464 kbit/s | 421 | 91% |
-| 720p | 1.628 kbit/s | 1.340 | 82% |
-| 1080p | 4.192 kbit/s | 3.242 | 77% |
+Đo trên bản chuyển mã thật của clip dọc 576×1024 dài 4:23 (video `6aa1dd6f822dec77e188e56b`,
+44 segment mỗi rendition, lấy trực tiếp từ S3):
 
-Lấy `BANDWIDTH` làm "bitrate thực nhận" vì thế thổi phồng kết quả khoảng 20–25%. Sai lệch tăng
-dần theo bậc nên **chạy thêm bao nhiêu lần đo cũng không trung hoà được** — đây là sai số hệ
-thống, không phải nhiễu ngẫu nhiên. Vì vậy bộ đo cộng số byte thật của từng segment rồi chia cho
-tổng `#EXTINF` của chính những segment đó, và in ra bảng đối chiếu "khai báo → đo được" sau mỗi
-lượt chạy.
+| Bậc | Khai trong master | TB thật | Đỉnh thật | Đỉnh/Khai |
+|---|---|---|---|---|
+| 360p | 464 kbit/s | 514 | 637 | **137%** |
+| 720p | 1.628 kbit/s | 1.714 | 2.148 | **132%** |
+| 1080p | 4.192 kbit/s | 4.338 | 5.390 | **129%** |
+
+⚠️ **Chiều lệch quan trọng hơn độ lớn.** RFC 8216 §4.3.4.2 quy định `BANDWIDTH` PHẢI là bitrate
+**đỉnh** của segment, tức một cận trên. Con số đang khai nằm *dưới* đỉnh thật 29–37% — vi phạm
+đúng chiều nguy hiểm. hls.js dùng `BANDWIDTH` để phán đoán một mức có vừa băng thông hay không,
+nên nó tưởng 1080p cần 4.192 kbit/s trong khi segment nặng nhất đòi 5.390. Trên đường truyền
+quanh ngưỡng đó, trình phát chọn 1080p rồi nghẽn.
+
+**Mức chênh phụ thuộc nội dung và có thể đảo chiều.** Một lát cắt 30 giây của chính clip trên,
+mã hoá ra MP4, cho 77–91% — tức là *thấp hơn* con số khai báo, ngược hẳn với bảng trên. Hai khác
+biệt giải thích điều đó: 30 giây không đại diện cho 4:23, và MP4 không mang phần bao gói của
+MPEG-TS. Bài học ghi lại ở đây vì suýt nữa nó thành một câu sai trong báo cáo: **không suy ra
+hướng lệch từ một mẫu ngắn**, và cũng không tin con số khai báo.
+
+Vì vậy bộ đo cộng số byte thật của từng segment rồi chia cho tổng `#EXTINF` của chính những
+segment đó, in ra bảng đối chiếu "khai báo → đo được" sau mỗi lượt chạy, và cảnh báo riêng cho
+từng chiều lệch.
 
 Mẫu số là thời lượng của các segment đã tải, **không phải** thời gian của phiên đo: trình phát
 luôn tải trước, nên chia cho thời gian phiên sẽ trộn độ sâu bộ đệm vào con số. Thứ P.1203 cần là

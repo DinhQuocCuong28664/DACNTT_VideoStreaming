@@ -212,8 +212,10 @@ describe('measureRenditionBitrates', () => {
   });
 
   it('phát hiện được mức chênh so với BANDWIDTH khai báo', () => {
-    // Tái hiện số đo thật trên clip dọc 576×1024: khai 4192 kbit/s, thật
-    // 3242 kbit/s. Đây chính là sai lệch mà bộ đo phải bộc lộ ra.
+    // Tái hiện một lát cắt 30 giây mã hoá ra MP4: khai 4192 kbit/s, thật
+    // 3242. Bản chuyển mã đầy đủ dạng MPEG-TS lại lệch NGƯỢC chiều (4338
+    // trung bình, 5390 đỉnh) — xem bảng trong README. Giữ cả hai chiều trong
+    // bộ test vì bộ đo phải bộc lộ được lệch theo bất kỳ chiều nào.
     const bytes = Math.round((3_242_000 * 6) / 8);
     const result = measureRenditionBitrates(
       [{ rendition: '1080p', file: 'segment_000.ts', bytes }],
@@ -288,6 +290,23 @@ describe('collectLadderComparison', () => {
     expect(result[0].height).toBe(720);
     expect(result[0].advertised).toBeNull();
     expect(result[0].ratio).toBeNull();
+  });
+
+  it('bộc lộ được bậc thang có bitrate VƯỢT con số khai báo', () => {
+    // Số liệu thật của video 6aa1dd6f822dec77e188e56b: 1080p khai 4192 kbit/s
+    // nhưng trung bình thật là 4338. RFC 8216 §4.3.4.2 bắt BANDWIDTH phải là
+    // cận trên của bitrate segment, nên tỉ lệ > 1 là vi phạm chuẩn — và là
+    // chiều lệch khiến hls.js chọn mức quá nặng rồi nghẽn.
+    const bytes = Math.round((4_338_000 * 263.433) / 8);
+    const result = collectLadderComparison([
+      log(
+        { 1080: 4_192_000 },
+        { 1080: { bitrate: 4_338_000, bytes, seconds: 263.433, segments: 44 } }
+      ),
+    ]);
+
+    expect(result[0].ratio).toBeGreaterThan(1);
+    expect(result[0].ratio).toBeCloseTo(1.035, 2);
   });
 
   it('chịu được danh sách rỗng và giá trị thiếu', () => {
