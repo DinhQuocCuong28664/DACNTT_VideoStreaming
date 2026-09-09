@@ -24,10 +24,12 @@
 
 ### 5. Các chức năng chính
 - [x] **Xác thực JWT:** Đăng ký, Đăng nhập, Quên/Đổi mật khẩu (`authRoutes.js`).
-- [x] **Direct S3 Upload:** Pre-signed PUT URL (`POST /api/videos/initiate-upload`) tạo bản ghi DB trước tránh race condition.
-- [x] **Xem video HLS & ABR:** Phát `.m3u8` qua `HLS.js`, chuyển đổi linh hoạt 360p / 720p / 1080p.
-- [x] **Chia sẻ video:** Chia sẻ link công khai hoặc riêng tư, có nút đổi chế độ hiển thị ngay trên trang kênh cá nhân. Quyền riêng tư được thực thi ở cả tầng API lẫn tầng CDN.
-- [x] **Trang cá nhân Channel:** Quản lý video, đếm lượt xem, xóa video (xóa sạch DB & S3 raw/HLS).
+- [x] **Direct S3 Upload & Telemetry:** Pre-signed PUT URL (`POST /api/videos/initiate-upload`) tạo bản ghi DB trước tránh race condition. Giao diện tích hợp telemetry thời gian thực (tốc độ tải lên MB/s, thời gian ước tính còn lại ETA, phần trăm tiến độ, dung lượng đã truyền tải).
+- [x] **Hủy tải lên an toàn & Dọn dẹp bản ghi nháp:** Tích hợp nút Cancel Upload (`AbortController` ngắt ngay kết nối PUT S3). Hàm `discardDraftVideo()` tự động dọn dẹp bản ghi nháp `UPLOADING` trên MongoDB ở cả 3 lối thoát (Người dùng hủy, Đổi file khác, Lỗi mạng/S3 hỏng) để triệt tiêu rò rỉ bản ghi mồ côi.
+- [x] **Xem video HLS, ABR & Scrubber Hover Tooltip:** Phát `.m3u8` qua `HLS.js`, chuyển đổi linh hoạt 360p / 720p / 1080p. Thanh tua thời gian (timeline scrubber) trang bị tooltip trực quan bám theo con trỏ chuột hiển thị mốc thời gian và ảnh đại diện xem trước.
+- [x] **Gợi ý video liên quan (Related Videos):** Endpoint `GET /api/videos/:id/related?limit=6` và sidebar phản hồi nhanh trên trang xem video. Thuật toán gợi ý thông minh dựa trên tag và danh mục tương đồng (kèm bù video mới nhất); bảo vệ 2 lớp: khoá cứng bộ lọc `visibility: 'public'` và `status: 'READY'`, đồng thời đóng kín lỗ hổng existence oracle (trả HTTP 404 cho video nguồn không có quyền xem thay vì lộ sự tồn tại).
+- [x] **Chia sẻ video & Quyền riêng tư 2 lớp:** Chia sẻ link công khai hoặc riêng tư. Quyền riêng tư được kiểm soát đồng bộ ở cả tầng Backend API lẫn tầng CDN Edge Location qua CloudFront Signed Cookies.
+- [x] **Trang cá nhân & Quản lý video nâng cao (Channel Management):** Menu 3 chấm (3-dot dropdown) hiện đại cho từng video, cho phép đổi quyền hiển thị trực tiếp (Public / Unlisted / Private). Modal chỉnh sửa chi tiết (Edit Modal) giao diện glassmorphic hỗ trợ sửa Tiêu đề, Mô tả, Danh mục, Tags và Quyền riêng tư ngay trên web. Hỗ trợ xóa sạch DB & S3 raw/HLS.
 - [x] **Search & Filter:** Tìm kiếm video theo từ khóa tiêu đề, mô tả, tags (Escape Regex an toàn).
 - [x] **Video Categories:** Lọc và Upload theo các danh mục: Công nghệ, Giáo dục, Giải trí, Âm nhạc, Game, Khác.
 - [x] **Tương tác Người dùng:** Nút Like / Dislike tương tác tức thì.
@@ -52,9 +54,10 @@
 - [x] AWS Batch Fargate (`FARGATE_SPOT` tiết kiệm 70% chi phí).
 
 ### 9. CI/CD Pipeline & DevSecOps
-- [x] `ci-backend.yml`: Jest Unit Tests (105/105 pass trên 8 test suite) + ESLint (0 errors) + Gitleaks + Trivy SCA Scan.
-  - Phạm vi kiểm thử: `videoService`, `s3Service`, `authService`, `cloudfrontService`, middleware xác thực JWT, kiểm soát quyền riêng tư video, và kiểm tra dữ liệu đầu vào khi tải lên (mức HTTP với `supertest`).
+- [x] `ci-backend.yml`: Jest Unit Tests (115/115 pass trên 9 test suite) + ESLint (0 errors) + Gitleaks + Trivy SCA Scan.
+  - Phạm vi kiểm thử: `videoService`, `s3Service`, `authService`, `cloudfrontService`, `relatedVideos` (10 tests kiểm thử phân quyền, lọc public/READY và chống existence oracle), `forgotPassword`, middleware xác thực JWT, kiểm soát quyền riêng tư video, và kiểm tra dữ liệu đầu vào khi tải lên (mức HTTP với `supertest`).
 - [x] `ci-transcoder.yml`: Jest Unit Tests (12/12 pass — `dbHandler` idempotency, `emailService`) + ESLint + Gitleaks + Build Docker Image + Trivy Scan + ECR Push + Update Job Definition.
+- [x] **Toàn bộ test suite tự động:** Đạt **127/127 tests PASS** trên 11 test suites toàn dự án (115 backend + 12 transcoder).
 - [x] `ci-frontend.yml`: oxlint + Build Vite + Deploy S3 Static Hosting.
 - [x] `security-scan.yml`: Gitleaks Secret Detection + Trivy Dependency Scan trên mọi Pull Request.
 - [x] `cd-staging.yml` & `cd-deploy.yml`: Triển khai môi trường Staging (`develop`) và Production (`main`).
@@ -94,4 +97,4 @@
 - [x] **Bộ số liệu thực nghiệm đầy đủ 100%:** Đo kiểm TTFF đa vùng (6 regions), thời gian chuyển mã (100MB, 500MB, 1GB), so sánh scaling 1 vCPU vs 4 vCPU, và Stress Test đồng thời 100 video với k6 / Node.js. Sẵn sàng 100% để bảo vệ.
 
 ---
-> 📌 **Trạng thái cập nhật (2026-09-08):** Toàn bộ 15/15 mục đã hoàn thành 100%. CloudFront video CDN đã triển khai và đo kiểm đa vùng; Stress Test đồng thời 100 video đã thực thi hoàn tất với dữ liệu thực nghiệm đầy đủ; toàn bộ test suite backend (105/105) và transcoder (12/12) đều pass.
+> 📌 **Trạng thái cập nhật (2026-09-09):** Toàn bộ 15/15 mục đã hoàn thành 100%. CloudFront video CDN đã triển khai và đo kiểm đa vùng; Stress Test đồng thời 100 video đã thực thi hoàn tất với dữ liệu thực nghiệm đầy đủ; toàn bộ test suite backend (115/115) và transcoder (12/12) đều pass (tổng 127/127 tests tự động).

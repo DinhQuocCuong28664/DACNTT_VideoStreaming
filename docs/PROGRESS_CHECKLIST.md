@@ -12,15 +12,32 @@
       hổng account takeover đã có CVE thực tế ở các thư viện auth khác)
 - [x] Liên kết tài khoản Google từ trang Settings (sau khi đã đăng nhập bằng mật khẩu)
 - [x] Đổi ảnh đại diện (avatar) qua Settings — presigned PUT thẳng lên S3
-- [x] Upload video trực tiếp lên S3 bằng Pre-signed URL
+- [x] Upload video trực tiếp lên S3 bằng Pre-signed URL kèm **telemetry thời gian thực** (tốc độ
+      tải MB/s, thời gian ước tính còn lại ETA, dung lượng đã truyền tải) và nút **Hủy tải lên**
+      an toàn ngắt kết nối S3 PUT lập tức qua `AbortController`
+- [x] **Tự động dọn dẹp bản ghi nháp `UPLOADING` (`discardDraftVideo()`)** tại cả 3 lối thoát khỏi
+      luồng tải lên (bấm Hủy, chọn tệp khác, và tải lên hỏng do rớt mạng/S3 lỗi) — ngăn triệt để
+      tình trạng rò rỉ bản ghi nháp mồ côi khi người dùng bấm Upload lại
 - [x] Xem video bằng HLS.js + Adaptive Bitrate Streaming (360p/720p/1080p)
+- [x] Trình phát video tuỳ biến với **Hover Preview Tooltip** hiển thị mốc thời gian và ảnh đại
+      diện xem trước bám theo vị trí con trỏ chuột trên thanh tua (timeline scrubber)
+- [x] **Gợi ý video liên quan (Related Videos)** ở thanh bên trang xem video (`GET /api/videos/:id/related`),
+      thuật toán đề xuất thông minh theo tag và danh mục tương đồng (kèm bù video mới nhất); bảo
+      vệ 2 lớp: khoá cứng bộ lọc `visibility: 'public'` và `status: 'READY'`, đồng thời đóng kín
+      lỗ hổng existence oracle (trả 404 cho video nguồn không có quyền xem thay vì lộ sự tồn tại)
 - [x] Tự động chuyển sang phát video ngay khi transcode xong, không cần F5 (polling trạng thái)
-- [x] Chia sẻ video công khai / riêng tư
-- [x] Trang cá nhân (Channel) — quản lý video, xem lượt xem, xoá video
-- [x] Tìm kiếm & lọc video, Like/Dislike, Bình luận, Danh mục, Responsive Mobile
+- [x] Chia sẻ video công khai / riêng tư — phân quyền 2 lớp đồng bộ ở cả Backend API và CloudFront Signed Cookies
+- [x] Trang cá nhân (Channel) — quản lý video, xem lượt xem, theo dõi trạng thái xử lý, xoá video
+- [x] **Quản lý video nâng cao**: Menu 3 chấm (3-dot dropdown) thao tác nhanh đổi trạng thái hiển
+      thị trực tiếp (Public, Unlisted, Private); Modal chỉnh sửa video (Edit Modal) giao diện
+      glassmorphic hỗ trợ sửa Tiêu đề, Mô tả, Danh mục, Tags và Quyền riêng tư ngay trên web
+- [x] Tìm kiếm & lọc video, Like/Dislike, Bình luận, Danh mục, Đa ngôn ngữ (i18n), Responsive Mobile
 - [x] Email thông báo video chuyển mã xong (READY) hoặc thất bại (ERROR) — code có sẵn từ trước
       nhưng **chưa từng gửi được** do thiếu `ref: 'User'` trong schema transcoder khiến populate
       luôn trả `email: undefined`; đã sửa và verify bằng data thật trong phiên này
+- [x] **Bộ kiểm thử tự động toàn diện:** 127/127 tests PASS trên 11 test suites toàn dự án (115
+      backend tests bao gồm `relatedVideos`, `cloudfrontService`, `uploadValidation`, `authService`...
+      và 12 transcoder tests)
 
 ## 2. Pipeline xử lý video & Hạ tầng (README §6–§10)
 
