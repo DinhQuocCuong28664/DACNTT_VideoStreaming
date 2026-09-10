@@ -56,8 +56,8 @@
 ### 9. CI/CD Pipeline & DevSecOps
 - [x] `ci-backend.yml`: Jest Unit Tests (115/115 pass trên 9 test suite) + ESLint (0 errors) + Gitleaks + Trivy SCA Scan.
   - Phạm vi kiểm thử: `videoService`, `s3Service`, `authService`, `cloudfrontService`, `relatedVideos` (10 tests kiểm thử phân quyền, lọc public/READY và chống existence oracle), `forgotPassword`, middleware xác thực JWT, kiểm soát quyền riêng tư video, và kiểm tra dữ liệu đầu vào khi tải lên (mức HTTP với `supertest`).
-- [x] `ci-transcoder.yml`: Jest Unit Tests (62/62 pass trên 4 test suite — `dbHandler` idempotency, `emailService`, `framerate` 32 tests kiểm tra GOP bám theo framerate thật của nguồn, `bandwidth` 18 tests kiểm tra BANDWIDTH đo từ segment thật theo RFC 8216 §4.3.4.2) + ESLint + Gitleaks + Build Docker Image + Trivy Scan + ECR Push + Update Job Definition.
-- [x] **Toàn bộ test suite tự động:** Đạt **177/177 tests PASS** trên 13 test suites toàn dự án (115 backend + 62 transcoder).
+- [x] `ci-transcoder.yml`: Jest Unit Tests (94/94 pass trên 5 test suite — `dbHandler` idempotency, `emailService`, `framerate` 32 tests kiểm tra GOP bám theo framerate thật của nguồn, `bandwidth` 18 tests kiểm tra BANDWIDTH đo từ segment thật theo RFC 8216 §4.3.4.2, `codecs` 32 tests kiểm tra chuỗi codec đọc từ luồng đã mã hoá theo RFC 6381) + ESLint + Gitleaks + Build Docker Image + Trivy Scan + ECR Push + Update Job Definition.
+- [x] **Toàn bộ test suite tự động:** Đạt **209/209 tests PASS** trên 14 test suites toàn dự án (115 backend + 94 transcoder).
 - [x] `ci-frontend.yml`: oxlint + Build Vite + Deploy S3 Static Hosting.
 - [x] `security-scan.yml`: Gitleaks Secret Detection + Trivy Dependency Scan trên mọi Pull Request.
 - [x] `cd-staging.yml` & `cd-deploy.yml`: Triển khai môi trường Staging (`develop`) và Production (`main`).
@@ -97,4 +97,4 @@
 - [x] **Bộ số liệu thực nghiệm đầy đủ 100%:** Đo kiểm TTFF đa vùng (6 regions), thời gian chuyển mã (100MB, 500MB, 1GB), so sánh scaling 1 vCPU vs 4 vCPU, và Stress Test đồng thời 100 video với k6 / Node.js. Sẵn sàng 100% để bảo vệ.
 
 ---
-> 📌 **Trạng thái cập nhật (2026-09-09):** Toàn bộ 15/15 mục đã hoàn thành 100%. CloudFront video CDN đã triển khai và đo kiểm đa vùng; Stress Test đồng thời 100 video đã thực thi hoàn tất với dữ liệu thực nghiệm đầy đủ; toàn bộ test suite backend (115/115) và transcoder (62/62) đều pass (tổng 177/177 tests tự động).
+> 📌 **Trạng thái cập nhật (2026-09-09):** Toàn bộ 15/15 mục đã hoàn thành 100%. CloudFront video CDN đã triển khai và đo kiểm đa vùng; Stress Test đồng thời 100 video đã thực thi hoàn tất với dữ liệu thực nghiệm đầy đủ; toàn bộ test suite backend (115/115) và transcoder (94/94) đều pass (tổng 209/209 tests tự động).
