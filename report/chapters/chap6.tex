@@ -282,6 +282,167 @@ each location would experience; the last-mile difference is roughly a factor of 
 evidence. Within that limit, the table establishes what a single vantage point could not: delivery
 is uniform wherever the price class reaches, and an order of magnitude worse where it does not.
 
+\subsection{Playback Under Constrained Bandwidth, and a Manifest That Understated Itself}
+\label{sec:qoe-playback}
+
+The Time-to-First-Frame figures above were produced by a script built on \texttt{fetch}, and that
+construction places three quantities permanently out of its reach. Rebuffering ratio, bitrate
+switch count, and the bitrate a viewer actually receives do not exist unless something is playing:
+they require a buffer, a playback clock, and an adaptive bitrate algorithm, none of which a
+sequence of HTTP requests possesses. Measuring them therefore required driving the real player
+rather than simulating it.
+
+The harness in \texttt{scripts/qoe/} launches headless Chromium under Playwright, loads the
+deployed watch page, and takes its signals from the \texttt{<video>} element itself: the
+\texttt{waiting}, \texttt{playing}, and \texttt{ended} events for stalls, and the \texttt{resize}
+event for the rendition currently on screen. No production code was modified to accommodate the
+measurement. Bandwidth is capped through the Chrome DevTools Protocol, which is why the harness is
+fixed to Chromium. Three definitional choices matter when reading the numbers. Startup buffering
+is excluded from the rebuffering ratio, because waiting for a video to begin is an ordinary
+expectation while a mid-playback freeze is not, and conflating them inflates every figure. The
+initial rendition selection is not counted as a switch, since counting it would add exactly one
+spurious switch to every measurement. The average bitrate is weighted by the time each rendition
+was displayed, because playing 1080p for one second and 360p for fifty-nine and then averaging the
+two rungs describes nothing a viewer experienced.
+
+Each profile discards two warm-up runs before recording five. One proved insufficient, and this
+was measured rather than assumed: on the slow 3G profile with a single warm-up, the first recorded
+run showed a startup delay of 26.04~s against roughly 1.90~s for the remaining four, and a second
+warm-up removed the outlier entirely. The effect is invisible on a fast connection, so testing
+only the unthrottled profile would have concealed it.
+
+\begin{table}[H]
+\centering
+\caption{Playback quality by emulated network profile}
+\label{tab:qoe-playback}
+\small
+\begin{tabularx}{\textwidth}{X r r r}
+\toprule
+\textbf{METRIC} & \textbf{UNTHROTTLED} & \textbf{FAST 3G} & \textbf{SLOW 3G} \\
+\midrule
+Startup delay, median (s)   & 2.576  & 2.076  & 3.803  \\
+Startup delay, max (s)      & 5.221  & 2.389  & 3.920  \\
+Rebuffering ratio, median   & 0.00\% & 0.00\% & 5.72\% \\
+Rebuffering ratio, mean     & 0.00\% & 1.20\% & 6.49\% \\
+Rebuffering ratio, max      & 0.00\% & 5.99\% & 14.83\% \\
+Runs exhibiting a stall     & 0/5    & 1/5    & 3/5    \\
+Bitrate switches, median    & 1      & 4      & 5      \\
+Average bitrate (kbit/s)    & 1833   & 1551   & 1200   \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\noindent\textit{Note: five recorded runs per profile after two discarded warm-up runs, 120~s of
+playback each, against a 4:23 source at \texttt{/watch/6aa1dd6f822dec77e188e56b}. Emulated
+ceilings are 1678~kbit/s for fast 3G and 512~kbit/s for slow 3G. Results are written to
+\texttt{docs/results/qoe-playback-*.json} by \texttt{scripts/qoe/collect.js}. The rebuffering
+ratio is reported as median, mean, and maximum together because stalls are rare but severe: on
+slow 3G the median alone is 5.72\% while two runs exceeded 11\%, and on fast 3G the median is
+0.00\% while one run reached 5.99\%. Reporting the median in isolation would have rendered fast 3G
+as ``no rebuffering'', which the underlying runs contradict.}
+
+Producing these figures required deciding what the received bitrate actually is, and that question
+exposed a defect. The obvious source is the \texttt{BANDWIDTH} attribute of each
+\texttt{EXT-X-STREAM-INF} entry, but \texttt{generateMasterPlaylist()} in
+\texttt{transcoder/src/transcoder.js} was emitting that value as the sum of two target constants
+from its configuration, never inspecting what the encoder had produced. RFC 8216
+Section~4.3.4.2 is normative on this point and states that the value ``represents the peak segment
+bit rate of the Variant Stream'', adding that where the media segments already exist the value
+\textit{MUST} be derived from them. The segments do exist by the time the function runs, so the
+condition is satisfied and the requirement binding.
+
+\begin{table}[H]
+\centering
+\caption{Declared against actual bitrate for each rendition}
+\label{tab:qoe-bandwidth}
+\small
+\begin{tabularx}{\textwidth}{X r r r r}
+\toprule
+\textbf{RENDITION} & \textbf{DECLARED} & \textbf{PEAK} & \textbf{MEAN} & \textbf{SHORTFALL} \\
+\midrule
+360p  & 464  & 637  & 514  & 37\% \\
+720p  & 1628 & 2148 & 1714 & 32\% \\
+1080p & 4192 & 5390 & 4338 & 29\% \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\noindent\textit{Note: kbit/s, computed from the 44 segments of each rendition as stored in the
+processed bucket, with per-segment durations read from the corresponding \texttt{\#EXTINF} tags.
+The shortfall column expresses how far the declared value falls below the actual peak.}
+
+The direction of the error is what makes it consequential. Because hls.js consults
+\texttt{BANDWIDTH} when judging whether a rendition fits the throughput it has measured, a value
+below the true peak invites the player to select a level the connection cannot sustain. The fast
+3G profile sits precisely on that boundary: its 1678~kbit/s ceiling admits the declared 1628, and
+excludes the actual 1701. The prior measurement round showed the predicted consequence, with two
+of five runs stalling and one requiring 16.81~s to reach the first frame after eight rendition
+switches.
+
+The correction computes \texttt{BANDWIDTH} from the segments themselves, taking the peak and
+rounding upward, since rounding down would return the declared figure to below the true value and
+reproduce the defect in miniature. Existing videos were repaired in place by
+\texttt{transcoder/scripts/rebuild-master-playlists.js}, which rewrites only the master playlist;
+re-transcoding would have generated new segments and destroyed the comparison the experiment
+depends upon. The rendition ladder itself is unchanged.
+
+\begin{table}[H]
+\centering
+\caption{Playback quality before and after the manifest correction}
+\label{tab:qoe-before-after}
+\footnotesize
+\begin{tabularx}{\textwidth}{X r r r r}
+\toprule
+\textbf{PROFILE} & \textbf{REBUFFERING} & \textbf{STALLED} & \textbf{STARTUP MAX} & \textbf{BITRATE} \\
+\midrule
+Unthrottled & 0.00\% $\rightarrow$ 0.00\% & 0/5 $\rightarrow$ 0/5 & 3.29 $\rightarrow$ 5.22  & 1833 $\rightarrow$ 1833 \\
+Fast 3G     & 2.48\% $\rightarrow$ 1.20\% & 2/5 $\rightarrow$ 1/5 & 16.81 $\rightarrow$ 2.39 & 1823 $\rightarrow$ 1551 \\
+Slow 3G     & 6.49\% $\rightarrow$ 6.49\% & 3/5 $\rightarrow$ 3/5 & 3.83 $\rightarrow$ 3.92  & 1236 $\rightarrow$ 1200 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\noindent\textit{Note: rebuffering is the mean across five runs, startup maximum in seconds, and
+average bitrate in kbit/s. Both rounds used identical parameters, and the
+only variable altered between them was the declared \texttt{BANDWIDTH}. The \texttt{CODECS} and
+\texttt{AVERAGE-BANDWIDTH} attributes, though the same RFC section recommends the former, were
+deliberately left untouched: each can influence level selection in hls.js, and admitting a second
+variable would have made the comparison unattributable.}
+
+The correction helps in exactly one of the three conditions, and the pattern is more informative
+than the improvement. On fast 3G the worst-case startup delay falls from 16.81~s to 2.39~s, the
+whole distribution narrowing to between 2.03 and 2.39~s, while mean rebuffering halves and the
+number of affected runs drops from two to one. This gain is not free: the average bitrate falls by
+15\% and the median switch count rises from one to four, the player now adapting continuously
+instead of settling on a level it could not carry. Trading picture quality for continuity is a
+genuine trade-off and is reported here as one.
+
+The unthrottled profile is unchanged, and serves as a control. Where bandwidth is ample the
+declared value constrains nothing, so a correct manifest should make no difference, and none is
+observed; the apparent worsening of the startup maximum from 3.29 to 5.22~s reflects a single slow
+run within ordinary variation, with rebuffering at zero in both rounds.
+
+Slow 3G is unchanged for a different and more instructive reason. Its five runs reproduced the
+prior round to within 0.02 percentage points, mean rebuffering landing on 6.49\% in both, which
+attests to the repeatability of the harness while confirming the correction had no effect. The
+explanation is that a manifest can only mislead a player that has a choice to make. At a
+512~kbit/s ceiling even the lowest rung, whose actual peak is 637~kbit/s, exceeds the connection,
+and since hls.js cannot descend below the bottom of the ladder its behaviour is identical whatever
+the manifest declares. No manifest correction can address this condition; the remedy would be a
+lower rung or a cheaper 360p encode, which is recorded as future work rather than attempted here.
+
+Three limitations qualify the whole of this evaluation. The average bitrate is computed from the
+bytes actually transferred rather than from the declared attribute, which is why it remains valid
+across the correction; the harness derives it by summing segment sizes and dividing by the summed
+\texttt{\#EXTINF} durations of those same segments. The peak the harness observes is a lower bound
+on the true peak, since it sees only segments the player chose to fetch, so exceeding the declared
+value proves a violation while remaining below it proves nothing. Finally the profiles were
+executed in sequence, leaving edge cache state confounded with profile order for the startup
+delay figures specifically, which is the likeliest explanation for fast 3G showing a lower median
+startup than the unthrottled profile in both rounds. The harness also exports its event log in the
+input format of the ITU-T P.1203 model, Mode 0; it does not compute a MOS score, and no such score
+is claimed here, since obtaining one requires the public reference implementation of that model.
+
 \section{Transcoding Pipeline Performance}
 \label{sec:pipeline-evaluation}
 

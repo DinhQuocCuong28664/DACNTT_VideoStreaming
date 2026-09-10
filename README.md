@@ -189,7 +189,7 @@ graph TD
 
 ### Các Workflows Chính:
 1. `ci-backend.yml`: Chạy Jest Unit Tests (115 test trên 9 test suites) → ESLint check → Gitleaks secret detection → Trivy SCA scan.
-2. `ci-transcoder.yml`: Chạy Jest Unit Tests (44 test trên 3 test suites) → ESLint check → Gitleaks → Build Docker Multi-stage → Trivy Container Scan → Push ECR → Register AWS Batch Job Definition mới.
+2. `ci-transcoder.yml`: Chạy Jest Unit Tests (62 test trên 4 test suites) → ESLint check → Gitleaks → Build Docker Multi-stage → Trivy Container Scan → Push ECR → Register AWS Batch Job Definition mới.
 3. `ci-frontend.yml`: oxlint Code Quality → Build Vite → Tự động deploy lên S3 Static Hosting khi merge vào `main`/`master`.
 4. `ci-infra.yml`: `terraform fmt -check` → `terraform validate` cho cả `dev` và `prod` → Trivy IaC Config Scan.
 5. `security-scan.yml`: DevSecOps Gate cho mọi Pull Request, gồm Gitleaks Secret Detection, Trivy Dependency Scan và SAST bằng `eslint-plugin-security`.
