@@ -43,6 +43,9 @@
  *   node transcoder/scripts/rebuild-master-playlists.js --all --apply --yes
  */
 
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
 const readline = require('readline');
 const {
   S3Client,
@@ -52,7 +55,16 @@ const {
 } = require('@aws-sdk/client-s3');
 
 const config = require('../src/config');
-const { parseMediaPlaylist } = require('../src/transcoder');
+const { parseMediaPlaylist, probeSegmentCodecs } = require('../src/transcoder');
+
+/**
+ * Số byte đầu segment cần tải để đọc được CODECS.
+ *
+ * SPS nằm ngay đầu luồng, nên không phải tải cả segment 3 MB. Đo thử: 64 KB
+ * đã đủ cho cả phần hình lẫn phần tiếng; lấy 256 KB làm biên an toàn phòng
+ * khi bộ mã hoá đặt tham số muộn hơn.
+ */
+const PROBE_BYTES = 256 * 1024;
 
 const s3 = new S3Client({
   region: config.awsRegion,
@@ -128,6 +140,34 @@ const measureFromS3 = (playlistText, sizes, renditionPrefix) => {
   };
 };
 
+/**
+ * Đọc CODECS của một rendition bằng cách tải phần đầu segment đầu tiên.
+ *
+ * Phải đọc từ luồng thật: RFC 6381 lấy sáu chữ số hex sau `avc1.` từ ba byte
+ * trong NAL unit SPS, mà byte cờ constraint ở giữa không suy ra được từ tên
+ * profile hay số level. Trả `null` khi không đọc được — bỏ trống CODECS vẫn
+ * hợp lệ, còn khai sai thì trình phát có thể loại thẳng variant.
+ */
+const probeCodecsFromS3 = async (renditionPrefix, playlistText) => {
+  const segments = parseMediaPlaylist(playlistText);
+  if (segments.length === 0) return null;
+
+  const key = renditionPrefix + segments[0].file;
+  const tmp = path.join(os.tmpdir(), `hls-probe-${process.pid}-${Date.now()}.ts`);
+
+  try {
+    const res = await s3.send(
+      new GetObjectCommand({ Bucket: BUCKET, Key: key, Range: `bytes=0-${PROBE_BYTES - 1}` })
+    );
+    fs.writeFileSync(tmp, Buffer.from(await res.Body.transformToByteArray()));
+    return await probeSegmentCodecs(tmp);
+  } catch {
+    return null;
+  } finally {
+    try { fs.unlinkSync(tmp); } catch { /* tệp tạm, xoá được hay không đều không sao */ }
+  }
+};
+
 /** Đọc BANDWIDTH đang khai trong master playlist hiện tại, để đối chiếu. */
 const parseExistingBandwidths = (text) => {
   const map = new Map();
@@ -147,7 +187,8 @@ const buildMaster = (entries) => {
   let content = '#EXTM3U\n#EXT-X-VERSION:3\n\n';
 
   for (const e of entries) {
-    content += `#EXT-X-STREAM-INF:BANDWIDTH=${e.bandwidth},RESOLUTION=${e.width}x${e.height},NAME="${e.name}"\n`;
+    const codecs = e.codecs ? `,CODECS="${e.codecs}"` : '';
+    content += `#EXT-X-STREAM-INF:BANDWIDTH=${e.bandwidth}${codecs},RESOLUTION=${e.width}x${e.height},NAME="${e.name}"\n`;
     content += `${e.name}/playlist.m3u8\n\n`;
   }
 
@@ -161,7 +202,8 @@ const processVideo = async (videoId) => {
   if (sizes.size === 0) return { videoId, skipped: 'không có object nào trong S3' };
   if (!sizes.has(`${prefix}master.m3u8`)) return { videoId, skipped: 'không có master.m3u8' };
 
-  const existing = parseExistingBandwidths(await getText(`${prefix}master.m3u8`));
+  const currentMaster = await getText(`${prefix}master.m3u8`);
+  const existing = parseExistingBandwidths(currentMaster);
   const entries = [];
   const problems = [];
 
@@ -171,13 +213,20 @@ const processVideo = async (videoId) => {
 
     if (!sizes.has(playlistKey)) continue; // rendition không tồn tại cho video này
 
-    const stats = measureFromS3(await getText(playlistKey), sizes, renditionPrefix);
+    const playlistText = await getText(playlistKey);
+    const stats = measureFromS3(playlistText, sizes, renditionPrefix);
     const declared = parseInt(r.videoBitrate) * 1000 + parseInt(r.audioBitrate) * 1000;
     const before = existing.get(r.name) ?? declared;
 
+    const codecs = await probeCodecsFromS3(renditionPrefix, playlistText);
+    if (!codecs) problems.push(`${r.name}: không đọc được CODECS, sẽ bỏ trống thuộc tính này`);
+
     if (!stats) {
-      problems.push(`${r.name}: không đo được, giữ nguyên ${before}`);
-      entries.push({ name: r.name, width: r.width, height: r.height, bandwidth: before, stats: null, before });
+      problems.push(`${r.name}: không đo được bitrate, giữ nguyên ${before}`);
+      entries.push({
+        name: r.name, width: r.width, height: r.height,
+        bandwidth: before, stats: null, before, codecs,
+      });
       continue;
     }
 
@@ -192,12 +241,17 @@ const processVideo = async (videoId) => {
       bandwidth: stats.peak,
       stats,
       before,
+      codecs,
     });
   }
 
   if (entries.length === 0) return { videoId, skipped: 'không tìm thấy rendition nào' };
 
-  return { videoId, prefix, entries, problems, content: buildMaster(entries) };
+  // So sánh trên toàn bộ nội dung chứ không chỉ trên BANDWIDTH: một video có
+  // thể đã đúng bitrate nhưng vẫn còn thiếu CODECS.
+  const content = buildMaster(entries);
+
+  return { videoId, prefix, entries, problems, content, unchanged: content === currentMaster };
 };
 
 const confirm = (question) =>
@@ -263,22 +317,26 @@ const main = async () => {
       continue;
     }
 
-    const diffs = result.entries.filter((e) => e.stats && e.bandwidth !== e.before);
-    if (diffs.length === 0) {
+    if (result.unchanged) {
       console.log(`  ${id}  — đã đúng sẵn`);
       continue;
     }
 
     console.log(`  ${id}`);
     for (const e of result.entries) {
+      const codecs = e.codecs ? `  CODECS="${e.codecs}"` : '  (không có CODECS)';
+
       if (!e.stats) {
-        console.log(`     ${e.name.padEnd(6)} ${String(e.before).padStart(8)} → (giữ nguyên, không đo được)`);
+        console.log(
+          `     ${e.name.padEnd(6)} ${String(e.before).padStart(8)} → (giữ nguyên, không đo được)${codecs}`
+        );
         continue;
       }
+
       const delta = ((e.bandwidth / e.before - 1) * 100).toFixed(0);
       console.log(
         `     ${e.name.padEnd(6)} ${String(e.before).padStart(8)} → ${String(e.bandwidth).padStart(8)} bit/s ` +
-          `(${delta > 0 ? '+' : ''}${delta}%, TB ${e.stats.average}, ${e.stats.segments} segment)`
+          `(${delta > 0 ? '+' : ''}${delta}%, ${e.stats.segments} segment)${codecs}`
       );
     }
     for (const p of result.problems) console.log(`     ⚠️  ${p}`);

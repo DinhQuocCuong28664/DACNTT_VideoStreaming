@@ -142,7 +142,8 @@ const transcodeToHLS = async (inputPath, outputDir) => {
   await runFFmpeg(args, duration);
 
   // Step 4: Generate master playlist
-  generateMasterPlaylist(outputDir, renditions);
+  const codecsByRendition = await probeRenditionCodecs(outputDir, renditions);
+  generateMasterPlaylist(outputDir, renditions, codecsByRendition);
 
   // Step 5: Extract thumbnail
   await extractThumbnail(inputPath, outputDir);
@@ -183,7 +184,20 @@ const buildFFmpegArgs = (inputPath, outputDir, renditions, fps = DEFAULT_FPS) =>
       '-bufsize', r.bufsize,
       '-preset', 'fast',
       '-profile:v', 'main',
-      '-level', '3.1',
+      // KHÔNG ghim '-level'. Bản trước đặt cứng 3.1 cho cả ba rendition, mà
+      // Level 3.1 chỉ chứa được khung 3600 macroblock: 1280x720 vừa khít
+      // 3600, còn 1920x1080 là 8160 — vượt hơn gấp đôi. Mức thấp nhất chứa
+      // được 1080p là 4.0 (8192 macroblock).
+      //
+      // Một số bản dựng x264 tự nâng level cho hợp lệ, số khác tuân theo cờ
+      // nguyên văn. Bản chạy trong container thuộc loại thứ hai: cả ba
+      // rendition của video 6aa1dd6f822dec77e188e56b đều ghi level_idc 31,
+      // kể cả bản 1080p. Trình giải mã dùng level để cấp phát bộ đệm, nên
+      // luồng khai thấp hơn thực tế có thể bị phần cứng từ chối — Chrome
+      // dùng bộ giải mã phần mềm dễ tính nên không lộ ra.
+      //
+      // Bỏ cờ này đi thì x264 tự tính mức thấp nhất hợp lệ cho từng độ phân
+      // giải, và tự đúng lại nếu sau này thang bitrate thay đổi.
       // GOP tính theo framerate thật của nguồn, không phải 30 fps cố định.
       '-g', String(gopSize),
       '-keyint_min', String(gopSize),
@@ -280,6 +294,175 @@ const measureVariantBitrates = (renditionDir) => {
 };
 
 /**
+ * Bóc phần byte thô ra khỏi bản kết xuất hex của ffprobe.
+ *
+ * `ffprobe -show_data` in ra dạng:
+ *
+ *   00000000: 0000 0167 4d40 28ec a03c 0113 f2cd 4040  ...gM@(..<....@@
+ *
+ * Cột ASCII bên phải cũng có thể chứa ký tự trông như hex, nên không được
+ * quét cả dòng. Hai cột luôn cách nhau ít nhất hai dấu cách, và đó là mốc
+ * dùng để cắt.
+ */
+const extractHexBytes = (dump) =>
+  String(dump)
+    .split('\n')
+    .map((line) => {
+      const match = /^[0-9a-f]{8}:\s+(.*)$/.exec(line.trim());
+      if (!match) return '';
+      return match[1].split(/ {2,}/)[0].replace(/\s+/g, '');
+    })
+    .join('');
+
+/**
+ * Dựng chuỗi codec H.264 theo RFC 6381 từ extradata của luồng video.
+ *
+ * RFC 6381 quy định sáu chữ số hex sau `avc1.` là ba byte lấy từ NAL unit
+ * SPS — `profile_idc`, byte chứa các cờ `constraint_set`, và `level_idc` —
+ * chứ KHÔNG phải suy ra từ tên profile và số level mà ffprobe hiển thị. Byte
+ * cờ constraint không nằm trong hai trường đó, nên tra bảng "Main + level 4.0
+ * → avc1.4d4028" là đang đoán một byte. Ở đây đọc thẳng từ luồng.
+ *
+ * Trả về `null` khi không tìm thấy SPS. Bỏ trống CODECS vẫn hợp lệ vì RFC
+ * 8216 §4.3.4.2 chỉ dùng chữ SHOULD; khai một giá trị SAI thì tệ hơn hẳn,
+ * vì trình phát có thể loại thẳng variant thay vì thử phát.
+ */
+const parseAvcCodec = (extradataDump) => {
+  const hex = extractHexBytes(extradataDump);
+  const bytes = [];
+  for (let i = 0; i + 1 < hex.length; i += 2) bytes.push(parseInt(hex.substr(i, 2), 16));
+
+  for (let i = 0; i + 4 < bytes.length; i += 1) {
+    if (bytes[i] !== 0x00 || bytes[i + 1] !== 0x00) continue;
+
+    // Start code có hai dạng: 00 00 01 và 00 00 00 01.
+    let nal;
+    if (bytes[i + 2] === 0x01) nal = i + 3;
+    else if (bytes[i + 2] === 0x00 && bytes[i + 3] === 0x01) nal = i + 4;
+    else continue;
+
+    // 5 bit thấp của byte đầu NAL là nal_unit_type; 7 là SPS.
+    if ((bytes[nal] & 0x1f) !== 7) continue;
+    if (nal + 3 >= bytes.length) return null;
+
+    const triplet = [bytes[nal + 1], bytes[nal + 2], bytes[nal + 3]]
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
+    return `avc1.${triplet}`; // hex viết thường, đúng ví dụ trong RFC 8216
+  }
+
+  return null;
+};
+
+/**
+ * Audio Object Type theo tên profile mà ffprobe báo.
+ *
+ * Chỉ liệt kê những giá trị chắc chắn. Profile lạ thì trả `null` để bỏ hẳn
+ * phần âm thanh khỏi CODECS, thay vì đoán bừa `mp4a.40.2`.
+ */
+const AAC_OBJECT_TYPES = {
+  Main: 1,
+  LC: 2,
+  SSR: 3,
+  LTP: 4,
+  'HE-AAC': 5,
+  'HE-AACv2': 29,
+};
+
+/** `mp4a.40.<AOT>` — `40` là OTI hệ hex, `<AOT>` là số thập phân. */
+const parseAacCodec = (profile) => {
+  const aot = AAC_OBJECT_TYPES[String(profile).trim()];
+  return aot === undefined ? null : `mp4a.40.${aot}`;
+};
+
+/**
+ * Đọc chuỗi CODECS của một segment đã mã hoá.
+ *
+ * Đọc từ segment thật thay vì suy từ cấu hình, vì cấu hình chỉ nói lên ý
+ * định — và ý định với kết quả đã từng lệch nhau ở đúng chỗ này.
+ *
+ * Bản trước ghim `-level 3.1` cho cả ba rendition. Cùng một cờ cho ra hai
+ * kết quả khác nhau tuỳ bản dựng x264: bản trên máy phát triển tự nâng level
+ * cho hợp lệ (3.0 / 3.1 / 4.0), bản trong container tuân theo nguyên văn nên
+ * ghi 3.1 cho cả ba, kể cả bản 1080p vốn cần tối thiểu 4.0. Suy chuỗi codec
+ * từ cấu hình thì sai; suy từ hành vi quan sát trên một máy cũng sai. Chỉ
+ * đọc từ chính luồng mới đúng.
+ */
+const probeSegmentCodecs = (segmentPath) =>
+  new Promise((resolve) => {
+    const args = [
+      '-v', 'error',
+      '-show_entries', 'stream=codec_type,profile,extradata',
+      '-show_data',
+      '-of', 'json',
+      segmentPath,
+    ];
+
+    const proc = spawn('ffprobe', args);
+    let stdout = '';
+    proc.stdout.on('data', (chunk) => { stdout += chunk; });
+
+    // Không để lỗi thăm dò làm hỏng cả lần chuyển mã: thiếu CODECS thì
+    // playlist vẫn hợp lệ, còn ném lỗi ở đây thì mất trắng video.
+    proc.on('error', () => resolve(null));
+    proc.on('close', (code) => {
+      if (code !== 0) return resolve(null);
+
+      let streams;
+      try {
+        streams = JSON.parse(stdout).streams || [];
+      } catch {
+        return resolve(null);
+      }
+
+      const video = streams.find((s) => s.codec_type === 'video');
+      const audio = streams.find((s) => s.codec_type === 'audio');
+
+      const parts = [];
+      if (video) {
+        const avc = parseAvcCodec(video.extradata);
+        if (avc) parts.push(avc);
+      }
+      if (audio) {
+        const aac = parseAacCodec(audio.profile);
+        if (aac) parts.push(aac);
+      }
+
+      resolve(parts.length > 0 ? parts.join(',') : null);
+    });
+  });
+
+/** Segment đầu tiên của một rendition, dùng làm mẫu để thăm dò codec. */
+const firstSegmentPath = (renditionDir) => {
+  const playlistPath = path.join(renditionDir, 'playlist.m3u8');
+  if (!fs.existsSync(playlistPath)) return null;
+
+  const segments = parseMediaPlaylist(fs.readFileSync(playlistPath, 'utf-8'));
+  for (const { file } of segments) {
+    const candidate = path.join(renditionDir, file);
+    if (fs.existsSync(candidate)) return candidate;
+  }
+
+  return null;
+};
+
+/** Thăm dò CODECS cho mọi rendition, trả về bảng "tên rendition → chuỗi". */
+const probeRenditionCodecs = async (outputDir, renditions) => {
+  const map = {};
+
+  for (const r of renditions) {
+    const segment = firstSegmentPath(path.join(outputDir, r.name));
+    if (!segment) continue;
+
+    const codecs = await probeSegmentCodecs(segment);
+    if (codecs) map[r.name] = codecs;
+    else console.warn(`⚠️  ${r.name}: không đọc được CODECS, sẽ bỏ trống thuộc tính này`);
+  }
+
+  return map;
+};
+
+/**
  * Sinh master.m3u8 trỏ tới playlist của từng rendition.
  *
  * ════════════════════════════════════════════════════════════════════════
@@ -316,7 +499,7 @@ const measureVariantBitrates = (renditionDir) => {
  * giá trị gần đúng còn dùng được, chứ không có BANDWIDTH thì playlist sai
  * chuẩn hẳn (RFC bắt buộc mọi EXT-X-STREAM-INF phải mang thuộc tính này).
  */
-const generateMasterPlaylist = (outputDir, renditions) => {
+const generateMasterPlaylist = (outputDir, renditions, codecsByRendition = {}) => {
   let content = '#EXTM3U\n#EXT-X-VERSION:3\n\n';
   const measured = [];
 
@@ -331,9 +514,16 @@ const generateMasterPlaylist = (outputDir, renditions) => {
       );
     }
 
-    measured.push({ name: r.name, declared, bandwidth, stats });
+    measured.push({ name: r.name, declared, bandwidth, stats, codecs: codecsByRendition[r.name] });
 
-    content += `#EXT-X-STREAM-INF:BANDWIDTH=${bandwidth},RESOLUTION=${r.width}x${r.height},NAME="${r.name}"\n`;
+    // CODECS chỉ được ghi khi đọc được từ luồng thật. RFC 8216 §4.3.4.2 dùng
+    // chữ SHOULD nên bỏ trống vẫn hợp lệ, còn khai sai thì trình phát có thể
+    // loại thẳng variant — hỏng nặng hơn là thiếu thuộc tính.
+    const codecs = codecsByRendition[r.name]
+      ? `,CODECS="${codecsByRendition[r.name]}"`
+      : '';
+
+    content += `#EXT-X-STREAM-INF:BANDWIDTH=${bandwidth}${codecs},RESOLUTION=${r.width}x${r.height},NAME="${r.name}"\n`;
     content += `${r.name}/playlist.m3u8\n\n`;
   }
 
@@ -345,7 +535,8 @@ const generateMasterPlaylist = (outputDir, renditions) => {
     if (!m.stats) continue;
     console.log(
       `   ${m.name.padEnd(6)} BANDWIDTH=${m.bandwidth} bit/s ` +
-        `(đỉnh thật; TB ${m.stats.average}, cấu hình ${m.declared}, ${m.stats.segments} segment)`
+        `(đỉnh thật; TB ${m.stats.average}, cấu hình ${m.declared}, ${m.stats.segments} segment)` +
+        `${m.codecs ? ` CODECS="${m.codecs}"` : ' — không có CODECS'}`
     );
   }
 };
@@ -487,4 +678,10 @@ module.exports = {
   parseMediaPlaylist,
   measureVariantBitrates,
   generateMasterPlaylist,
+  extractHexBytes,
+  parseAvcCodec,
+  parseAacCodec,
+  probeSegmentCodecs,
+  probeRenditionCodecs,
+  firstSegmentPath,
 };
