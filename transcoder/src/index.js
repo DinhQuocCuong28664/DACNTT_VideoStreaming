@@ -51,7 +51,7 @@ const TEMP_DIR = path.join(os.tmpdir(), 'vidshare-transcoder');
 /**
  * Main transcoding pipeline for a single video
  */
-const processVideo = async (videoId, rawS3Key) => {
+const processVideo = async (videoId, rawS3Key, { force = false } = {}) => {
   const startTime = Date.now();
   const workDir = path.join(TEMP_DIR, videoId);
   const inputPath = path.join(workDir, 'input', path.basename(rawS3Key));
@@ -68,12 +68,24 @@ const processVideo = async (videoId, rawS3Key) => {
   // ích. Đây chỉ là tối ưu "best-effort" (vẫn có khoảng hở race condition nếu
   // 2 job cùng vượt qua bước kiểm tra này gần như đồng thời) — lớp phòng vệ
   // triệt để nằm ở updateVideoReady/updateVideoError (ghi có điều kiện).
+  // `force` chỉ đến từ lệnh thủ công, không bao giờ từ SQS: đường chạy tự
+  // động giữ nguyên tính bất biến trước việc gửi trùng. Dùng khi cần chuyển
+  // mã lại có chủ đích — ví dụ sau khi sửa tham số mã hoá — trên video đã
+  // READY mà nội dung nguồn không đổi.
+  //
+  // Ghi có điều kiện trong updateVideoReady vẫn từ chối cập nhật vì video
+  // đang READY, và điều đó là MONG MUỐN ở đây: đường dẫn không đổi nên không
+  // có gì để ghi, và vì `updated` bằng false nên cũng không gửi lại email
+  // "video đã sẵn sàng" cho chủ video.
   const existingVideo = await getVideo(videoId);
   if (existingVideo && existingVideo.status === 'READY') {
-    console.warn(
-      `⚠️  Video ${videoId} is already READY; skipping the duplicate job without downloading or transcoding again.`
-    );
-    return;
+    if (!force) {
+      console.warn(
+        `⚠️  Video ${videoId} is already READY; skipping the duplicate job without downloading or transcoding again.`
+      );
+      return;
+    }
+    console.warn(`♻️  Video ${videoId} đã READY nhưng có --force: chuyển mã lại và ghi đè kết quả.`);
   }
 
   try {
@@ -150,9 +162,13 @@ const processVideo = async (videoId, rawS3Key) => {
 
 /**
  * Mode 1: Manual — Transcode a specific video by ID
- * Usage: node src/index.js manual <videoId>
+ * Usage: node src/index.js manual <videoId> [--force]
+ *
+ * `--force` chuyển mã lại cả video đã READY. Chỉ dùng khi tham số mã hoá đã
+ * đổi và cần dựng lại kết quả từ nguồn cũ; đường chạy tự động qua SQS không
+ * có cờ này và vẫn bỏ qua job trùng như trước.
  */
-const runManual = async (videoId) => {
+const runManual = async (videoId, { force = false } = {}) => {
   console.log('🔧 Mode: MANUAL');
 
   await connectDB();
@@ -169,7 +185,7 @@ const runManual = async (videoId) => {
   }
 
   console.log(`📋 Video: "${video.title}" (status: ${video.status})`);
-  await processVideo(videoId, video.rawS3Key);
+  await processVideo(videoId, video.rawS3Key, { force });
 
   await disconnectDB();
 };
@@ -282,10 +298,10 @@ const main = async () => {
       case 'manual': {
         const videoId = process.argv[3];
         if (!videoId) {
-          console.error('Usage: node src/index.js manual <videoId>');
+          console.error('Usage: node src/index.js manual <videoId> [--force]');
           process.exit(1);
         }
-        await runManual(videoId);
+        await runManual(videoId, { force: process.argv.includes('--force') });
         break;
       }
       case 'worker':
