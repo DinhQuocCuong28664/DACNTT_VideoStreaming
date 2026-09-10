@@ -62,8 +62,13 @@ finished is rejected immediately instead of re-downloading and re-transcoding th
 A single FFmpeg invocation produces all three renditions, which is more efficient than three
 separate invocations because the source is decoded only once. The command emits segments of six
 seconds, generates the per-rendition playlists, and the worker then writes the master playlist
-that lists the available bandwidths and resolutions. A thumbnail is extracted in a separate
-pass.
+that lists the available bandwidths, codecs and resolutions. Those bandwidths and codec strings
+are derived from the encoded output rather than from the encoder settings: the bandwidth is the
+peak segment bit rate measured from the segments themselves, which
+Section~\ref{sec:qoe-playback} examines in detail, and the codec string is read out of each
+stream's sequence parameter set, since the constraint-set byte that RFC~6381 requires appears in
+neither the profile name nor the level number reported by a probe. A thumbnail is extracted in a
+separate pass.
 
 Failure handling is deliberate. When FFmpeg exits with a non-zero status, the error propagates
 to the top-level handler, which records the \texttt{ERROR} status in the database and, in
