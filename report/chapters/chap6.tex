@@ -403,11 +403,9 @@ Slow 3G     & 6.49\% $\rightarrow$ 6.49\% & 3/5 $\rightarrow$ 3/5 & 3.83 $\right
 \end{table}
 
 \noindent\textit{Note: rebuffering is the mean across five runs, startup maximum in seconds, and
-average bitrate in kbit/s. Both rounds used identical parameters, and the
-only variable altered between them was the declared \texttt{BANDWIDTH}. The \texttt{CODECS} and
-\texttt{AVERAGE-BANDWIDTH} attributes, though the same RFC section recommends the former, were
-deliberately left untouched: each can influence level selection in hls.js, and admitting a second
-variable would have made the comparison unattributable.}
+average bitrate in kbit/s. Both rounds used identical parameters, and the only attribute altered
+between them was \texttt{BANDWIDTH}; the manifests carried no \texttt{CODECS} attribute in either
+round, that being added afterwards.}
 
 The correction helps in exactly one of the three conditions, and the pattern is more informative
 than the improvement. On fast 3G the worst-case startup delay falls from 16.81~s to 2.39~s, the

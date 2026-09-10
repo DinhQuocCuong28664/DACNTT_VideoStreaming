@@ -27,8 +27,11 @@ The following invocation produces all three renditions from one read of the sour
 input is followed by three output blocks, each carrying its own scaling filter and encoder
 settings, so FFmpeg decodes the source once and feeds all three filter chains from it. The
 second and third blocks are abbreviated here; in the source they repeat the first block in
-full. The master playlist is not written by FFmpeg: the worker generates it afterwards from
-the rendition list, which is why no \texttt{-master\_pl\_name} argument appears.
+full. The master playlist is not written by FFmpeg: the worker generates it afterwards, which is
+why no \texttt{-master\_pl\_name} argument appears. It does so from the encoded output rather
+than from the settings above, measuring each rendition's peak segment bit rate from the segment
+sizes and their \texttt{\#EXTINF} durations, and reading the codec string for each variant out of
+the sequence parameter set of its first segment.
 
 The keyframe interval is derived from the source rather than assumed. The worker probes the
 first video stream and reads \texttt{avg\_frame\_rate}, preferring it over
@@ -46,12 +49,16 @@ timestamps. \texttt{-force\_key\_frames} then pins a keyframe to every sixth sec
 media time; unlike \texttt{-g}, which only bounds the interval from above, it is absolute and
 independent of the detected frame rate, so a misdetected source still yields aligned segments.
 
+The H.264 profile is pinned but the level is not. Each rendition carries a different frame size,
+and the lowest conforming level therefore differs between them, so the level is left for the
+encoder to derive from the resolution rather than fixed in the command.
+
 \begin{lstlisting}[language=bash]
 ffmpeg -i input.mp4 -hide_banner -loglevel warning -y \
   -vf "scale=640:360:force_original_aspect_ratio=decrease, \
          pad=640:360:(ow-iw)/2:(oh-ih)/2" \
   -c:v libx264 -b:v 400k  -maxrate 500k  -bufsize 800k  \
-  -preset fast -profile:v main -level 3.1 \
+  -preset fast -profile:v main \
   -g 144 -keyint_min 144 -sc_threshold 0 \
   -force_key_frames "expr:gte(t,n_forced*6)" \
   -c:a aac -b:a 64k  -ar 44100 -ac 2 \
@@ -104,6 +111,7 @@ the order in which the measurements must be taken, are given in
 \midrule
 \path{scripts/measure-transcode.js} & \texttt{docs/results/transcode-timing.json} \\
 \texttt{scripts/benchmark-qoe.js}     & \texttt{docs/results/qoe-ttff.json} \\
+\path{scripts/qoe/collect.js}       & \path{docs/results/qoe-playback-<profile>.json} \\
 \texttt{scripts/k6-load-test.js}      & \texttt{docs/results/k6-summary.json} \\
 \path{scripts/node-load-test.js}    & \texttt{docs/results/node-load-test.json} \\
 \bottomrule

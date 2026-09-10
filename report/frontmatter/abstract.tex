@@ -29,8 +29,10 @@ automate linting, unit testing, static security analysis, container image scanni
 infrastructure validation, and deployment, with a two-tier quality gate that blocks a pull
 request whenever a fixable critical vulnerability is detected.
 
-The system is evaluated along four dimensions: quality of experience measured through
-Time-to-First-Frame, transcoding pipeline latency across 100~MB, 500~MB, and 1~GB inputs,
+The system is evaluated along four dimensions: quality of experience, measured both as
+Time-to-First-Frame and, by driving the deployed player in a headless browser under emulated
+network conditions, as rebuffering ratio, bitrate switching and the bitrate a viewer actually
+receives; transcoding pipeline latency across 100~MB, 500~MB, and 1~GB inputs,
 scalability under a concurrent upload stress test, and operating cost compared against a
 traditional always-on Amazon EC2 deployment. The cost analysis shows that, for the
 architecture-dependent portion of the bill, the serverless approach removes almost all idle
