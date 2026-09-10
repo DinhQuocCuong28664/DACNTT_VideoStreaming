@@ -101,19 +101,31 @@ scripts listed below. Detailed instructions, including the environment variables
 the order in which the measurements must be taken, are given in
 \texttt{docs/results/README.md} within the repository.
 
+Every table of measurements in Chapter~\ref{chap:evaluation} is listed below against the script
+that produced it and the file its figures were read from, so that any individual number can be
+traced back to its source. Paths are relative to the repository root, and the result files are
+those under \path{docs/results/}.
+
 \begin{table}[H]
 \centering
-\caption{Measurement scripts and their output artefacts}
-\small
-\begin{tabularx}{\textwidth}{p{0.34\textwidth} X}
+\caption{Provenance of each measurement table}
+\label{tab:provenance}
+\footnotesize
+\begin{tabularx}{\textwidth}{l p{0.30\textwidth} X}
 \toprule
-\textbf{SCRIPT} & \textbf{OUTPUT} \\
+\textbf{TABLE} & \textbf{SCRIPT} & \textbf{RESULT FILE} \\
 \midrule
-\path{scripts/measure-transcode.js} & \texttt{docs/results/transcode-timing.json} \\
-\texttt{scripts/benchmark-qoe.js}     & \texttt{docs/results/qoe-ttff.json} \\
-\path{scripts/qoe/collect.js}       & \path{docs/results/qoe-playback-<profile>.json} \\
-\texttt{scripts/k6-load-test.js}      & \texttt{docs/results/k6-summary.json} \\
-\path{scripts/node-load-test.js}    & \texttt{docs/results/node-load-test.json} \\
+\ref{tab:ttff-results}       & \path{scripts/benchmark-qoe.js}  & \path{qoe-ttff.json} \\
+\ref{tab:ttff-cloudfront}    & \path{scripts/benchmark-qoe.js}  & \path{qoe-ttff-cloudfront.json} \\
+\ref{tab:ttff-multiregion}   & \path{scripts/benchmark-qoe.js}, deployed as a Lambda to each region & \path{qoe-ttff-multiregion.json} \\
+\ref{tab:qoe-playback}       & \path{scripts/qoe/collect.js}    & \path{qoe-playback-<profile>.json} \\
+\ref{tab:qoe-bandwidth}      & Segment sizes and \texttt{\#EXTINF} durations read from the processed bucket & --- \\
+\ref{tab:qoe-before-after}   & \path{scripts/qoe/collect.js}, run before and after the correction & \path{qoe-playback-<profile>.json} \\
+\ref{tab:transcode-results}  & \path{scripts/measure-transcode.js} & \path{transcode-timing.json} \\
+\ref{tab:load-results}       & \path{scripts/k6-load-test.js}   & \path{k6-summary.json}, \path{stress-test-concurrency.json} \\
+\ref{tab:load-crossvalidation} & \path{scripts/node-load-test.js} & \path{node-load-test.json} \\
+\ref{tab:drain-rate}         & \path{scripts/k6-load-test.js}   & \path{drain-rate-real-payload.json}, \path{stress-test-concurrency.json} \\
+\ref{tab:cost-comparison}    & Published AWS list prices, computed analytically & --- \\
 \bottomrule
 \end{tabularx}
 \end{table}

@@ -127,10 +127,9 @@ First segment      & 108.76 & 87.04  & 322.20 & 78.41 & 322.20 \\
 \end{tabularx}
 \end{table}
 
-\noindent\textit{Note: values in milliseconds, from Table~\ref{tab:ttff-results}, $n=20$ samples,
-populated from \texttt{docs/results/qoe-ttff.json}, produced by \texttt{scripts/benchmark-qoe.js}
-against a video served directly from the S3 bucket (source URL recorded in the result file), taken
-before the CloudFront distribution described in Section~\ref{sec:challenges} was deployed. These
+\noindent\textit{Note: values in milliseconds, $n=20$ samples, measured against a video served
+directly from the S3 bucket, before the CloudFront distribution described in
+Section~\ref{sec:challenges} was deployed. These
 figures therefore represent origin latency without any CDN, and they serve here as the baseline
 against which Section~\ref{sec:cdn-measurement} compares the deployed system. The mean
 (292.93~ms) exceeds the median (251.52~ms) because one outlier sample (884.54~ms) inflates both
@@ -183,8 +182,8 @@ First segment      & 112.75 & 87.36  & 487.31  & 68.87 & 487.31 \\
 \end{tabularx}
 \end{table}
 
-\noindent\textit{Note: values in milliseconds, $n=20$ samples with Signed Cookies attached,
-populated from \texttt{docs/results/qoe-ttff-cloudfront.json}. Two samples were edge cache misses
+\noindent\textit{Note: values in milliseconds, $n=20$ samples with Signed Cookies attached. Two
+samples were edge cache misses
 and eighteen were hits; the final row reports only the samples that hit at all three stages,
 which is the steady state a viewer of an already-watched video experiences. The P95 and maximum of
 the full sample coincide with the colder of the two misses, as at this sample size the 95th
@@ -237,8 +236,8 @@ Ho Chi Minh City (consumer) & SGN50 & 110.32 & n/a   & n/a   & n/a \\
 \end{tabularx}
 \end{table}
 
-\noindent\textit{Note: values in milliseconds, $n=20$ per location and per configuration, from
-\texttt{docs/results/qoe-ttff-multiregion.json}. WARM reports the median over samples that hit the
+\noindent\textit{Note: values in milliseconds, $n=20$ per location and per configuration. WARM
+reports the median over samples that hit the
 edge cache at all three stages. Entries marked n/a were not measured in that configuration: the
 first run predated the Sydney probe, and the second re-measured only the two locations that could
 change plus two controls. The Ho Chi Minh City row is the local measurement of
@@ -292,7 +291,7 @@ they require a buffer, a playback clock, and an adaptive bitrate algorithm, none
 sequence of HTTP requests possesses. Measuring them therefore required driving the real player
 rather than simulating it.
 
-The harness in \texttt{scripts/qoe/} launches headless Chromium under Playwright, loads the
+The harness written for this purpose launches headless Chromium under Playwright, loads the
 deployed watch page, and takes its signals from the \texttt{<video>} element itself: the
 \texttt{waiting}, \texttt{playing}, and \texttt{ended} events for stalls, and the \texttt{resize}
 event for the rendition currently on screen. No production code was modified to accommodate the
@@ -333,9 +332,8 @@ Average bitrate (kbit/s)    & 1833   & 1551   & 1200   \\
 \end{table}
 
 \noindent\textit{Note: five recorded runs per profile after two discarded warm-up runs, 120~s of
-playback each, against a 4:23 source at \texttt{/watch/6aa1dd6f822dec77e188e56b}. Emulated
-ceilings are 1678~kbit/s for fast 3G and 512~kbit/s for slow 3G. Results are written to
-\texttt{docs/results/qoe-playback-*.json} by \texttt{scripts/qoe/collect.js}. The rebuffering
+playback each, against a single 4:23 source. Emulated ceilings are 1678~kbit/s for fast 3G and
+512~kbit/s for slow 3G. The rebuffering
 ratio is reported as median, mean, and maximum together because stalls are rare but severe: on
 slow 3G the median alone is 5.72\% while two runs exceeded 11\%, and on fast 3G the median is
 0.00\% while one run reached 5.99\%. Reporting the median in isolation would have rendered fast 3G
@@ -343,13 +341,19 @@ as ``no rebuffering'', which the underlying runs contradict.}
 
 Producing these figures required deciding what the received bitrate actually is, and that question
 exposed a defect. The obvious source is the \texttt{BANDWIDTH} attribute of each
-\texttt{EXT-X-STREAM-INF} entry, but \texttt{generateMasterPlaylist()} in
-\texttt{transcoder/src/transcoder.js} was emitting that value as the sum of two target constants
-from its configuration, never inspecting what the encoder had produced. RFC 8216
+\texttt{EXT-X-STREAM-INF} entry, but the routine that writes the master playlist was emitting that
+value as the sum of two target constants from its configuration, never inspecting what the encoder
+had produced. RFC 8216
 Section~4.3.4.2 is normative on this point and states that the value ``represents the peak segment
 bit rate of the Variant Stream'', adding that where the media segments already exist the value
 \textit{MUST} be derived from them. The segments do exist by the time the function runs, so the
 condition is satisfied and the requirement binding.
+
+What the encoder actually produced was therefore measured directly: the size of every segment of
+every rendition was taken from the processed bucket and divided by that segment's own duration,
+read from the corresponding \texttt{\#EXTINF} tag rather than assumed to be the nominal six
+seconds, since the final segment of each rendition is shorter and assuming otherwise would
+depress every figure.
 
 \begin{table}[H]
 \centering
@@ -367,9 +371,8 @@ condition is satisfied and the requirement binding.
 \end{tabularx}
 \end{table}
 
-\noindent\textit{Note: kbit/s, computed from the 44 segments of each rendition as stored in the
-processed bucket, with per-segment durations read from the corresponding \texttt{\#EXTINF} tags.
-The shortfall column expresses how far the declared value falls below the actual peak.}
+\noindent\textit{Note: kbit/s; $n=44$ segments per rendition. The shortfall column expresses how
+far the declared value falls below the actual peak.}
 
 The direction of the error is what makes it consequential. Because hls.js consults
 \texttt{BANDWIDTH} when judging whether a rendition fits the throughput it has measured, a value
@@ -381,10 +384,9 @@ switches.
 
 The correction computes \texttt{BANDWIDTH} from the segments themselves, taking the peak and
 rounding upward, since rounding down would return the declared figure to below the true value and
-reproduce the defect in miniature. Existing videos were repaired in place by
-\texttt{transcoder/scripts/rebuild-master-playlists.js}, which rewrites only the master playlist;
-re-transcoding would have generated new segments and destroyed the comparison the experiment
-depends upon. The rendition ladder itself is unchanged.
+reproduce the defect in miniature. Existing videos were repaired in place by rewriting the master
+playlist alone, since re-transcoding would have generated new segments and destroyed the
+comparison the experiment depends upon. The rendition ladder itself is unchanged.
 
 \begin{table}[H]
 \centering
@@ -449,6 +451,12 @@ the \texttt{READY} state, which corresponds to the interval a user actually wait
 interval encompasses the S3 event delay, the time spent queued in SQS, container startup on
 Fargate, FFmpeg execution, and the upload of results.
 
+The compute allocation of each run was verified after the fact rather than taken from the label
+the measurement script recorded, since a mislabelled run would silently invalidate the comparison
+that follows. Querying the job definition revision each job actually executed against resolved
+every run in Table~\ref{tab:transcode-results} to the 1~vCPU / 2~GB revision, and every run in the
+comparison after it to the 4~vCPU / 8~GB revision.
+
 \begin{table}[H]
 \centering
 \caption{Transcoding pipeline latency by input size}
@@ -465,23 +473,22 @@ Fargate, FFmpeg execution, and the upload of results.
 \end{tabularx}
 \end{table}
 
-\noindent\textit{Note: measured at the 1~vCPU / 2~GB job configuration, populated from
-\texttt{docs/results/transcode-timing.json}. The vCPU allocation of every run in this section was
-confirmed after the fact by querying \texttt{aws batch describe-jobs} for the job definition
-revision each job actually executed against, rather than relying on the labels recorded by the
-measurement script; all rows in this table resolved to revision~4 (1~vCPU / 2~GB) and all rows in
-the comparison below to revision~5 (4~vCPU / 8~GB). Pipeline and upload columns are the arithmetic
-mean across replications. Realtime factor is pipeline time divided by video duration, so a value
-above 1.0 means transcoding took longer than the video's own runtime; the three sizes fall in a
-narrow band of 3.70--3.97$\times$ real time at 1~vCPU, which indicates the pipeline scales
-essentially linearly with content duration at fixed compute. The 500~MB and 1~GB rows have only a single replication each
-because a full run at these sizes takes 30--100 minutes of AWS Batch time, which made repeated
-sampling costly within the project's time and budget; this is a threat to the precision of those
-two rows that Chapter~\ref{chap:conclusion} returns to. For the 100~MB size, the three individual
-runs (346.32~s, 539.80~s, 541.28~s) did not show the monotonic cold-start slowdown the measurement
-protocol anticipated, since the first run was in fact the fastest of the three. This suggests that
-Fargate Spot capacity variability dominates over container image pull cost at this scale, rather
-than a first-run-specific effect.}
+\noindent\textit{Note: measured at the 1~vCPU / 2~GB job configuration. Pipeline and upload
+columns are the arithmetic mean across replications. Realtime factor is pipeline time divided by
+video duration, so a value above 1.0 means transcoding took longer than the video's own runtime.}
+
+Two observations follow from the table. The realtime factor stays within a narrow band of
+3.70--3.97$\times$ across a more than thirteen-fold range of content duration, which indicates
+that the pipeline scales essentially linearly with duration at fixed compute. And for the 100~MB
+size, the three individual runs of 346.32, 539.80 and 541.28~s did not show the monotonic
+cold-start slowdown the measurement protocol anticipated, the first run being in fact the fastest
+of the three; at this scale Fargate Spot capacity variability appears to dominate over container
+image pull cost, rather than any first-run-specific effect.
+
+The precision of two rows is limited. The 500~MB and 1~GB sizes were each measured once, because
+a full run at those sizes occupies between 30 and 100 minutes of AWS Batch time and repeated
+sampling was costly within the time and budget available. Chapter~\ref{chap:conclusion} returns to
+this as a threat to those two rows specifically.
 
 A separate experiment raised the container allocation from 1~vCPU / 2~GB to 4~vCPU / 8~GB and
 repeated the measurement on the same two inputs. Pipeline time fell from a mean of 475.80~s to a
@@ -526,8 +533,8 @@ the total charge per video essentially unchanged. The practical implication is t
 configuration buys a substantially lower waiting time for the user at close to no additional cost,
 which holds regardless of whether the exact speedup is 3.3$\times$ or 4.9$\times$.
 
-\noindent\textit{Note: populated from \texttt{docs/results/transcode-timing.json}. Each size
-should be measured at least three times, and the first run reported separately, because it
+\noindent\textit{Note: each size should be measured at least three times, and the first run
+reported separately, because it
 includes the cost of pulling the container image and is therefore substantially slower than the
 steady state.}
 
@@ -576,9 +583,9 @@ Peak virtual users        & 50 \\
 \end{tabularx}
 \end{table}
 
-\noindent\textit{Note: populated from \texttt{docs/results/node-load-test.json}, produced by
-\texttt{scripts/node-load-test.js}, a native-fetch Node.js load generator. All 100 uploads
-(initiate, direct-to-S3 PUT, confirm) succeeded at the API layer.}
+\noindent\textit{Note: produced by a second load generator, written against native
+\texttt{fetch} in Node.js. All 100 uploads (initiate, direct-to-S3 PUT, confirm) succeeded at the
+API layer.}
 
 \subsection{Cross-Validation with an Independent Tool}
 \label{sec:load-cross-validation}
@@ -643,8 +650,7 @@ notifications firing. The \texttt{STARTING} count held at 7--8 throughout the dr
 \texttt{max\_vcpus}~$=$~8 divided by \texttt{job\_vcpu}~$=$~1 exactly, which confirms the compute
 environment enforced its configured concurrency ceiling rather than either exceeding it or
 under-utilising it. The backlog of 92 queued jobs reached zero 456 seconds after the burst, and no
-message was lost or left stuck; the full sample sequence is recorded in
-\path{docs/results/stress-test-concurrency.json}. Subject to the caveat stated above, this is
+message was lost or left stuck. Subject to the caveat stated above, this is
 the direct evidence for the claim that opened this section: Amazon SQS retained every unit of work
 submitted faster than the compute layer could consume it, and AWS Batch admitted work strictly at,
 and never above, its configured limit while consuming that backlog.
@@ -673,7 +679,7 @@ ceiling now gates genuine FFmpeg work rather than a task that fails at initialis
 establishes, which no earlier run in this chapter could, is that the queueing and admission-control
 behaviour validated in Section~\ref{sec:load-cross-validation} sits in front of a pipeline that
 actually completes real transcoding work at that concurrency rather than one that only queues and
-admits it. The full result is recorded in \texttt{docs/results/k6-summary.json}.
+admits it.
 
 \subsection{Drain Rate Under Real Transcoding Load}
 \label{sec:drain-rate}
@@ -709,8 +715,7 @@ Implied wall-clock per job (s)  & n/a    & 66.1 \\
 \end{tabularx}
 \end{table}
 
-\noindent\textit{Note: from \path{docs/results/drain-rate-real-payload.json} and
-\path{docs/results/stress-test-concurrency.json}, both sampled every 25~s. The synthetic column
+\noindent\textit{Note: both columns sampled every 25~s. The synthetic column
 records no successes and no \texttt{RUNNING} observations because those jobs failed at FFmpeg
 almost immediately, which is what that experiment intended. Implied wall-clock per job is the
 drain duration multiplied by the observed concurrency and divided by the job count.}
