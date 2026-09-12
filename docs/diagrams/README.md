@@ -15,7 +15,7 @@ Thư mục này chứa các sơ đồ dùng cho báo cáo đồ án. Ảnh PNG x
 
 ## Tái sinh ảnh sau khi sửa sơ đồ
 
-Sau khi chỉnh sửa tệp `.mmd` trong `src/`, chạy lệnh sau tại thư mục gốc của dự án để xuất lại hai ảnh dựng bằng Mermaid (hình 4.2 và 4.4). Sáu ảnh còn lại dựng bằng công cụ khác, lệnh riêng nằm ở mục kế tiếp:
+Sau khi chỉnh sửa tệp `.mmd` trong `src/`, chạy lệnh sau tại thư mục gốc của dự án để xuất lại ảnh dựng bằng Mermaid (chỉ còn hình 4.2). Bảy ảnh còn lại dựng bằng công cụ khác, lệnh riêng nằm ở mục kế tiếp:
 
 ```bash
 for f in docs/diagrams/src/*.mmd; do npx --yes @mermaid-js/mermaid-cli -i "$f" -o "docs/diagrams/$(basename "$f" .mmd).png" -c docs/diagrams/mermaid-config.json -b white -s 3; done
@@ -27,10 +27,16 @@ Tham số `-b white` bảo đảm nền trắng và `-s 3` xuất ảnh ở đ�
 
 Thư mục này dùng hai công cụ, chọn theo loại sơ đồ.
 
-**Mermaid** (`src/*.mmd`) chỉ còn dùng cho sơ đồ tuần tự và sơ đồ luồng người
-dùng. Đây là hai loại Mermaid làm tốt và không cần icon dịch vụ.
+**Mermaid** (`src/*.mmd`) chỉ còn dùng cho **sơ đồ tuần tự**, loại Mermaid làm
+tốt và không cần icon dịch vụ.
 
-**Bộ sinh SVG riêng** (`svg/`) cho sáu hình còn lại, vì các lý do sau. Thứ nhất,
+Sơ đồ luồng người dùng (hình 4.4) đã chuyển sang bộ sinh SVG, không phải vì
+trình bày mà vì **tỉ lệ khung**: `graph TB` xếp mọi thứ thành một cột dọc và
+không có cách nào bảo nó gấp lại, nên hình ra 1:2,15, phải đặt theo chiều cao
+trang, và chữ in ra chỉ còn 6,4pt. Xếp tay thành ba cột đưa tỉ lệ về 1:1,47 và
+chữ lên 8,5pt — lớn nhất trong các hình của báo cáo.
+
+**Bộ sinh SVG riêng** (`svg/`) cho bảy hình còn lại, vì các lý do sau. Thứ nhất,
 Mermaid chỉ nạp được icon qua lời gọi JavaScript `registerIconPacks`, mà
 mermaid-cli không phơi hàm đó ra, nên chạy qua CLI thì mọi icon đều thành dấu
 hỏi. Thứ hai, bố cục tự động không đặt được các khối lồng nhau theo đúng ranh
