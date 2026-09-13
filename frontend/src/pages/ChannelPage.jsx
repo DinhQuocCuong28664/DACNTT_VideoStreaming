@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
@@ -17,6 +17,7 @@ import videoApi from '../api/videoApi';
 import userApi from '../api/userApi';
 import VideoCard from '../components/Video/VideoCard';
 import { UPLOAD_CATEGORIES } from '../i18n/categories';
+import useRefreshWhilePending from '../hooks/useRefreshWhilePending';
 
 /**
  * Ba chế độ hiển thị, đi vòng theo đúng thứ tự này mỗi lần nhấn nút.
@@ -94,6 +95,53 @@ const ChannelPage = () => {
 
     fetchData();
   }, [userId, page, isOwner, currentUser]);
+
+  /**
+   * Chuyển mã chạy trên AWS Batch nên trạng thái đổi ở máy chủ mà trang này
+   * không biết. Chỉ nạp lại khi còn video chưa xong — kênh toàn video READY
+   * thì không có gì để chờ và vòng lặp không chạy lần nào.
+   */
+  const hasPendingVideos = videos.some(
+    (v) => v.status === 'PROCESSING' || v.status === 'UPLOADING'
+  );
+
+  /**
+   * Chỉ hoà lại bốn trường do đường ống chuyển mã ghi (xem updateVideoReady
+   * trong transcoder/src/dbHandler.js), thay vì thay nguyên danh sách.
+   *
+   * Thay nguyên danh sách sẽ giẫm lên các cập nhật lạc quan: đổi chế độ hiển
+   * thị cập nhật giao diện ngay rồi mới gửi PUT, nên một lượt nạp lại rơi
+   * đúng vào giữa sẽ kéo giá trị cũ của máy chủ về và người dùng thấy nút
+   * nhảy ngược lại. Hoà theo trường khiến việc đó không thể xảy ra: tiêu đề,
+   * mô tả, danh mục và chế độ hiển thị đều do người dùng làm chủ, lượt nạp
+   * lại này không đụng tới.
+   */
+  const refreshPipelineFields = useCallback(async () => {
+    try {
+      const res = await videoApi.getUserVideos(userId, page, 12);
+      const fresh = new Map(res.data.data.videos.map((v) => [v._id, v]));
+
+      setVideos((prev) =>
+        prev.map((v) => {
+          const next = fresh.get(v._id);
+          if (!next || next.status === v.status) return v;
+          return {
+            ...v,
+            status: next.status,
+            hlsUrl: next.hlsUrl,
+            thumbnailUrl: next.thumbnailUrl,
+            duration: next.duration,
+          };
+        })
+      );
+    } catch (err) {
+      // Im lặng: đây là lượt nạp nền, người dùng không yêu cầu gì cả. Lần
+      // sau sẽ thử lại, và F5 vẫn là lối thoát cuối.
+      console.error('Failed to refresh video statuses:', err);
+    }
+  }, [userId, page]);
+
+  useRefreshWhilePending(hasPendingVideos, refreshPipelineFields);
 
   const handleDelete = async (videoId) => {
     if (!window.confirm(t('channel.confirmDelete'))) return;
