@@ -39,16 +39,26 @@ hết hạng mục đã xong trước tuần được giao. Cách viết đã th
 
 | | Tuần | Hạn | Chủ đề theo lịch | Bằng chứng đã có trong kho | Việc thật còn lại |
 |---|---|---|---|---|---|
-| ☐ | **6** | 18/09 | Frontend React SPA + Vite, Design System | `frontend/vite.config.js`, 18 tệp trong `src/pages`, `src/index.css` | không |
-| ☐ | 7 | 25/09 | Trình phát HLS.js, đổi chất lượng 360/720/1080 | `components/Video/VideoPlayer.jsx`, phụ thuộc `hls.js` | không |
-| ☐ | 8 | 02/10 | Tìm kiếm, lọc, like/dislike, bình luận — **Chương 3** | 5 endpoint trong `videoRoutes.js`, `models/Comment.js`, `chap3.tex` | không |
-| ☐ | 9 | 09/10 | Docker multi-stage cho FFmpeg Transcoder | `transcoder/Dockerfile`, hai tầng `FROM` | không |
-| ☐ | 10 | 16/10 | Event-Driven: S3 → SQS → Lambda → Batch | `infrastructure/modules/{sqs,lambda,batch}`, `transcoder/src/sqsHandler.js` | không |
-| ☐ | 11 | 23/10 | CloudFront + OAC, 11 module Terraform, CI/CD — **Chương 4** | `modules/cloudfront`, 11 module, 7 workflow, `chap4.tex` | không |
-| ☐ | 12 | 30/10 | DevSecOps, k6 stress test — **Chương 4–5** | `security-scan.yml`, `scripts/k6-load-test.js`, `chap5.tex` | không |
+| ☑ | **6** | 18/09 | Frontend React SPA + Vite, Design System | `frontend/vite.config.js`, 18 tệp trong `src/pages`, `src/index.css` | không |
+| ☑ | 7 | 25/09 | Trình phát HLS.js, đổi chất lượng 360/720/1080 | `components/Video/VideoPlayer.jsx`, phụ thuộc `hls.js` | không |
+| ☑ | 8 | 02/10 | Tìm kiếm, lọc, like/dislike, bình luận — **Chương 3** | 5 endpoint trong `videoRoutes.js`, `models/Comment.js`, `chap3.tex` | không |
+| ☑ | 9 | 09/10 | Docker multi-stage cho FFmpeg Transcoder | `transcoder/Dockerfile`, hai tầng `FROM` | không |
+| ☑ | 10 | 16/10 | Event-Driven: S3 → SQS → Lambda → Batch | `infrastructure/modules/{sqs,lambda,batch}`, `transcoder/src/sqsHandler.js` | không |
+| ☑ | 11 | 23/10 | CloudFront + OAC, 11 module Terraform, CI/CD — **Chương 4** | `modules/cloudfront`, 11 module, 7 workflow, `chap4.tex` | không |
+| ☑ | 12 | 30/10 | DevSecOps, k6 stress test — **Chương 4–5** | `security-scan.yml`, `scripts/k6-load-test.js`, `chap5.tex` | không |
 | ☐ | **13** | 06/11 | Hoàn thiện 6 chương, rà font và sơ đồ | báo cáo 82 trang, 7 tệp chương | **có** |
 | ☐ | 14 | 13/11 | Gửi GVHD review, nộp Turnitin | — | phụ thuộc thầy |
 | ☐ | 15 | 21/11 | Sửa theo góp ý lần 2, nộp E-learning | — | phụ thuộc thầy |
+
+## Trạng thái: tuần 6 đến 12 đã soạn sẵn
+
+Bảy báo cáo này được viết trước, dựa trên bằng chứng đã có trong kho tại thời
+điểm soạn. Nội dung đều là việc đã chạy thật nên rủi ro lỗi thời thấp, nhưng
+**trước khi nộp từng bài vẫn nên liếc lại**: nếu trong khoảng thời gian đó có thay
+đổi đáng kể ở phần liên quan thì sửa `week-NN.json` rồi sinh lại PDF.
+
+Tuần 13 cố ý **chưa soạn**, vì đó là tuần duy nhất còn việc thật — phải làm xong
+mới biết báo cáo gì.
 
 ## Ba điều cần để ý
 

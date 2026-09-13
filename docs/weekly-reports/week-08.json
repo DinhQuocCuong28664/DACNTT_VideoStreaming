@@ -1,0 +1,72 @@
+{
+  "tuan": 8,
+  "tuNgay": "26/09/2026",
+  "denNgay": "02/10/2026",
+  "deTai": "Xây dựng nền tảng chia sẻ video trực tuyến với hệ thống chuyển mã HLS tự động trên kiến trúc Serverless Container và Event-Driven",
+  "sinhVien": ["Đinh Quốc Cường (523H0008)", "Võ Huỳnh Minh Đức (523H0014)"],
+  "giangVien": "ThS. Mai Văn Mạnh",
+  "tyLeHoanThanh": "100%",
+
+  "moDau": "Tuần 8 bổ sung các tính năng tương tác: tìm kiếm, lọc danh mục, thích và không thích, bình luận. Điểm đáng chú ý về mặt kỹ thuật nằm ở tìm kiếm — một ô tìm kiếm nhận chuỗi tự do rồi đem ghép vào truy vấn cơ sở dữ liệu là một trong những chỗ dễ mở ra lỗ hổng nhất, nên phần này được xử lý riêng. Chương 3 của báo cáo cũng đã hoàn tất.",
+
+  "doiChieu": [
+    [
+      "Phát triển tính năng tìm kiếm video an toàn.",
+      "Đã hoàn thành tại <b>backend/src/services/videoService.js</b>. Chuỗi người dùng nhập được <b>thoát ký tự đặc biệt trước khi dựng biểu thức chính quy</b>. Không làm bước này thì người dùng có thể chèn cú pháp biểu thức chính quy độc hại, gây <b>ReDoS</b> — một chuỗi ngắn khiến máy chủ quay vòng rất lâu — hoặc lợi dụng cú pháp truy vấn của MongoDB.",
+      "Hoàn thành"
+    ],
+    [
+      "Xây dựng bộ lọc theo danh mục.",
+      "Đã hoàn thành. Bảy danh mục hiển thị thành một hàng thẻ trên trang danh mục, lọc danh sách <b>không tải lại trang</b>. Bộ lọc kết hợp được với từ khoá tìm kiếm.",
+      "Hoàn thành"
+    ],
+    [
+      "Xây dựng tính năng thích, không thích và bình luận.",
+      "Đã hoàn thành với năm điểm cuối trong <b>backend/src/routes/videoRoutes.js</b>: xem và thêm bình luận, xoá bình luận, thích và không thích. Một bình luận <b>xoá được bởi chính tác giả hoặc bởi chủ video</b> — chủ video cần quyền này để gỡ nội dung không phù hợp trên kênh của mình.",
+      "Hoàn thành"
+    ],
+    [
+      "Viết Chương 3 báo cáo đồ án (Phân tích và thiết kế hệ thống).",
+      "Đã hoàn thành, gồm bảng yêu cầu chức năng và phi chức năng, đặc tả tình huống sử dụng, và sơ đồ Use Case theo ký hiệu UML chuẩn.",
+      "Hoàn thành"
+    ]
+  ],
+
+  "ketQuaKyThuat": [
+    "<b>Thoát ký tự trước khi dựng biểu thức chính quy.</b> Đây là dòng phòng vệ chính của tìm kiếm. Chuỗi nhập vào được xử lý để mọi ký tự đặc biệt mất hết ý nghĩa cú pháp, nên nó chỉ còn là chuỗi cần tìm chứ không còn là chương trình cần chạy.",
+    "<b>Quyền riêng tư được cưỡng chế trên mọi đường truy vấn, không chỉ ở trang chi tiết.</b> Tìm kiếm, lọc danh mục, danh sách kênh và gợi ý video đều phải tuân cùng một quy tắc. Bộ kiểm thử <b>visibility</b> có 21 kiểm thử phủ đúng điểm này.",
+    "<b>Trả về \"không tìm thấy\" thay vì \"bị cấm\" cho video riêng tư.</b> Phản hồi <i>bị cấm</i> sẽ xác nhận rằng có một video mang định danh đó, tức là để lộ sự tồn tại. Dùng chung một mã lỗi thì người ngoài không phân biệt được.",
+    "<b>Quyền xoá bình luận thuộc về hai phía.</b> Tác giả xoá được bình luận của mình, và chủ video xoá được bình luận trên video của mình — hai nhu cầu khác nhau, cùng cưỡng chế ở tầng dịch vụ chứ không phải ở giao diện.",
+    "<b>Lượt xem được khử trùng trong một khoảng thời gian.</b> Cùng một người xem lại trong thời gian ngắn không làm tăng số đếm, nên con số phản ánh lượt xem thật chứ không phải số lần làm mới trang."
+  ],
+
+  "minhChung": [
+    ["backend/src/services/videoService.js", "Tìm kiếm có thoát ký tự, lọc danh mục, cưỡng chế quyền riêng tư trên mọi truy vấn."],
+    ["backend/src/routes/videoRoutes.js", "Năm điểm cuối cho bình luận, thích và không thích."],
+    ["backend/src/models/Comment.js", "Lược đồ bình luận, liên kết tới video và người dùng."],
+    ["backend/tests/visibility.test.js", "21 kiểm thử cưỡng chế quyền riêng tư trên mọi đường truy vấn."],
+    ["report/chapters/chap3.tex", "Chương 3 — Phân tích và thiết kế hệ thống."]
+  ],
+
+  "lenhKiemTra": [
+    ["npx jest tests/visibility.test.js", "<b>Tests: 21 passed</b> — quyền riêng tư đúng trên mọi đường truy vấn"],
+    ["Tìm kiếm với chuỗi chứa ký tự đặc biệt của biểu thức chính quy", "Được xử lý như chuỗi thường, không gây lỗi và không treo máy chủ"],
+    ["Tìm kiếm với tài khoản khách", "Chỉ trả về video công khai, không lộ video riêng tư hay không niêm yết"],
+    ["curl xoá bình luận của người khác", "HTTP 403 — chỉ tác giả hoặc chủ video mới xoá được"],
+    ["Xem lại cùng một video trong thời gian ngắn", "Số lượt xem không tăng thêm"]
+  ],
+
+  "gioiHan": [
+    "Tìm kiếm dựa trên quét biểu thức chính quy chứ chưa dùng chỉ mục toàn văn, nên chi phí tăng tuyến tính theo số bản ghi. Với quy mô hiện tại thì chưa thành vấn đề, nhưng đây là chỗ cần đổi trước khi kho video lớn lên.",
+    "Tìm kiếm chưa hỗ trợ tiếng Việt có dấu và không dấu tương đương nhau, nên gõ thiếu dấu có thể không ra kết quả mong muốn.",
+    "Chưa có cơ chế kiểm duyệt hay báo cáo nội dung: bình luận không phù hợp chỉ gỡ được thủ công bởi tác giả hoặc chủ video.",
+    "Danh sách bình luận chưa phân trang, nên video có rất nhiều bình luận sẽ trả về một phản hồi lớn.",
+    "Thích và không thích chưa có cơ chế chống lạm dụng ngoài việc yêu cầu đăng nhập."
+  ],
+
+  "camKet": [
+    "Đóng gói bộ chuyển mã FFmpeg bằng Docker Multi-stage Container.",
+    "Kiểm chứng ảnh container sinh đủ ba mức chất lượng và ảnh đại diện.",
+    "Rà soát kích thước ảnh và quyền chạy của tiến trình trong container."
+  ]
+}
