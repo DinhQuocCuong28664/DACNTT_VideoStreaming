@@ -82,6 +82,53 @@ chọn 1080p ngay từ đầu rồi giữ nguyên, và số lần đổi bitrate
 node collect.js --url ... --profile fast3g
 ```
 
+## So sánh nhiều video nguồn
+
+Phép đo trong báo cáo chạy trên **một** video, và chương 6 tự ghi lại hạn chế đó. Một mẫu
+duy nhất không phân biệt được "hệ thống hành xử như vậy" với "nội dung đó khiến hệ thống hành
+xử như vậy". `compare.js` chạy ma trận video × hồ sơ mạng rồi gộp thành một bảng.
+
+### Bước 1 — kiểm xem các nguồn có thật sự khác nhau không
+
+```bash
+node scripts/qoe/compare.js probe samples/*.mp4
+```
+
+Mã hoá thử 60 giây ở CRF cố định rồi so bitrate. Ở chế độ CRF, bộ mã hoá giữ chất lượng không
+đổi và để bitrate trôi theo nội dung, nên **bitrate thu được tỉ lệ thuận với độ phức tạp**. Đây
+là cách đo thẳng thứ mình quan tâm thay vì đoán qua thể loại — một cảnh quay tĩnh trong phim
+hành động vẫn là cảnh tĩnh.
+
+Ba nguồn nên cách nhau **ít nhất 2 lần**. Nếu chúng xúm lại quanh một giá trị thì bạn có ba
+video khác nội dung nhưng cùng độ phức tạp, và phép đo sẽ ra ba kết quả giống nhau — điều đó
+không gỡ được hạn chế một mẫu, nó chỉ chứng minh cùng một mẫu ba lần.
+
+### Bước 2 — chạy ma trận
+
+```bash
+node scripts/qoe/compare.js run --manifest docs/results/qoe-sources.json
+```
+
+Manifest là danh sách `{ "label": ..., "url": ... }`. Kết quả từng cặp ghi ra
+`docs/results/qoe-playback-<label>-<profile>.json`, bảng gộp ghi ra `qoe-comparison.json`.
+
+**Chạy lại thì bỏ qua các cặp đã xong.** Cả lượt kéo dài hàng giờ; đứt giữa chừng mà phải làm
+lại từ đầu thì rất dễ dẫn tới việc tự cắt bớt số lượt đo cho nhanh. Thêm `--force` nếu muốn đo
+lại từ đầu.
+
+### Vì sao KHÔNG biến thiên thời lượng
+
+Thời lượng chỉ cần **dài hơn cửa sổ đo**. Quá ngưỡng đó, dài thêm không cho thêm dữ liệu vì cửa
+sổ đo vẫn cố định, nhưng chuyển mã tốn 3–4,5 lần thời lượng. Ba video 4 phút cho đúng lượng số
+liệu như ba video 10 phút, với một phần ba chi phí. Thứ cần biến thiên là **độ phức tạp**.
+
+### Thứ tự chạy
+
+Chạy hết ba hồ sơ của một video rồi mới sang video kế tiếp. Nhờ vậy ba hồ sơ của mỗi video chịu
+cùng một thứ tự, nên khi so sánh **giữa các video** thì ảnh hưởng của thứ tự bị triệt tiêu. Nó
+vẫn còn khi so sánh **giữa các hồ sơ** của cùng một video — đúng như phép đo một nguồn, và đã
+được ghi trong chương 6.
+
 ## Chạy test (không cần Chromium)
 
 ```bash
