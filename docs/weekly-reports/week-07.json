@@ -1,0 +1,65 @@
+{
+  "tuan": 7,
+  "tuNgay": "19/09/2026",
+  "denNgay": "25/09/2026",
+  "deTai": "Xây dựng nền tảng chia sẻ video trực tuyến với hệ thống chuyển mã HLS tự động trên kiến trúc Serverless Container và Event-Driven",
+  "sinhVien": ["Đinh Quốc Cường (523H0008)", "Võ Huỳnh Minh Đức (523H0014)"],
+  "giangVien": "ThS. Mai Văn Mạnh",
+  "tyLeHoanThanh": "100%",
+
+  "moDau": "Tuần 7 tích hợp trình phát HLS vào giao diện. Đây là chỗ toàn bộ công sức chuyển mã của hệ thống hiện ra với người xem: trình phát đọc master playlist, tự đo băng thông và chọn mức chất lượng phù hợp, đồng thời cho người xem tự chọn nếu muốn. Trình phát được viết lại thay vì dùng bộ điều khiển sẵn có của trình duyệt, vì một lý do kỹ thuật cụ thể chứ không phải vì thẩm mỹ.",
+
+  "doiChieu": [
+    [
+      "Tích hợp trình phát video HLS bằng thư viện HLS.js.",
+      "Đã hoàn thành tại <b>frontend/src/components/Video/VideoPlayer.jsx</b>. Trước khi nạp luồng, trang gọi điểm cuối cấp quyền phát để nhận Signed Cookies mà mạng phân phối nội dung đòi hỏi; chỉ khi đó trình phát mới tải master playlist. Thiếu bước này thì mọi yêu cầu đều bị từ chối ở biên.",
+      "Hoàn thành"
+    ],
+    [
+      "Xây dựng tính năng chuyển đổi chất lượng 360p, 720p và 1080p.",
+      "Đã hoàn thành. Trình phát đọc danh sách mức chất lượng từ master playlist rồi hiển thị cho người dùng chọn. Giá trị <b>-1</b> tương ứng chế độ <b>Auto</b>, khi đó thuật toán thích ứng của HLS.js tự quyết định theo băng thông đo được; chọn một mức cụ thể sẽ ghim trình phát ở mức đó.",
+      "Hoàn thành"
+    ],
+    [
+      "Viết lại bộ điều khiển trình phát thay vì dùng bộ điều khiển của trình duyệt.",
+      "Đã hoàn thành. Lý do là kỹ thuật: bộ điều khiển sẵn có <b>không mở rộng được</b> — trình duyệt tự vẽ menu riêng cho tốc độ phát và ảnh trong ảnh, và không có cách nào gộp bộ chọn chất lượng của HLS.js vào đó. Để người dùng hai menu rời rạc thì khó dùng, nên phát, tạm dừng, tua, âm lượng, toàn màn hình, tốc độ, ảnh trong ảnh và chọn chất lượng đều được viết lại sau một thanh điều khiển duy nhất.",
+      "Hoàn thành"
+    ]
+  ],
+
+  "ketQuaKyThuat": [
+    "<b>Thích ứng tự động là mặc định, chọn tay là tuỳ chọn.</b> Ở chế độ Auto, HLS.js đo thông lượng thực tế rồi đổi mức ở ranh giới đoạn, nên việc đổi không làm gián đoạn hình. Người xem muốn ghim một mức thì vẫn ghim được.",
+    "<b>Signed Cookies phải có trước khi nạp luồng.</b> Trình phát không tự xin được; trang phải gọi điểm cuối cấp quyền trước. Thứ tự này là bắt buộc, đảo lại thì trình phát nhận lỗi từ chối và dừng.",
+    "<b>Bộ điều khiển tự viết là hệ quả của một giới hạn có thật.</b> Trình duyệt không cho chèn mục vào menu của nó, nên hoặc chấp nhận hai menu rời nhau, hoặc viết lại toàn bộ. Báo cáo nêu rõ đây là đánh đổi đã cân nhắc chứ không phải làm lại cho đẹp.",
+    "<b>Chú giải khi tua hiện ảnh bìa cố định.</b> Nó báo thời điểm dưới con trỏ nhưng không hiện khung hình tại vị trí đó, vì bộ chuyển mã chỉ trích một ảnh đại diện duy nhất chứ không sinh tấm ảnh ghép mà bản xem trước theo khung hình sẽ đòi hỏi.",
+    "<b>Lượt xem chỉ được đếm sau khi phát thật sự bắt đầu</b>, không phải khi trang tải xong, nên làm mới trang liên tục không thổi được số lượt xem."
+  ],
+
+  "minhChung": [
+    ["frontend/src/components/Video/VideoPlayer.jsx", "Khởi tạo HLS.js, đọc danh sách mức chất lượng, thanh điều khiển tự viết."],
+    ["frontend/src/pages/WatchPage.jsx", "Trang xem: gọi cấp quyền phát trước, rồi mới dựng trình phát."],
+    ["backend/src/services/cloudfrontService.js", "Ký và cấp Signed Cookies cho một video cụ thể."],
+    ["backend/tests/cloudfrontService.test.js", "24 kiểm thử cho việc ký cookie, phạm vi chính sách và thuộc tính cookie."]
+  ],
+
+  "lenhKiemTra": [
+    ["npx jest tests/cloudfrontService.test.js", "<b>Tests: 24 passed</b> — ký cookie và phạm vi chính sách đúng"],
+    ["Mở trang xem, quan sát tab mạng", "Gọi playback-auth trước, sau đó mới tải master.m3u8"],
+    ["Chọn thủ công mức 360p rồi 1080p", "Độ phân giải khung hình đổi theo, không gián đoạn phát"],
+    ["Để chế độ Auto và giới hạn băng thông", "Trình phát tự hạ mức chất lượng ở ranh giới đoạn"],
+    ["Tải master.m3u8 khi không có cookie", "HTTP 403 từ mạng phân phối nội dung"]
+  ],
+
+  "gioiHan": [
+    "Trên Safari, trình duyệt hỗ trợ HLS sẵn nên đường phát khác với HLS.js. Hệ thống hoạt động ở cả hai đường nhưng bộ chọn chất lượng tự viết chỉ điều khiển được đường qua HLS.js.",
+    "Chú giải khi tua chưa hiện được khung hình tại vị trí đang tua, do bộ chuyển mã chưa sinh tấm ảnh ghép. Đây là hạn chế ở khâu chuyển mã chứ không phải ở trình phát.",
+    "Nhãn chất lượng phản ánh mức <i>đang hiển thị</i>, trễ hơn mức <i>đang tải về</i> đúng bằng độ sâu bộ đệm. Với người xem thì mức hiển thị mới là mức họ thấy, nên đây là lựa chọn có chủ đích.",
+    "Chưa có chỉ số nào được thu thập từ phía người xem thật; chất lượng trải nghiệm hiện chỉ đo được bằng công cụ trong môi trường kiểm thử."
+  ],
+
+  "camKet": [
+    "Phát triển tính năng tìm kiếm video và lọc theo danh mục.",
+    "Xây dựng tính năng thích, không thích và bình luận.",
+    "Viết Chương 3 báo cáo đồ án (Phân tích và thiết kế hệ thống)."
+  ]
+}

@@ -1,0 +1,72 @@
+{
+  "tuan": 10,
+  "tuNgay": "10/10/2026",
+  "denNgay": "16/10/2026",
+  "deTai": "Xây dựng nền tảng chia sẻ video trực tuyến với hệ thống chuyển mã HLS tự động trên kiến trúc Serverless Container và Event-Driven",
+  "sinhVien": ["Đinh Quốc Cường (523H0008)", "Võ Huỳnh Minh Đức (523H0014)"],
+  "giangVien": "ThS. Mai Văn Mạnh",
+  "tyLeHoanThanh": "100%",
+
+  "moDau": "Tuần 10 nối các mảnh rời thành một dây chuyền tự chạy: tệp vừa lên kho lưu trữ là sự kiện được phát ra, đi qua hàng đợi, được một hàm nộp thành công việc, và một container được tạo ra để xử lý rồi tự huỷ. Không thành phần nào trong chuỗi này chiếm giữ tài nguyên giữa hai công việc — đó chính là điều làm nên chữ <i>Serverless</i> của đề tài.",
+
+  "doiChieu": [
+    [
+      "Xây dựng luồng Amazon S3 Event Notification đến Amazon SQS.",
+      "Đã hoàn thành. Tệp tải lên xong thì kho lưu trữ tự phát sự kiện <b>s3:ObjectCreated</b> vào hàng đợi. Nhờ vậy việc kích hoạt xử lý <b>không phụ thuộc trình duyệt</b>: người dùng đóng tab ngay sau khi truyền xong thì video vẫn được xử lý.",
+      "Hoàn thành"
+    ],
+    [
+      "Kết nối Amazon SQS với hàm Lambda nộp việc.",
+      "Đã hoàn thành qua ánh xạ nguồn sự kiện. Hàm Lambda đọc thông điệp, xác định video tương ứng rồi gọi <b>SubmitJob</b> lên AWS Batch. Hàm này chỉ nộp việc chứ không chuyển mã, nên nó chạy rất ngắn và không chạm giới hạn thời gian của Lambda.",
+      "Hoàn thành"
+    ],
+    [
+      "Chạy bộ chuyển mã trên AWS Batch nền Fargate.",
+      "Đã hoàn thành tại <b>infrastructure/modules/batch</b>. Môi trường tính toán cấu hình được giữa <b>FARGATE</b> và <b>FARGATE_SPOT</b>; bản triển khai dùng Spot để giảm chi phí, chấp nhận đánh đổi là công việc có thể bị thu hồi giữa chừng.",
+      "Hoàn thành"
+    ],
+    [
+      "Thiết lập hàng đợi thư chết cho công việc thất bại.",
+      "Đã hoàn thành tại <b>infrastructure/modules/sqs</b>: sau <b>3 lần nhận không thành công</b>, thông điệp chuyển sang hàng đợi thư chết. Nhờ vậy một công việc hỏng được <b>giữ lại để xem xét</b> thay vì biến mất, và cũng không quay vòng vô hạn làm tốn tài nguyên.",
+      "Hoàn thành"
+    ]
+  ],
+
+  "ketQuaKyThuat": [
+    "<b>Các tầng được tách rời bằng hàng đợi.</b> Máy chủ ứng dụng không gọi thẳng bộ chuyển mã. Nếu tầng chuyển mã tạm thời quá tải hay ngừng, thông điệp vẫn nằm trong hàng đợi chờ được xử lý chứ không mất.",
+    "<b>Ghi có điều kiện là lớp phòng vệ chống công việc trùng.</b> Hàng đợi bảo đảm <i>giao ít nhất một lần</i>, nên cùng một thông điệp có thể tới hai lần. Lệnh cập nhật trạng thái chỉ thực hiện khi video <b>chưa ở trạng thái READY</b>, nên job tới sau bị từ chối ghi thay vì đè lên kết quả của job đã xong.",
+    "<b>Thông điệp bị xoá ngay khi nộp việc, không phải khi việc hoàn tất.</b> Đây là một đánh đổi có thật và được ghi rõ: nó tránh thông điệp quay lại hàng đợi trong lúc container còn đang chạy, nhưng đổi lại việc chuyển mã thất bại sẽ không được hàng đợi tự thử lại.",
+    "<b>Không thành phần nào chiếm tài nguyên giữa hai công việc.</b> Hàng đợi, hàm nộp việc và môi trường tính toán đều chỉ tính tiền khi thực sự có việc; container được tạo khi có việc và kết thúc ngay sau đó.",
+    "<b>Fargate Spot giảm chi phí, đổi lấy rủi ro bị thu hồi.</b> Với công việc chạy nền không ràng buộc thời gian phản hồi thì đánh đổi này hợp lý, và việc thất bại đã có hàng đợi thư chết hứng."
+  ],
+
+  "minhChung": [
+    ["infrastructure/modules/sqs/main.tf", "Hàng đợi chính và hàng đợi thư chết, ngưỡng 3 lần nhận."],
+    ["infrastructure/modules/lambda/main.tf", "Hàm nộp việc và ánh xạ nguồn sự kiện từ hàng đợi."],
+    ["infrastructure/modules/batch/main.tf", "Môi trường tính toán Fargate, hàng đợi công việc và định nghĩa công việc."],
+    ["transcoder/src/sqsHandler.js", "Đọc và phân tích sự kiện của kho lưu trữ, duy trì nhịp tim."],
+    ["transcoder/src/dbHandler.js", "Ghi có điều kiện chống công việc trùng ghi đè kết quả."],
+    ["transcoder/tests/dbHandler.test.js", "6 kiểm thử cho hành vi ghi có điều kiện."]
+  ],
+
+  "lenhKiemTra": [
+    ["npx jest tests/dbHandler.test.js", "<b>Tests: 6 passed</b> — job trùng bị từ chối ghi, không đè kết quả"],
+    ["Tải lên một video rồi đóng trình duyệt ngay", "Video vẫn được xử lý tới trạng thái READY"],
+    ["aws sqs get-queue-attributes", "Số thông điệp về 0 sau khi các công việc hoàn tất"],
+    ["aws batch describe-jobs", "Công việc chuyển từ RUNNABLE sang RUNNING rồi SUCCEEDED"],
+    ["Nộp một tệp không phải video", "Công việc thất bại, video chuyển ERROR, thông điệp vào hàng đợi thư chết"]
+  ],
+
+  "gioiHan": [
+    "Fargate Spot có thể bị thu hồi giữa chừng, khi đó công việc đang chạy bị dừng. Hệ thống chưa có cơ chế tiếp tục từ điểm dừng nên phải xử lý lại từ đầu.",
+    "Thông điệp bị xoá ngay khi nộp việc nên <b>hàng đợi không tự thử lại</b> khi bản thân việc chuyển mã thất bại; cơ chế thử lại và hàng đợi thư chết chỉ áp dụng cho hàm nộp việc.",
+    "Thời gian chờ khởi động container là chi phí cố định của kiến trúc này. Với video rất ngắn thì phần chờ có thể lớn hơn cả phần xử lý — đây là nhược điểm cố hữu cần nêu trung thực.",
+    "Chưa có cảnh báo tự động khi hàng đợi thư chết có thông điệp, nên một công việc hỏng hiện chỉ phát hiện được khi kiểm tra thủ công."
+  ],
+
+  "camKet": [
+    "Phân phối nội dung HLS qua CloudFront kèm Origin Access Control.",
+    "Biên soạn các module Terraform mô tả toàn bộ hạ tầng và các quy trình CI/CD.",
+    "Viết Chương 4 báo cáo đồ án (Thiết kế kiến trúc hệ thống)."
+  ]
+}

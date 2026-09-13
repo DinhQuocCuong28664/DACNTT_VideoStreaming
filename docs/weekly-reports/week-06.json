@@ -1,0 +1,66 @@
+{
+  "tuan": 6,
+  "tuNgay": "12/09/2026",
+  "denNgay": "18/09/2026",
+  "deTai": "Xây dựng nền tảng chia sẻ video trực tuyến với hệ thống chuyển mã HLS tự động trên kiến trúc Serverless Container và Event-Driven",
+  "sinhVien": ["Đinh Quốc Cường (523H0008)", "Võ Huỳnh Minh Đức (523H0014)"],
+  "giangVien": "ThS. Mai Văn Mạnh",
+  "tyLeHoanThanh": "100%",
+
+  "moDau": "Tuần 6 dựng lớp giao diện của hệ thống: một ứng dụng trang đơn viết bằng React, đóng gói bằng Vite, và một hệ thống thiết kế đặt toàn bộ màu sắc cùng khoảng cách vào biến CSS thay vì rải giá trị khắp các tệp. Cách làm này quyết định hai thứ về sau: giao diện sáng tối chỉ là đổi một tập biến, và mọi màn hình thêm mới đều kế thừa sẵn ngôn ngữ thị giác chung.",
+
+  "doiChieu": [
+    [
+      "Thiết kế giao diện Frontend React.js SPA trên nền Vite.",
+      "Đã hoàn thành. Ứng dụng gồm <b>18 màn hình</b> trong <b>frontend/src/pages</b>, điều hướng phía trình duyệt nên chuyển trang không tải lại toàn bộ. Thành phần dùng chung gom theo vai trò tại <b>frontend/src/components</b>: <b>Auth</b>, <b>Common</b>, <b>Layout</b> và <b>Video</b>.",
+      "Hoàn thành"
+    ],
+    [
+      "Xây dựng Design System thống nhất cho toàn bộ giao diện.",
+      "Đã hoàn thành tại <b>frontend/src/index.css</b> với <b>119 biến CSS</b> cho màu sắc, khoảng cách, bo góc và đổ bóng. Giao diện sáng và tối khai báo qua thuộc tính <b>[data-theme]</b>, nên đổi chủ đề chỉ là thay một tập biến chứ không phải viết lại quy tắc cho từng thành phần.",
+      "Hoàn thành"
+    ],
+    [
+      "Bổ sung các màn hình tiện ích còn thiếu.",
+      "Đã có trang giới thiệu, trang thiết lập tài khoản, và các trang lỗi riêng cho <b>404 Không tìm thấy</b> và <b>403 Không có quyền</b>. Tách hai mã lỗi này là có chủ đích: người dùng cần phân biệt \"không tồn tại\" với \"tồn tại nhưng bạn không được xem\".",
+      "Hoàn thành"
+    ]
+  ],
+
+  "ketQuaKyThuat": [
+    "<b>Biến CSS là nền của hệ thống thiết kế.</b> 119 biến đặt ở một chỗ, mọi thành phần tham chiếu tới chúng. Nếu rải mã màu trực tiếp vào từng tệp thì thêm giao diện tối sau này sẽ phải sửa hàng trăm chỗ và chắc chắn sót.",
+    "<b>Giao diện sáng tối đổi bằng thuộc tính, không bằng điều kiện trong mã.</b> Đặt <b>data-theme</b> trên thẻ gốc là toàn bộ cây thành phần đổi theo, không thành phần nào cần biết chủ đề hiện tại là gì.",
+    "<b>Vite thay cho công cụ đóng gói truyền thống.</b> Máy chủ phát triển nạp module gốc của trình duyệt nên khởi động gần như tức thì và cập nhật nóng khi sửa mã, rút ngắn đáng kể vòng lặp sửa — xem kết quả.",
+    "<b>Ứng dụng trang đơn giữ trạng thái khi chuyển màn hình.</b> Người dùng đang xem video rồi mở trang kênh và quay lại thì không phải tải lại toàn bộ ứng dụng.",
+    "Tách riêng trang lỗi <b>403</b> và <b>404</b> để thông điệp đúng với tình huống, thay vì gộp mọi lỗi vào một trang chung."
+  ],
+
+  "minhChung": [
+    ["frontend/vite.config.js", "Cấu hình đóng gói và máy chủ phát triển."],
+    ["frontend/src/index.css", "119 biến của hệ thống thiết kế, hai bộ giá trị cho giao diện sáng và tối."],
+    ["frontend/src/pages/", "18 màn hình của ứng dụng."],
+    ["frontend/src/components/", "Thành phần dùng chung, gom theo bốn nhóm vai trò."],
+    ["frontend/src/pages/NotFoundPage.jsx<br/>frontend/src/pages/ForbiddenPage.jsx", "Hai trang lỗi tách riêng cho 404 và 403."]
+  ],
+
+  "lenhKiemTra": [
+    ["npm run dev", "Máy chủ phát triển khởi động, cập nhật nóng khi sửa mã"],
+    ["npm run build", "Đóng gói thành công, sinh thư mục dist"],
+    ["Đổi data-theme giữa light và dark", "Toàn bộ giao diện đổi màu, không thành phần nào giữ lại màu cũ"],
+    ["Truy cập một đường dẫn không tồn tại", "Hiện trang 404 riêng, không phải trang trắng"],
+    ["Truy cập video riêng tư của người khác", "Hiện trang 403 riêng, phân biệt rõ với 404"]
+  ],
+
+  "gioiHan": [
+    "Ứng dụng kết xuất hoàn toàn ở trình duyệt, không có kết xuất phía máy chủ, nên lần tải đầu tiên phải chờ tải và chạy xong gói mã. Với kết nối chậm thì khoảng chờ này thấy rõ.",
+    "Giao diện chưa được kiểm tra về khả năng tiếp cận: chưa rà tương phản màu theo chuẩn, chưa kiểm tra điều hướng hoàn toàn bằng bàn phím, và chưa thử với trình đọc màn hình.",
+    "Chưa có kiểm thử tự động cho các thành phần giao diện; việc kiểm chứng hiện dựa vào thao tác thủ công.",
+    "Bố cục đã đáp ứng nhiều khổ màn hình nhưng chưa được kiểm tra có hệ thống trên dải thiết bị rộng, đặc biệt là máy tính bảng ở chế độ nằm ngang."
+  ],
+
+  "camKet": [
+    "Tích hợp trình phát video HLS bằng thư viện HLS.js.",
+    "Xây dựng bộ chọn chất lượng cho ba mức 360p, 720p và 1080p.",
+    "Kiểm chứng luồng phát hoạt động đúng với cơ chế Signed Cookies của mạng phân phối nội dung."
+  ]
+}

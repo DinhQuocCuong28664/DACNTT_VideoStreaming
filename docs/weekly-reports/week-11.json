@@ -1,0 +1,77 @@
+{
+  "tuan": 11,
+  "tuNgay": "17/10/2026",
+  "denNgay": "23/10/2026",
+  "deTai": "Xây dựng nền tảng chia sẻ video trực tuyến với hệ thống chuyển mã HLS tự động trên kiến trúc Serverless Container và Event-Driven",
+  "sinhVien": ["Đinh Quốc Cường (523H0008)", "Võ Huỳnh Minh Đức (523H0014)"],
+  "giangVien": "ThS. Mai Văn Mạnh",
+  "tyLeHoanThanh": "100%",
+
+  "moDau": "Tuần 11 đưa nội dung ra mạng phân phối và mô tả toàn bộ hạ tầng bằng mã. Bài toán khó của tuần này là <b>đóng kín kho lưu trữ nhưng vẫn phục vụ được người xem hợp lệ</b>: bucket không cho ai truy cập trực tiếp, chỉ mạng phân phối đọc được, và mạng phân phối chỉ phục vụ yêu cầu mang chữ ký hợp lệ. Chương 4 của báo cáo cũng đã hoàn tất.",
+
+  "doiChieu": [
+    [
+      "Phân phối nội dung HLS qua CloudFront kèm Origin Access Control.",
+      "Đã hoàn thành tại <b>infrastructure/modules/cloudfront</b>. Bucket nội dung đã xử lý <b>đóng hoàn toàn với truy cập trực tiếp</b>; chỉ bản phân phối CloudFront đọc được, thông qua Origin Access Control. Mọi yêu cầu đều bị chuyển hướng sang HTTPS.",
+      "Hoàn thành"
+    ],
+    [
+      "Bảo vệ luồng phát bằng CloudFront Signed Cookies.",
+      "Đã hoàn thành. Chính sách ký dùng <b>Custom Policy</b> chứ không phải Canned Policy, vì chỉ Custom Policy hỗ trợ <b>ký tự đại diện trong phạm vi tài nguyên</b> — cần thiết để một lần cấp cookie phủ được master playlist cùng toàn bộ các đoạn của đúng một video, và không phủ gì ngoài video đó.",
+      "Hoàn thành"
+    ],
+    [
+      "Biên soạn các module Terraform mô tả toàn bộ hạ tầng.",
+      "Đã hoàn thành với <b>11 module</b> tại <b>infrastructure/modules</b>: batch, cloudfront, ecr, iam, lambda, monitoring, s3, secrets, sns, sqs và vpc. Toàn bộ môi trường dựng lại được từ mã bằng một lệnh duy nhất.",
+      "Hoàn thành"
+    ],
+    [
+      "Xây dựng các quy trình CI/CD.",
+      "Đã hoàn thành với <b>7 quy trình GitHub Actions</b>: kiểm thử cho ba thành phần, kiểm tra hạ tầng, quét bảo mật, và hai luồng triển khai cho môi trường thử nghiệm cùng môi trường chạy thật.",
+      "Hoàn thành"
+    ],
+    [
+      "Viết Chương 4 báo cáo đồ án (Thiết kế kiến trúc hệ thống).",
+      "Đã hoàn thành, gồm sơ đồ kiến trúc tổng thể có ranh giới triển khai, sơ đồ tuần tự của quy trình chuyển mã, sơ đồ quan hệ thực thể và sơ đồ luồng người dùng.",
+      "Hoàn thành"
+    ]
+  ],
+
+  "ketQuaKyThuat": [
+    "<b>Origin Access Control thay cho Origin Access Identity.</b> Đây là cách hiện hành để đóng kín một bucket làm nguồn, thay thế cơ chế cũ. Không có nó thì bucket phải mở công khai và mạng phân phối chỉ còn là lớp đệm tốc độ, không phải lớp kiểm soát.",
+    "<b>Custom Policy là bắt buộc, không phải lựa chọn.</b> Canned Policy không hỗ trợ ký tự đại diện trong phạm vi tài nguyên, mà một video HLS gồm một playlist cùng hàng chục đoạn. Nếu dùng Canned Policy thì mỗi đoạn phải ký riêng — bất khả thi.",
+    "<b>Phạm vi cookie giới hạn đúng một video.</b> Chính sách chỉ phủ đường dẫn của video đang xem, nên cookie lấy được từ một video không mở được video khác.",
+    "<b>Hạ tầng mô tả bằng mã, dựng lại được bằng một lệnh.</b> 11 module tách theo dịch vụ giúp sửa một phần mà không đụng phần còn lại, và giúp việc dựng lại trên một tài khoản mới trở thành việc có thể kiểm chứng thay vì thao tác tay.",
+    "<b>Có 24 kiểm thử cho riêng việc ký cookie</b>: phạm vi chính sách, thuộc tính cookie, và việc thu hồi phải lặp lại đúng các thuộc tính đã dùng lúc cấp — nếu khác một thuộc tính thì trình duyệt coi là cookie khác và không xoá."
+  ],
+
+  "minhChung": [
+    ["infrastructure/modules/cloudfront/main.tf", "Bản phân phối, Origin Access Control, chuyển hướng HTTPS."],
+    ["backend/src/services/cloudfrontService.js", "Ký Signed Cookies bằng Custom Policy có ký tự đại diện."],
+    ["infrastructure/modules/", "11 module Terraform mô tả toàn bộ hạ tầng."],
+    [".github/workflows/", "7 quy trình CI/CD cho kiểm thử, hạ tầng, bảo mật và triển khai."],
+    ["backend/tests/cloudfrontService.test.js", "24 kiểm thử cho việc ký và thu hồi cookie."],
+    ["report/chapters/chap4.tex", "Chương 4 — Thiết kế kiến trúc hệ thống."]
+  ],
+
+  "lenhKiemTra": [
+    ["npx jest tests/cloudfrontService.test.js", "<b>Tests: 24 passed</b> — chính sách và thuộc tính cookie đúng"],
+    ["curl thẳng vào URL của bucket S3", "HTTP 403 — bucket không phục vụ truy cập trực tiếp"],
+    ["curl master.m3u8 qua CloudFront, không kèm cookie", "HTTP 403 MissingKey — mạng phân phối từ chối"],
+    ["Mở trang xem video trên trình duyệt", "Nhận cookie rồi phát được bình thường"],
+    ["terraform plan", "Không có thay đổi ngoài dự kiến — trạng thái khớp với mã nguồn"]
+  ],
+
+  "gioiHan": [
+    "Signed Cookies có hiệu lực hai giờ, nên chuyển một video từ công khai sang riêng tư vẫn để người đang giữ cookie chưa hết hạn xem tiếp tới khi cookie hết hiệu lực. Thu hồi tức thì sẽ đòi xoay khoá ký hoặc thêm một hàm chạy tại biên kiểm tra từng yêu cầu.",
+    "Hệ thống không hiện thực quản lý bản quyền số: người xem có quyền vẫn có thể ghi lại luồng đã giải mã hoặc chia sẻ cookie của mình. Ngăn điều này nằm ngoài phạm vi các kỹ thuật dùng ở đây.",
+    "Lớp giá của mạng phân phối là một quyết định đánh đổi giữa chi phí và vùng phủ; thiết lập hiện tại phủ toàn cầu vì chênh lệch chi phí ở quy mô này gần như bằng không, nhưng đây là chỗ đầu tiên cần xem lại nếu lưu lượng tăng mạnh.",
+    "Mã hạ tầng chưa có kiểm thử tự động riêng; việc kiểm chứng dựa vào bước kiểm tra cú pháp và kế hoạch thay đổi trong quy trình CI."
+  ],
+
+  "camKet": [
+    "Hoàn thiện quét bảo mật trong quy trình: rà bí mật lộ lọt và quét lỗ hổng phụ thuộc.",
+    "Thực hiện kiểm thử chịu tải bằng k6 với kịch bản tải lên đồng thời.",
+    "Hoàn thiện Chương 4 và Chương 5 báo cáo đồ án."
+  ]
+}

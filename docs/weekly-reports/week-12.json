@@ -1,0 +1,78 @@
+{
+  "tuan": 12,
+  "tuNgay": "24/10/2026",
+  "denNgay": "30/10/2026",
+  "deTai": "Xây dựng nền tảng chia sẻ video trực tuyến với hệ thống chuyển mã HLS tự động trên kiến trúc Serverless Container và Event-Driven",
+  "sinhVien": ["Đinh Quốc Cường (523H0008)", "Võ Huỳnh Minh Đức (523H0014)"],
+  "giangVien": "ThS. Mai Văn Mạnh",
+  "tyLeHoanThanh": "100%",
+
+  "moDau": "Tuần 12 khép lại phần kiểm chứng: quét bảo mật trong quy trình tích hợp và kiểm thử chịu tải. Quyết định đáng bàn nhất của tuần là <b>cổng chất lượng chia hai tầng</b> — báo cáo rộng nhưng chỉ chặn hẹp. Một cổng chặn mọi thứ sẽ nhanh chóng bị người dùng tìm cách đi vòng, và khi đó nó không còn bảo vệ gì nữa.",
+
+  "doiChieu": [
+    [
+      "Rà soát bí mật lộ lọt trong mã nguồn.",
+      "Đã hoàn thành bằng <b>Gitleaks</b> trong quy trình <b>security-scan.yml</b>, quét toàn bộ kho mã ở mỗi lần đẩy. Đây là lớp chặn khoá truy cập hoặc mật khẩu vô tình bị commit — loại sai sót mà xoá ở commit sau cũng không cứu được, vì nó vẫn nằm trong lịch sử.",
+      "Hoàn thành"
+    ],
+    [
+      "Quét lỗ hổng trong thư viện phụ thuộc.",
+      "Đã hoàn thành bằng <b>Trivy</b>, chia làm <b>hai tầng</b>. Tầng báo cáo liệt kê mọi lỗ hổng mức <b>CRITICAL và HIGH</b> nhưng không chặn. Tầng cổng chất lượng chỉ chặn khi có lỗ hổng <b>CRITICAL đã có bản vá</b>.",
+      "Hoàn thành"
+    ],
+    [
+      "Quét ảnh container trước khi đưa lên kho ảnh.",
+      "Đã hoàn thành. Ảnh của bộ chuyển mã được quét trong quy trình CI trước bước đẩy lên kho ảnh, nên một ảnh có lỗ hổng nghiêm trọng đã vá được sẽ không tới được môi trường chạy thật.",
+      "Hoàn thành"
+    ],
+    [
+      "Thực hiện kiểm thử chịu tải với kịch bản tải lên đồng thời.",
+      "Đã hoàn thành bằng <b>k6</b> với <b>100 lượt tải lên đồng thời</b>, đạt <b>23,47 yêu cầu mỗi giây</b> ở tầng API. Kết quả được <b>kiểm chứng chéo bằng một công cụ thứ hai hiện thực độc lập</b>, để loại trừ khả năng con số chỉ là sản phẩm phụ của chính công cụ đo.",
+      "Hoàn thành"
+    ],
+    [
+      "Hoàn thiện Chương 4 và Chương 5 báo cáo đồ án.",
+      "Đã hoàn thành. Chương 5 trình bày quá trình phát triển, các khó khăn gặp phải cùng cách xử lý, và bảng độ bao phủ kiểm thử tự động.",
+      "Hoàn thành"
+    ]
+  ],
+
+  "ketQuaKyThuat": [
+    "<b>Cổng chất lượng chia hai tầng là quyết định thiết kế, không phải nới lỏng.</b> Lỗ hổng <i>chưa có bản vá</i> nằm trong một phụ thuộc gián tiếp là thứ nhóm không làm gì được. Chặn hợp nhất trên mọi lỗ hổng sẽ khiến pipeline đỏ liên tục vì lý do ngoài tầm kiểm soát, và kết cục quen thuộc là người ta học cách bỏ qua cổng.",
+    "<b>Báo cáo rộng, chặn hẹp.</b> Tầng báo cáo vẫn liệt kê đủ CRITICAL và HIGH nên không có gì bị giấu; chỉ hành vi chặn mới thu hẹp lại đúng phần sửa được.",
+    "<b>Bí mật lộ lọt phải chặn ở khâu đẩy mã.</b> Một khoá đã vào lịch sử kho mã thì xoá ở commit sau cũng không gỡ được khỏi lịch sử, nên điểm chặn duy nhất có tác dụng là ngay lúc mã được đẩy lên.",
+    "<b>Phân tích tĩnh dùng eslint-plugin-security thay vì công cụ máy chủ riêng.</b> Lý do là chi phí vận hành: một công cụ cần dựng và duy trì máy chủ riêng không tương xứng với quy mô đồ án, trong khi bộ quy tắc này chạy ngay trong bước kiểm tra sẵn có.",
+    "<b>Kiểm chứng chéo bằng công cụ độc lập.</b> Hai bộ tạo tải viết riêng, cùng kịch bản, cho kết quả khớp nhau ở các quan sát về hạ tầng. Điều này loại trừ khả năng con số phản ánh đặc tính của công cụ đo thay vì của hệ thống.",
+    "Toàn bộ hành động trong quy trình đều <b>ghim theo mã băm commit</b> thay vì theo nhãn phiên bản, nên một nhãn bị đẩy lại không thể lặng lẽ đổi thứ đang chạy trong quy trình."
+  ],
+
+  "minhChung": [
+    [".github/workflows/security-scan.yml", "Gitleaks, Trivy hai tầng cho phụ thuộc, quét ảnh container."],
+    ["scripts/k6-load-test.js", "Kịch bản kiểm thử chịu tải 100 lượt tải lên đồng thời."],
+    ["scripts/node-load-test.js", "Bộ tạo tải thứ hai, hiện thực độc lập, dùng để kiểm chứng chéo."],
+    ["docs/results/k6-summary.json<br/>docs/results/node-load-test.json", "Kết quả thô của hai lần đo."],
+    ["report/chapters/chap5.tex", "Chương 5 — Phát triển, khó khăn và kiểm thử."]
+  ],
+
+  "lenhKiemTra": [
+    ["Đẩy một commit chứa khoá giả", "Gitleaks chặn, quy trình báo thất bại"],
+    ["Chạy quy trình security-scan trên nhánh hiện tại", "Tầng báo cáo liệt kê đầy đủ, tầng cổng không chặn vì không còn CRITICAL đã có bản vá"],
+    ["k6 run scripts/k6-load-test.js", "<b>23,47 yêu cầu mỗi giây</b>, 100 lượt tải lên đều thành công ở tầng API"],
+    ["node scripts/node-load-test.js", "Kết quả khớp với k6 ở các quan sát hạ tầng"],
+    ["Kiểm tra hàng đợi sau đợt tải", "Không thông điệp nào bị mất hay kẹt lại"]
+  ],
+
+  "gioiHan": [
+    "Kiểm thử chịu tải đo <b>tầng API</b>: khởi tạo, truyền lên kho lưu trữ và xác nhận. Nó xác nhận tầng tiếp nhận chịu được tải, chứ không đo trực tiếp thông lượng chuyển mã ở mức đồng thời đó.",
+    "Phân tích tĩnh dựa trên bộ quy tắc theo mẫu mã nguồn, nên nó bắt được các mẫu dễ sinh lỗ hổng chứ không phải mọi lỗ hổng logic nghiệp vụ.",
+    "Chưa có kiểm thử bảo mật động trên ứng dụng đang chạy; toàn bộ việc quét hiện diễn ra trên mã nguồn và ảnh container.",
+    "Phép đo chất lượng trải nghiệm phát video mới chỉ thực hiện trên <b>một video nguồn duy nhất</b>. Đây là hạn chế đã ghi trong chương đánh giá và cần lặp lại trên nhiều nguồn có độ phức tạp khác nhau trước khi kết luận rộng hơn.",
+    "Chưa có cảnh báo tự động khi hàng đợi thư chết nhận thông điệp, nên công việc hỏng vẫn phải phát hiện thủ công."
+  ],
+
+  "camKet": [
+    "Lặp lại phép đo chất lượng trải nghiệm trên nhiều video nguồn để gỡ hạn chế một mẫu duy nhất.",
+    "Rà soát toàn bộ sáu chương báo cáo: nội dung, sơ đồ, bảng biểu và định dạng.",
+    "Kiểm tra font Times New Roman 13pt và khả năng đọc của mọi hình khi in."
+  ]
+}
