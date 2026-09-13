@@ -44,6 +44,13 @@ def dang_ky_font():
     if os.path.exists(thuong) and os.path.exists(dam):
         pdfmetrics.registerFont(TTFont(FONT, thuong))
         pdfmetrics.registerFont(TTFont(FONT_B, dam))
+        # Dang ky ho font, neu khong thi the <b> trong noi dung khong co tac
+        # dung: ReportLab van doc duoc the va khong in ra chu "<b>", nhung no
+        # khong biet ban dam cua Arial la font nao nen cu ve bang font thuong.
+        # Loi nay im lang hoan toan — ba bao cao dau deu mat phan nhan manh ma
+        # khong co dau hieu gi.
+        pdfmetrics.registerFontFamily(FONT, normal=FONT, bold=FONT_B,
+                                      italic=FONT, boldItalic=FONT_B)
         return FONT, FONT_B
     return 'Helvetica', 'Helvetica-Bold'
 

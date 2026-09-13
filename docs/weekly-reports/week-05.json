@@ -1,0 +1,86 @@
+{
+  "tuan": 5,
+  "tuNgay": "05/09/2026",
+  "denNgay": "11/09/2026",
+  "deTai": "Xây dựng nền tảng chia sẻ video trực tuyến với hệ thống chuyển mã HLS tự động trên kiến trúc Serverless Container và Event-Driven",
+  "sinhVien": ["Đinh Quốc Cường (523H0008)", "Võ Huỳnh Minh Đức (523H0014)"],
+  "giangVien": "ThS. Mai Văn Mạnh",
+  "tyLeHoanThanh": "100%",
+
+  "moDau": "Hai hạng mục kế hoạch của tuần 5 đều đã hoàn thành từ các tuần trước: cơ chế tải lên bằng Pre-signed URL có từ giai đoạn dựng API, còn Chương 2 đã viết xong trước đó. Vì vậy tuần này nhóm dùng thời gian để <b>kiểm chứng lại những gì đã làm</b> thay vì thêm tính năng mới: đo chất lượng phát video trên hệ thống đang chạy thật, rà soát các phát biểu trong báo cáo xem có được mã nguồn hậu thuẫn hay không, và sửa những khiếm khuyết mà hai việc đó phơi ra. Ba khiếm khuyết trong bộ chuyển mã được tìm thấy theo cách này.",
+
+  "doiChieu": [
+    [
+      "Xây dựng cơ chế tải video trực tiếp lên Amazon S3 bằng Pre-signed PUT URL.",
+      "Đã hoàn thành từ trước. Tuần này bổ sung phần còn thiếu ở giao diện: hiển thị số byte đã gửi, tốc độ tức thời và thời gian còn lại ước tính, kèm nút huỷ dựa trên <b>AbortController</b>. Quan trọng hơn, bản ghi nháp ở trạng thái <b>UPLOADING</b> nay được xoá cả khi người dùng bấm huỷ <i>lẫn khi lượt tải lên thất bại</i> — bản sửa đầu chỉ xử lý nhánh huỷ, nên mỗi lần thử lại vẫn để sót một bản ghi mồ côi.",
+      "Hoàn thành"
+    ],
+    [
+      "Kiểm chứng phía máy chủ định dạng và dung lượng tệp trước khi cấp URL tải lên.",
+      "Đã hoàn thành tại <b>backend/src/middleware/validateRequest.js</b>: sáu định dạng được chấp nhận, giới hạn 2 GB, và URL có hiệu lực 15 phút. Việc kiểm ở máy chủ là bắt buộc vì người dùng có thể gọi thẳng API để xin URL mà không qua giao diện. Có 11 kiểm thử ở tầng HTTP cho nhánh này.",
+      "Hoàn thành"
+    ],
+    [
+      "Viết Chương 2 báo cáo đồ án (Cơ sở lý thuyết và khảo sát).",
+      "Đã hoàn thành từ trước. Tuần này rà lại phần hình vẽ của chương: sửa số liệu bitrate sai trong hình HLS (hình cũ ghi 800/2800/5000 kbps, không con số nào là bitrate thật — đó là <b>bufsize</b> và <b>maxrate</b> của hai bậc khác nhau), và nâng cỡ chữ của năm hình vượt ngưỡng đọc được khi in.",
+      "Hoàn thành"
+    ],
+    [
+      "<i>Ngoài kế hoạch:</i> Đo chất lượng trải nghiệm phát video trên hệ thống đã triển khai.",
+      "Đã xây dựng bộ đo điều khiển Chromium không giao diện bằng Playwright, phát video thật qua đúng trình phát của hệ thống dưới ba hồ sơ băng thông mô phỏng. Ba chỉ số tỉ lệ nghẽn, số lần đổi bitrate và bitrate thực nhận <b>không thể quan sát được bằng công cụ cũ</b>, vốn chỉ tải tệp bằng <b>fetch</b> nên không có bộ đệm, không có đồng hồ phát và không chạy thuật toán thích ứng nào.",
+      "Hoàn thành"
+    ],
+    [
+      "<i>Ngoài kế hoạch:</i> Sửa ba khiếm khuyết của bộ chuyển mã do phép đo phát hiện.",
+      "Ba lỗi đều thuộc loại <b>không gây sập, không có thông báo</b>, nên chỉ lộ ra khi đem sản phẩm thật ra đo: khoảng cách khung khoá tính theo 30 fps cố định thay vì theo framerate thật của nguồn; thuộc tính <b>BANDWIDTH</b> ghi theo hằng số cấu hình thay vì đo từ segment; và thuộc tính <b>CODECS</b> hoàn toàn vắng mặt.",
+      "Hoàn thành"
+    ],
+    [
+      "<i>Ngoài kế hoạch:</i> Rà soát các phát biểu trong báo cáo và tài liệu.",
+      "Đã sửa các chỗ báo cáo mô tả không đúng mã nguồn, trong đó có ba phát biểu bị nói quá và một tính năng được mô tả là có nhưng thực tế chưa phơi ra giao diện. Cũng vá một lỗ hổng rò rỉ thông tin ở điểm cuối gợi ý video.",
+      "Hoàn thành"
+    ]
+  ],
+
+  "ketQuaKyThuat": [
+    "<b>Khoảng cách khung khoá nay bám framerate thật của nguồn.</b> Mã cũ giả định 30 fps, nên video 24 fps cho khoảng cách 7,5 giây trong khi mỗi đoạn HLS chỉ dài 6 giây — bộ mã hoá không có khung khoá để cắt đúng biên. Đo lại trên nguồn 24 fps: các đoạn từ 7,5 giây về đúng 6,0 giây ở cả ba mức chất lượng.",
+    "<b>Thuộc tính BANDWIDTH nay đo từ chính các segment.</b> RFC 8216 mục 4.3.4.2 quy định giá trị này PHẢI là bitrate đỉnh của segment khi các segment đã tồn tại. Mã cũ cộng hai hằng số trong tệp cấu hình, cho ra con số thấp hơn đỉnh thật 29–37%. Sai về phía thấp là chiều nguy hiểm: trình phát tưởng mức chất lượng nhẹ hơn thực tế nên chọn mức mà đường truyền không kham nổi rồi nghẽn.",
+    "<b>Hiệu quả của bản sửa được đo bằng thí nghiệm có nhóm đối chứng.</b> Trên hồ sơ 3G nhanh, thời gian chờ ở trường hợp tệ nhất giảm từ 16,81 giây xuống 2,39 giây và tỉ lệ nghẽn trung bình giảm từ 2,48% xuống 1,20%. Cái giá phải trả được nêu rõ chứ không giấu: bitrate trung bình giảm 15%, tức đổi chất lượng hình lấy sự liền mạch.",
+    "<b>Hồ sơ băng thông không giới hạn đóng vai nhóm đối chứng.</b> Nơi băng thông dư dả thì con số khai báo không ràng buộc gì, nên một bản sửa đúng lẽ ra phải không tạo khác biệt nào — và kết quả đúng là không đổi. Hồ sơ 3G chậm cũng không đổi, vì khi ngay cả mức thấp nhất đã vượt quá đường truyền thì trình phát không còn lựa chọn nào để mà bị đánh lừa.",
+    "<b>Thuộc tính CODECS nay đọc từ luồng đã mã hoá.</b> RFC 6381 lấy sáu chữ số hex sau <b>avc1.</b> từ ba byte trong tập tham số chuỗi của luồng, mà byte cờ ở giữa không suy ra được từ tên profile hay số level. Việc này còn làm lộ một lỗi khác: tham số level bị ghim cứng 3.1 cho cả ba mức, trong khi khung 1920×1080 cần tối thiểu level 4.0.",
+    "<b>Vá một lỗ hổng rò rỉ sự tồn tại.</b> Điểm cuối gợi ý video trả về mã lỗi khác nhau cho video riêng tư có thật và video không tồn tại, đủ để dò ra định danh nào đang tồn tại trong hệ thống. Đã sửa bằng cách dùng lại đúng quy tắc phân quyền của điểm cuối chi tiết.",
+    "Bộ kiểm thử tự động tăng từ 159 lên <b>209 kiểm thử trên 14 bộ</b> (115 phía máy chủ, 94 phía bộ chuyển mã), trong đó 50 kiểm thử mới khoá lại đúng ba khiếm khuyết vừa sửa."
+  ],
+
+  "minhChung": [
+    ["frontend/src/components/Video/VideoUpload.jsx", "Số liệu tải lên tức thời, nút huỷ bằng AbortController, dọn bản ghi nháp ở cả nhánh huỷ lẫn nhánh lỗi."],
+    ["backend/src/middleware/validateRequest.js", "Kiểm định dạng và dung lượng trước khi cấp Pre-signed URL."],
+    ["transcoder/src/transcoder.js", "Khoảng cách khung khoá theo framerate thật; BANDWIDTH và CODECS đọc từ sản phẩm đã mã hoá."],
+    ["scripts/qoe/collect.js<br/>scripts/qoe/metrics.js", "Bộ đo chất lượng trải nghiệm bằng trình duyệt thật và phần tính chỉ số tách riêng."],
+    ["transcoder/tests/framerate.test.js<br/>transcoder/tests/bandwidth.test.js<br/>transcoder/tests/codecs.test.js", "82 kiểm thử khoá lại ba khiếm khuyết của bộ chuyển mã."],
+    ["backend/tests/relatedVideos.test.js", "10 kiểm thử xác nhận điểm cuối gợi ý không để lộ video riêng tư."],
+    ["report/chapters/chap6.tex", "Mục đánh giá chất lượng phát dưới băng thông giới hạn, kèm ba bảng số liệu."]
+  ],
+
+  "lenhKiemTra": [
+    ["npx jest (backend và transcoder)", "<b>Tests: 209 passed, 209 total</b> trên 14 bộ kiểm thử"],
+    ["ffprobe trên các đoạn HLS của nguồn 24 fps", "Mỗi đoạn đúng <b>6,000000 giây</b>, giống nhau ở cả ba mức chất lượng"],
+    ["node scripts/qoe/collect.js --profile fast3g", "Chờ khởi động lớn nhất <b>2,39 giây</b> (trước bản sửa: 16,81 giây)"],
+    ["Đọc trực tiếp tập tham số chuỗi của segment", "Ba mức cho ba chuỗi codec khác nhau, mỗi chuỗi khớp đúng luồng của nó"],
+    ["curl điểm cuối gợi ý với video riêng tư", "HTTP 404 giống hệt video không tồn tại — không còn phân biệt được"]
+  ],
+
+  "gioiHan": [
+    "Phép đo chất lượng phát chỉ chạy trên <b>một video nguồn duy nhất</b>, nên các con số mô tả hành vi của hệ thống với đúng loại nội dung đó chứ chưa phải một mẫu đại diện. Muốn kết luận rộng hơn thì phải lặp lại trên nhiều video có độ phức tạp hình ảnh khác nhau.",
+    "Ba hồ sơ băng thông chạy tuần tự nên trạng thái bộ nhớ đệm biên bị lẫn với thứ tự chạy, riêng đối với chỉ số thời gian chờ khởi động. Đây nhiều khả năng là lý do hồ sơ 3G nhanh lại có thời gian chờ thấp hơn hồ sơ không giới hạn.",
+    "Bộ đo chỉ nhìn thấy những đoạn mà trình phát thật sự tải về, nên bitrate đỉnh nó quan sát được là một <i>cận dưới</i> của đỉnh thật: vượt ngưỡng thì kết luận được có vi phạm, còn nằm dưới thì chưa chứng minh được điều gì.",
+    "Bộ đo xuất dữ liệu theo định dạng đầu vào của mô hình ITU-T P.1203 ở mức Mode 0 nhưng <b>không tính điểm MOS</b>, và báo cáo cũng không tuyên bố có điểm số đó. Muốn có thì phải đưa qua bản cài đặt tham chiếu công khai của mô hình.",
+    "Bộ kiểm thử của bộ đo chất lượng chưa được nối vào quy trình tích hợp liên tục, vì mỗi lần chạy sẽ phải tải về một bản Chromium riêng."
+  ],
+
+  "camKet": [
+    "Thiết kế giao diện Frontend React.js SPA trên nền Vite với hệ thống thiết kế nhất quán.",
+    "Bổ sung các tiện ích giao diện còn thiếu và rà soát khả năng đáp ứng trên nhiều khổ màn hình.",
+    "Lặp lại phép đo chất lượng phát trên nhiều video nguồn để khắc phục hạn chế một mẫu duy nhất."
+  ]
+}
