@@ -7,80 +7,68 @@
   "giangVien": "ThS. Mai Văn Mạnh",
   "tyLeHoanThanh": "100%",
 
-  "moDau": "Hai hạng mục kế hoạch của tuần 5 đều đã hoàn thành từ các tuần trước: cơ chế tải lên bằng Pre-signed URL có từ giai đoạn dựng API, còn Chương 2 đã viết xong trước đó. Vì vậy tuần này nhóm dùng thời gian để <b>kiểm chứng lại những gì đã làm</b> thay vì thêm tính năng mới: đo chất lượng phát video trên hệ thống đang chạy thật, rà soát các phát biểu trong báo cáo xem có được mã nguồn hậu thuẫn hay không, và sửa những khiếm khuyết mà hai việc đó phơi ra. Ba khiếm khuyết trong bộ chuyển mã được tìm thấy theo cách này.",
+  "moDau": "Tuần 5 tập trung vào cơ chế đưa tệp video lên hệ thống. Điểm mấu chốt của thiết kế là <b>tệp không đi qua máy chủ ứng dụng</b>: trình duyệt xin một URL ký sẵn rồi tải thẳng lên Amazon S3. Nhờ vậy bộ nhớ và băng thông của máy chủ không tăng theo kích thước tệp hay theo số người tải lên cùng lúc — một máy chủ nhỏ vẫn phục vụ được video 2 GB. Song song đó, Chương 2 của báo cáo (Cơ sở lý thuyết và khảo sát) đã hoàn tất.",
 
   "doiChieu": [
     [
       "Xây dựng cơ chế tải video trực tiếp lên Amazon S3 bằng Pre-signed PUT URL.",
-      "Đã hoàn thành từ trước. Tuần này bổ sung phần còn thiếu ở giao diện: hiển thị số byte đã gửi, tốc độ tức thời và thời gian còn lại ước tính, kèm nút huỷ dựa trên <b>AbortController</b>. Quan trọng hơn, bản ghi nháp ở trạng thái <b>UPLOADING</b> nay được xoá cả khi người dùng bấm huỷ <i>lẫn khi lượt tải lên thất bại</i> — bản sửa đầu chỉ xử lý nhánh huỷ, nên mỗi lần thử lại vẫn để sót một bản ghi mồ côi.",
+      "Đã hoàn thành. Luồng gồm ba bước: <b>POST /initiate-upload</b> tạo bản ghi ở trạng thái <b>UPLOADING</b> và trả về URL ký sẵn có hiệu lực 15 phút; trình duyệt <b>PUT</b> thẳng tệp lên S3; <b>PATCH /:id/confirm-upload</b> chuyển trạng thái sang <b>PROCESSING</b>. Bước xác nhận chỉ phục vụ hiển thị giao diện — quy trình chuyển mã được kích hoạt độc lập bởi sự kiện của S3, nên mất bước này cũng không mất video.",
       "Hoàn thành"
     ],
     [
       "Kiểm chứng phía máy chủ định dạng và dung lượng tệp trước khi cấp URL tải lên.",
-      "Đã hoàn thành tại <b>backend/src/middleware/validateRequest.js</b>: sáu định dạng được chấp nhận, giới hạn 2 GB, và URL có hiệu lực 15 phút. Việc kiểm ở máy chủ là bắt buộc vì người dùng có thể gọi thẳng API để xin URL mà không qua giao diện. Có 11 kiểm thử ở tầng HTTP cho nhánh này.",
+      "Đã hoàn thành tại <b>backend/src/middleware/validateRequest.js</b>: sáu định dạng được chấp nhận và giới hạn 2 GB. Việc kiểm phải đặt ở máy chủ chứ không phải ở trình duyệt, vì người dùng hoàn toàn có thể gọi thẳng API để xin URL mà bỏ qua giao diện. Chặn sớm ở đây còn tránh tạo bản ghi rác trong cơ sở dữ liệu và tránh chiếm dung lượng lưu trữ vô ích.",
+      "Hoàn thành"
+    ],
+    [
+      "Hoàn thiện trải nghiệm tải lên ở phía người dùng.",
+      "Trong tuần này giao diện được bổ sung số liệu tức thời của lượt truyền — số byte đã gửi, tốc độ hiện tại, thời gian còn lại ước tính — kèm nút huỷ dựa trên <b>AbortController</b>. Bản ghi nháp ở trạng thái <b>UPLOADING</b> được dọn cả khi người dùng bấm huỷ <i>lẫn khi lượt tải lên thất bại</i>; bản sửa đầu chỉ xử lý nhánh huỷ, nên mỗi lần thử lại vẫn để sót một bản ghi mồ côi.",
       "Hoàn thành"
     ],
     [
       "Viết Chương 2 báo cáo đồ án (Cơ sở lý thuyết và khảo sát).",
-      "Đã hoàn thành từ trước. Tuần này rà lại phần hình vẽ của chương: sửa số liệu bitrate sai trong hình HLS (hình cũ ghi 800/2800/5000 kbps, không con số nào là bitrate thật — đó là <b>bufsize</b> và <b>maxrate</b> của hai bậc khác nhau), và nâng cỡ chữ của năm hình vượt ngưỡng đọc được khi in.",
-      "Hoàn thành"
-    ],
-    [
-      "<i>Ngoài kế hoạch:</i> Đo chất lượng trải nghiệm phát video trên hệ thống đã triển khai.",
-      "Đã xây dựng bộ đo điều khiển Chromium không giao diện bằng Playwright, phát video thật qua đúng trình phát của hệ thống dưới ba hồ sơ băng thông mô phỏng. Ba chỉ số tỉ lệ nghẽn, số lần đổi bitrate và bitrate thực nhận <b>không thể quan sát được bằng công cụ cũ</b>, vốn chỉ tải tệp bằng <b>fetch</b> nên không có bộ đệm, không có đồng hồ phát và không chạy thuật toán thích ứng nào.",
-      "Hoàn thành"
-    ],
-    [
-      "<i>Ngoài kế hoạch:</i> Sửa ba khiếm khuyết của bộ chuyển mã do phép đo phát hiện.",
-      "Ba lỗi đều thuộc loại <b>không gây sập, không có thông báo</b>, nên chỉ lộ ra khi đem sản phẩm thật ra đo: khoảng cách khung khoá tính theo 30 fps cố định thay vì theo framerate thật của nguồn; thuộc tính <b>BANDWIDTH</b> ghi theo hằng số cấu hình thay vì đo từ segment; và thuộc tính <b>CODECS</b> hoàn toàn vắng mặt.",
-      "Hoàn thành"
-    ],
-    [
-      "<i>Ngoài kế hoạch:</i> Rà soát các phát biểu trong báo cáo và tài liệu.",
-      "Đã sửa các chỗ báo cáo mô tả không đúng mã nguồn, trong đó có ba phát biểu bị nói quá và một tính năng được mô tả là có nhưng thực tế chưa phơi ra giao diện. Cũng vá một lỗ hổng rò rỉ thông tin ở điểm cuối gợi ý video.",
+      "Đã hoàn thành, gồm cơ sở lý thuyết về HLS và Adaptive Bitrate Streaming, so sánh các mô hình tính toán, và khảo sát các hệ thống tương tự. Các hình minh hoạ của chương cũng được rà lại về khả năng đọc khi in.",
       "Hoàn thành"
     ]
   ],
 
   "ketQuaKyThuat": [
-    "<b>Khoảng cách khung khoá nay bám framerate thật của nguồn.</b> Mã cũ giả định 30 fps, nên video 24 fps cho khoảng cách 7,5 giây trong khi mỗi đoạn HLS chỉ dài 6 giây — bộ mã hoá không có khung khoá để cắt đúng biên. Đo lại trên nguồn 24 fps: các đoạn từ 7,5 giây về đúng 6,0 giây ở cả ba mức chất lượng.",
-    "<b>Thuộc tính BANDWIDTH nay đo từ chính các segment.</b> RFC 8216 mục 4.3.4.2 quy định giá trị này PHẢI là bitrate đỉnh của segment khi các segment đã tồn tại. Mã cũ cộng hai hằng số trong tệp cấu hình, cho ra con số thấp hơn đỉnh thật 29–37%. Sai về phía thấp là chiều nguy hiểm: trình phát tưởng mức chất lượng nhẹ hơn thực tế nên chọn mức mà đường truyền không kham nổi rồi nghẽn.",
-    "<b>Hiệu quả của bản sửa được đo bằng thí nghiệm có nhóm đối chứng.</b> Trên hồ sơ 3G nhanh, thời gian chờ ở trường hợp tệ nhất giảm từ 16,81 giây xuống 2,39 giây và tỉ lệ nghẽn trung bình giảm từ 2,48% xuống 1,20%. Cái giá phải trả được nêu rõ chứ không giấu: bitrate trung bình giảm 15%, tức đổi chất lượng hình lấy sự liền mạch.",
-    "<b>Hồ sơ băng thông không giới hạn đóng vai nhóm đối chứng.</b> Nơi băng thông dư dả thì con số khai báo không ràng buộc gì, nên một bản sửa đúng lẽ ra phải không tạo khác biệt nào — và kết quả đúng là không đổi. Hồ sơ 3G chậm cũng không đổi, vì khi ngay cả mức thấp nhất đã vượt quá đường truyền thì trình phát không còn lựa chọn nào để mà bị đánh lừa.",
-    "<b>Thuộc tính CODECS nay đọc từ luồng đã mã hoá.</b> RFC 6381 lấy sáu chữ số hex sau <b>avc1.</b> từ ba byte trong tập tham số chuỗi của luồng, mà byte cờ ở giữa không suy ra được từ tên profile hay số level. Việc này còn làm lộ một lỗi khác: tham số level bị ghim cứng 3.1 cho cả ba mức, trong khi khung 1920×1080 cần tối thiểu level 4.0.",
-    "<b>Vá một lỗ hổng rò rỉ sự tồn tại.</b> Điểm cuối gợi ý video trả về mã lỗi khác nhau cho video riêng tư có thật và video không tồn tại, đủ để dò ra định danh nào đang tồn tại trong hệ thống. Đã sửa bằng cách dùng lại đúng quy tắc phân quyền của điểm cuối chi tiết.",
-    "Bộ kiểm thử tự động tăng từ 159 lên <b>209 kiểm thử trên 14 bộ</b> (115 phía máy chủ, 94 phía bộ chuyển mã), trong đó 50 kiểm thử mới khoá lại đúng ba khiếm khuyết vừa sửa."
+    "<b>Tệp video không đi qua máy chủ ứng dụng.</b> Trình duyệt tải thẳng lên Amazon S3 bằng URL ký sẵn, nên tài nguyên máy chủ không phụ thuộc kích thước tệp. Nếu để tệp đi qua máy chủ, một video 2 GB sẽ chiếm bộ nhớ và băng thông của máy chủ suốt thời gian truyền, và mười người tải lên cùng lúc là đủ làm nghẽn cả hệ thống.",
+    "<b>URL ký sẵn có hiệu lực giới hạn 15 phút.</b> Đủ dài cho một lượt tải lên bình thường nhưng đủ ngắn để một URL bị lộ không dùng lại được lâu. URL chỉ cho phép ghi vào đúng một khoá đã định trước, không cho ghi vào vị trí khác trong kho lưu trữ.",
+    "<b>Kiểm tra đặt ở máy chủ, không đặt ở trình duyệt.</b> Ràng buộc phía trình duyệt chỉ là tiện lợi cho người dùng, không phải biện pháp an toàn: bất kỳ ai cũng có thể gọi thẳng API để xin URL. Sáu định dạng được chấp nhận và giới hạn 2 GB đều cưỡng chế ở máy chủ trước khi cấp URL.",
+    "<b>Quy trình chuyển mã không phụ thuộc bước xác nhận của trình duyệt.</b> Sự kiện của Amazon S3 mới là thứ kích hoạt việc xử lý; lệnh <b>confirm-upload</b> chỉ cập nhật trạng thái hiển thị. Nhờ tách như vậy, người dùng đóng trình duyệt ngay sau khi truyền xong thì video vẫn được xử lý bình thường.",
+    "<b>Bản ghi nháp được dọn ở cả hai nhánh hỏng.</b> Huỷ giữa chừng và tải lên thất bại đều để lại một bản ghi <b>UPLOADING</b> không bao giờ đi tiếp; cả hai nhánh nay đều xoá bản ghi đó, nên thử lại nhiều lần không tích tụ rác trong cơ sở dữ liệu.",
+    "Có <b>24 kiểm thử tự động</b> phủ nhánh này trên ba bộ: kiểm tra định dạng và dung lượng ở tầng HTTP, sinh khoá và tạo URL ký sẵn, và các thao tác khởi tạo, xác nhận, xoá của video."
   ],
 
   "minhChung": [
-    ["frontend/src/components/Video/VideoUpload.jsx", "Số liệu tải lên tức thời, nút huỷ bằng AbortController, dọn bản ghi nháp ở cả nhánh huỷ lẫn nhánh lỗi."],
-    ["backend/src/middleware/validateRequest.js", "Kiểm định dạng và dung lượng trước khi cấp Pre-signed URL."],
-    ["transcoder/src/transcoder.js", "Khoảng cách khung khoá theo framerate thật; BANDWIDTH và CODECS đọc từ sản phẩm đã mã hoá."],
-    ["scripts/qoe/collect.js<br/>scripts/qoe/metrics.js", "Bộ đo chất lượng trải nghiệm bằng trình duyệt thật và phần tính chỉ số tách riêng."],
-    ["transcoder/tests/framerate.test.js<br/>transcoder/tests/bandwidth.test.js<br/>transcoder/tests/codecs.test.js", "82 kiểm thử khoá lại ba khiếm khuyết của bộ chuyển mã."],
-    ["backend/tests/relatedVideos.test.js", "10 kiểm thử xác nhận điểm cuối gợi ý không để lộ video riêng tư."],
-    ["report/chapters/chap6.tex", "Mục đánh giá chất lượng phát dưới băng thông giới hạn, kèm ba bảng số liệu."]
+    ["backend/src/controllers/videoController.js", "Ba điểm cuối initiate-upload, confirm-upload và xoá video."],
+    ["backend/src/services/s3Service.js", "Sinh khoá lưu trữ và tạo Pre-signed PUT URL hiệu lực 15 phút."],
+    ["backend/src/middleware/validateRequest.js", "Kiểm định dạng và dung lượng trước khi cấp URL."],
+    ["frontend/src/components/Video/VideoUpload.jsx", "Truyền thẳng lên S3, số liệu tức thời, nút huỷ và dọn bản ghi nháp."],
+    ["backend/tests/uploadValidation.test.js<br/>backend/tests/s3Service.test.js<br/>backend/tests/videoService.test.js", "24 kiểm thử tự động cho nhánh tải lên."],
+    ["report/chapters/chap2.tex", "Chương 2 — Cơ sở lý thuyết và khảo sát các hệ thống tương tự."]
   ],
 
   "lenhKiemTra": [
-    ["npx jest (backend và transcoder)", "<b>Tests: 209 passed, 209 total</b> trên 14 bộ kiểm thử"],
-    ["ffprobe trên các đoạn HLS của nguồn 24 fps", "Mỗi đoạn đúng <b>6,000000 giây</b>, giống nhau ở cả ba mức chất lượng"],
-    ["node scripts/qoe/collect.js --profile fast3g", "Chờ khởi động lớn nhất <b>2,39 giây</b> (trước bản sửa: 16,81 giây)"],
-    ["Đọc trực tiếp tập tham số chuỗi của segment", "Ba mức cho ba chuỗi codec khác nhau, mỗi chuỗi khớp đúng luồng của nó"],
-    ["curl điểm cuối gợi ý với video riêng tư", "HTTP 404 giống hệt video không tồn tại — không còn phân biệt được"]
+    ["npx jest tests/uploadValidation.test.js tests/s3Service.test.js tests/videoService.test.js", "<b>Tests: 24 passed, 24 total</b> — 3 bộ kiểm thử đều đạt"],
+    ["curl -X POST /api/videos/initiate-upload", "HTTP 201, trả về URL ký sẵn và bản ghi ở trạng thái UPLOADING"],
+    ["curl -X POST /api/videos/initiate-upload (mimetype không hợp lệ)", "HTTP 400, không cấp URL và không tạo bản ghi"],
+    ["curl -X POST /api/videos/initiate-upload (fileSize vượt 2 GB)", "HTTP 400, thông báo nêu rõ giới hạn"],
+    ["curl -X PUT vào URL ký sẵn đã quá 15 phút", "HTTP 403 từ Amazon S3 — URL đã hết hiệu lực"]
   ],
 
   "gioiHan": [
-    "Phép đo chất lượng phát chỉ chạy trên <b>một video nguồn duy nhất</b>, nên các con số mô tả hành vi của hệ thống với đúng loại nội dung đó chứ chưa phải một mẫu đại diện. Muốn kết luận rộng hơn thì phải lặp lại trên nhiều video có độ phức tạp hình ảnh khác nhau.",
-    "Ba hồ sơ băng thông chạy tuần tự nên trạng thái bộ nhớ đệm biên bị lẫn với thứ tự chạy, riêng đối với chỉ số thời gian chờ khởi động. Đây nhiều khả năng là lý do hồ sơ 3G nhanh lại có thời gian chờ thấp hơn hồ sơ không giới hạn.",
-    "Bộ đo chỉ nhìn thấy những đoạn mà trình phát thật sự tải về, nên bitrate đỉnh nó quan sát được là một <i>cận dưới</i> của đỉnh thật: vượt ngưỡng thì kết luận được có vi phạm, còn nằm dưới thì chưa chứng minh được điều gì.",
-    "Bộ đo xuất dữ liệu theo định dạng đầu vào của mô hình ITU-T P.1203 ở mức Mode 0 nhưng <b>không tính điểm MOS</b>, và báo cáo cũng không tuyên bố có điểm số đó. Muốn có thì phải đưa qua bản cài đặt tham chiếu công khai của mô hình.",
-    "Bộ kiểm thử của bộ đo chất lượng chưa được nối vào quy trình tích hợp liên tục, vì mỗi lần chạy sẽ phải tải về một bản Chromium riêng."
+    "Lượt tải lên thực hiện bằng <b>một lệnh PUT duy nhất</b>, chưa dùng multipart, nên mất kết nối giữa chừng là phải tải lại từ đầu. Với tệp gần mức 2 GB thì đây là hạn chế đáng kể trên đường truyền không ổn định.",
+    "URL ký sẵn hoạt động theo kiểu <i>ai cầm cũng dùng được</i> trong 15 phút hiệu lực: nó không ràng buộc vào phiên đăng nhập, nên nếu bị lộ trong khoảng đó thì người khác vẫn ghi được vào đúng khoá ấy.",
+    "Việc kiểm tra chỉ áp lên <b>siêu dữ liệu do trình duyệt khai</b>, chứ chưa đối chiếu với nội dung thật của tệp. Một tệp không phải video vẫn tải lên được, và chỉ bị phát hiện ở giai đoạn chuyển mã khi FFmpeg từ chối đọc.",
+    "Hệ thống chưa quét nội dung tệp tải lên, nên chưa có biện pháp nào chặn nội dung độc hại hoặc vi phạm bản quyền ở khâu tiếp nhận.",
+    "Giới hạn 2 GB là con số cố định trong mã nguồn, chưa cấu hình được theo từng người dùng hay từng hạng tài khoản."
   ],
 
   "camKet": [
     "Thiết kế giao diện Frontend React.js SPA trên nền Vite với hệ thống thiết kế nhất quán.",
-    "Bổ sung các tiện ích giao diện còn thiếu và rà soát khả năng đáp ứng trên nhiều khổ màn hình.",
-    "Lặp lại phép đo chất lượng phát trên nhiều video nguồn để khắc phục hạn chế một mẫu duy nhất."
+    "Bổ sung các tiện ích giao diện và rà soát khả năng đáp ứng trên nhiều khổ màn hình.",
+    "Chuẩn bị cho việc tích hợp trình phát HLS ở tuần kế tiếp."
   ]
 }
