@@ -1,0 +1,140 @@
+{
+  "comparedAt": "2026-09-14T00:27:18.448Z",
+  "profiles": [
+    "unthrottled",
+    "fast3g",
+    "slow3g"
+  ],
+  "runs": 5,
+  "durationSec": 120,
+  "warmups": 2,
+  "note": "Mỗi video chạy đủ ba hồ sơ theo cùng một thứ tự, nên ảnh hưởng của thứ tự chạy bị triệt tiêu khi so sánh GIỮA các video. Nó vẫn còn khi so sánh giữa các hồ sơ của cùng một video, giống như phép đo một nguồn.",
+  "videos": [
+    {
+      "label": "thap",
+      "url": "https://zelostech.site/watch/6aa6ed7ad12f99e29277e842",
+      "profiles": {
+        "unthrottled": {
+          "runs": 5,
+          "startupDelaySec": 1.46,
+          "startupDelayMaxSec": 1.5661000000238419,
+          "rebufferingRatio": 0,
+          "rebufferingRatioMean": 0,
+          "rebufferingRatioMax": 0,
+          "runsWithStalls": 0,
+          "stallCount": 0,
+          "bitrateSwitchCount": 0,
+          "averageBitrateBps": 1644109
+        },
+        "fast3g": {
+          "runs": 5,
+          "startupDelaySec": 1.2243999999761581,
+          "startupDelayMaxSec": 7.738300000011921,
+          "rebufferingRatio": 0,
+          "rebufferingRatioMean": 0.0021528912115259544,
+          "rebufferingRatioMax": 0.0060030711061894925,
+          "runsWithStalls": 2,
+          "stallCount": 0,
+          "bitrateSwitchCount": 2,
+          "averageBitrateBps": 1476950.7988967109
+        },
+        "slow3g": {
+          "runs": 5,
+          "startupDelaySec": 3.7550999999940395,
+          "startupDelayMaxSec": 3.802199999988079,
+          "rebufferingRatio": 0.03197630131189166,
+          "rebufferingRatioMean": 0.04908579360522459,
+          "rebufferingRatioMax": 0.13141810740588306,
+          "runsWithStalls": 3,
+          "stallCount": 1,
+          "bitrateSwitchCount": 5,
+          "averageBitrateBps": 1070085.0136976312
+        }
+      }
+    },
+    {
+      "label": "trung",
+      "url": "https://zelostech.site/watch/6aa1dd6f822dec77e188e56b",
+      "profiles": {
+        "unthrottled": {
+          "runs": 5,
+          "startupDelaySec": 1.3392999999821187,
+          "startupDelayMaxSec": 1.3474000000059605,
+          "rebufferingRatio": 0,
+          "rebufferingRatioMean": 0,
+          "rebufferingRatioMax": 0,
+          "runsWithStalls": 0,
+          "stallCount": 0,
+          "bitrateSwitchCount": 1,
+          "averageBitrateBps": 1830460.950151522
+        },
+        "fast3g": {
+          "runs": 5,
+          "startupDelaySec": 1.150800000011921,
+          "startupDelayMaxSec": 15.90259999999404,
+          "rebufferingRatio": 0,
+          "rebufferingRatioMean": 0.023042169477979445,
+          "rebufferingRatioMax": 0.05814296475048496,
+          "runsWithStalls": 2,
+          "stallCount": 0,
+          "bitrateSwitchCount": 5,
+          "averageBitrateBps": 1316419.531217913
+        },
+        "slow3g": {
+          "runs": 5,
+          "startupDelaySec": 1.8680999999940395,
+          "startupDelayMaxSec": 3.156699999988079,
+          "rebufferingRatio": 0.0438287947080915,
+          "rebufferingRatioMean": 0.05801472299689532,
+          "rebufferingRatioMax": 0.13727900192245598,
+          "runsWithStalls": 3,
+          "stallCount": 1,
+          "bitrateSwitchCount": 5,
+          "averageBitrateBps": 1224285.9346780507
+        }
+      }
+    },
+    {
+      "label": "cao",
+      "url": "https://zelostech.site/watch/6aa6ed12d12f99e29277e841",
+      "profiles": {
+        "unthrottled": {
+          "runs": 5,
+          "startupDelaySec": 1.2111999999880791,
+          "startupDelayMaxSec": 1.775800000011921,
+          "rebufferingRatio": 0,
+          "rebufferingRatioMean": 0,
+          "rebufferingRatioMax": 0,
+          "runsWithStalls": 0,
+          "stallCount": 0,
+          "bitrateSwitchCount": 0,
+          "averageBitrateBps": 1663523
+        },
+        "fast3g": {
+          "runs": 5,
+          "startupDelaySec": 1.1230999999940396,
+          "startupDelayMaxSec": 1.136,
+          "rebufferingRatio": 0,
+          "rebufferingRatioMean": 0.0010915620586360462,
+          "rebufferingRatioMax": 0.005457810293180231,
+          "runsWithStalls": 1,
+          "stallCount": 0,
+          "bitrateSwitchCount": 5,
+          "averageBitrateBps": 1245750.8479511428
+        },
+        "slow3g": {
+          "runs": 5,
+          "startupDelaySec": 3.8355,
+          "startupDelayMaxSec": 4.280599999994039,
+          "rebufferingRatio": 0.038927112221351916,
+          "rebufferingRatioMean": 0.0483543544128785,
+          "rebufferingRatioMax": 0.13373181146059585,
+          "runsWithStalls": 3,
+          "stallCount": 1,
+          "bitrateSwitchCount": 3,
+          "averageBitrateBps": 844972.6313646574
+        }
+      }
+    }
+  ]
+}

@@ -8,6 +8,10 @@ Thư mục này chứa kết quả đo thực tế của hệ thống. Các tệ
 | `qoe-ttff.json` | `scripts/benchmark-qoe.js` | Time-to-First-Frame, thống kê trên nhiều lần đo |
 | `k6-summary.json` | `scripts/k6-load-test.js` | Kết quả kiểm thử chịu tải 50–100 người dùng đồng thời |
 | `node-load-test.json` | `scripts/node-load-test.js` | Kiểm thử chịu tải bằng Node.js thuần (không cần cài k6) |
+| `qoe-playback-<nguồn>-<hồ sơ>.json` | `scripts/qoe/compare.js` | Chất lượng phát của ba video nguồn khác nhau về độ phức tạp hình ảnh, trên cả ba hồ sơ mạng |
+| `qoe-playback-<nguồn>-unthrottled-dpr2.json` | `scripts/qoe/collect.js --dpr 2` | Như trên nhưng ở mật độ điểm ảnh 2, cấu hình duy nhất chạm tới bậc 1080p |
+| `qoe-comparison.json` | `scripts/qoe/compare.js` | Bảng gộp của ma trận nguồn × hồ sơ mạng |
+| `qoe-sources.json` | soạn thủ công | Danh sách video nguồn cho `compare.js`, mỗi mục gồm nhãn và URL |
 
 ## Chuẩn bị
 

@@ -443,7 +443,147 @@ startup than the unthrottled profile in both rounds. The harness also exports it
 input format of the ITU-T P.1203 model, Mode 0; it does not compute a MOS score, and no such score
 is claimed here, since obtaining one requires the public reference implementation of that model.
 
-\section{Transcoding Pipeline Performance}
+\subsection{Whether Content Complexity Governs the Result}
+\label{sec:qoe-multisource}
+
+Every figure reported above rests on a single source video, and one sample cannot separate a
+property of the system from a property of that recording. A screen capture of a mostly static
+browser window and a recording of a busy game scene make very different demands of an encoder, and
+if the preceding measurements merely describe how this system handles one particular file they
+generalise to nothing. Settling that question required varying the attribute that plausibly
+governs the outcome.
+
+That attribute is visual complexity rather than duration. Duration need only exceed the
+measurement window; past that threshold a longer file consumes transcoding time without
+contributing information. Complexity determines how many bits the content genuinely requires, and
+therefore whether the rungs of the ladder separate or collapse together.
+
+Complexity was measured rather than inferred from genre, since a static shot inside an action film
+is still a static shot. Each candidate was encoded at a constant quality target, sixty seconds
+taken from the thirty-second mark at CRF~23, and the resulting bitrate read as the measure: at
+constant quality the encoder holds picture fidelity and allows bitrate to follow the content, so
+the figure reports complexity directly. Three sources were selected on that basis and are named
+low, medium, and high below. They measured 151, 405, and 2298~kbit/s, a spread of 15.2$\times$ end
+to end with adjacent ratios of 2.7$\times$ and 5.7$\times$.
+
+Each source was run against all three network profiles before the next source began, so that the
+three profiles of every source encounter the same ordering and its effect cancels when sources are
+compared. Order does not cancel between the profiles of a single source, exactly as in the
+single-source measurement.
+
+\begin{table}[H]
+\centering
+\caption{Playback quality across three sources of differing visual complexity}
+\label{tab:qoe-multisource}
+\footnotesize
+\begin{tabularx}{\textwidth}{X r r r}
+\toprule
+\textbf{METRIC} & \textbf{LOW} & \textbf{MEDIUM} & \textbf{HIGH} \\
+\midrule
+\multicolumn{4}{l}{\textit{Unthrottled}} \\
+Rebuffering ratio, mean     & 0.00\%  & 0.00\%  & 0.00\%  \\
+Rebuffering ratio, max      & 0.00\%  & 0.00\%  & 0.00\%  \\
+Runs exhibiting a stall     & 0/5     & 0/5     & 0/5     \\
+Startup delay, median (s)   & 1.46    & 1.34    & 1.21    \\
+Average bitrate (kbit/s)    & 1644    & 1830    & 1664    \\
+\midrule
+\multicolumn{4}{l}{\textit{Fast 3G}} \\
+Rebuffering ratio, mean     & 0.22\%  & 2.30\%  & 0.11\%  \\
+Rebuffering ratio, max      & 0.60\%  & 5.81\%  & 0.55\%  \\
+Runs exhibiting a stall     & 2/5     & 2/5     & 1/5     \\
+Startup delay, median (s)   & 1.22    & 1.15    & 1.12    \\
+Average bitrate (kbit/s)    & 1477    & 1316    & 1246    \\
+\midrule
+\multicolumn{4}{l}{\textit{Slow 3G}} \\
+Rebuffering ratio, mean     & 4.91\%  & 5.80\%  & 4.84\%  \\
+Rebuffering ratio, max      & 13.14\% & 13.73\% & 13.37\% \\
+Runs exhibiting a stall     & 3/5     & 3/5     & 3/5     \\
+Startup delay, median (s)   & 3.76    & 1.87    & 3.84    \\
+Average bitrate (kbit/s)    & 1070    & 1224    & 845     \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\noindent\textit{Note: five recorded runs per cell after two discarded warm-up runs, 120~s of
+playback each, at a device pixel ratio of one. Source durations are 4:23, 4:23, and 4:40, all
+longer than the measurement window.}
+
+Complexity does not order the result. Under fast 3G the mean rebuffering ratio runs 0.22\%,
+2.30\%, and 0.11\% across low, medium, and high, so the most demanding source is the least affected
+and the middle source the worst. Under slow 3G the three land within a single percentage point of
+one another, and under the unthrottled profile all three are identically zero. A fifteenfold
+difference in content complexity produces no corresponding ordering under any profile.
+
+The explanation lies in the encoder configuration rather than in the measurement. The ladder
+targets fixed bitrates through average-bitrate mode, so the encoder spends its allotted budget
+whether the content requires it or not: the 720p rung averages 1650, 1694, and 1652~kbit/s for the
+three sources despite their raw complexity differing fifteenfold. Content is flattened at the point
+of encoding, and by the time playback occurs little remains for it to influence. The limitation
+recorded against the single-source measurement is therefore answered in the strongest form
+available, since adding sources leaves the result unchanged and that is now established by
+measurement rather than assumed.
+
+A second finding emerged from the rendition ladder, and it governs how the unthrottled row of
+every table in this section must be read. The player configures hls.js with
+\texttt{capLevelToPlayerSize}, which restricts the selectable renditions to those needed to fill
+the video element, and hls.js scales that element's dimensions by the device pixel ratio before
+comparing. The watch page holds the player column at roughly 880~px on any display, because the
+layout caps the page at 1320~px and reserves 360~px for the sidebar. At a device pixel ratio of
+one the player therefore requires at most 1280$\times$720, and the 1080p rung is unreachable: across
+all nine measurements above it received one segment in total. Contemporary laptops commonly report
+a ratio between 1.25 and 2, at which the same element is treated as 1320 to 1760~px wide and the
+1080p rung is selected. The unthrottled row was consequently measured a second time at a ratio of
+two.
+
+\begin{table}[H]
+\centering
+\caption{Unthrottled playback at device pixel ratio one against two}
+\label{tab:qoe-dpr}
+\small
+\begin{tabularx}{\textwidth}{X r r l l}
+\toprule
+\textbf{SOURCE} & \textbf{DPR 1} & \textbf{DPR 2} & \textbf{RUNGS, DPR 1} & \textbf{RUNGS, DPR 2} \\
+\midrule
+Low    & 1644 & 4318 & 360p, 720p & 360p, 1080p \\
+Medium & 1830 & 4312 & 360p, 720p & 360p, 1080p \\
+High   & 1664 & 4206 & 360p, 720p & 360p, 720p, 1080p \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\noindent\textit{Note: average bitrate in kbit/s, measured over five recorded runs per cell.
+Rebuffering was 0.00\% in every run of both configurations. The medium source additionally fetched
+a single 1080p segment at a ratio of one, which is treated here as unused.}
+
+Average bitrate rises by a factor of 2.5 to 2.6 while rebuffering remains at zero and the median
+startup delay moves by at most 0.34~s. The unthrottled profile as measured at a ratio of one was
+therefore bounded by the resolution ceiling rather than by the network, and the delivery path
+sustains two and a half times the throughput without a single stall. Neither configuration
+exercises the whole ladder: at a ratio of one the 1080p rung is unreachable, while at a ratio of
+two the low and medium sources ascend directly from 360p to 1080p and bypass 720p entirely. The
+middle rung is thus seldom selected on an unconstrained connection, and serves principally on the
+fast 3G profile.
+
+Raising the ceiling also closed a caveat carried by the earlier measurement. The peak bitrate the
+harness observes is a lower bound on the true peak, since it sees only the segments the player
+chose to fetch, so remaining below the declared value proves nothing. At a ratio of two the 1080p
+rung was fetched in quantity, and the observed peak matched the declared \texttt{BANDWIDTH} exactly
+for all three sources, at 4\,601\,399, 5\,389\,584, and 5\,495\,113~bit/s respectively. Two
+computations performed independently, one by the packager from segment sizes in the processed
+bucket and the other by the harness from bytes received over the network, agree to the bit. The
+declared value is therefore attained by a real segment rather than overstated, although the harness
+still cannot exclude a heavier segment among those it never fetched.
+
+Two limitations attach to this comparison specifically. The 120~s window covers approximately the
+first twenty of the forty-four segments of each source, so statements about peak bitrate concern
+the opening of each file rather than the whole of it. And variance under fast 3G was markedly
+higher than under either neighbouring profile: two of the three sources produced a bimodal startup
+distribution, clustering near 1.2~s and again near 7.5~s, while the third remained uniform at
+1.1~s. Fast 3G is the only profile whose ceiling falls between two rungs rather than above all of
+them or below all of them, which would place the adaptation algorithm at a decision boundary, but
+the third source contradicts that account and the cause was not established here.
+
+section{Transcoding Pipeline Performance}
 \label{sec:pipeline-evaluation}
 
 Pipeline latency is measured from the completion of the upload to the moment the record reaches
