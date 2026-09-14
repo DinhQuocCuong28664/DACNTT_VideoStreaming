@@ -46,43 +46,46 @@ hết hạng mục đã xong trước tuần được giao. Cách viết đã th
 | ☑ | 10 | 16/10 | Event-Driven: S3 → SQS → Lambda → Batch | `infrastructure/modules/{sqs,lambda,batch}`, `transcoder/src/sqsHandler.js` | không |
 | ☑ | 11 | 23/10 | CloudFront + OAC, 11 module Terraform, CI/CD — **Chương 4** | `modules/cloudfront`, 11 module, 7 workflow, `chap4.tex` | không |
 | ☑ | 12 | 30/10 | DevSecOps, k6 stress test — **Chương 4–5** | `security-scan.yml`, `scripts/k6-load-test.js`, `chap5.tex` | không |
-| ☐ | **13** | 06/11 | Hoàn thiện 6 chương, rà font và sơ đồ | báo cáo 82 trang, 7 tệp chương | **có** |
+| ☑ | **13** | 06/11 | Hoàn thiện 6 chương, rà font và sơ đồ | báo cáo 86 trang, mục 6.3.4, `check-print-size.mjs` | không |
 | ☐ | 14 | 13/11 | Gửi GVHD review, nộp Turnitin | — | phụ thuộc thầy |
 | ☐ | 15 | 21/11 | Sửa theo góp ý lần 2, nộp E-learning | — | phụ thuộc thầy |
 
-## Trạng thái: tuần 6 đến 12 đã soạn sẵn
+## Trạng thái: tuần 6 đến 13 đã soạn
 
-Bảy báo cáo này được viết trước, dựa trên bằng chứng đã có trong kho tại thời
+Tám báo cáo này được viết trước, dựa trên bằng chứng đã có trong kho tại thời
 điểm soạn. Nội dung đều là việc đã chạy thật nên rủi ro lỗi thời thấp, nhưng
 **trước khi nộp từng bài vẫn nên liếc lại**: nếu trong khoảng thời gian đó có thay
 đổi đáng kể ở phần liên quan thì sửa `week-NN.json` rồi sinh lại PDF.
 
-Tuần 13 cố ý **chưa soạn**, vì đó là tuần duy nhất còn việc thật — phải làm xong
-mới biết báo cáo gì.
+Tuần 13 nay đã soạn, sau khi phần việc thật của nó làm xong: phép đo chất lượng
+trải nghiệm đã lặp trên ba nguồn khác nhau về độ phức tạp, sáu chương đã rà, và
+khả năng đọc của tám sơ đồ khi in đã kiểm bằng công cụ đo. Báo cáo hiện 86 trang.
+
+Chỉ còn tuần 14 và 15, cả hai đều phụ thuộc lịch làm việc với giảng viên nên
+không soạn trước được: nội dung của chúng là góp ý nhận được và cách xử lý.
 
 ## Ba điều cần để ý
 
-### Chỉ tuần 13 còn việc chưa làm
+### Chỉ còn hai tuần làm việc với thầy
 
-Bảy tuần từ 6 đến 12 là báo cáo thứ đã chạy thật trên production. Nghĩa là rủi
-ro tiến độ **không nằm ở code mà nằm ở khâu rà soát cuối**, và khâu đó đứng
-ngay trước vòng làm việc với thầy.
+Tám tuần từ 6 đến 13 đều báo cáo thứ đã chạy thật, và khâu rà soát cuối — vốn
+là rủi ro tiến độ lớn nhất vì nó đứng ngay trước vòng làm việc với thầy — nay
+đã xong. Báo cáo 86 trang, biên dịch sạch, tám sơ đồ đều đạt ngưỡng đọc được
+khi in, và yêu cầu *Times New Roman 13pt* đạt qua gói `fontsize` với
+`newtxtext`/`newtxmath` trong `preamble.tex`.
 
-**Nên làm sớm phần rà soát của tuần 13.** Nó không phụ thuộc ngày tháng nào cả.
-Làm sớm thì tuần 14 gửi thầy một bản đã chắc chắn, và tuần 15 còn chỗ thở nếu
-góp ý nhiều. Yêu cầu *Times New Roman 13pt* đã đạt sẵn — `preamble.tex` dùng
-gói `fontsize` với `newtxtext`/`newtxmath`, có ghi rõ lý do — nên phần rà chỉ
-còn nội dung, sơ đồ và bảng biểu.
+Việc làm sớm này để lại đúng thứ nó nhắm tới: tuần 14 gửi thầy một bản đã chắc
+chắn, và tuần 15 còn chỗ thở nếu góp ý nhiều.
 
 ### Tuần 12 là tuần mỏng nhất
 
 Lịch giao "Chương 4–5" nhưng cả sáu chương đã xong, còn DevSecOps và k6 cũng
 đã chạy. Tuần đó gần như không còn gì để báo.
 
-Nên **để dành một hạng mục thật cho nó**. Ứng viên sẵn có: lặp lại phép đo QoE
-trên nhiều video nguồn khác nhau, gỡ đúng cái hạn chế "chỉ một video nguồn duy
-nhất" mà chính báo cáo đã tự nêu. Đó là việc thật, có kết quả đo được, và nó
-làm mạnh thêm chương 6.
+Việc này đã xử lý theo hướng khác: phép đo nhiều nguồn rơi vào **tuần 13**, cùng
+với khâu rà soát cuối, nên tuần 12 giữ nguyên phần DevSecOps và kiểm thử chịu
+tải. Đổi lại, hạn chế "chỉ một video nguồn duy nhất" được ghi vào phần giới hạn
+của tuần 12 và cam kết gỡ ở tuần sau — đúng trình tự đã diễn ra.
 
 ### Bốn tuần có chương báo cáo
 
