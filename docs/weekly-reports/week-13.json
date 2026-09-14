@@ -1,0 +1,82 @@
+{
+  "tuan": 13,
+  "tuNgay": "31/10/2026",
+  "denNgay": "06/11/2026",
+  "deTai": "Xây dựng nền tảng chia sẻ video trực tuyến với hệ thống chuyển mã HLS tự động trên kiến trúc Serverless Container và Event-Driven",
+  "sinhVien": ["Đinh Quốc Cường (523H0008)", "Võ Huỳnh Minh Đức (523H0014)"],
+  "giangVien": "ThS. Mai Văn Mạnh",
+  "tyLeHoanThanh": "100%",
+
+  "moDau": "Tuần 13 khép lại phần báo cáo: rà soát toàn bộ sáu chương, kiểm định dạng và kiểm khả năng đọc của hình khi in. Ba cam kết nêu ở tuần 12 đều đã hoàn thành. Đáng kể nhất là việc gỡ hạn chế <b>một video nguồn duy nhất</b> của phép đo chất lượng trải nghiệm — và kết quả thu được <b>ngược với dự đoán ban đầu</b>, điều này lại nói lên một tính chất của hệ thống mà phép đo một nguồn không thể lộ ra.",
+
+  "doiChieu": [
+    [
+      "Lặp lại phép đo chất lượng trải nghiệm trên nhiều video nguồn.",
+      "Đã hoàn thành. Ba nguồn được chọn theo <b>độ phức tạp hình ảnh đo được</b> chứ không theo thể loại: mỗi tệp mã hoá thử ở mức chất lượng cố định rồi lấy bitrate thu được làm thước đo, cho ra 151, 405 và 2298 kbit/s, tức <b>chênh nhau 15,2 lần</b>. Ma trận ba nguồn nhân ba hồ sơ mạng, mỗi ô năm lượt đo sau hai lượt khởi động bị loại.",
+      "Hoàn thành"
+    ],
+    [
+      "Rà soát toàn bộ sáu chương báo cáo: nội dung, sơ đồ, bảng biểu và định dạng.",
+      "Đã hoàn thành. Báo cáo hiện <b>86 trang</b>, gồm 12 hình và 20 bảng, biên dịch <b>không lỗi, không tràn khung, không tham chiếu chéo nào bị thiếu</b>. Kết quả đo mới được viết thành mục 6.3.4 kèm hai bảng, và bảng xuất xứ ở phụ lục A bổ sung hai dòng tương ứng để mọi con số đều truy ngược được về kịch bản sinh ra nó.",
+      "Hoàn thành"
+    ],
+    [
+      "Kiểm tra font Times New Roman 13pt theo yêu cầu của môn học.",
+      "Đã hoàn thành. Cỡ 13pt <b>không nằm trong các tuỳ chọn chuẩn</b> của lớp tài liệu, vốn chỉ nhận 10, 11 và 12pt, nên phải dùng gói <b>fontsize</b> để đặt. Phần chữ và phần công thức dùng <b>newtxtext</b> và <b>newtxmath</b>, là bản clone Times chất lượng cao tương thích với bộ biên dịch đang dùng.",
+      "Hoàn thành"
+    ],
+    [
+      "Kiểm tra khả năng đọc của mọi hình khi in trên giấy.",
+      "Đã hoàn thành bằng <b>công cụ đo tự động</b> thay vì ước lượng bằng mắt. Công cụ quy đổi cỡ chữ trên ảnh gốc ra cỡ chữ in thật theo bề rộng ảnh trong trang, rồi đối chiếu với ngưỡng 6,2pt. Cả tám sơ đồ đều đạt, trải từ <b>6,24pt</b> đến <b>8,50pt</b>.",
+      "Hoàn thành"
+    ],
+    [
+      "Hoàn thiện Chương 6 với kết quả đánh giá đầy đủ.",
+      "Đã hoàn thành. Chương 6 nay trình bày đủ bốn nhóm phép đo: độ trễ tới khung hình đầu qua CDN và theo vị trí địa lý, chất lượng phát dưới băng thông bị giới hạn, so sánh nhiều nguồn, hiệu năng chuyển mã, kiểm thử chịu tải và phân tích chi phí.",
+      "Hoàn thành"
+    ]
+  ],
+
+  "ketQuaKyThuat": [
+    "<b>Độ phức tạp nội dung không quyết định chất lượng trải nghiệm.</b> Ở hồ sơ 3G nhanh, tỉ lệ nghẽn lần lượt là 0,22 %, 2,30 % và 0,11 % cho nguồn thấp, trung bình và cao — nguồn <i>đòi hỏi nhiều nhất lại ít bị ảnh hưởng nhất</i>. Chênh lệch mười lăm lần về độ phức tạp không tạo ra thứ tự tương ứng nào.",
+    "<b>Nguyên nhân nằm ở cấu hình bộ mã hoá, không nằm ở phép đo.</b> Bậc thang nhắm tới các mức bitrate cố định, nên bộ mã hoá tiêu hết ngân sách được cấp bất kể nội dung có cần hay không: bậc 720p đạt 1650, 1694 và 1652 kbit/s cho ba nguồn. Nội dung bị san phẳng ngay từ khâu mã hoá, nên tới lúc phát thì gần như không còn gì để nó ảnh hưởng.",
+    "<b>Mật độ điểm ảnh của màn hình quyết định bậc thang nào thực sự được đo.</b> Trình phát chỉ chọn phiên bản đủ lấp đầy khung phát, và kích thước khung được nhân với mật độ điểm ảnh trước khi so. Bố cục trang giữ cột phát ở khoảng 880 px, nên ở mật độ bằng 1 thì <b>bậc 1080p không bao giờ được chọn</b>. Đo lại ở mật độ bằng 2 cho bitrate tăng 2,5 đến 2,6 lần mà tỉ lệ nghẽn vẫn bằng 0.",
+    "<b>Tham số quyết định kết quả phải được ghi vào chính tệp kết quả.</b> Bộ đo trước đây không lưu khung nhìn lẫn mật độ điểm ảnh, nên không ai tái lập được phép đo và bảng bậc thang ba mức sẽ ngầm gợi ý rằng cả ba đều đã được kiểm chứng. Nay hai tham số này nằm trong mọi tệp kết quả.",
+    "<b>Giá trị băng thông khai báo khớp tuyệt đối với giá trị đo được.</b> Ở bậc 1080p, đỉnh bitrate mà bộ đo tính từ số byte nhận qua mạng trùng tới từng bit với giá trị mà bộ đóng gói tính từ kích thước segment, trên cả ba nguồn. Đây là hai phép tính độc lập ở hai nơi khác nhau, nên sự trùng khớp là bằng chứng trực tiếp cho tính đúng đắn của giá trị khai báo.",
+    "<b>Khả năng đọc khi in được tính bằng công thức thay vì ước lượng bằng mắt.</b> Cỡ chữ in phụ thuộc đồng thời vào cỡ chữ trên ảnh gốc, bề rộng ảnh gốc và bề rộng in ra, nên nhìn ảnh trên màn hình không kết luận được gì. Hệ quả trái trực giác: <i>làm ảnh rộng thêm sẽ khiến chữ in ra nhỏ đi</i>, vì cùng một cỡ chữ bị thu về cùng một bề rộng giấy."
+  ],
+
+  "minhChung": [
+    ["report/main.pdf", "Báo cáo hoàn chỉnh, 86 trang, 12 hình, 20 bảng."],
+    ["report/chapters/chap6.tex", "Chương 6 — Triển khai và đánh giá, gồm mục 6.3.4 so sánh nhiều nguồn."],
+    ["report/appendices/appendixA.tex", "Bảng xuất xứ, đối chiếu từng bảng số liệu với kịch bản và tệp kết quả sinh ra nó."],
+    ["scripts/qoe/compare.js", "Chạy ma trận nguồn nhân hồ sơ mạng và gộp kết quả thành bảng so sánh."],
+    ["scripts/qoe/collect.js", "Bộ đo chất lượng trải nghiệm bằng trình duyệt thật; nay nhận tham số mật độ điểm ảnh và ghi lại cấu hình đo."],
+    ["docs/results/qoe-comparison.json", "Kết quả gộp của ma trận ba nguồn nhân ba hồ sơ mạng."],
+    ["docs/diagrams/check-print-size.mjs", "Công cụ quy đổi cỡ chữ trên ảnh gốc ra cỡ chữ in thật và đối chiếu ngưỡng."],
+    ["report/preamble.tex", "Thiết lập Times New Roman 13pt, kèm lý do phải dùng gói riêng."]
+  ],
+
+  "lenhKiemTra": [
+    ["node scripts/qoe/compare.js probe samples/*.mp4", "Ba nguồn đo được 151, 405 và 2298 kbit/s, chênh 15,2 lần"],
+    ["node scripts/qoe/compare.js run --manifest docs/results/qoe-sources.json", "Chín ô kết quả, tỉ lệ nghẽn không theo thứ tự độ phức tạp"],
+    ["node scripts/qoe/collect.js --dpr 2 --profile unthrottled", "Bitrate tăng lên vùng 4200 đến 4300 kbit/s, tỉ lệ nghẽn vẫn 0,00 %"],
+    ["node docs/diagrams/check-print-size.mjs", "Cả tám sơ đồ đạt ngưỡng, nhỏ nhất 6,24pt"],
+    ["latexmk -pdf report/main.tex", "86 trang, không lỗi, không tràn khung, không tham chiếu thiếu"],
+    ["npm test (backend và transcoder)", "209 bài kiểm thử trên 14 bộ, tất cả đạt"]
+  ],
+
+  "gioiHan": [
+    "Phép đo khả năng đọc khi in là <b>tính toán quy đổi, không phải thử in thật</b>. Nó kiểm được cỡ chữ nhưng không kiểm được độ tương phản của màu nền khi in đen trắng, hay chất lượng bản in của từng máy in cụ thể.",
+    "Bốn ảnh chụp màn hình giao diện <b>không nằm trong phạm vi công cụ đo</b>, vì chúng không có tệp nguồn dạng vector để đọc cỡ chữ. Khả năng đọc của chúng vẫn phải kiểm bằng mắt.",
+    "Cửa sổ đo 120 giây chỉ phủ khoảng <b>hai mươi trong bốn mươi bốn đoạn</b> đầu của mỗi video, nên các nhận định về bitrate đỉnh chỉ nói về phần đầu tệp.",
+    "Ở hồ sơ 3G nhanh, <b>hai trong ba nguồn</b> cho thời gian chờ khởi động tách thành hai cụm rõ rệt trong khi nguồn thứ ba thì không. Hồ sơ này là hồ sơ duy nhất có trần băng thông rơi vào giữa hai bậc thang, nhưng nguồn thứ ba mâu thuẫn với cách giải thích đó và <b>nguyên nhân chưa được xác định</b>.",
+    "Bảy mươi hai bài kiểm thử của bộ đo chất lượng trải nghiệm <b>chưa được đưa vào quy trình tích hợp liên tục</b>, vì mỗi lần chạy cần cài trình duyệt Chromium. Chúng hiện chỉ chạy tay."
+  ],
+
+  "camKet": [
+    "Gửi bản báo cáo hoàn chỉnh cho giảng viên hướng dẫn để nhận góp ý.",
+    "Nộp bài kiểm tra trùng lặp qua Turnitin và xử lý phần trùng nếu có.",
+    "Chuẩn bị bản trình bày và kịch bản demo hệ thống cho buổi bảo vệ."
+  ]
+}
