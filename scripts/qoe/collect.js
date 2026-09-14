@@ -46,6 +46,8 @@
  *   --duration <s>    số giây phát mỗi lần đo (mặc định 60)
  *   --profile <tên>   hồ sơ mạng: unthrottled | fast3g | slow3g | dsl
  *   --warmups <n>     số lượt khởi động bị loại khỏi kết quả (mặc định 2)
+ *   --dpr <n>         devicePixelRatio của trình duyệt đo (mặc định 1).
+ *                     Từ 1.5 trở lên mới chạm được bậc 1080p — xem VIEWPORT.
  *   --out <đường dẫn> nơi ghi kết quả JSON
  *   --headed          hiện cửa sổ trình duyệt để quan sát
  *
@@ -71,6 +73,23 @@ const NETWORK_PROFILES = {
   fast3g: { downloadThroughput: (1.6 * 1024 * 1024) / 8, uploadThroughput: (750 * 1024) / 8, latency: 150 },
   slow3g: { downloadThroughput: (500 * 1024) / 8, uploadThroughput: (500 * 1024) / 8, latency: 400 },
 };
+
+/**
+ * Khung nhìn và mật độ điểm ảnh của trình duyệt đo.
+ *
+ * Hai tham số này KHÔNG trung tính. Trình phát bật `capLevelToPlayerSize`,
+ * nên hls.js chỉ chọn mức đủ phủ kích thước thẻ <video> — và nó nhân kích
+ * thước ấy với devicePixelRatio trước khi so. Bố cục trang xem khoá cột
+ * phát ở khoảng 880 px trên mọi màn hình, nên ở dpr 1 hls.js thấy 880 px,
+ * thấy 1280x720 là đã đủ, và KHÔNG BAO GIỜ chạm tới bậc 1080p. Từ dpr 1.5
+ * trở lên nó thấy từ 1320 px và bắt đầu chọn 1080p.
+ *
+ * Vì vậy dpr quyết định bậc thang nào thực sự được đo. Để mặc định 1 cho
+ * khớp các phép đo cũ, nhưng phải ghi lại vào kết quả: thiếu con số này thì
+ * không ai tái lập được, và bảng bậc thang ba mức sẽ ngầm gợi ý rằng cả ba
+ * đều đã được kiểm chứng.
+ */
+const VIEWPORT = { width: 1280, height: 720 };
 
 /**
  * Kịch bản cài vào trang TRƯỚC khi mã ứng dụng chạy.
@@ -517,6 +536,7 @@ const runMeasurement = async (options) => {
     profile = 'unthrottled',
     warmups = 2,
     headed = false,
+    deviceScaleFactor = 1,
   } = options;
 
   // `require` đặt trong hàm để phần còn lại của module (và bộ test của
@@ -537,7 +557,7 @@ const runMeasurement = async (options) => {
   const rawLogs = [];
 
   try {
-    const context = await browser.newContext({ viewport: { width: 1280, height: 720 } });
+    const context = await browser.newContext({ viewport: VIEWPORT, deviceScaleFactor });
 
     if (conditions) {
       // Áp giới hạn mạng cho mọi trang trong context này.
@@ -592,7 +612,7 @@ const runMeasurement = async (options) => {
 };
 
 const parseArgs = (argv) => {
-  const options = { runs: 5, durationSec: 60, profile: 'unthrottled', warmups: 2, headed: false, out: null };
+  const options = { runs: 5, durationSec: 60, profile: 'unthrottled', warmups: 2, headed: false, out: null, deviceScaleFactor: 1 };
 
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
@@ -602,6 +622,7 @@ const parseArgs = (argv) => {
     else if (arg === '--profile') options.profile = argv[++i];
     else if (arg === '--out') options.out = argv[++i];
     else if (arg === '--warmups') options.warmups = parseInt(argv[++i], 10);
+    else if (arg === '--dpr') options.deviceScaleFactor = parseFloat(argv[++i]);
     else if (arg === '--headed') options.headed = true;
   }
 
@@ -700,12 +721,16 @@ const main = async () => {
     runs: options.runs,
     durationSec: options.durationSec,
     tool: 'Playwright + Chromium headless',
+    viewport: VIEWPORT,
+    deviceScaleFactor: options.deviceScaleFactor,
     note:
       'Tỉ lệ nghẽn loại trừ thời gian chờ khởi động. Mức chất lượng suy ra từ ' +
       'videoHeight của phần tử <video>, tức là mức đang hiển thị chứ không ' +
       'phải mức đang tải về. Đầu vào P.1203 ở đây là Mode 0 (chỉ siêu dữ liệu); ' +
       'điểm MOS phải do bản cài đặt tham chiếu itu-p1203 tính, kịch bản này ' +
-      'không tự tính MOS.',
+      'không tự tính MOS. Trình phát bật capLevelToPlayerSize, nên khung nhìn ' +
+      'và deviceScaleFactor ghi ở trên quyết định bậc thang nào được đo: ở ' +
+      'dpr 1 thẻ video rộng 880 px và bậc 1080p không bao giờ được chọn.',
     aggregate: agg,
     bitrateLadder: ladder,
     runsDetail: summaries,

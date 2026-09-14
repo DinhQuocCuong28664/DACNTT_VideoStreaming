@@ -142,6 +142,8 @@ those under \path{docs/results/}.
 \ref{tab:qoe-playback}       & \path{scripts/qoe/collect.js}    & \path{qoe-playback-<profile>.json} \\
 \ref{tab:qoe-bandwidth}      & Segment sizes and \texttt{\#EXTINF} durations read from the processed bucket & --- \\
 \ref{tab:qoe-before-after}   & \path{scripts/qoe/collect.js}, run before and after the correction & \path{qoe-playback-<profile>.json} \\
+\ref{tab:qoe-multisource}    & \path{scripts/qoe/compare.js}, driven by \path{docs/results/qoe-sources.json} & \path{qoe-playback-<source>-<profile>.json}, \path{qoe-comparison.json} \\
+\ref{tab:qoe-dpr}            & \path{scripts/qoe/collect.js} with \texttt{--dpr} & \path{qoe-playback-<source>-unthrottled.json}, \path{qoe-playback-<source>-unthrottled-dpr2.json} \\
 \ref{tab:transcode-results}  & \path{scripts/measure-transcode.js} & \path{transcode-timing.json} \\
 \ref{tab:load-results}       & \path{scripts/k6-load-test.js}   & \path{k6-summary.json}, \path{stress-test-concurrency.json} \\
 \ref{tab:load-crossvalidation} & \path{scripts/node-load-test.js} & \path{node-load-test.json} \\
