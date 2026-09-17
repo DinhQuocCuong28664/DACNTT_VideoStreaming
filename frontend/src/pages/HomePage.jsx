@@ -71,6 +71,18 @@ const HomePage = () => {
 
   return (
     <div className="container home-page">
+      <header className="home-hero">
+        <span className="section-label is-live">{t('home.libraryLabel')}</span>
+        <div className="home-section-header">
+          <h2 className="home-section-title display-heading">{sectionTitle}</h2>
+          {!loading && pagination?.total > 0 && (
+            <span className="home-section-count">
+              {t('home.videoCount', { count: pagination.total })}
+            </span>
+          )}
+        </div>
+      </header>
+
       <div className="category-bar" role="tablist" aria-label={t('home.filterByCategory')}>
         {CATEGORIES.map((cat) => (
           <button
@@ -85,23 +97,11 @@ const HomePage = () => {
         ))}
       </div>
 
-      <div className="home-section-header">
-        <h2 className="home-section-title">{sectionTitle}</h2>
-        {!loading && pagination?.total > 0 && (
-          <span className="home-section-count">
-            {t('home.videoCount', { count: pagination.total })}
-          </span>
-        )}
-      </div>
-
       {loading ? (
         <div className="video-grid">
           {Array.from({ length: SKELETON_COUNT }).map((_, i) => (
             <div key={i} className="skeleton-card">
-              <div
-                className="skeleton"
-                style={{ aspectRatio: '16 / 9', borderRadius: 'var(--radius-lg)' }}
-              />
+              <div className="skeleton skeleton-thumb" />
               <div className="skeleton-card-body">
                 <div className="skeleton skeleton-avatar" />
                 <div className="skeleton-lines">
@@ -114,7 +114,7 @@ const HomePage = () => {
         </div>
       ) : videos.length > 0 ? (
         <>
-          <div className="video-grid">
+          <div className="video-grid video-grid-enter">
             {videos.map((video) => (
               <VideoCard key={video._id} video={video} />
             ))}

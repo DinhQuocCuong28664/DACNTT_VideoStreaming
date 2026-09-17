@@ -1,39 +1,64 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
-
 /* ============================================
-   DESIGN SYSTEM — Dark Mode & Light Mode Theme Tokens
-   DACNTT Video Sharing Platform
+   HỆ THIẾT KẾ — Minimalist Modern
+   VidShare · DACNTT
+
+   Toàn bộ màu, chữ, bo góc, bóng đổ và chuyển động nằm ở đây dưới dạng biến
+   CSS. Tên biến giữ nguyên như trước khi đổi hệ thiết kế, vì mọi tệp CSS
+   thành phần đang tham chiếu chúng: đổi giá trị ở một chỗ là cả ứng dụng đổi
+   theo, không phải sửa từng tệp.
    ============================================ */
 
 :root,
 [data-theme='light'] {
-  /* Color Palette (Default Light Mode) */
-  --bg-primary: #f8fafc;
-  --bg-secondary: #ffffff;
-  --bg-tertiary: #f1f5f9;
+  /* ── Bề mặt ── */
+  --bg-primary: #fafafa;          /* nền trang: trắng ngà, dịu mắt hơn trắng tinh */
+  --bg-secondary: #ffffff;        /* bề mặt nổi: thanh điều hướng, ô nhập, menu */
+  --bg-tertiary: #f1f5f9;         /* muted: nền phụ, vùng tô nhạt */
   --bg-card: #ffffff;
   --bg-card-hover: #f1f5f9;
-  --bg-glass: rgba(0, 0, 0, 0.04);
+  --bg-glass: rgba(255, 255, 255, 0.78);
 
-  --accent-primary: #6c5ce7;
-  --accent-secondary: #00b894;
-  --accent-gradient: linear-gradient(135deg, #6c5ce7, #00b894);
-  --accent-gradient-hover: linear-gradient(135deg, #7c6cf7, #10e5b7);
+  /* Khối đảo màu: nền slate đậm, chữ sáng. Dùng cho chân trang, dải số liệu
+     và trang lỗi — không đổi theo chủ đề sáng/tối. */
+  --bg-inverted: #0f172a;
+  --text-inverted: #f8fafc;
+  --text-inverted-muted: rgba(248, 250, 252, 0.64);
+  --border-inverted: rgba(248, 250, 252, 0.1);
 
+  /* ── Màu nhấn: Electric Blue ── */
+  --accent-primary: #0052ff;
+  --accent-secondary: #4d7cff;
+  --accent-foreground: #ffffff;
+  --accent-gradient: linear-gradient(135deg, #0052ff, #4d7cff);
+  --accent-gradient-hover: linear-gradient(135deg, #1a64ff, #6690ff);
+  /* Trên nền đậm, #0052FF tối quá để đọc; bản sáng hơn giữ được tương phản */
+  --accent-gradient-light: linear-gradient(90deg, #6f95ff, #a9c1ff);
+  --accent-soft: rgba(0, 82, 255, 0.06);
+  --accent-border: rgba(0, 82, 255, 0.3);
+  --ring: #0052ff;
+
+  /* ── Chữ ── */
   --text-primary: #0f172a;
   --text-secondary: #475569;
   --text-muted: #64748b;
-  --text-accent: #6c5ce7;
+  --text-accent: #0052ff;
 
+  /* ── Viền ── */
   --border-color: #e2e8f0;
   --border-hover: #cbd5e1;
 
-  --danger: #ff6b6b;
-  --success: #51cf66;
-  --warning: #ffd43b;
+  /* ── Trạng thái — đậm đủ để đạt tương phản AA trên nền trắng ── */
+  --danger: #dc2626;
+  --danger-soft: rgba(220, 38, 38, 0.08);
+  --success: #059669;
+  --success-soft: rgba(5, 150, 105, 0.1);
+  --warning: #b45309;
+  --warning-soft: rgba(217, 119, 6, 0.1);
 
-  /* Typography */
-  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  /* ── Chữ ── */
+  --font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: 'Calistoga', Georgia, serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Consolas, monospace;
   --font-size-xs: 0.75rem;
   --font-size-sm: 0.875rem;
   --font-size-base: 1rem;
@@ -43,66 +68,88 @@
   --font-size-3xl: 2rem;
   --font-size-4xl: 2.5rem;
 
-  /* Spacing */
+  /* ── Khoảng cách ──
+     KHÔNG đổi các giá trị này tuỳ tiện: bề rộng cột trình phát trên trang xem
+     (1320 − 2·lg − xl − 360 = 880 px) được đo và ghi trong báo cáo, và nó quyết
+     định bậc chất lượng hls.js được phép chọn (capLevelToPlayerSize). */
   --space-xs: 0.25rem;
   --space-sm: 0.5rem;
   --space-md: 1rem;
   --space-lg: 1.5rem;
   --space-xl: 2rem;
   --space-2xl: 3rem;
+  --space-3xl: 5rem;
 
-  /* Border Radius */
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 16px;
+  /* ── Bo góc ── */
+  --radius-sm: 8px;
+  --radius-md: 12px;   /* rounded-xl: nút, ô nhập */
+  --radius-lg: 16px;   /* rounded-2xl: thẻ */
   --radius-xl: 24px;
-  --radius-full: 50%;
+  --radius-full: 9999px;
 
-  /* Shadows (Light Mode) */
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
-  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.1);
-  --shadow-glow: 0 0 20px rgba(108, 92, 231, 0.15);
+  /* ── Bóng đổ ── */
+  --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06);
+  --shadow-md: 0 4px 6px rgba(15, 23, 42, 0.07);
+  --shadow-lg: 0 10px 15px rgba(15, 23, 42, 0.08);
+  --shadow-xl: 0 20px 25px rgba(15, 23, 42, 0.1);
+  --shadow-accent: 0 4px 14px rgba(0, 82, 255, 0.25);
+  --shadow-accent-lg: 0 8px 24px rgba(0, 82, 255, 0.35);
+  --shadow-glow: var(--shadow-accent);
 
-  /* Layout */
+  /* ── Bố cục ──
+     1320 px khớp đúng bề rộng trang xem, nên mép thanh điều hướng thẳng hàng
+     với nội dung ở mọi trang. Khối chữ dài dùng --content-width hẹp hơn. */
   --navbar-height: 64px;
-  --max-width: 1400px;
+  --max-width: 1320px;
+  --content-width: 72rem;
 
-  /* Transitions */
-  --transition-fast: 150ms ease;
-  --transition-base: 250ms ease;
-  --transition-slow: 400ms ease;
+  /* ── Chuyển động ── */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-fast: 200ms ease-out;
+  --transition-base: 300ms ease-out;
+  --transition-slow: 700ms var(--ease-out);
 }
 
-/* Dark Mode Overrides */
+/* Chủ đề tối — cùng cấu trúc, đảo độ sáng. Màu nhấn dùng cho CHỮ sáng lên
+   (#0052FF trên nền slate chỉ đạt khoảng 3:1), còn nền gradient của nút giữ
+   nguyên vì chữ trên đó là màu trắng. */
 [data-theme='dark'] {
-  --bg-primary: #0f0f1a;
-  --bg-secondary: #1a1a2e;
-  --bg-tertiary: #16213e;
-  --bg-card: rgba(255, 255, 255, 0.04);
-  --bg-card-hover: rgba(255, 255, 255, 0.08);
-  --bg-glass: rgba(255, 255, 255, 0.06);
+  --bg-primary: #0b1120;
+  --bg-secondary: #111a2e;
+  --bg-tertiary: #1a2438;
+  --bg-card: #111a2e;
+  --bg-card-hover: #1a2438;
+  --bg-glass: rgba(11, 17, 32, 0.78);
 
-  --accent-primary: #6c5ce7;
-  --accent-secondary: #00cec9;
-  --accent-gradient: linear-gradient(135deg, #6c5ce7, #00cec9);
-  --accent-gradient-hover: linear-gradient(135deg, #7c6cf7, #10ded9);
+  --bg-inverted: #060a14;
 
-  --text-primary: #e8e8f0;
-  --text-secondary: #a0a0b8;
-  --text-muted: #6b6b80;
-  --text-accent: #6c5ce7;
+  --accent-primary: #5b8aff;
+  --accent-soft: rgba(91, 138, 255, 0.1);
+  --accent-border: rgba(91, 138, 255, 0.35);
+  --ring: #5b8aff;
 
-  --border-color: rgba(255, 255, 255, 0.08);
-  --border-hover: rgba(255, 255, 255, 0.15);
+  --text-primary: #f1f5f9;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
+  --text-accent: #7ea3ff;
 
-  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
-  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
-  --shadow-glow: 0 0 20px rgba(108, 92, 231, 0.3);
+  --border-color: rgba(148, 163, 184, 0.16);
+  --border-hover: rgba(148, 163, 184, 0.3);
+
+  --danger: #f87171;
+  --danger-soft: rgba(248, 113, 113, 0.12);
+  --success: #34d399;
+  --success-soft: rgba(52, 211, 153, 0.12);
+  --warning: #fbbf24;
+  --warning-soft: rgba(251, 191, 36, 0.12);
+
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 10px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 20px rgba(0, 0, 0, 0.45);
+  --shadow-xl: 0 20px 30px rgba(0, 0, 0, 0.5);
 }
 
-/* Reset & Base Styles */
+/* ── Reset & nền tảng ── */
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
@@ -114,10 +161,9 @@ html, body {
   font-family: var(--font-family);
   background-color: var(--bg-primary);
   color: var(--text-primary);
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-
-  /* Smooth transition between light/dark mode */
   transition: background-color var(--transition-base), color var(--transition-base);
 }
 
@@ -137,7 +183,18 @@ button, input, select, textarea {
   font-size: inherit;
 }
 
-/* Global Container Utility */
+::selection {
+  background: rgba(0, 82, 255, 0.18);
+}
+
+/* Vòng focus thống nhất cho bàn phím: vòng màu nhấn tách khỏi phần tử bằng
+   một khoảng nền, như ring-2 ring-offset-2. Chỉ hiện khi dùng bàn phím. */
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/* ── Bố cục ── */
 .container {
   width: 100%;
   max-width: var(--max-width);
@@ -145,70 +202,168 @@ button, input, select, textarea {
   padding: 0 var(--space-lg);
 }
 
-/* Dùng cho nhãn/đường dẫn kỹ thuật (S3 key, tên file...) — trước đây được
-   tham chiếu ở vài nơi (LandingPage) nhưng chưa từng định nghĩa, nên chữ
-   vẫn hiện font mặc định thay vì monospace như ý đồ ban đầu. */
-.font-mono {
-  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+.page-header {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-md);
+  margin-bottom: var(--space-xl);
 }
 
-/* Glassmorphism Card Component */
+/* ── Chữ ── */
+.font-mono {
+  font-family: var(--font-mono);
+}
+
+.display-heading {
+  font-family: var(--font-display);
+  font-weight: 400;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+}
+
+.gradient-text {
+  background: var(--accent-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+/* Nhãn mở đầu mỗi khu vực: viên thuốc viền nhấn, chấm màu, chữ mono in hoa.
+   Thêm .is-live để chấm nhịp nhẹ, báo hiệu nội dung đang "sống". */
+.section-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.375rem 0.875rem;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--accent-border);
+  background: var(--accent-soft);
+  color: var(--accent-primary);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.section-label::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+.section-label.is-live::before {
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+/* Trên khối đảo màu */
+.section-label.on-inverted {
+  color: #a9c1ff;
+  border-color: rgba(169, 193, 255, 0.3);
+  background: rgba(169, 193, 255, 0.08);
+}
+
+/* ── Thẻ ── */
 .card {
   background: var(--bg-card);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
   padding: var(--space-lg);
-  transition: transform var(--transition-base), border-color var(--transition-base), box-shadow var(--transition-base);
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow var(--transition-base), border-color var(--transition-base),
+    transform var(--transition-base);
 }
 
-.card:hover {
+.card-interactive:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-xl);
   border-color: var(--border-hover);
-  box-shadow: var(--shadow-md);
 }
 
-/* Primary Accent Button */
+/* ── Nút ── */
 .btn {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: var(--space-sm);
-  padding: var(--space-sm) var(--space-lg);
+  min-height: 44px;
+  padding: 0.625rem 1.25rem;
   border-radius: var(--radius-md);
-  font-weight: 600;
+  border: 1px solid transparent;
+  font-weight: 500;
   font-size: var(--font-size-sm);
+  line-height: 1.2;
+  white-space: nowrap;
   cursor: pointer;
-  border: none;
-  transition: all var(--transition-fast);
-  outline: none;
+  user-select: none;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast),
+    background-color var(--transition-fast), border-color var(--transition-fast),
+    color var(--transition-fast), filter var(--transition-fast);
+}
+
+.btn:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* Mũi tên trong nút trượt nhẹ sang phải khi hover */
+.btn .btn-arrow {
+  transition: transform var(--transition-fast);
+}
+
+.btn:hover:not(:disabled) .btn-arrow {
+  transform: translateX(4px);
 }
 
 .btn-primary {
   background: var(--accent-gradient);
-  color: #ffffff;
-  box-shadow: var(--shadow-glow);
+  color: var(--accent-foreground);
+  box-shadow: var(--shadow-sm);
 }
 
-.btn-primary:hover {
-  background: var(--accent-gradient-hover);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 20px rgba(108, 92, 231, 0.4);
+.btn-primary:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-accent-lg);
+  filter: brightness(1.08);
 }
 
-.btn-primary:active {
-  transform: translateY(0);
+.btn-primary:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
 }
 
 .btn-secondary {
-  background: var(--bg-card);
+  background: transparent;
   color: var(--text-primary);
-  border: 1px solid var(--border-color);
+  border-color: var(--border-color);
 }
 
-.btn-secondary:hover {
-  background: var(--bg-card-hover);
-  border-color: var(--border-hover);
+.btn-secondary:hover:not(:disabled) {
+  background: var(--bg-tertiary);
+  border-color: var(--accent-border);
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.btn-ghost:hover:not(:disabled) {
+  color: var(--text-primary);
+  background: var(--bg-tertiary);
 }
 
 .btn-danger {
@@ -216,115 +371,524 @@ button, input, select, textarea {
   color: #ffffff;
 }
 
-.btn-danger:hover {
-  opacity: 0.9;
+.btn-danger:hover:not(:disabled) {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
 }
 
-/* Skeleton Loading Animation */
+.btn-lg {
+  min-height: 52px;
+  padding: 0.875rem 1.75rem;
+  font-size: var(--font-size-base);
+}
+
+/* Nút chỉ có biểu tượng, vuông 40–44 px */
+.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 1.125rem;
+  cursor: pointer;
+  transition: background-color var(--transition-fast), color var(--transition-fast),
+    border-color var(--transition-fast);
+}
+
+.btn-icon:hover:not(:disabled) {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+/* ── Nhãn trạng thái ── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.625rem;
+  border-radius: var(--radius-full);
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  border: 1px solid transparent;
+}
+
+.badge-processing {
+  background: var(--accent-soft);
+  color: var(--accent-primary);
+  border-color: var(--accent-border);
+}
+
+.badge-ready {
+  background: var(--success-soft);
+  color: var(--success);
+  border-color: color-mix(in srgb, var(--success) 30%, transparent);
+}
+
+.badge-error {
+  background: var(--danger-soft);
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 30%, transparent);
+}
+
+/* ── Thông báo ── */
+.alert {
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  font-size: var(--font-size-sm);
+  line-height: 1.55;
+}
+
+.alert-error {
+  background: var(--danger-soft);
+  border-color: color-mix(in srgb, var(--danger) 25%, transparent);
+  color: var(--danger);
+}
+
+.alert-success {
+  background: var(--success-soft);
+  border-color: color-mix(in srgb, var(--success) 25%, transparent);
+  color: var(--text-primary);
+}
+
+/* ── Ô nhập ──
+   .form-control (trang kênh) và .input/.textarea (xác thực, tải lên) là cùng
+   một thành phần; trước đây mỗi nơi tự định nghĩa một bản. */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.form-label,
+.label {
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.form-control,
+.input,
+.textarea {
+  width: 100%;
+  min-height: 48px;
+  padding: 0.75rem 1rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: var(--font-size-base);
+  line-height: 1.4;
+  outline: none;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+textarea.form-control,
+.textarea {
+  min-height: 112px;
+  resize: vertical;
+  line-height: 1.6;
+}
+
+.form-control:hover,
+.input:hover,
+.textarea:hover {
+  border-color: var(--border-hover);
+}
+
+.form-control:focus,
+.input:focus,
+.textarea:focus {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 2px var(--bg-primary), 0 0 0 4px var(--ring);
+}
+
+.form-control::placeholder,
+.input::placeholder,
+.textarea::placeholder {
+  color: color-mix(in srgb, var(--text-muted) 60%, transparent);
+}
+
+select.form-control,
+select.input {
+  appearance: none;
+  padding-right: 2.5rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' viewBox='0 0 24 24'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.875rem center;
+  cursor: pointer;
+}
+
+/* ── Menu thả xuống dùng chung (thanh điều hướng, thẻ video trên kênh) ── */
+.menu-panel {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xl);
+  padding: 0.375rem;
+  animation: menu-in 180ms var(--ease-out);
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  width: 100%;
+  min-height: 40px;
+  padding: 0.5rem 0.75rem;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.dropdown-item svg {
+  flex-shrink: 0;
+  transition: color var(--transition-fast);
+}
+
+.dropdown-item:hover {
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+}
+
+.dropdown-item:hover svg {
+  color: var(--accent-primary);
+}
+
+.dropdown-item-danger:hover,
+.dropdown-item-danger:hover svg {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.dropdown-divider {
+  height: 1px;
+  margin: 0.375rem 0.25rem;
+  background: var(--border-color);
+}
+
+/* ── Ảnh đại diện chữ cái ── */
+.avatar-placeholder {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-full);
+  background: var(--accent-gradient);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-weight: 600;
+  font-size: var(--font-size-sm);
+  flex-shrink: 0;
+}
+
+.avatar-lg {
+  width: 44px;
+  height: 44px;
+  font-size: var(--font-size-lg);
+}
+
+/* ── Khung xương khi tải ── */
 .skeleton {
   background: linear-gradient(
     90deg,
-    var(--bg-card) 25%,
-    var(--bg-card-hover) 50%,
-    var(--bg-card) 75%
+    var(--bg-tertiary) 25%,
+    color-mix(in srgb, var(--bg-tertiary) 55%, var(--bg-secondary)) 50%,
+    var(--bg-tertiary) 75%
   );
   background-size: 200% 100%;
   animation: skeleton-loading 1.5s infinite;
   border-radius: var(--radius-sm);
 }
 
+.skeleton-thumb {
+  aspect-ratio: 16 / 9;
+  border-radius: var(--radius-lg);
+}
+
 @keyframes skeleton-loading {
-  0% {
-    background-position: 200% 0;
-  }
-  100% {
-    background-position: -200% 0;
-  }
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
-/* Badge Component */
-.badge {
-  display: inline-flex;
-  align-items: center;
-  padding: var(--space-xs) var(--space-sm);
-  border-radius: var(--radius-sm);
-  font-size: var(--font-size-xs);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.badge-processing {
-  background: rgba(255, 212, 59, 0.15);
-  color: var(--warning);
-  border: 1px solid rgba(255, 212, 59, 0.3);
-}
-
-.badge-ready {
-  background: rgba(81, 207, 102, 0.15);
-  color: var(--success);
-  border: 1px solid rgba(81, 207, 102, 0.3);
-}
-
-.badge-error {
-  background: rgba(255, 107, 107, 0.15);
-  color: var(--danger);
-  border: 1px solid rgba(255, 107, 107, 0.3);
-}
-
-/* Form Input Control */
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
-  margin-bottom: var(--space-md);
-}
-
-.form-label {
-  font-size: var(--font-size-sm);
-  font-weight: 500;
-  color: var(--text-secondary);
-}
-
-.form-control {
-  width: 100%;
-  padding: var(--space-sm) var(--space-md);
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  color: var(--text-primary);
-  font-size: var(--font-size-sm);
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
-}
-
-.form-control:focus {
-  outline: none;
-  border-color: var(--accent-primary);
-  box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.2);
-}
-
-.form-control::placeholder {
-  color: var(--text-muted);
-}
-
-/* Loading Spinner */
+/* ── Vòng quay ── */
 .spinner {
   width: 24px;
   height: 24px;
-  border: 3px solid rgba(255, 255, 255, 0.1);
+  border: 3px solid var(--accent-soft);
   border-top-color: var(--accent-primary);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
+  flex-shrink: 0;
 }
 
+.spinner-sm {
+  width: 14px;
+  height: 14px;
+  border-width: 2px;
+  border-color: rgba(255, 255, 255, 0.35);
+  border-top-color: #ffffff;
+}
+
+.spinner-lg {
+  width: 48px;
+  height: 48px;
+}
+
+/* ── Hoạ tiết nền ──
+   Lưới chấm và vầng sáng màu nhấn: cảm nhận được hơn là nhìn thấy, đủ để
+   khối nền đậm không phẳng lì. */
+.texture-dots {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.9) 1px, transparent 1px);
+  background-size: 32px 32px;
+  opacity: 0.04;
+}
+
+/* Vầng sáng vẽ bằng radial-gradient mờ dần chứ không dùng filter: blur().
+   Nhìn gần như y hệt, nhưng blur 150 px trên một khối rộng vài trăm pixel là
+   phép vẽ nặng nhất trang — đủ làm khung hình rớt nhịp trên máy không có GPU,
+   nhất là khi cạnh đó còn có hoạt ảnh chạy liên tục. */
+.glow {
+  position: absolute;
+  width: 720px;
+  height: 720px;
+  border-radius: 50%;
+  background: radial-gradient(circle closest-side, var(--accent-primary), transparent);
+  opacity: 0.14;
+  pointer-events: none;
+}
+
+/* ── Hiện dần khi cuộn tới ──
+   useRevealOnScroll gắn .is-visible khi phần tử vào khung nhìn. Con của
+   [data-reveal-stagger] xuất hiện lệch nhau 0,1 giây.
+
+   Dùng animation với fill-mode "backwards" chứ không dùng transition: nếu
+   dùng transition, độ trễ lệch nhịp của từng thẻ sẽ dính luôn vào hiệu ứng
+   hover (thẻ thứ sáu chờ nửa giây mới nhấc lên). "backwards" chỉ giữ trạng
+   thái đầu trong lúc chờ, chạy xong thì trả lại transform cho hover. */
+[data-reveal]:not(.is-visible),
+[data-reveal-stagger]:not(.is-visible) > * {
+  opacity: 0;
+}
+
+[data-reveal].is-visible,
+[data-reveal-stagger].is-visible > * {
+  animation: reveal-up 700ms var(--ease-out) backwards;
+}
+
+[data-reveal-stagger].is-visible > *:nth-child(2) { animation-delay: 0.1s; }
+[data-reveal-stagger].is-visible > *:nth-child(3) { animation-delay: 0.2s; }
+[data-reveal-stagger].is-visible > *:nth-child(4) { animation-delay: 0.3s; }
+[data-reveal-stagger].is-visible > *:nth-child(5) { animation-delay: 0.4s; }
+[data-reveal-stagger].is-visible > *:nth-child(6) { animation-delay: 0.5s; }
+[data-reveal-stagger].is-visible > *:nth-child(n + 7) { animation-delay: 0.6s; }
+
+/* ── Keyframes dùng chung ── */
 @keyframes spin {
-  to {
-    transform: rotate(360deg);
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulse-dot {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.3); opacity: 0.7; }
+}
+
+@keyframes float-y {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes reveal-up {
+  from { opacity: 0; transform: translateY(28px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes menu-in {
+  from { opacity: 0; transform: translateY(-6px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ── Tôn trọng tuỳ chọn giảm chuyển động ──
+   Người dùng bật tuỳ chọn này thường vì chuyển động gây chóng mặt, nên tắt
+   hẳn hiệu ứng lặp và cho nội dung hiện ngay thay vì trượt vào. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  [data-reveal],
+  [data-reveal-stagger] > * {
+    opacity: 1 !important;
   }
 }
 
-/* Utilities */
+/* ── Trang trạng thái: 404, 403 và màn hình lỗi ứng dụng ──
+   Ba trang này trước đây chép lại nguyên khung giống nhau trong ba tệp CSS.
+   Khung chung nằm ở đây; linh vật hoạt hình vẫn thuộc tệp riêng của từng trang.
+   Nền là khối đảo màu cố định ở cả hai chủ đề, thẻ nổi lên ở giữa. */
+.status-page {
+  position: relative;
+  overflow: hidden;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-lg);
+  background: var(--bg-inverted);
+}
+
+.status-page::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.9) 1px, transparent 1px);
+  background-size: 32px 32px;
+  opacity: 0.04;
+  pointer-events: none;
+}
+
+.status-page::after {
+  content: '';
+  position: absolute;
+  width: 820px;
+  height: 820px;
+  top: -380px;
+  right: -300px;
+  border-radius: 50%;
+  background: radial-gradient(circle closest-side, #0052ff, transparent);
+  opacity: 0.32;
+  pointer-events: none;
+}
+
+.status-card {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 640px;
+  padding: var(--space-2xl) var(--space-xl);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 28px;
+  box-shadow: 0 32px 64px -16px rgba(0, 0, 0, 0.5);
+  text-align: center;
+  animation: fade-up 700ms var(--ease-out) backwards;
+}
+
+.status-brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: var(--space-md);
+  font-family: var(--font-display);
+  font-size: var(--font-size-xl);
+  color: var(--text-primary);
+}
+
+.status-brand svg {
+  width: 32px;
+  height: 32px;
+  padding: 6px;
+  border-radius: 9px;
+  background: var(--accent-gradient);
+  color: #ffffff;
+}
+
+.status-code {
+  display: inline-block;
+  font-family: var(--font-display);
+  font-size: clamp(4.5rem, 12vw, 6.5rem);
+  font-weight: 400;
+  line-height: 1;
+  background: var(--accent-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.status-message {
+  margin: var(--space-md) 0 var(--space-sm);
+  font-family: var(--font-display);
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-weight: 400;
+  line-height: 1.2;
+  color: var(--text-primary);
+}
+
+.status-submessage {
+  max-width: 46ch;
+  margin: 0 auto var(--space-xl);
+  font-size: var(--font-size-base);
+  line-height: 1.7;
+  color: var(--text-secondary);
+}
+
+.status-actions {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+
+.status-info {
+  margin-top: var(--space-lg);
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+@media (max-width: 480px) {
+  .status-card {
+    padding: var(--space-xl) var(--space-lg);
+  }
+}
+
+/* ── Tiện ích ── */
 .text-center { text-align: center; }
 .flex-center { display: flex; align-items: center; justify-content: center; }
 .flex-between { display: flex; align-items: center; justify-content: space-between; }
 .hidden { display: none !important; }
+.full-screen-center { min-height: 100vh; }
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

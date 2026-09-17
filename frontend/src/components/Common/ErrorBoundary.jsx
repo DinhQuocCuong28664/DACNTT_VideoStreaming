@@ -37,23 +37,23 @@ class ErrorBoundary extends Component {
     if (!this.state.hasError) return this.props.children;
 
     return (
-      <div className="eb-page">
-        <div className="eb-card">
-          <div className="eb-brand">
+      <div className="eb-page status-page">
+        <div className="eb-card status-card">
+          <div className="eb-brand status-brand">
             <LogoIcon />
             <span>VidShare</span>
           </div>
 
-          <h1 className="eb-title">{this.props.t('errorBoundary.title')}</h1>
-          <p className="eb-message">
+          <h1 className="eb-title status-message">{this.props.t('errorBoundary.title')}</h1>
+          <p className="eb-message status-submessage">
             {this.props.t('errorBoundary.body')}
           </p>
 
-          <div className="eb-actions">
+          <div className="eb-actions status-actions">
             <button type="button" className="btn btn-primary" onClick={this.handleReload}>
               {this.props.t('errorBoundary.home')}
             </button>
-            <button type="button" className="btn" onClick={() => window.location.reload()}>
+            <button type="button" className="btn btn-secondary" onClick={() => window.location.reload()}>
               {this.props.t('errorBoundary.reload')}
             </button>
           </div>

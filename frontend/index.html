@@ -6,6 +6,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>VidShare</title>
     <!--
+      Ba họ chữ của hệ thiết kế: Calistoga cho tiêu đề, Inter cho giao diện và
+      nội dung, JetBrains Mono cho nhãn kỹ thuật. Cả ba đều có bộ ký tự tiếng
+      Việt. Nạp bằng thẻ link thay vì @import trong CSS: @import chỉ bắt đầu tải
+      sau khi chính tệp CSS đã tải xong, thêm một vòng chờ trước khi chữ hiện.
+    -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Calistoga&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+    />
+    <!--
       Google Identity Services dựng chữ bên trong nút đăng nhập, và nó chốt
       ngôn ngữ ngay lúc script được nạp chứ không đọc lại tuỳ chọn `locale`
       truyền cho renderButton sau đó. Vì vậy ngôn ngữ phải đi kèm ngay trên URL

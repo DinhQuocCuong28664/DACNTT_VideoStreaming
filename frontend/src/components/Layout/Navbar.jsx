@@ -85,7 +85,7 @@ const Navbar = () => {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
-            <button type="submit" className="search-btn">
+            <button type="submit" className="search-btn" aria-label={t('nav.search')}>
               <FiSearch />
             </button>
           </form>
@@ -133,7 +133,7 @@ const Navbar = () => {
                   </button>
 
                   {showDropdown && (
-                    <div className="dropdown-menu">
+                    <div className="dropdown-menu menu-panel">
                       <div className="dropdown-header">
                         <div className="avatar-placeholder avatar-lg">
                           {user?.username?.charAt(0).toUpperCase()}
@@ -179,12 +179,12 @@ const Navbar = () => {
                 </div>
               </>
             ) : (
-              <div className="auth-buttons" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div className="auth-buttons">
                 <button
-                  className="btn btn-secondary theme-toggle-btn"
+                  className="btn-icon theme-toggle-btn"
                   onClick={toggleTheme}
                   title={theme === 'dark' ? t('nav.switchToLight') : t('nav.switchToDark')}
-                  style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                  aria-label={theme === 'dark' ? t('nav.switchToLight') : t('nav.switchToDark')}
                 >
                   {theme === 'dark' ? <FiSun /> : <FiMoon />}
                 </button>
@@ -202,7 +202,7 @@ const Navbar = () => {
         {/* Mobile Search Overlay Form */}
         {showMobileSearch && (
           <div className="mobile-search-bar">
-            <form onSubmit={handleSearch} style={{ display: 'flex', width: '100%', gap: '8px' }}>
+            <form onSubmit={handleSearch} className="mobile-search-form">
               <input
                 type="text"
                 className="search-input"

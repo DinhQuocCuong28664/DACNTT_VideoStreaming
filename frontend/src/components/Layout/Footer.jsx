@@ -28,6 +28,10 @@ const Footer = () => {
   const { t } = useTranslation();
   return (
     <footer className="app-footer">
+      {/* Hoạ tiết nền của khối đảo màu: lưới chấm và một vầng sáng màu nhấn */}
+      <div className="texture-dots" aria-hidden="true" />
+      <div className="glow footer-glow" aria-hidden="true" />
+
       <div className="footer-inner">
         <div className="footer-grid">
           {/* Thương hiệu & trạng thái hệ thống */}

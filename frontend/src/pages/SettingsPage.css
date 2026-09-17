@@ -1,58 +1,91 @@
+/* ── Trang cài đặt tài khoản ── */
+
 .settings-page {
-  padding-top: var(--space-xl);
-  padding-bottom: var(--space-2xl);
-  max-width: 640px;
+  padding-top: var(--space-2xl);
+  padding-bottom: var(--space-3xl);
+  max-width: 700px;
 }
 
 .settings-title {
-  font-size: var(--font-size-2xl);
-  font-weight: 700;
-  margin-bottom: var(--space-lg);
+  font-size: clamp(2.25rem, 5vw, 3rem);
 }
 
 .settings-card {
   margin-bottom: var(--space-lg);
+  padding: var(--space-xl);
+  border-radius: var(--radius-xl);
 }
 
 .settings-section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
   font-size: var(--font-size-lg);
   font-weight: 600;
-  margin-bottom: var(--space-md);
+  letter-spacing: -0.01em;
+  margin-bottom: var(--space-lg);
+}
+
+/* Vạch gradient ngắn trước tên mục — nhấn nhẹ, không cần biểu tượng riêng */
+.settings-section-title::before {
+  content: '';
+  width: 4px;
+  height: 18px;
+  border-radius: 2px;
+  background: var(--accent-gradient);
 }
 
 .settings-section-desc {
   color: var(--text-muted);
   font-size: var(--font-size-sm);
+  line-height: 1.65;
   margin-bottom: var(--space-md);
 }
 
 .settings-info-list {
   display: flex;
   flex-direction: column;
-  gap: var(--space-sm);
 }
 
 .settings-info-list div {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   gap: var(--space-md);
-  padding: var(--space-xs) 0;
+  padding: 0.875rem 0;
   border-bottom: 1px solid var(--border-color);
 }
 
+.settings-info-list div:first-child {
+  padding-top: 0;
+}
+
+.settings-info-list div:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
 .settings-info-list dt {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
   color: var(--text-muted);
-  font-size: var(--font-size-sm);
 }
 
 .settings-info-list dd {
   font-weight: 500;
+  overflow-wrap: anywhere;
+  text-align: right;
 }
 
 .settings-linked-status {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: var(--space-xs);
+  gap: 0.5rem;
+  padding: 0.5rem 0.875rem;
+  border-radius: var(--radius-full);
+  background: var(--success-soft);
   color: var(--success);
   font-size: var(--font-size-sm);
   font-weight: 500;
@@ -66,24 +99,26 @@
 }
 
 .settings-avatar-preview {
-  width: 88px;
-  height: 88px;
+  width: 96px;
+  height: 96px;
   border-radius: var(--radius-full);
   object-fit: cover;
-  font-size: var(--font-size-2xl);
+  font-family: var(--font-display);
+  font-size: 2.25rem;
   flex-shrink: 0;
+  box-shadow: 0 0 0 4px var(--bg-card), 0 0 0 6px var(--accent-border);
 }
 
 .settings-avatar-hint {
-  margin: var(--space-xs) 0 0;
+  margin: 0.5rem 0 0;
 }
 
 .settings-error {
-  padding: 10px 14px;
-  margin-bottom: var(--space-md);
-  background: rgba(255, 107, 107, 0.1);
-  border: 1px solid rgba(255, 107, 107, 0.25);
-  border-radius: var(--radius-md);
-  color: var(--danger);
-  font-size: var(--font-size-sm);
+  margin: var(--space-md) 0;
+}
+
+@media (max-width: 576px) {
+  .settings-card {
+    padding: var(--space-lg);
+  }
 }

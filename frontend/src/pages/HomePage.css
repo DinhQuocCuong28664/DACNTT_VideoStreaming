@@ -1,12 +1,40 @@
-/* ── Trang chủ ──────────────────────────────────────────────
-   Tách khỏi thẻ <style> nhúng trong HomePage.jsx. Cách cũ tiêm CSS vào DOM
-   mỗi lần component render, không tận dụng được cache của trình duyệt và
-   lệch với mọi component khác trong dự án vốn dùng tệp .css riêng.
-   ──────────────────────────────────────────────────────────── */
+/* ── Trang chủ: thư viện video ── */
 
 .home-page {
-  padding-top: var(--space-xl);
-  padding-bottom: var(--space-2xl);
+  padding-top: var(--space-2xl);
+  padding-bottom: var(--space-3xl);
+}
+
+/* ── Đầu trang ── */
+.home-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-md);
+  margin-bottom: var(--space-xl);
+}
+
+.home-section-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-md) var(--space-lg);
+  width: 100%;
+  flex-wrap: wrap;
+}
+
+.home-section-title {
+  font-size: clamp(2rem, 4vw, 3rem);
+  overflow-wrap: anywhere;
+}
+
+.home-section-count {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  white-space: nowrap;
 }
 
 /* ── Thanh lọc danh mục ── */
@@ -14,8 +42,8 @@
   display: flex;
   gap: var(--space-sm);
   overflow-x: auto;
-  padding-bottom: var(--space-sm);
-  margin-bottom: var(--space-lg);
+  padding: 2px 2px var(--space-sm);
+  margin-bottom: var(--space-xl);
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
 }
@@ -25,77 +53,73 @@
 }
 
 .category-pill {
-  padding: 0.5rem 1.1rem;
-  border-radius: var(--radius-xl);
+  min-height: 40px;
+  padding: 0 1.125rem;
+  border-radius: var(--radius-full);
   border: 1px solid var(--border-color);
-  background: var(--bg-tertiary);
-  color: var(--text-primary);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
   font-size: var(--font-size-sm);
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
   white-space: nowrap;
-  transition: all var(--transition-fast);
   flex-shrink: 0;
+  transition: background-color var(--transition-fast), border-color var(--transition-fast),
+    color var(--transition-fast), box-shadow var(--transition-fast), transform var(--transition-fast);
 }
 
 .category-pill:hover {
-  background: var(--bg-card-hover);
-  border-color: var(--border-hover);
+  color: var(--text-primary);
+  border-color: var(--accent-border);
+  box-shadow: var(--shadow-sm);
+}
+
+.category-pill:active {
+  transform: scale(0.98);
 }
 
 .category-pill.active {
   background: var(--accent-gradient);
   color: #ffffff;
   border-color: transparent;
-  box-shadow: var(--shadow-sm);
-}
-
-/* Bàn phím phải thấy được đang focus ở đâu — trước đây chỉ có :hover nên
-   người dùng điều hướng bằng Tab không biết mình đang ở nút nào. */
-.category-pill:focus-visible {
-  outline: 2px solid var(--accent-primary);
-  outline-offset: 2px;
-}
-
-/* ── Tiêu đề khu vực ── */
-.home-section-header {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-md);
-  margin-bottom: var(--space-lg);
-  flex-wrap: wrap;
-}
-
-.home-section-title {
-  font-size: var(--font-size-2xl);
-  font-weight: 700;
-  letter-spacing: -0.02em;
-}
-
-.home-section-count {
-  font-size: var(--font-size-sm);
-  color: var(--text-muted);
+  box-shadow: var(--shadow-accent);
 }
 
 /* ── Lưới video ── */
 .video-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: var(--space-lg) var(--space-md);
+  gap: var(--space-xl) var(--space-lg);
 }
+
+/* Thẻ hiện lần lượt khi danh sách vừa tải xong, lệch nhau 60 ms */
+.video-grid-enter > * {
+  animation: fade-up 600ms var(--ease-out) backwards;
+}
+
+.video-grid-enter > *:nth-child(2) { animation-delay: 60ms; }
+.video-grid-enter > *:nth-child(3) { animation-delay: 120ms; }
+.video-grid-enter > *:nth-child(4) { animation-delay: 180ms; }
+.video-grid-enter > *:nth-child(5) { animation-delay: 240ms; }
+.video-grid-enter > *:nth-child(6) { animation-delay: 300ms; }
+.video-grid-enter > *:nth-child(7) { animation-delay: 360ms; }
+.video-grid-enter > *:nth-child(n + 8) { animation-delay: 420ms; }
 
 /* ── Trạng thái rỗng ── */
 .empty-state {
+  position: relative;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
   gap: var(--space-sm);
-  padding: var(--space-2xl) var(--space-lg);
-  border: 1px dashed var(--border-color);
-  border-radius: var(--radius-lg);
-  background: var(--bg-card);
+  padding: 4rem var(--space-lg);
+  border: 1px dashed var(--border-hover);
+  border-radius: var(--radius-xl);
+  background:
+    radial-gradient(circle at 50% 0%, var(--accent-soft), transparent 60%),
+    var(--bg-card);
 }
 
 .empty-state-icon {
@@ -104,23 +128,25 @@
   justify-content: center;
   width: 56px;
   height: 56px;
-  margin-bottom: var(--space-xs);
-  border-radius: var(--radius-full);
-  background: var(--bg-tertiary);
-  color: var(--text-muted);
+  margin-bottom: var(--space-sm);
+  border-radius: var(--radius-lg);
+  background: var(--accent-gradient);
+  color: #ffffff;
   font-size: var(--font-size-2xl);
+  box-shadow: var(--shadow-accent);
 }
 
 .empty-state-title {
-  font-size: var(--font-size-lg);
-  font-weight: 600;
+  font-family: var(--font-display);
+  font-size: var(--font-size-2xl);
   color: var(--text-primary);
 }
 
 .empty-state-desc {
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-base);
+  line-height: 1.7;
   color: var(--text-muted);
-  max-width: 42ch;
+  max-width: 44ch;
 }
 
 .empty-state-action {
@@ -137,25 +163,21 @@
 }
 
 .pagination .btn {
-  min-width: 40px;
+  min-width: 44px;
+  padding: 0 0.75rem;
+  font-family: var(--font-mono);
 }
 
-/* ── Khung xương khi tải ──
-   .skeleton-card chưa từng được định nghĩa — khối thumbnail và
-   .skeleton-card-body vẫn xếp dọc được nhờ hành vi block mặc định, nhưng
-   thiếu khoảng cách rõ ràng giữa 2 phần, không đồng bộ với khoảng cách
-   thật của VideoCard khi đã tải xong (gây giật/lệch nhẹ lúc chuyển từ
-   skeleton sang nội dung thật). */
+/* ── Khung xương khi tải ── */
 .skeleton-card {
   display: flex;
   flex-direction: column;
-  gap: var(--space-sm);
 }
 
 .skeleton-card-body {
   display: flex;
-  gap: var(--space-sm);
-  padding: var(--space-sm) 0;
+  gap: 0.75rem;
+  padding: 0.875rem 0.125rem 0.25rem;
 }
 
 .skeleton-avatar {
@@ -171,7 +193,7 @@
 
 .skeleton-line {
   height: 14px;
-  margin-bottom: 6px;
+  margin-bottom: 8px;
   border-radius: 4px;
 }
 
@@ -182,8 +204,12 @@
 }
 
 @media (max-width: 576px) {
+  .home-page {
+    padding-top: var(--space-xl);
+  }
+
   .video-grid {
     grid-template-columns: 1fr;
-    gap: var(--space-md);
+    gap: var(--space-lg);
   }
 }

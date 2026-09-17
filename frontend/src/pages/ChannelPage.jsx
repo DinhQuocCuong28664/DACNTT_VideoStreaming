@@ -18,6 +18,7 @@ import userApi from '../api/userApi';
 import VideoCard from '../components/Video/VideoCard';
 import { UPLOAD_CATEGORIES } from '../i18n/categories';
 import useRefreshWhilePending from '../hooks/useRefreshWhilePending';
+import './ChannelPage.css';
 
 /**
  * Ba chế độ hiển thị, đi vòng theo đúng thứ tự này mỗi lần nhấn nút.
@@ -219,48 +220,35 @@ const ChannelPage = () => {
   const displayUser = channelUser || currentUser;
 
   return (
-    <div className="container" style={{ paddingTop: 'var(--space-xl)', paddingBottom: 'var(--space-2xl)' }}>
+    <div className="container channel-page">
       {/* Channel Header */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 'var(--space-xl)',
-        padding: 'var(--space-xl)',
-        background: 'var(--bg-card)',
-        borderRadius: 'var(--radius-xl)',
-        border: '1px solid var(--border-color)',
-        marginBottom: 'var(--space-2xl)',
-      }}>
+      <header className="channel-hero">
+        <div className="channel-hero-texture" aria-hidden="true" />
         {displayUser?.avatar ? (
-          <img src={displayUser.avatar} alt="" style={{ width: 80, height: 80, borderRadius: '50%' }} />
+          <img src={displayUser.avatar} alt="" className="channel-hero-avatar" />
         ) : (
-          <div style={{
-            width: 80, height: 80, borderRadius: '50%',
-            background: 'var(--accent-gradient)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: '#fff', fontWeight: 700, fontSize: 'var(--font-size-3xl)',
-            flexShrink: 0,
-          }}>
+          <div className="channel-hero-avatar channel-hero-avatar-fallback">
             {displayUser?.username?.charAt(0).toUpperCase() || <FiUser />}
           </div>
         )}
-        <div>
-          <h1 style={{ fontSize: 'var(--font-size-2xl)', fontWeight: 700 }}>
+        <div className="channel-hero-text">
+          <span className="section-label">{t('channel.pageLabel')}</span>
+          <h1 className="channel-hero-name display-heading">
             {displayUser?.displayName || displayUser?.username || 'Channel'}
           </h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: 'var(--font-size-sm)', marginTop: 4 }}>
+          <p className="channel-hero-handle">
             @{displayUser?.username}
           </p>
           {displayUser?.channelDescription && (
-            <p style={{ color: 'var(--text-secondary)', fontSize: 'var(--font-size-sm)', marginTop: 8 }}>
+            <p className="channel-hero-desc">
               {displayUser.channelDescription}
             </p>
           )}
         </div>
-      </div>
+      </header>
 
       {/* Videos */}
-      <h2 style={{ fontSize: 'var(--font-size-xl)', fontWeight: 600, marginBottom: 'var(--space-lg)' }}>
+      <h2 className="channel-section-title">
         {isOwner ? t('channel.yourVideos') : t('channel.videos')}
       </h2>
 
@@ -268,10 +256,10 @@ const ChannelPage = () => {
         <div className="video-grid">
           {Array.from({ length: 4 }).map((_, i) => (
             <div key={i}>
-              <div className="skeleton" style={{ aspectRatio: '16/9', borderRadius: 'var(--radius-lg)' }} />
-              <div style={{ padding: '8px 0' }}>
-                <div className="skeleton" style={{ height: 14, marginBottom: 6, borderRadius: 4 }} />
-                <div className="skeleton" style={{ height: 12, width: '60%', borderRadius: 4 }} />
+              <div className="skeleton skeleton-thumb" />
+              <div className="channel-skeleton-lines">
+                <div className="skeleton channel-skeleton-line" />
+                <div className="skeleton channel-skeleton-line short" />
               </div>
             </div>
           ))}
@@ -303,7 +291,7 @@ const ChannelPage = () => {
 
                       {isMenuOpen && (
                         <div
-                          className="video-card-dropdown"
+                          className="video-card-dropdown menu-panel"
                           onClick={(e) => e.stopPropagation()}
                         >
                           <button
@@ -367,13 +355,12 @@ const ChannelPage = () => {
           </div>
 
           {pagination && pagination.pages > 1 && (
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginTop: 'var(--space-2xl)' }}>
+            <div className="channel-pagination">
               {Array.from({ length: pagination.pages }).map((_, i) => (
                 <button
                   key={i}
                   className={`btn ${page === i + 1 ? 'btn-primary' : 'btn-secondary'}`}
                   onClick={() => setPage(i + 1)}
-                  style={{ minWidth: 40, padding: '8px 12px' }}
                 >
                   {i + 1}
                 </button>
@@ -382,7 +369,7 @@ const ChannelPage = () => {
           )}
         </>
       ) : (
-        <div style={{ textAlign: 'center', padding: 'var(--space-2xl)', color: 'var(--text-muted)' }}>
+        <div className="channel-empty">
           <p>{t('channel.empty')}</p>
         </div>
       )}
@@ -399,7 +386,7 @@ const ChannelPage = () => {
           >
             <div className="channel-modal-header">
               <div className="channel-modal-title-group">
-                <FiEdit3 className="channel-modal-icon" size={20} />
+                <span className="channel-modal-icon"><FiEdit3 size={18} /></span>
                 <h3 className="channel-modal-title">{t('channel.editModalTitle')}</h3>
               </div>
               <button
@@ -416,7 +403,7 @@ const ChannelPage = () => {
             <form onSubmit={handleSaveEdit} className="channel-modal-form">
               <div className="form-group">
                 <label className="form-label" htmlFor="edit-title">
-                  {t('channel.editTitleLabel')} <span style={{ color: 'var(--danger)' }}>*</span>
+                  {t('channel.editTitleLabel')} <span className="required-mark">*</span>
                 </label>
                 <input
                   id="edit-title"
@@ -440,7 +427,6 @@ const ChannelPage = () => {
                   value={editDescription}
                   onChange={(e) => setEditDescription(e.target.value)}
                   maxLength={5000}
-                  style={{ resize: 'vertical' }}
                 />
               </div>
 
@@ -494,7 +480,7 @@ const ChannelPage = () => {
                 >
                   {savingEdit ? (
                     <>
-                      <div className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} />
+                      <div className="spinner spinner-sm" />
                       <span>{t('channel.editSaving')}</span>
                     </>
                   ) : (
@@ -510,245 +496,6 @@ const ChannelPage = () => {
         </div>
       )}
 
-      <style>{`
-        .video-grid {
-          display: grid;
-          grid-template-columns: repeat(4, 1fr);
-          gap: var(--space-lg);
-        }
-        @media (max-width: 1200px) {
-          .video-grid { grid-template-columns: repeat(3, 1fr); }
-        }
-        @media (max-width: 768px) {
-          .video-grid { grid-template-columns: repeat(2, 1fr); }
-        }
-        @media (max-width: 480px) {
-          .video-grid { grid-template-columns: 1fr; }
-        }
-
-        /* Video Card Wrapper */
-        .channel-video-card-wrapper {
-          position: relative;
-        }
-
-        /* 3-Dot Menu Dropdown */
-        .video-card-menu-container {
-          position: absolute;
-          top: 8px;
-          right: 8px;
-          z-index: 10;
-        }
-
-        .video-card-menu-trigger {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          width: 32px;
-          height: 32px;
-          border-radius: var(--radius-full);
-          background: rgba(15, 23, 42, 0.75);
-          backdrop-filter: blur(8px);
-          -webkit-backdrop-filter: blur(8px);
-          color: #ffffff;
-          border: 1px solid rgba(255, 255, 255, 0.15);
-          cursor: pointer;
-          transition: all var(--transition-fast);
-          box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
-          opacity: 0.85;
-        }
-
-        .channel-video-card-wrapper:hover .video-card-menu-trigger,
-        .video-card-menu-trigger.active {
-          opacity: 1;
-          transform: scale(1.05);
-          background: rgba(15, 23, 42, 0.95);
-          border-color: rgba(255, 255, 255, 0.3);
-        }
-
-        .video-card-dropdown {
-          position: absolute;
-          top: calc(100% + 6px);
-          right: 0;
-          min-width: 180px;
-          background: var(--bg-card);
-          border: 1px solid var(--border-color);
-          border-radius: var(--radius-lg);
-          padding: 6px;
-          box-shadow: var(--shadow-lg);
-          backdrop-filter: blur(16px);
-          -webkit-backdrop-filter: blur(16px);
-          z-index: 30;
-          animation: dropdownFadeIn 0.15s ease-out;
-        }
-
-        @keyframes dropdownFadeIn {
-          from {
-            opacity: 0;
-            transform: translateY(-6px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        .dropdown-item {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          width: 100%;
-          padding: 8px 12px;
-          border-radius: var(--radius-md);
-          background: transparent;
-          border: none;
-          color: var(--text-primary);
-          font-size: var(--font-size-sm);
-          font-weight: 500;
-          cursor: pointer;
-          transition: background var(--transition-fast), color var(--transition-fast);
-          text-align: left;
-        }
-
-        .dropdown-item:hover {
-          background: var(--bg-card-hover);
-          color: var(--accent-primary);
-        }
-
-        .dropdown-item-danger:hover {
-          background: rgba(255, 107, 107, 0.12);
-          color: var(--danger);
-        }
-
-        .dropdown-divider {
-          height: 1px;
-          background: var(--border-color);
-          margin: 4px 6px;
-        }
-
-        .video-visibility-badge {
-          position: absolute;
-          top: 8px;
-          left: 8px;
-          z-index: 5;
-          background: rgba(15, 23, 42, 0.75);
-          backdrop-filter: blur(8px);
-          -webkit-backdrop-filter: blur(8px);
-          color: #ffffff;
-          border: 1px solid rgba(255, 255, 255, 0.12);
-          font-size: 11px;
-          font-weight: 500;
-          padding: 3px 8px;
-          border-radius: var(--radius-sm);
-          display: inline-flex;
-          align-items: center;
-          gap: 4px;
-          box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
-        }
-
-        /* Modal Overlay & Card */
-        .channel-modal-overlay {
-          position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          background: rgba(0, 0, 0, 0.65);
-          backdrop-filter: blur(6px);
-          -webkit-backdrop-filter: blur(6px);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          z-index: 1000;
-          padding: var(--space-md);
-          animation: modalOverlayFade 0.2s ease-out;
-        }
-
-        @keyframes modalOverlayFade {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-
-        .channel-modal-card {
-          background: var(--bg-secondary);
-          border: 1px solid var(--border-color);
-          border-radius: var(--radius-xl);
-          width: 100%;
-          max-width: 520px;
-          padding: var(--space-xl);
-          box-shadow: 0 24px 48px -12px rgba(0, 0, 0, 0.45);
-          animation: modalCardScale 0.2s ease-out;
-        }
-
-        @keyframes modalCardScale {
-          from {
-            opacity: 0;
-            transform: scale(0.96) translateY(8px);
-          }
-          to {
-            opacity: 1;
-            transform: scale(1) translateY(0);
-          }
-        }
-
-        .channel-modal-header {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          margin-bottom: var(--space-lg);
-          padding-bottom: var(--space-md);
-          border-bottom: 1px solid var(--border-color);
-        }
-
-        .channel-modal-title-group {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-        }
-
-        .channel-modal-icon {
-          color: var(--accent-primary);
-        }
-
-        .channel-modal-title {
-          font-size: var(--font-size-xl);
-          font-weight: 700;
-          color: var(--text-primary);
-        }
-
-        .channel-modal-close {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          width: 32px;
-          height: 32px;
-          border-radius: var(--radius-md);
-          background: transparent;
-          border: none;
-          color: var(--text-muted);
-          cursor: pointer;
-          transition: all var(--transition-fast);
-        }
-
-        .channel-modal-close:hover {
-          background: var(--bg-tertiary);
-          color: var(--text-primary);
-        }
-
-        .channel-modal-form {
-          display: flex;
-          flex-direction: column;
-          gap: var(--space-md);
-        }
-
-        .channel-modal-actions {
-          display: flex;
-          justify-content: flex-end;
-          gap: var(--space-md);
-          margin-top: var(--space-lg);
-          padding-top: var(--space-md);
-          border-top: 1px solid var(--border-color);
-        }
-      `}</style>
     </div>
   );
 };

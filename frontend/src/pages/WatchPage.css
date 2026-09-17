@@ -1,14 +1,14 @@
-/* ── Trang xem video ────────────────────────────────────────
-   Trước đây toàn bộ trang này dùng inline style (41 chỗ). Hệ quả không chỉ là
-   khó đọc: inline style không viết được trạng thái :hover/:focus, nên thẻ kênh
-   khai báo `transition` mà chẳng có gì để chuyển tiếp, và không có chỉ báo
-   focus cho người dùng bàn phím.
-   ──────────────────────────────────────────────────────────── */
+/* ── Trang xem video ──
+   HÌNH HỌC CỦA LƯỚI Ở ĐÂY LÀ CỐ Ý, ĐỪNG ĐỔI chỉ vì lý do thẩm mỹ:
+   max-width 1320px, cột phụ 360px, khoảng cách --space-xl và lề --space-lg
+   cho cột trình phát rộng đúng 880px. Trình phát bật capLevelToPlayerSize, nên
+   bề rộng này quyết định bậc chất lượng hls.js được chọn; con số 880px cũng
+   đã được đo và ghi trong mục 6.3.4 của báo cáo. */
 
 .watch-page {
   max-width: 1320px;
   padding-top: var(--space-xl);
-  padding-bottom: var(--space-2xl);
+  padding-bottom: var(--space-3xl);
 }
 
 .watch-layout {
@@ -27,30 +27,39 @@
 }
 
 .watch-sidebar-heading {
-  font-size: var(--font-size-lg);
-  font-weight: 700;
-  margin-bottom: var(--space-md);
-  color: var(--text-primary);
+  margin-bottom: var(--space-lg);
 }
 
 .watch-sidebar-list {
   display: flex;
   flex-direction: column;
-  gap: var(--space-md);
+  gap: var(--space-lg);
 }
 
 @media (max-width: 1024px) {
   .watch-layout {
     grid-template-columns: 1fr;
   }
+
+  .watch-sidebar {
+    padding-top: var(--space-xl);
+    border-top: 1px solid var(--border-color);
+  }
+
+  .watch-sidebar-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: var(--space-xl) var(--space-lg);
+  }
 }
 
-/* ── Khung thay thế trình phát (đang xử lý / lỗi / bị từ chối) ── */
+/* ── Khung thay thế trình phát (đang xử lý / lỗi / chờ tải lên) ── */
 .player-placeholder {
+  position: relative;
+  overflow: hidden;
   aspect-ratio: 16 / 9;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
+  background: var(--bg-inverted);
+  border-radius: var(--radius-xl);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -58,34 +67,77 @@
   gap: var(--space-md);
   text-align: center;
   padding: var(--space-xl);
+  color: var(--text-inverted);
+}
+
+/* Lưới chấm và vầng sáng, vẽ bằng nền nên không cần thêm phần tử vào JSX */
+.player-placeholder::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.9) 1px, transparent 1px);
+  background-size: 32px 32px;
+  opacity: 0.05;
+  pointer-events: none;
+}
+
+.player-placeholder::after {
+  content: '';
+  position: absolute;
+  width: 640px;
+  height: 640px;
+  top: -300px;
+  right: -240px;
+  border-radius: 50%;
+  background: radial-gradient(circle closest-side, var(--accent-primary), transparent);
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+.player-placeholder > * {
+  position: relative;
+  z-index: 1;
 }
 
 .player-placeholder p {
-  color: var(--text-muted);
+  color: var(--text-inverted-muted);
+  max-width: 44ch;
+  line-height: 1.6;
 }
 
 .player-placeholder .spinner {
   width: 48px;
   height: 48px;
+  border-color: rgba(255, 255, 255, 0.12);
+  border-top-color: #a9c1ff;
 }
 
-.player-placeholder-error {
-  color: var(--danger);
+.player-placeholder .badge-processing {
+  color: #a9c1ff;
+  border-color: rgba(169, 193, 255, 0.3);
+  background: rgba(169, 193, 255, 0.08);
+}
+
+.player-placeholder .player-placeholder-error {
+  color: #fca5a5;
   font-size: var(--font-size-lg);
   font-weight: 600;
 }
 
-/* ── Thông tin video ── */
+/* ── Thông tin video ──
+   Tiêu đề video là nội dung người dùng đặt, dài ngắn bất kỳ, nên dùng Inter
+   đậm cho dễ đọc thay vì font tiêu đề trang trí. */
 .watch-info {
   margin-top: var(--space-lg);
 }
 
 .watch-title {
-  font-size: var(--font-size-xl);
-  font-weight: 700;
-  line-height: 1.35;
-  letter-spacing: -0.01em;
+  font-size: clamp(1.25rem, 2vw, 1.625rem);
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.015em;
   margin-bottom: var(--space-sm);
+  overflow-wrap: anywhere;
 }
 
 .watch-meta-row {
@@ -118,33 +170,36 @@
   flex-wrap: wrap;
 }
 
+.watch-actions .btn {
+  min-height: 40px;
+  padding: 0 1rem;
+}
+
 /* ── Thẻ kênh ── */
 .channel-card {
   display: flex;
   align-items: center;
   gap: var(--space-md);
-  padding: var(--space-md);
+  padding: var(--space-md) var(--space-lg);
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
   color: var(--text-primary);
-  margin-bottom: var(--space-lg);
-  transition: background var(--transition-fast), border-color var(--transition-fast);
+  margin-bottom: var(--space-md);
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow var(--transition-base), border-color var(--transition-base),
+    transform var(--transition-base);
 }
 
 .channel-card:hover {
-  background: var(--bg-card-hover);
-  border-color: var(--border-hover);
-}
-
-.channel-card:focus-visible {
-  outline: 2px solid var(--accent-primary);
-  outline-offset: 2px;
+  border-color: var(--accent-border);
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-2px);
 }
 
 .channel-avatar {
-  width: 44px;
-  height: 44px;
+  width: 48px;
+  height: 48px;
   border-radius: var(--radius-full);
   object-fit: cover;
   flex-shrink: 0;
@@ -155,8 +210,8 @@
   align-items: center;
   justify-content: center;
   background: var(--accent-gradient);
-  color: #fff;
-  font-weight: 700;
+  color: #ffffff;
+  font-weight: 600;
   font-size: var(--font-size-lg);
 }
 
@@ -165,37 +220,43 @@
 }
 
 .channel-handle {
+  font-family: var(--font-mono);
   font-size: var(--font-size-xs);
   color: var(--text-muted);
 }
 
 /* ── Mô tả ── */
 .watch-description {
-  padding: var(--space-md);
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
+  padding: var(--space-md) var(--space-lg);
+  background: var(--bg-tertiary);
   border-radius: var(--radius-lg);
   font-size: var(--font-size-sm);
   color: var(--text-secondary);
   white-space: pre-wrap;
-  line-height: 1.7;
+  line-height: 1.75;
   margin-bottom: var(--space-lg);
+  overflow-wrap: anywhere;
 }
 
 /* ── Bình luận ── */
 .comments-section {
   margin-top: var(--space-2xl);
-  padding-top: var(--space-lg);
+  padding-top: var(--space-xl);
   border-top: 1px solid var(--border-color);
 }
 
 .comments-heading {
   display: flex;
   align-items: center;
-  gap: var(--space-sm);
+  gap: 0.625rem;
   font-size: var(--font-size-lg);
   font-weight: 600;
+  letter-spacing: -0.01em;
   margin-bottom: var(--space-lg);
+}
+
+.comments-heading svg {
+  color: var(--accent-primary);
 }
 
 .comment-form {
@@ -208,7 +269,14 @@
   flex: 1;
 }
 
+.comment-form .btn {
+  min-height: 48px;
+}
+
 .comment-login-hint {
+  padding: var(--space-md) var(--space-lg);
+  border: 1px dashed var(--border-hover);
+  border-radius: var(--radius-lg);
   color: var(--text-muted);
   margin-bottom: var(--space-lg);
 }
@@ -220,21 +288,27 @@
 
 .comment-login-hint a:hover {
   text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .comment-list {
   display: flex;
   flex-direction: column;
-  gap: var(--space-md);
+  gap: var(--space-sm);
 }
 
 .comment-item {
   display: flex;
-  gap: var(--space-sm);
-  padding: var(--space-sm) var(--space-md);
+  gap: 0.75rem;
+  padding: var(--space-md);
   background: var(--bg-card);
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
+  transition: border-color var(--transition-fast);
+}
+
+.comment-item:hover {
+  border-color: var(--border-hover);
 }
 
 .comment-avatar {
@@ -245,7 +319,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
+  color: #ffffff;
   font-weight: 600;
   font-size: var(--font-size-sm);
   flex-shrink: 0;
@@ -270,42 +344,57 @@
 
 .comment-text {
   font-size: var(--font-size-sm);
+  line-height: 1.65;
   color: var(--text-secondary);
-  margin-top: var(--space-xs);
+  margin-top: 0.125rem;
   overflow-wrap: anywhere;
 }
 
-/* Nút xoá chỉ hiện rõ khi cần — mặc định mờ để không tranh sự chú ý với
-   nội dung bình luận, nhưng vẫn hiện đầy đủ khi hover hoặc focus bàn phím. */
+/* Nút xoá mờ khi không cần, hiện rõ khi hover hoặc focus bàn phím */
 .comment-delete {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: none;
   border: none;
-  padding: var(--space-xs);
   color: var(--text-muted);
   cursor: pointer;
   border-radius: var(--radius-sm);
-  line-height: 0;
-  transition: color var(--transition-fast), background var(--transition-fast);
+  opacity: 0.6;
+  transition: color var(--transition-fast), background var(--transition-fast),
+    opacity var(--transition-fast);
+}
+
+.comment-item:hover .comment-delete,
+.comment-delete:focus-visible {
+  opacity: 1;
 }
 
 .comment-delete:hover,
 .comment-delete:focus-visible {
   color: var(--danger);
-  background: var(--bg-card-hover);
+  background: var(--danger-soft);
 }
 
-/* ── Trạng thái tải & không tìm thấy ── */
+/* ── Trạng thái tải ── */
+.watch-skeleton-player {
+  border-radius: var(--radius-xl);
+  margin-bottom: var(--space-lg);
+}
+
 .watch-skeleton-title {
   height: 28px;
   width: 70%;
-  border-radius: 4px;
+  border-radius: 6px;
   margin-bottom: var(--space-sm);
 }
 
 .watch-skeleton-meta {
   height: 16px;
   width: 40%;
-  border-radius: 4px;
+  border-radius: 6px;
 }
 
 .watch-notfound {
