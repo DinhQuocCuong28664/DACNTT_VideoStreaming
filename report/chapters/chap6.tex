@@ -779,7 +779,7 @@ inside a Docker container with an additional network hop that the natively execu
 did not incur. Throughput agrees on the same basis once k6's virtual-user initialisation is
 accounted for: the raw 100 cycles over 9.83~s understates the steady-state rate, because no
 iteration completed during the first four seconds, whereas the 100 cycles that completed in the
-remaining 5.8~s correspond to 17.24 cycles per second against the Node.js script's 15.53.
+remaining 5.8~s correspond to 17.24 cycles per second against the Node.js script's 15.52.
 
 The queue and compute layer were observed separately by polling the AWS Batch job queue every 25
 seconds after the 100 uploads completed. Two data points anchor this observation: immediately
