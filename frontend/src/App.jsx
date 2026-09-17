@@ -30,7 +30,7 @@ const ProtectedRoute = ({ children }) => {
 
   if (loading) {
     return (
-      <div className="flex-center" style={{ minHeight: '100vh' }}>
+      <div className="flex-center full-screen-center">
         <div className="spinner" />
       </div>
     );
@@ -59,7 +59,7 @@ const GuestRoute = ({ children }) => {
 
   if (loading) {
     return (
-      <div className="flex-center" style={{ minHeight: '100vh' }}>
+      <div className="flex-center full-screen-center">
         <div className="spinner" />
       </div>
     );
@@ -95,8 +95,8 @@ function App() {
 
   if (loading) {
     return (
-      <div className="flex-center" style={{ minHeight: '100vh' }}>
-        <div className="spinner" style={{ width: 48, height: 48 }} />
+      <div className="flex-center full-screen-center">
+        <div className="spinner spinner-lg" />
       </div>
     );
   }

@@ -25,51 +25,6 @@
   --pf-shield-dark: #b8860b;
 }
 
-.pf-page {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-lg);
-  background: var(--accent-gradient);
-}
-
-.pf-card {
-  /* Lý do dùng --bg-secondary thay vì --bg-card: xem NotFoundPage.css */
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-lg);
-  max-width: 640px;
-  width: 100%;
-  padding: var(--space-2xl) var(--space-xl);
-  text-align: center;
-}
-
-.pf-brand {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-xs);
-  color: var(--accent-primary);
-  font-weight: 700;
-  font-size: var(--font-size-lg);
-  margin-bottom: var(--space-md);
-}
-
-.pf-brand svg {
-  width: 28px;
-  height: 28px;
-}
-
-.pf-code {
-  color: var(--accent-primary);
-  font-size: 4rem;
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  margin-bottom: var(--space-xs);
-}
-
 .pf-mascot-container {
   margin: var(--space-lg) 0;
   height: 300px;
@@ -85,38 +40,14 @@
   image-rendering: crisp-edges;
   width: 280px;
   height: 280px;
-  filter: drop-shadow(0 10px 20px rgba(108, 92, 231, 0.35));
+  filter: drop-shadow(0 12px 24px rgba(0, 82, 255, 0.3));
 }
 
 .pf-status {
-  font-size: var(--font-size-sm);
-  font-weight: 600;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
   color: var(--accent-primary);
 }
 
-.pf-message {
-  font-size: var(--font-size-xl);
-  color: var(--text-primary);
-  margin: var(--space-md) 0 var(--space-sm);
-  font-weight: 700;
-}
-
-.pf-submessage {
-  font-size: var(--font-size-base);
-  color: var(--text-secondary);
-  margin-bottom: var(--space-xl);
-  line-height: 1.6;
-}
-
-.pf-actions {
-  display: flex;
-  gap: var(--space-sm);
-  justify-content: center;
-  flex-wrap: wrap;
-}
-
-.pf-info {
-  font-size: var(--font-size-xs);
-  color: var(--text-muted);
-  margin-top: var(--space-lg);
-}

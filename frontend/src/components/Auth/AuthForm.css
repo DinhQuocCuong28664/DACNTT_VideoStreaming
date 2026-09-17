@@ -1,88 +1,186 @@
+/* ── Trang xác thực ──
+   Lưới bất đối xứng 0.9fr / 1.1fr: panel thương hiệu đảo màu bên trái, biểu
+   mẫu bên phải chiếm phần lớn hơn vì đó là việc người dùng tới đây để làm.
+   Ô nhập, nút và thông báo dùng thành phần chung trong index.css. */
+
 .auth-page {
   min-height: 100vh;
+  display: grid;
+  grid-template-columns: 0.9fr 1.1fr;
+  background: var(--bg-primary);
+}
+
+/* ── Panel thương hiệu ── */
+.auth-aside {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  padding: 4rem clamp(2rem, 5vw, 4.5rem);
+  background: var(--bg-inverted);
+  color: var(--text-inverted);
+}
+
+.auth-aside-glow {
+  bottom: -340px;
+  left: -280px;
+  opacity: 0.34;
+}
+
+/* Vòng tròn nét đứt quay rất chậm — một vòng mất 60 giây */
+.auth-aside-ring {
+  position: absolute;
+  top: -120px;
+  right: -120px;
+  width: 360px;
+  height: 360px;
+  border-radius: 50%;
+  border: 1.5px dashed rgba(169, 193, 255, 0.22);
+  animation: spin 60s linear infinite;
+  pointer-events: none;
+}
+
+.auth-aside-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-lg);
+  max-width: 460px;
+}
+
+.auth-aside-title {
+  color: var(--text-inverted);
+  font-size: clamp(2rem, 3.4vw, 3rem);
+  line-height: 1.1;
+}
+
+.auth-aside-accent {
+  background: var(--accent-gradient-light);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.auth-aside-points {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+  margin-top: var(--space-sm);
+}
+
+.auth-aside-points li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  font-size: var(--font-size-base);
+  line-height: 1.55;
+  color: var(--text-inverted-muted);
+}
+
+.auth-aside-check {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--bg-primary);
-  position: relative;
-  overflow: hidden;
+  width: 22px;
+  height: 22px;
+  margin-top: 1px;
+  flex-shrink: 0;
+  border-radius: 7px;
+  background: var(--accent-gradient);
+  color: #ffffff;
+  font-size: 0.75rem;
+  box-shadow: var(--shadow-accent);
 }
 
-.auth-page::before {
-  content: '';
+/* Thẻ nổi bập bềnh theo hình sin, lệch pha nhau */
+.auth-float {
   position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: radial-gradient(
-    ellipse at 30% 20%,
-    rgba(108, 92, 231, 0.12) 0%,
-    transparent 50%
-  ),
-  radial-gradient(
-    ellipse at 70% 80%,
-    rgba(0, 206, 201, 0.08) 0%,
-    transparent 50%
-  );
-  pointer-events: none;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.875rem;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(248, 250, 252, 0.12);
+  background: rgba(248, 250, 252, 0.06);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: rgba(248, 250, 252, 0.85);
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.06em;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.3);
+}
+
+.auth-float-a {
+  top: 12%;
+  right: 10%;
+  animation: float-y 5s ease-in-out infinite;
+}
+
+.auth-float-b {
+  bottom: 12%;
+  right: 16%;
+  animation: float-y 4s ease-in-out 0.8s infinite;
+}
+
+.auth-float-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #34d399;
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+/* ── Cột biểu mẫu ── */
+.auth-main {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-2xl) var(--space-lg);
 }
 
 .auth-card {
   width: 100%;
   max-width: 440px;
-  padding: var(--space-2xl);
-  background: var(--bg-glass);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-lg);
-  position: relative;
-  z-index: 1;
-  animation: auth-fade-in 0.5s ease;
-}
-
-@keyframes auth-fade-in {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  animation: fade-up 700ms var(--ease-out);
 }
 
 .auth-logo {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: var(--space-sm);
+  gap: 0.625rem;
   margin-bottom: var(--space-xl);
-  font-size: var(--font-size-2xl);
-  font-weight: 700;
 }
 
 .auth-logo .logo-icon {
   width: 42px;
   height: 42px;
-  font-size: 16px;
+  border-radius: 12px;
 }
 
 .auth-title {
-  text-align: center;
-  font-size: var(--font-size-2xl);
-  font-weight: 700;
-  margin-bottom: var(--space-xs);
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 4vw, 2.625rem);
+  font-weight: 400;
+  line-height: 1.15;
   color: var(--text-primary);
+  margin-bottom: var(--space-sm);
 }
 
 .auth-subtitle {
-  text-align: center;
   color: var(--text-muted);
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-base);
+  line-height: 1.6;
   margin-bottom: var(--space-xl);
+}
+
+.auth-card > .alert {
+  margin-bottom: var(--space-lg);
 }
 
 .auth-form {
@@ -91,72 +189,37 @@
   gap: var(--space-md);
 }
 
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
-}
-
-/* .input / .label chỉ dùng trong các form Auth (Login/Register/Forgot/Reset) —
-   trước đây các class này chưa từng được định nghĩa ở đâu cả, nên input rơi về
-   style mặc định của trình duyệt (viền vuông, không nền, không focus ring). */
-.label {
+.auth-inline-link {
+  align-self: flex-end;
+  margin-top: 0.25rem;
   font-size: var(--font-size-sm);
-  font-weight: 600;
-  color: var(--text-secondary);
+  font-weight: 500;
+  color: var(--accent-primary);
+  border-radius: 4px;
 }
 
-.input {
-  width: 100%;
-  padding: 11px 14px;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  color: var(--text-primary);
-  font-size: var(--font-size-base);
-  font-family: inherit;
-  outline: none;
-  transition: all var(--transition-fast);
-}
-
-.input:focus {
-  border-color: var(--accent-primary);
-  box-shadow: 0 0 0 3px rgba(108, 92, 231, 0.12);
-}
-
-.input::placeholder {
-  color: var(--text-muted);
-}
-
-.auth-error {
-  padding: 10px 14px;
-  background: rgba(255, 107, 107, 0.1);
-  border: 1px solid rgba(255, 107, 107, 0.25);
-  border-radius: var(--radius-md);
-  color: var(--danger);
-  font-size: var(--font-size-sm);
-  text-align: center;
+.auth-inline-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .auth-form .btn-primary {
   width: 100%;
-  padding: 12px;
+  min-height: 52px;
   font-size: var(--font-size-base);
   margin-top: var(--space-sm);
-}
-
-.auth-form .btn-primary:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
 }
 
 .auth-divider {
   display: flex;
   align-items: center;
-  gap: var(--space-sm);
+  gap: var(--space-md);
   margin: var(--space-lg) 0;
   color: var(--text-muted);
+  font-family: var(--font-mono);
   font-size: var(--font-size-xs);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
 }
 
 .auth-divider::before,
@@ -170,16 +233,14 @@
 .google-signin-button {
   display: flex;
   justify-content: center;
-  /* Google Identity Services chỉ cho chọn vài shape cố định, không có shape
-     nào khớp đúng --radius-md (10px) mà input/nút chính đang dùng — crop
-     bằng overflow:hidden để ép đúng bo góc, không phụ thuộc Google vẽ gì. */
+  /* Google Identity Services chỉ cho vài dạng bo góc cố định; cắt bằng
+     overflow:hidden để khớp đúng bo góc của các nút khác. */
   border-radius: var(--radius-md);
   overflow: hidden;
 }
 
 .auth-footer {
-  text-align: center;
-  margin-top: var(--space-lg);
+  margin-top: var(--space-xl);
   font-size: var(--font-size-sm);
   color: var(--text-muted);
 }
@@ -187,15 +248,35 @@
 .auth-footer a {
   color: var(--accent-primary);
   font-weight: 600;
+  border-radius: 4px;
 }
 
 .auth-footer a:hover {
-  color: var(--accent-secondary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* ── Điểm ngắt: ẩn panel trang trí, biểu mẫu chiếm trọn màn hình ── */
+@media (max-width: 960px) {
+  .auth-page {
+    grid-template-columns: 1fr;
+  }
+
+  .auth-aside {
+    display: none;
+  }
+
+  .auth-main {
+    min-height: 100vh;
+    background:
+      radial-gradient(circle at 20% 0%, var(--accent-soft), transparent 50%),
+      var(--bg-primary);
+  }
 }
 
 @media (max-width: 480px) {
-  .auth-card {
-    margin: var(--space-md);
-    padding: var(--space-xl);
+  .auth-main {
+    align-items: flex-start;
+    padding: var(--space-xl) var(--space-md);
   }
 }

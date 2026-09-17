@@ -213,10 +213,7 @@ const WatchPage = () => {
   if (loading) {
     return (
       <div className="container watch-page">
-        <div
-          className="skeleton"
-          style={{ aspectRatio: '16 / 9', borderRadius: 'var(--radius-lg)', marginBottom: 'var(--space-lg)' }}
-        />
+        <div className="skeleton skeleton-thumb watch-skeleton-player" />
         <div className="skeleton watch-skeleton-title" />
         <div className="skeleton watch-skeleton-meta" />
       </div>
@@ -385,7 +382,7 @@ const WatchPage = () => {
         {/* Cột video đề xuất bên phải */}
         {relatedVideos.length > 0 && (
           <aside className="watch-sidebar">
-            <h3 className="watch-sidebar-heading">{t('watch.relatedVideos')}</h3>
+            <h3 className="watch-sidebar-heading section-label">{t('watch.relatedVideos')}</h3>
             <div className="watch-sidebar-list">
               {relatedVideos.map((item) => (
                 <VideoCard key={item._id} video={item} />

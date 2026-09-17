@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { FiEye, FiClock } from 'react-icons/fi';
+import { FiEye, FiClock, FiPlay } from 'react-icons/fi';
 import './VideoCard.css';
 
 const VideoCard = ({ video }) => {
@@ -49,7 +49,7 @@ const VideoCard = ({ video }) => {
           />
         ) : (
           <div className="thumbnail-placeholder">
-            <span>▶</span>
+            <span className="thumbnail-placeholder-icon"><FiPlay /></span>
           </div>
         )}
         {video.duration > 0 && (
@@ -58,7 +58,10 @@ const VideoCard = ({ video }) => {
           </span>
         )}
         {video.status === 'PROCESSING' && (
-          <span className="video-status-badge">{t('videoCard.processing')}</span>
+          <span className="video-status-badge">
+            <span className="video-status-pulse" aria-hidden="true" />
+            {t('videoCard.processing')}
+          </span>
         )}
         {/* Chỉ chủ kênh nhìn thấy video hỏng, vì danh mục công khai chỉ liệt kê
             video đã READY. Không có nhãn này thì video chuyển mã thất bại trông

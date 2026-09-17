@@ -215,26 +215,26 @@ const ForbiddenPage = () => {
   }, []);
 
   return (
-    <div className="pf-page">
-      <div className="pf-card">
-        <div className="pf-brand">
+    <div className="pf-page status-page">
+      <div className="pf-card status-card">
+        <div className="pf-brand status-brand">
           <LogoIcon />
           <span>VidShare</span>
         </div>
 
-        <h1 className="pf-code">403</h1>
+        <h1 className="pf-code status-code">403</h1>
 
         <div className="pf-mascot-container">
           <canvas ref={canvasRef} width={GRID * UNIT} height={GRID * UNIT} className="pf-canvas" />
           <div className="pf-status">{t(`forbidden.${status}`)}</div>
         </div>
 
-        <h2 className="pf-message">{t('forbidden.message')}</h2>
-        <p className="pf-submessage">
+        <h2 className="pf-message status-message">{t('forbidden.message')}</h2>
+        <p className="pf-submessage status-submessage">
           {t('forbidden.body')}
         </p>
 
-        <div className="pf-actions">
+        <div className="pf-actions status-actions">
           <button className="btn btn-primary" onClick={() => navigate('/')}>
             ← {t('forbidden.home')}
           </button>
@@ -243,7 +243,7 @@ const ForbiddenPage = () => {
           </button>
         </div>
 
-        <p className="pf-info">{t('forbidden.info')}</p>
+        <p className="pf-info status-info">{t('forbidden.info')}</p>
       </div>
     </div>
   );

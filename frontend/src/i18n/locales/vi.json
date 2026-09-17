@@ -46,7 +46,8 @@
     "emptyFilteredDesc": "Thử từ khóa khác hoặc chọn một danh mục khác để xem thêm nội dung.",
     "emptyTitle": "Chưa có video nào",
     "emptyDesc": "Hãy là người đầu tiên chia sẻ một video lên nền tảng.",
-    "emptyAction": "Tải video lên"
+    "emptyAction": "Tải video lên",
+    "libraryLabel": "Thư viện video"
   },
   "videoCard": {
     "processing": "Đang xử lý...",
@@ -81,7 +82,8 @@
     "errorFormat": "Định dạng không hỗ trợ. Vui lòng chọn file .mp4, .mov, .avi, .mkv, .webm hoặc .mpeg",
     "errorTooLarge": "File vượt quá dung lượng tối đa {{max}}. File bạn chọn có dung lượng {{actual}}.",
     "errorNoTitle": "Vui lòng điền tiêu đề video",
-    "errorFailed": "Upload thất bại. Vui lòng thử lại."
+    "errorFailed": "Upload thất bại. Vui lòng thử lại.",
+    "pageLabel": "Tải lên mới"
   },
   "visibility": {
     "public": "Công khai",
@@ -107,7 +109,8 @@
     "editSave": "Lưu thay đổi",
     "editSaving": "Đang lưu...",
     "editCancel": "Hủy",
-    "editSuccess": "Cập nhật video thành công!"
+    "editSuccess": "Cập nhật video thành công!",
+    "pageLabel": "Kênh"
   },
   "auth": {
     "or": "hoặc",
@@ -149,7 +152,11 @@
     "newPasswordLabel": "Mật khẩu mới",
     "confirmNewPasswordLabel": "Xác nhận mật khẩu mới",
     "confirmNewPasswordPlaceholder": "Nhập lại mật khẩu mới",
-    "googleFailed": "Xác thực Google thất bại. Vui lòng thử lại."
+    "googleFailed": "Xác thực Google thất bại. Vui lòng thử lại.",
+    "asideLabel": "Nền tảng phát video",
+    "asidePoint1": "Tệp tải thẳng lên kho lưu trữ, không đi qua máy chủ",
+    "asidePoint2": "Tự động chuyển mã sang 360p, 720p và 1080p",
+    "asidePoint3": "Phân phối qua CDN toàn cầu với quyền truy cập có ký"
   },
   "errorBoundary": {
     "title": "Đã có lỗi xảy ra",
@@ -234,7 +241,8 @@
     "googleSection": "Đăng nhập bằng Google",
     "googleLinked": "Đã liên kết với tài khoản Google ({{email}})",
     "googleLinkedNow": "Đã liên kết tài khoản Google thành công.",
-    "googleHint": "Liên kết để có thể đăng nhập nhanh bằng Google thay vì mật khẩu, dùng đúng địa chỉ email hiện tại của bạn ({{email}})."
+    "googleHint": "Liên kết để có thể đăng nhập nhanh bằng Google thay vì mật khẩu, dùng đúng địa chỉ email hiện tại của bạn ({{email}}).",
+    "pageLabel": "Tài khoản"
   },
   "footer": {
     "tagline": "Nền tảng chia sẻ video với hệ thống chuyển mã HLS tự động trên kiến trúc Serverless Container và Event-Driven.",
@@ -285,6 +293,10 @@
     "ctaTitle": "Sẵn Sàng Trải Nghiệm Hệ Thống Phát Video HLS Thế Hệ Mới?",
     "ctaSubtitle": "Trải nghiệm nền tảng chia sẻ video trực tuyến với công nghệ chuyển mã HLS tự động và giao diện hiện đại ngay hôm nay.",
     "ctaRegister": "Đăng Ký Tài Khoản",
-    "ctaBrowse": "Xem Danh Sách Video"
+    "ctaBrowse": "Xem Danh Sách Video",
+    "statsLabel": "Con số",
+    "featuresLabel": "Tính năng",
+    "archLabel": "Cách hoạt động",
+    "ctaLabel": "Bắt đầu"
   }
 }

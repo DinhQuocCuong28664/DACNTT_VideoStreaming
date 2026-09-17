@@ -235,9 +235,14 @@ const VideoUpload = () => {
 
   return (
     <div className="upload-container container">
-      <h1 className="upload-title">Upload Video</h1>
+      <header className="page-header">
+        <span className="section-label">{t('upload.pageLabel')}</span>
+        <h1 className="upload-title display-heading">
+          Upload <span className="gradient-text">Video</span>
+        </h1>
+      </header>
 
-      {error && <div className="auth-error" style={{ marginBottom: '1rem' }}>{error}</div>}
+      {error && <div className="alert alert-error upload-error">{error}</div>}
 
       {/* Step 1: Select File */}
       {step === 1 && (
@@ -247,7 +252,9 @@ const VideoUpload = () => {
           onDrop={handleDrop}
           onDragOver={(e) => e.preventDefault()}
         >
-          <FiUploadCloud className="dropzone-icon" />
+          <span className="dropzone-icon-tile">
+            <FiUploadCloud className="dropzone-icon" />
+          </span>
           <p className="dropzone-text">{t('upload.dropzone')}</p>
           <p className="dropzone-hint">{t('upload.dropzoneHint')}</p>
           <input
@@ -264,7 +271,7 @@ const VideoUpload = () => {
       {step === 2 && (
         <div className="upload-form-card">
           <div className="upload-file-info">
-            <FiFile />
+            <span className="upload-file-icon"><FiFile /></span>
             <div>
               <p className="file-name">{file?.name}</p>
               <p className="file-size">{file && formatFileSize(file.size)}</p>
@@ -361,7 +368,7 @@ const VideoUpload = () => {
         <div className="upload-progress-card">
           <div className="progress-icon-wrap">
             {uploadProgress < 100 ? (
-              <div className="spinner" style={{ width: 48, height: 48 }} />
+              <div className="spinner spinner-lg" />
             ) : (
               <FiCheck className="progress-done-icon" />
             )}

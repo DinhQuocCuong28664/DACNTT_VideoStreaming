@@ -119,14 +119,14 @@ const NotFoundPage = () => {
   }, []);
 
   return (
-    <div className="nf-page">
-      <div className="nf-card">
-        <div className="nf-brand">
+    <div className="nf-page status-page">
+      <div className="nf-card status-card">
+        <div className="nf-brand status-brand">
           <LogoIcon />
           <span>VidShare</span>
         </div>
 
-        <h1 className="nf-code">404</h1>
+        <h1 className="nf-code status-code">404</h1>
 
         <div className="nf-mascot-container">
           <div className="nf-sparkles" ref={sparklesRef}>
@@ -202,12 +202,12 @@ const NotFoundPage = () => {
           <div className="nf-status">{t(`notFound.${status}`)}</div>
         </div>
 
-        <h2 className="nf-message">{t('notFound.message')}</h2>
-        <p className="nf-submessage">
+        <h2 className="nf-message status-message">{t('notFound.message')}</h2>
+        <p className="nf-submessage status-submessage">
           {t('notFound.body')}
         </p>
 
-        <div className="nf-actions">
+        <div className="nf-actions status-actions">
           <button className="btn btn-primary" onClick={() => navigate('/')}>
             ← {t('notFound.home')}
           </button>
@@ -216,7 +216,7 @@ const NotFoundPage = () => {
           </button>
         </div>
 
-        <p className="nf-info">{t('notFound.info')}</p>
+        <p className="nf-info status-info">{t('notFound.info')}</p>
       </div>
     </div>
   );

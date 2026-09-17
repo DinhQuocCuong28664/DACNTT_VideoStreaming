@@ -61,7 +61,10 @@ const SettingsPage = () => {
 
   return (
     <div className="container settings-page">
-      <h1 className="settings-title">{t('settings.title')}</h1>
+      <header className="page-header">
+        <span className="section-label">{t('settings.pageLabel')}</span>
+        <h1 className="settings-title display-heading">{t('settings.title')}</h1>
+      </header>
 
       <div className="card settings-card">
         <h2 className="settings-section-title">{t('settings.avatarSection')}</h2>
@@ -98,7 +101,7 @@ const SettingsPage = () => {
           />
         </div>
 
-        {avatarError && <div className="settings-error">{avatarError}</div>}
+        {avatarError && <div className="alert alert-error settings-error">{avatarError}</div>}
       </div>
 
       <div className="card settings-card">
@@ -127,7 +130,7 @@ const SettingsPage = () => {
             <p className="settings-section-desc">
               {t('settings.googleHint', { email: user?.email })}
             </p>
-            {error && <div className="settings-error">{error}</div>}
+            {error && <div className="alert alert-error settings-error">{error}</div>}
             {success && <p className="settings-linked-status"><FiCheckCircle /> {success}</p>}
             <GoogleSignInButton
               text="signin_with"

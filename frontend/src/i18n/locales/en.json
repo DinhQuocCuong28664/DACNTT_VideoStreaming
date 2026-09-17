@@ -46,7 +46,8 @@
     "emptyFilteredDesc": "Try a different keyword, or pick another category to see more.",
     "emptyTitle": "No videos yet",
     "emptyDesc": "Be the first to share a video on the platform.",
-    "emptyAction": "Upload a video"
+    "emptyAction": "Upload a video",
+    "libraryLabel": "Video library"
   },
   "videoCard": {
     "processing": "Processing...",
@@ -81,7 +82,8 @@
     "errorFormat": "Unsupported format. Please choose a .mp4, .mov, .avi, .mkv, .webm or .mpeg file",
     "errorTooLarge": "The file exceeds the maximum size of {{max}}. The file you chose is {{actual}}.",
     "errorNoTitle": "Please enter a video title",
-    "errorFailed": "Upload failed. Please try again."
+    "errorFailed": "Upload failed. Please try again.",
+    "pageLabel": "New upload"
   },
   "visibility": {
     "public": "Public",
@@ -107,7 +109,8 @@
     "editSave": "Save changes",
     "editSaving": "Saving...",
     "editCancel": "Cancel",
-    "editSuccess": "Video updated successfully!"
+    "editSuccess": "Video updated successfully!",
+    "pageLabel": "Channel"
   },
   "auth": {
     "or": "or",
@@ -149,7 +152,11 @@
     "newPasswordLabel": "New password",
     "confirmNewPasswordLabel": "Confirm new password",
     "confirmNewPasswordPlaceholder": "Re-enter the new password",
-    "googleFailed": "Google sign-in failed. Please try again."
+    "googleFailed": "Google sign-in failed. Please try again.",
+    "asideLabel": "Streaming platform",
+    "asidePoint1": "Uploads go straight to storage, never through the server",
+    "asidePoint2": "Transcoded automatically to 360p, 720p and 1080p",
+    "asidePoint3": "Delivered through a global CDN with signed access"
   },
   "errorBoundary": {
     "title": "Something went wrong",
@@ -234,7 +241,8 @@
     "googleSection": "Sign in with Google",
     "googleLinked": "Linked to a Google account ({{email}})",
     "googleLinkedNow": "Your Google account has been linked.",
-    "googleHint": "Link an account to sign in quickly with Google instead of a password, using your current email address ({{email}})."
+    "googleHint": "Link an account to sign in quickly with Google instead of a password, using your current email address ({{email}}).",
+    "pageLabel": "Account"
   },
   "footer": {
     "tagline": "A video sharing platform whose HLS transcoding runs automatically on a serverless container and event-driven architecture.",
@@ -285,6 +293,10 @@
     "ctaTitle": "Ready to try the platform?",
     "ctaSubtitle": "Share videos online with automatic HLS transcoding and a modern interface.",
     "ctaRegister": "Create an account",
-    "ctaBrowse": "Browse videos"
+    "ctaBrowse": "Browse videos",
+    "statsLabel": "By the numbers",
+    "featuresLabel": "Features",
+    "archLabel": "How it works",
+    "ctaLabel": "Get started"
   }
 }
