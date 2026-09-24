@@ -6,6 +6,14 @@ Ghi lại các hướng thiết kế được cân nhắc nhưng chưa (hoặc c
 
 ## Sidebar trái cố định cho HomePage (29/08/2026)
 
+> **Trạng thái 24/09/2026: đã triển khai một phần** trong đợt giao diện kiểu YouTube (commit
+> `902998b`). `MainLayout.jsx` giờ có thanh trên + menu trái (`Guide.jsx`), không còn Footer; menu
+> thu còn 72 px dưới 1312 px và thành ngăn kéo dưới 792 px, đúng lo ngại responsive ghi dưới đây.
+> Chip danh mục đã làm. Các mục **chưa** làm vì dự án không có dữ liệu tương ứng: Trending,
+> Subscriptions, Library, History, hero "video nổi bật". Bảng màu cũng đã khác: màu thương hiệu
+> hiện là xanh ngọc lục `#10a37f`, không còn tông tím-ngọc `#6c5ce7` nhắc ở cuối mục.
+> Phần bên dưới giữ nguyên để lưu bối cảnh lúc đề xuất.
+
 **Nguồn**: Bản mockup Stitch (`stitch_streamhub_video_platform`, xem `screen.png`/`code.html` trong Downloads của người dùng lúc đề xuất) — ban đầu được tạo ra để làm landing page nhưng thực chất là thiết kế **trang chủ đã đăng nhập** (home/discovery dashboard kiểu Netflix/YouTube), không phải trang marketing.
 
 **Ý tưởng đáng cân nhắc lại sau này** (khi làm HomePage, không phải LandingPage):
