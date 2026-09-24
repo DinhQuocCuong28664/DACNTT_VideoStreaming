@@ -30,6 +30,7 @@
 - [x] **Gợi ý video liên quan (Related Videos):** Endpoint `GET /api/videos/:id/related?limit=6` và sidebar phản hồi nhanh trên trang xem video. Thuật toán gợi ý thông minh dựa trên tag và danh mục tương đồng (kèm bù bằng video xem nhiều nhất khi chưa đủ số lượng); bảo vệ 2 lớp: khoá cứng bộ lọc `visibility: 'public'` và `status: 'READY'`, đồng thời đóng kín lỗ hổng existence oracle (trả HTTP 404 cho video nguồn không có quyền xem thay vì lộ sự tồn tại).
 - [x] **Chia sẻ video & Quyền riêng tư 2 lớp:** Chia sẻ link công khai hoặc riêng tư. Quyền riêng tư được kiểm soát đồng bộ ở cả tầng Backend API lẫn tầng CDN Edge Location qua CloudFront Signed Cookies.
 - [x] **Trang cá nhân & Quản lý video nâng cao (Channel Management):** Menu 3 chấm (3-dot dropdown) hiện đại cho từng video, cho phép đổi quyền hiển thị trực tiếp (Public / Unlisted / Private). Modal chỉnh sửa chi tiết (Edit Modal) giao diện glassmorphic hỗ trợ sửa Tiêu đề, Mô tả, Danh mục và Quyền riêng tư ngay trên web (Tags hiện chỉ đặt được lúc tải lên — xem mục Hạn chế ở Chương 7 báo cáo). Hỗ trợ xóa sạch DB & S3 raw/HLS.
+- [x] **Sắp xếp video trên trang kênh (Mới nhất / Phổ biến / Cũ nhất):** Tham số `?sort=latest|popular|oldest` cho `GET /api/videos/user/:userId`, tra qua bảng `USER_VIDEO_SORTS` cố định trong `videoService.js` (giá trị lạ quay về `latest`, không truyền được đối tượng sort tuỳ ý vào truy vấn). Mỗi kiểu sắp xếp kết thúc bằng `_id` làm tiêu chí phụ vì tài liệu MongoDB cảnh báo sắp theo trường trùng giá trị (như `views`) cho thứ tự không ổn định khi phân trang bằng `skip()`. Thêm index `{ user: 1, views: -1, createdAt: -1 }` cho kiểu "Phổ biến". Giao diện: hàng chip trên tab Video của trang kênh, đổi chip thì lưới cuộn vô hạn nạp lại từ đầu. Kiểm thử: `tests/userVideosSort.test.js` (10 tests).
 - [x] **Search & Filter:** Tìm kiếm video theo từ khóa tiêu đề, mô tả, tags (Escape Regex an toàn).
 - [x] **Video Categories:** Lọc và Upload theo các danh mục: Công nghệ, Giáo dục, Giải trí, Âm nhạc, Game, Khác.
 - [x] **Tương tác Người dùng:** Nút Like / Dislike tương tác tức thì.
@@ -54,10 +55,10 @@
 - [x] AWS Batch Fargate (`FARGATE_SPOT` tiết kiệm 70% chi phí).
 
 ### 9. CI/CD Pipeline & DevSecOps
-- [x] `ci-backend.yml`: Jest Unit Tests (115/115 pass trên 9 test suite) + ESLint (0 errors) + Gitleaks + Trivy SCA Scan.
-  - Phạm vi kiểm thử: `videoService`, `s3Service`, `authService`, `cloudfrontService`, `relatedVideos` (10 tests kiểm thử phân quyền, lọc public/READY và chống existence oracle), `forgotPassword`, middleware xác thực JWT, kiểm soát quyền riêng tư video, và kiểm tra dữ liệu đầu vào khi tải lên (mức HTTP với `supertest`).
+- [x] `ci-backend.yml`: Jest Unit Tests (125/125 pass trên 10 test suite) + ESLint (0 errors) + Gitleaks + Trivy SCA Scan.
+  - Phạm vi kiểm thử: `videoService`, `s3Service`, `authService`, `cloudfrontService`, `relatedVideos` (10 tests kiểm thử phân quyền, lọc public/READY và chống existence oracle), `userVideosSort` (10 tests kiểm thử sắp xếp trang kênh và chặn giá trị sort lạ), `forgotPassword`, middleware xác thực JWT, kiểm soát quyền riêng tư video, và kiểm tra dữ liệu đầu vào khi tải lên (mức HTTP với `supertest`).
 - [x] `ci-transcoder.yml`: Jest Unit Tests (94/94 pass trên 5 test suite — `dbHandler` idempotency, `emailService`, `framerate` 32 tests kiểm tra GOP bám theo framerate thật của nguồn, `bandwidth` 18 tests kiểm tra BANDWIDTH đo từ segment thật theo RFC 8216 §4.3.4.2, `codecs` 32 tests kiểm tra chuỗi codec đọc từ luồng đã mã hoá theo RFC 6381) + ESLint + Gitleaks + Build Docker Image + Trivy Scan + ECR Push + Update Job Definition.
-- [x] **Toàn bộ test suite tự động:** Đạt **209/209 tests PASS** trên 14 test suites toàn dự án (115 backend + 94 transcoder).
+- [x] **Toàn bộ test suite tự động:** Đạt **219/219 tests PASS** trên 15 test suites toàn dự án (125 backend + 94 transcoder).
 - [x] `ci-frontend.yml`: oxlint + Build Vite + Deploy S3 Static Hosting.
 - [x] `security-scan.yml`: Gitleaks Secret Detection + Trivy Dependency Scan trên mọi Pull Request.
 - [x] `cd-staging.yml` & `cd-deploy.yml`: Triển khai môi trường Staging (`develop`) và Production (`main`).
@@ -97,4 +98,4 @@
 - [x] **Bộ số liệu thực nghiệm đầy đủ 100%:** Đo kiểm TTFF đa vùng (6 regions), thời gian chuyển mã (100MB, 500MB, 1GB), so sánh scaling 1 vCPU vs 4 vCPU, và Stress Test đồng thời 100 video với k6 / Node.js. Sẵn sàng 100% để bảo vệ.
 
 ---
-> 📌 **Trạng thái cập nhật (2026-09-09):** Toàn bộ 15/15 mục đã hoàn thành 100%. CloudFront video CDN đã triển khai và đo kiểm đa vùng; Stress Test đồng thời 100 video đã thực thi hoàn tất với dữ liệu thực nghiệm đầy đủ; toàn bộ test suite backend (115/115) và transcoder (94/94) đều pass (tổng 209/209 tests tự động).
+> 📌 **Trạng thái cập nhật (2026-09-09):** Toàn bộ 15/15 mục đã hoàn thành 100%. CloudFront video CDN đã triển khai và đo kiểm đa vùng; Stress Test đồng thời 100 video đã thực thi hoàn tất với dữ liệu thực nghiệm đầy đủ; toàn bộ test suite backend (125/125) và transcoder (94/94) đều pass (tổng 219/219 tests tự động).

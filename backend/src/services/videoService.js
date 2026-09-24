@@ -139,8 +139,32 @@ const getAllVideos = async (page = 1, limit = 12, category = null, searchQuery =
 /**
  * Get videos by a specific user (for Channel page) with pagination
  */
-const getVideosByUser = async (userId, page = 1, limit = 12, requesterId = null) => {
+/**
+ * Ba kiểu sắp xếp của trang kênh, khớp với ba chip "Mới nhất / Phổ biến / Cũ
+ * nhất" ở giao diện.
+ *
+ * Mỗi kiểu đều kết thúc bằng `_id` làm tiêu chí phụ. Tài liệu MongoDB (mục
+ * cursor.skip() và $sort) nói rõ: sắp theo trường có giá trị trùng, như `views`
+ * hay hai video cùng `createdAt`, thì thứ tự giữa các bản ghi trùng không ổn
+ * định qua các lần truy vấn. Kết hợp với skip(), một video có thể xuất hiện ở
+ * cả trang 1 lẫn trang 2, hoặc không xuất hiện ở trang nào. `_id` là duy nhất
+ * nên thứ tự luôn xác định.
+ *
+ * Dùng bảng tra cố định thay vì nhận thẳng giá trị từ query: người gọi chỉ
+ * chọn được tên kiểu sắp xếp, không truyền được đối tượng sort tuỳ ý vào
+ * truy vấn.
+ */
+const USER_VIDEO_SORTS = {
+  latest: { createdAt: -1, _id: -1 },
+  popular: { views: -1, createdAt: -1, _id: -1 },
+  oldest: { createdAt: 1, _id: 1 },
+};
+
+const getVideosByUser = async (userId, page = 1, limit = 12, requesterId = null, sort = 'latest') => {
   const skip = (page - 1) * limit;
+  const sortSpec = Object.prototype.hasOwnProperty.call(USER_VIDEO_SORTS, sort)
+    ? USER_VIDEO_SORTS[sort]
+    : USER_VIDEO_SORTS.latest;
 
   const filter = { user: userId };
   if (requesterId && requesterId.toString() === userId.toString()) {
@@ -153,7 +177,7 @@ const getVideosByUser = async (userId, page = 1, limit = 12, requesterId = null)
   const [videos, total] = await Promise.all([
     Video.find(filter)
       .populate('user', 'username displayName avatar')
-      .sort({ createdAt: -1 })
+      .sort(sortSpec)
       .skip(skip)
       .limit(limit),
     Video.countDocuments(filter),
@@ -459,6 +483,7 @@ module.exports = {
   getVideoById,
   getAllVideos,
   getVideosByUser,
+  USER_VIDEO_SORTS,
   getRelatedVideos,
   toggleLike,
   toggleDislike,

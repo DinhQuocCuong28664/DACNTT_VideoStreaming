@@ -252,12 +252,15 @@ const deleteComment = async (req, res, next) => {
 /**
  * @route   GET /api/videos/user/:userId
  * @desc    Get videos by a specific user (Channel page)
+ * @query   sort = latest (mặc định) | popular | oldest
  * @access  Public
  */
 const getUserVideos = async (req, res, next) => {
   try {
     const page = parseInt(req.query.page, 10) || 1;
     const limit = parseInt(req.query.limit, 10) || 12;
+    // `?sort=a&sort=b` làm Express trả về mảng; chỉ nhận chuỗi, còn lại về mặc định.
+    const sort = typeof req.query.sort === 'string' ? req.query.sort : 'latest';
 
     const requesterId = req.user ? req.user._id : null;
 
@@ -265,7 +268,8 @@ const getUserVideos = async (req, res, next) => {
       req.params.userId,
       page,
       limit,
-      requesterId
+      requesterId,
+      sort
     );
 
     res.status(200).json({
