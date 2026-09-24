@@ -1,186 +1,71 @@
-/* ── Trang xác thực ──
-   Lưới bất đối xứng 0.9fr / 1.1fr: panel thương hiệu đảo màu bên trái, biểu
-   mẫu bên phải chiếm phần lớn hơn vì đó là việc người dùng tới đây để làm.
-   Ô nhập, nút và thông báo dùng thành phần chung trong index.css. */
+/* ── Trang xác thực kiểu đăng nhập tài khoản Google ──
+   Nền xám nhạt, một thẻ lớn ở giữa chia hai nửa: giới thiệu bên trái, biểu
+   mẫu bên phải. Nút hành động chính ở góc dưới phải thẻ. */
 
 .auth-page {
-  min-height: 100vh;
-  display: grid;
-  grid-template-columns: 0.9fr 1.1fr;
-  background: var(--bg-primary);
-}
-
-/* ── Panel thương hiệu ── */
-.auth-aside {
-  position: relative;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  padding: 4rem clamp(2rem, 5vw, 4.5rem);
-  background: var(--bg-inverted);
-  color: var(--text-inverted);
-}
-
-.auth-aside-glow {
-  bottom: -340px;
-  left: -280px;
-  opacity: 0.34;
-}
-
-/* Vòng tròn nét đứt quay rất chậm — một vòng mất 60 giây */
-.auth-aside-ring {
-  position: absolute;
-  top: -120px;
-  right: -120px;
-  width: 360px;
-  height: 360px;
-  border-radius: 50%;
-  border: 1.5px dashed rgba(169, 193, 255, 0.22);
-  animation: spin 60s linear infinite;
-  pointer-events: none;
-}
-
-.auth-aside-content {
-  position: relative;
-  z-index: 1;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-lg);
-  max-width: 460px;
-}
-
-.auth-aside-title {
-  color: var(--text-inverted);
-  font-size: clamp(2rem, 3.4vw, 3rem);
-  line-height: 1.1;
-}
-
-.auth-aside-accent {
-  background: var(--accent-gradient-light);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-.auth-aside-points {
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 0.875rem;
-  margin-top: var(--space-sm);
-}
-
-.auth-aside-points li {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.75rem;
-  font-size: var(--font-size-base);
-  line-height: 1.55;
-  color: var(--text-inverted-muted);
-}
-
-.auth-aside-check {
-  display: flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 22px;
-  margin-top: 1px;
-  flex-shrink: 0;
-  border-radius: 7px;
-  background: var(--accent-gradient);
-  color: #ffffff;
-  font-size: 0.75rem;
-  box-shadow: var(--shadow-accent);
+  padding: var(--space-lg);
+  background: #f0f4f9;
 }
 
-/* Thẻ nổi bập bềnh theo hình sin, lệch pha nhau */
-.auth-float {
-  position: absolute;
-  z-index: 1;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0.875rem;
-  border-radius: var(--radius-md);
-  border: 1px solid rgba(248, 250, 252, 0.12);
-  background: rgba(248, 250, 252, 0.06);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  color: rgba(248, 250, 252, 0.85);
-  font-family: var(--font-mono);
-  font-size: 0.6875rem;
-  letter-spacing: 0.06em;
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.3);
-}
-
-.auth-float-a {
-  top: 12%;
-  right: 10%;
-  animation: float-y 5s ease-in-out infinite;
-}
-
-.auth-float-b {
-  bottom: 12%;
-  right: 16%;
-  animation: float-y 4s ease-in-out 0.8s infinite;
-}
-
-.auth-float-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #34d399;
-  animation: pulse-dot 2s ease-in-out infinite;
-}
-
-/* ── Cột biểu mẫu ── */
-.auth-main {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-2xl) var(--space-lg);
+[data-theme='dark'] .auth-page {
+  background: #0f0f0f;
 }
 
 .auth-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-xl);
   width: 100%;
-  max-width: 440px;
-  animation: fade-up 700ms var(--ease-out);
+  max-width: 1040px;
+  padding: 36px;
+  border-radius: 28px;
+  background: #ffffff;
+}
+
+[data-theme='dark'] .auth-card {
+  background: #1f1f1f;
+}
+
+.auth-card-intro {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
 }
 
 .auth-logo {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 0.625rem;
-  margin-bottom: var(--space-xl);
-}
-
-.auth-logo .logo-icon {
-  width: 42px;
-  height: 42px;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  margin-bottom: var(--space-lg);
   border-radius: 12px;
+  background: var(--brand);
+  color: #ffffff;
 }
 
 .auth-title {
-  font-family: var(--font-display);
-  font-size: clamp(2rem, 4vw, 2.625rem);
+  font-size: 2.25rem;
   font-weight: 400;
-  line-height: 1.15;
+  line-height: 44px;
   color: var(--text-primary);
-  margin-bottom: var(--space-sm);
 }
 
 .auth-subtitle {
-  color: var(--text-muted);
+  margin-top: var(--space-md);
   font-size: var(--font-size-base);
-  line-height: 1.6;
-  margin-bottom: var(--space-xl);
+  line-height: 24px;
+  color: var(--text-primary);
 }
 
-.auth-card > .alert {
-  margin-bottom: var(--space-lg);
+.auth-card-body {
+  min-width: 0;
+  padding-top: 64px;
 }
 
 .auth-form {
@@ -189,37 +74,81 @@
   gap: var(--space-md);
 }
 
-.auth-inline-link {
-  align-self: flex-end;
-  margin-top: 0.25rem;
+.auth-field {
+  min-width: 0;
+}
+
+.auth-field .studio-field {
+  padding-top: 10px;
+  padding-bottom: 12px;
+}
+
+.auth-field-pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-md);
+}
+
+.auth-field-pair + .field-help {
+  margin-top: calc(-1 * var(--space-sm));
+}
+
+.auth-error {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-sm);
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-size: var(--font-size-sm);
+  line-height: 20px;
+}
+
+.auth-error svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  font-size: 1rem;
+}
+
+.auth-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+
+.auth-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+}
+
+.auth-check input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent-primary);
+}
+
+.auth-link {
   font-size: var(--font-size-sm);
   font-weight: 500;
   color: var(--accent-primary);
-  border-radius: 4px;
 }
 
-.auth-inline-link:hover {
+.auth-link:hover {
   text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
-.auth-form .btn-primary {
-  width: 100%;
-  min-height: 52px;
-  font-size: var(--font-size-base);
-  margin-top: var(--space-sm);
 }
 
 .auth-divider {
   display: flex;
   align-items: center;
   gap: var(--space-md);
-  margin: var(--space-lg) 0;
-  color: var(--text-muted);
-  font-family: var(--font-mono);
-  font-size: var(--font-size-xs);
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
 }
 
 .auth-divider::before,
@@ -230,53 +159,120 @@
   background: var(--border-color);
 }
 
-.google-signin-button {
+.auth-actions {
   display: flex;
-  justify-content: center;
-  /* Google Identity Services chỉ cho vài dạng bo góc cố định; cắt bằng
-     overflow:hidden để khớp đúng bo góc của các nút khác. */
-  border-radius: var(--radius-md);
-  overflow: hidden;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-sm);
+  margin-top: var(--space-lg);
 }
 
-.auth-footer {
-  margin-top: var(--space-xl);
+.auth-actions .btn {
+  min-height: 40px;
+  padding: 0 24px;
+  border-radius: 20px;
+}
+
+.auth-actions .btn-ghost {
+  padding: 0 12px;
+}
+
+/* Trạng thái đã gửi / đã đặt lại xong */
+.auth-state {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-sm);
+}
+
+.auth-state-icon {
+  font-size: 3rem;
+  color: var(--text-secondary);
+}
+
+.auth-state-icon.is-success {
+  color: var(--success);
+}
+
+.auth-state-title {
+  font-size: var(--font-size-lg);
+  font-weight: 500;
+}
+
+.auth-state-desc {
   font-size: var(--font-size-sm);
-  color: var(--text-muted);
+  line-height: 20px;
+  color: var(--text-secondary);
 }
 
-.auth-footer a {
-  color: var(--accent-primary);
-  font-weight: 600;
-  border-radius: 4px;
+.auth-page-footer {
+  display: flex;
+  justify-content: flex-start;
+  width: 100%;
+  max-width: 1040px;
+  margin-top: var(--space-sm);
 }
 
-.auth-footer a:hover {
-  text-decoration: underline;
-  text-underline-offset: 3px;
+.auth-lang select {
+  padding: 8px 28px 8px 12px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='%23606060'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E") no-repeat right 4px center;
+  color: var(--text-primary);
+  font-size: var(--font-size-xs);
+  appearance: none;
+  cursor: pointer;
 }
 
-/* ── Điểm ngắt: ẩn panel trang trí, biểu mẫu chiếm trọn màn hình ── */
-@media (max-width: 960px) {
+.auth-lang select:hover {
+  background-color: var(--bg-tertiary);
+}
+
+.auth-lang option {
+  background: var(--bg-secondary);
+}
+
+@media (max-width: 840px) {
   .auth-page {
-    grid-template-columns: 1fr;
+    justify-content: flex-start;
+    padding: 0;
+    background: var(--bg-primary);
   }
 
-  .auth-aside {
-    display: none;
+  [data-theme='dark'] .auth-page {
+    background: var(--bg-primary);
   }
 
-  .auth-main {
-    min-height: 100vh;
-    background:
-      radial-gradient(circle at 20% 0%, var(--accent-soft), transparent 50%),
-      var(--bg-primary);
+  .auth-card {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-lg);
+    max-width: none;
+    min-height: calc(100dvh - 48px);
+    padding: var(--space-lg);
+    border-radius: 0;
+    background: var(--bg-primary);
+  }
+
+  [data-theme='dark'] .auth-card {
+    background: var(--bg-primary);
+  }
+
+  .auth-card-body {
+    padding-top: 0;
+  }
+
+  .auth-title {
+    font-size: 1.75rem;
+    line-height: 36px;
+  }
+
+  .auth-page-footer {
+    padding: 0 var(--space-lg) var(--space-md);
   }
 }
 
 @media (max-width: 480px) {
-  .auth-main {
-    align-items: flex-start;
-    padding: var(--space-xl) var(--space-md);
+  .auth-field-pair {
+    grid-template-columns: minmax(0, 1fr);
   }
 }

@@ -1,13 +1,37 @@
-.eb-detail {
-  margin-top: var(--space-lg);
-  padding: var(--space-sm);
-  background: var(--bg-primary);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  color: var(--text-muted);
-  font-size: var(--font-size-xs);
+/* Khung chung nằm ở index.css (.status-*). Ở đây chỉ có khối chi tiết kỹ
+   thuật thu gọn, chỉ hiện khi chạy dev. Logo dùng lại lớp .brand-logo của
+   thanh trên, nạp qua Logo.css trong ErrorBoundary.jsx. */
+.eb-details {
+  width: 100%;
+  max-width: 720px;
+  margin-top: var(--space-xl);
   text-align: left;
+}
+
+.eb-details summary {
+  display: inline-block;
+  padding: 8px 12px;
+  border-radius: 18px;
+  color: var(--accent-primary);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.eb-details summary:hover {
+  background: var(--accent-soft);
+}
+
+.eb-details pre {
+  max-height: 320px;
+  margin-top: var(--space-sm);
+  padding: var(--space-md);
+  overflow: auto;
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  font-family: ui-monospace, 'SFMono-Regular', Consolas, monospace;
+  font-size: var(--font-size-xs);
+  line-height: 1.6;
   white-space: pre-wrap;
-  overflow-x: auto;
-  max-height: 240px;
 }

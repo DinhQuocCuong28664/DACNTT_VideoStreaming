@@ -63,11 +63,10 @@ const GoogleSignInButton = ({ onCredential, onError, text = 'continue_with' }) =
         text,
         locale,
         // Google chỉ cho chọn 1 trong vài shape cố định (rectangular/pill/
-        // circle/square), không tự set số px bo góc tuỳ ý được — cả 2 lựa
-        // chọn thử đều lệch với input/nút chính (10px). Dùng 'rectangular'
-        // (mặc định, bo góc nhỏ nhất) làm nền, rồi crop đúng 10px bằng CSS
-        // overflow:hidden ở khung chứa thay vì phụ thuộc option của Google.
-        shape: 'rectangular',
+        // circle/square). Mọi nút của giao diện giờ là viên thuốc nên 'pill'
+        // khớp sẵn; không cắt bo góc bằng CSS nữa, vì cắt như vậy làm mất
+        // viền hai bên của nút.
+        shape: 'pill',
       });
     };
 

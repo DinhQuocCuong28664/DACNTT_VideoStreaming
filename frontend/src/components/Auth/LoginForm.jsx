@@ -4,8 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../../context/useAuth';
 import useAuthRedirect from '../../hooks/useAuthRedirect';
 import GoogleSignInButton from './GoogleSignInButton';
-import LogoIcon from '../Layout/LogoIcon';
-import AuthLayout from './AuthLayout';
+import AuthLayout, { AuthField, AuthError } from './AuthLayout';
 
 const LoginForm = () => {
   const { t } = useTranslation();
@@ -13,6 +12,7 @@ const LoginForm = () => {
   const goAfterAuth = useAuthRedirect();
   const location = useLocation();
   const [formData, setFormData] = useState({ email: '', password: '' });
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -30,75 +30,69 @@ const LoginForm = () => {
       await login(formData.email, formData.password);
       goAfterAuth();
     } catch (err) {
-      setError(
-        err.response?.data?.message || t('auth.loginFailed')
-      );
+      setError(err.response?.data?.message || t('auth.loginFailed'));
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <AuthLayout>
-      <div className="auth-logo">
-        <div className="logo-icon"><LogoIcon /></div>
-        <span className="logo-text">VidShare</span>
-      </div>
-      <h1 className="auth-title">{t('auth.loginTitle')}</h1>
-      <p className="auth-subtitle">{t('auth.loginSubtitle')}</p>
-
-      {error && <div className="alert alert-error">{error}</div>}
-
+    <AuthLayout title={t('auth.loginTitle')} subtitle={t('auth.loginSubtitle')}>
       <form className="auth-form" onSubmit={handleSubmit}>
-        <div className="form-group">
-          <label className="label" htmlFor="email">Email</label>
-          <input
-            id="email"
-            name="email"
-            type="email"
-            className="input"
-            placeholder="you@example.com"
-            value={formData.email}
-            onChange={handleChange}
-            required
-          />
-        </div>
+        <AuthError>{error}</AuthError>
 
-        <div className="form-group">
-          <label className="label" htmlFor="password">{t('auth.passwordLabel')}</label>
-          <input
-            id="password"
-            name="password"
-            type="password"
-            className="input"
-            placeholder="••••••••"
-            value={formData.password}
-            onChange={handleChange}
-            required
-            minLength={6}
-          />
-          <Link to="/forgot-password" state={location.state} className="auth-inline-link">
+        <AuthField
+          id="email"
+          name="email"
+          type="email"
+          label="Email"
+          autoComplete="email"
+          value={formData.email}
+          onChange={handleChange}
+          required
+          autoFocus
+        />
+
+        <AuthField
+          id="password"
+          name="password"
+          type={showPassword ? 'text' : 'password'}
+          label={t('auth.passwordLabel')}
+          autoComplete="current-password"
+          value={formData.password}
+          onChange={handleChange}
+          required
+          minLength={6}
+        />
+
+        <div className="auth-row">
+          <label className="auth-check">
+            <input type="checkbox" checked={showPassword} onChange={(e) => setShowPassword(e.target.checked)} />
+            {t('auth.showPassword')}
+          </label>
+          <Link to="/forgot-password" state={location.state} className="auth-link">
             {t('auth.forgotPassword')}
           </Link>
         </div>
 
-        <button type="submit" className="btn btn-primary" disabled={loading}>
-          {loading ? t('auth.loginSubmitting') : t('auth.loginSubmit')}
-        </button>
+        <div className="auth-divider"><span>{t('auth.or')}</span></div>
+        <GoogleSignInButton
+          onCredential={async (credential) => {
+            await loginWithGoogle(credential);
+            goAfterAuth();
+          }}
+          onError={setError}
+        />
+
+        <div className="auth-actions">
+          <Link to="/register" state={location.state} className="btn btn-ghost">
+            {t('auth.createAccount')}
+          </Link>
+          <button type="submit" className="btn btn-primary" disabled={loading}>
+            {loading ? t('auth.loginSubmitting') : t('auth.loginSubmit')}
+          </button>
+        </div>
       </form>
-
-      <div className="auth-divider"><span>{t('auth.or')}</span></div>
-      <GoogleSignInButton
-        onCredential={async (credential) => {
-          await loginWithGoogle(credential);
-          goAfterAuth();
-        }}
-        onError={setError}
-      />
-
-      <p className="auth-footer">
-        {t('auth.noAccount')} <Link to="/register" state={location.state}>{t('auth.registerNow')}</Link>
-      </p>
     </AuthLayout>
   );
 };

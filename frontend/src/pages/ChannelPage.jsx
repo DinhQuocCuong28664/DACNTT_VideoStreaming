@@ -1,101 +1,85 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { useParams } from 'react-router-dom';
+import { useState, useEffect, useCallback } from 'react';
+import { useParams, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
-  FiUser,
-  FiTrash2,
-  FiGlobe,
-  FiLock,
-  FiLink,
-  FiEdit3,
-  FiMoreVertical,
-  FiX,
-  FiCheck,
-} from 'react-icons/fi';
+  MdMoreVert,
+  MdOutlineEdit,
+  MdOutlineDelete,
+  MdOutlineVideoLibrary,
+  MdErrorOutline,
+} from 'react-icons/md';
+import Avatar from '../components/Common/Avatar';
+import useToast from '../components/Common/Toast';
 import { useAuth } from '../context/useAuth';
 import videoApi from '../api/videoApi';
 import userApi from '../api/userApi';
 import VideoCard from '../components/Video/VideoCard';
-import { UPLOAD_CATEGORIES } from '../i18n/categories';
+import { SkeletonCard, LoadMoreFooter } from '../components/Video/VideoListParts';
+import EditVideoDialog from '../components/Video/EditVideoDialog';
+import { VISIBILITY_ICON } from '../components/Video/visibilityIcons';
+import useInfiniteList from '../hooks/useInfiniteList';
 import useRefreshWhilePending from '../hooks/useRefreshWhilePending';
+import { formatDate } from '../utils/format';
 import './ChannelPage.css';
 
-/**
- * Ba chế độ hiển thị, đi vòng theo đúng thứ tự này mỗi lần nhấn nút.
- *
- * Trước đây nút chỉ bật tắt giữa hai trạng thái: `visibility === 'public'` thì
- * chuyển sang riêng tư, còn lại thì chuyển sang công khai. Nghĩa là một video
- * đặt "không liệt kê" lúc tải lên mà bấm nút này sẽ thành công khai và không
- * còn đường quay lại, dù biểu mẫu tải lên vẫn cho chọn cả ba. Chọn được đúng
- * một lần rồi mất.
- */
-const VISIBILITY_CYCLE = ['public', 'unlisted', 'private'];
-const VISIBILITY_ICON = { public: FiGlobe, unlisted: FiLink, private: FiLock };
-
-// indexOf trả về -1 với giá trị lạ, nên nhánh đó rơi về 'public'.
-const nextVisibility = (current) =>
-  VISIBILITY_CYCLE[(VISIBILITY_CYCLE.indexOf(current) + 1) % VISIBILITY_CYCLE.length];
+const PAGE_SIZE = 12;
+const VISIBILITY_MODES = ['public', 'unlisted', 'private'];
+/** Khớp với USER_VIDEO_SORTS ở backend (services/videoService.js). */
+const SORTS = ['latest', 'popular', 'oldest'];
 
 const ChannelPage = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { userId } = useParams();
   const { user: currentUser } = useAuth();
-  const [videos, setVideos] = useState([]);
   const [channelUser, setChannelUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(1);
-  const [pagination, setPagination] = useState(null);
-
-  // Edit Video state
+  const [tab, setTab] = useState('videos');
+  const [sort, setSort] = useState('latest');
+  const [descExpanded, setDescExpanded] = useState(false);
   const [editingVideo, setEditingVideo] = useState(null);
-  const [editTitle, setEditTitle] = useState('');
-  const [editDescription, setEditDescription] = useState('');
-  const [editCategory, setEditCategory] = useState('');
-  const [editVisibility, setEditVisibility] = useState('public');
-  const [savingEdit, setSavingEdit] = useState(false);
   const [activeMenuId, setActiveMenuId] = useState(null);
+  const [toast, showToast] = useToast();
 
-  const isOwner = currentUser && currentUser._id === userId;
+  const isOwner = Boolean(currentUser && currentUser._id === userId);
 
-  // Click outside to close active video menu
+  const fetchPage = useCallback(
+    async (page) => {
+      const res = await videoApi.getUserVideos(userId, page, PAGE_SIZE, sort);
+      const { videos, pagination } = res.data.data;
+      return { items: videos, pages: pagination?.pages, total: pagination?.total };
+    },
+    [userId, sort],
+  );
+
+  const list = useInfiniteList(fetchPage);
+  const { items: videos, setItems: setVideos } = list;
+
   useEffect(() => {
-    const handleDocClick = (e) => {
-      if (!e.target.closest('.video-card-menu-container')) {
-        setActiveMenuId(null);
-      }
-    };
-    document.addEventListener('click', handleDocClick);
-    return () => document.removeEventListener('click', handleDocClick);
-  }, []);
+    setTab('videos');
+    setSort('latest');
+    setDescExpanded(false);
+    // Endpoint hồ sơ công khai chạy được cả khi kênh chưa có video nào; nếu nó
+    // lỗi mà đây là kênh của chính mình thì dùng tạm dữ liệu phiên đăng nhập.
+    userApi
+      .getPublicProfile(userId)
+      .then((res) => setChannelUser(res.data.data.user))
+      .catch(() => setChannelUser(isOwner ? currentUser : null));
+  }, [userId, isOwner, currentUser]);
 
+  // Đóng menu ba chấm khi bấm ra ngoài hoặc nhấn Esc.
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const [videosRes, profileRes] = await Promise.all([
-          videoApi.getUserVideos(userId, page, 12),
-          userApi.getPublicProfile(userId).catch(() => null),
-        ]);
-
-        setVideos(videosRes.data.data.videos);
-        setPagination(videosRes.data.data.pagination);
-
-        // Public profile endpoint works even when the user has zero videos.
-        // Falls back to the current user's own data (owner) if the request fails.
-        if (profileRes) {
-          setChannelUser(profileRes.data.data.user);
-        } else if (isOwner) {
-          setChannelUser(currentUser);
-        }
-      } catch (err) {
-        console.error('Failed to load channel:', err);
-      } finally {
-        setLoading(false);
-      }
+    if (!activeMenuId) return undefined;
+    const close = (e) => {
+      if (e.type === 'keydown' && e.key !== 'Escape') return;
+      if (e.type === 'mousedown' && e.target.closest('.owner-menu')) return;
+      setActiveMenuId(null);
     };
-
-    fetchData();
-  }, [userId, page, isOwner, currentUser]);
+    document.addEventListener('mousedown', close);
+    document.addEventListener('keydown', close);
+    return () => {
+      document.removeEventListener('mousedown', close);
+      document.removeEventListener('keydown', close);
+    };
+  }, [activeMenuId]);
 
   /**
    * Chuyển mã chạy trên AWS Batch nên trạng thái đổi ở máy chủ mà trang này
@@ -113,13 +97,15 @@ const ChannelPage = () => {
    * Thay nguyên danh sách sẽ giẫm lên các cập nhật lạc quan: đổi chế độ hiển
    * thị cập nhật giao diện ngay rồi mới gửi PUT, nên một lượt nạp lại rơi
    * đúng vào giữa sẽ kéo giá trị cũ của máy chủ về và người dùng thấy nút
-   * nhảy ngược lại. Hoà theo trường khiến việc đó không thể xảy ra: tiêu đề,
-   * mô tả, danh mục và chế độ hiển thị đều do người dùng làm chủ, lượt nạp
-   * lại này không đụng tới.
+   * nhảy ngược lại. Hoà theo trường khiến việc đó không thể xảy ra.
+   *
+   * Với cuộn vô hạn, danh sách đang hiển thị trải trên nhiều trang, nên lượt
+   * nạp lại lấy một lần đủ số video đã hiện (trang 1, limit = số trang × 12).
    */
+  const loadedPages = list.page;
   const refreshPipelineFields = useCallback(async () => {
     try {
-      const res = await videoApi.getUserVideos(userId, page, 12);
+      const res = await videoApi.getUserVideos(userId, 1, Math.max(loadedPages, 1) * PAGE_SIZE, sort);
       const fresh = new Map(res.data.data.videos.map((v) => [v._id, v]));
 
       setVideos((prev) =>
@@ -140,362 +126,271 @@ const ChannelPage = () => {
       // sau sẽ thử lại, và F5 vẫn là lối thoát cuối.
       console.error('Failed to refresh video statuses:', err);
     }
-  }, [userId, page]);
+  }, [userId, loadedPages, sort, setVideos]);
 
   useRefreshWhilePending(hasPendingVideos, refreshPipelineFields);
 
   const handleDelete = async (videoId) => {
+    setActiveMenuId(null);
     if (!window.confirm(t('channel.confirmDelete'))) return;
     try {
       await videoApi.deleteVideo(videoId);
-      setVideos(videos.filter((v) => v._id !== videoId));
+      setVideos((prev) => prev.filter((v) => v._id !== videoId));
+      showToast(t('channel.deleted'));
     } catch (err) {
-      alert(t('channel.deleteFailed', { message: err.response?.data?.message || err.message }));
+      showToast(t('channel.deleteFailed', { message: err.response?.data?.message || err.message }));
     }
   };
 
   /**
-   * Đặt trực tiếp chế độ hiển thị mong muốn (public, unlisted, private)
-   * Cập nhật lạc quan (optimistic update) để phản hồi tức thì.
+   * Đặt trực tiếp chế độ hiển thị mong muốn (public, unlisted, private).
+   * Cập nhật lạc quan để phản hồi tức thì, khôi phục nếu máy chủ trả lỗi.
    */
-  const handleSetVisibility = async (video, targetVisibility) => {
-    if (video.visibility === targetVisibility) return;
+  const handleSetVisibility = async (video, target) => {
+    setActiveMenuId(null);
+    if (video.visibility === target) return;
 
-    const oldVisibility = video.visibility;
-    setVideos((prev) =>
-      prev.map((v) => (v._id === video._id ? { ...v, visibility: targetVisibility } : v))
-    );
+    const previous = video.visibility;
+    setVideos((prev) => prev.map((v) => (v._id === video._id ? { ...v, visibility: target } : v)));
 
     try {
-      await videoApi.updateVideo(video._id, { visibility: targetVisibility });
+      await videoApi.updateVideo(video._id, { visibility: target });
+      showToast(t('channel.visibilityChanged', { mode: t(`visibility.${target}`) }));
     } catch (err) {
-      setVideos((prev) =>
-        prev.map((v) => (v._id === video._id ? { ...v, visibility: oldVisibility } : v))
-      );
-      alert(t('channel.visibilityFailed', { message: err.response?.data?.message || err.message }));
+      setVideos((prev) => prev.map((v) => (v._id === video._id ? { ...v, visibility: previous } : v)));
+      showToast(t('channel.visibilityFailed', { message: err.response?.data?.message || err.message }));
     }
   };
 
-  /**
-   * Chuyển chế độ hiển thị sang trạng thái kế tiếp trong vòng ba chế độ.
-   * Cập nhật lạc quan (optimistic update) để giao diện phản hồi tức thì,
-   * và khôi phục trạng thái cũ nếu máy chủ trả về lỗi.
-   */
-  const handleCycleVisibility = async (video) => {
-    const next = nextVisibility(video.visibility);
-    handleSetVisibility(video, next);
+  const handleSaved = (updated) => {
+    setVideos((prev) => prev.map((v) => (v._id === updated._id ? { ...v, ...updated } : v)));
+    setEditingVideo(null);
+    showToast(t('channel.editSuccess'));
   };
 
-  const handleOpenEdit = (video) => {
-    setEditingVideo(video);
-    setEditTitle(video.title || '');
-    setEditDescription(video.description || '');
-    setEditCategory(video.category || UPLOAD_CATEGORIES[0].value);
-    setEditVisibility(video.visibility || 'public');
-  };
+  const displayUser = channelUser || (isOwner ? currentUser : null);
+  const channelName = displayUser?.displayName || displayUser?.username || '';
+  const description = displayUser?.channelDescription || '';
 
-  const handleSaveEdit = async (e) => {
-    e.preventDefault();
-    if (!editingVideo) return;
-    setSavingEdit(true);
-    try {
-      const res = await videoApi.updateVideo(editingVideo._id, {
-        title: editTitle,
-        description: editDescription,
-        category: editCategory,
-        visibility: editVisibility,
-      });
-      const updated = res.data.data.video;
-      setVideos((prev) =>
-        prev.map((v) => (v._id === editingVideo._id ? { ...v, ...updated } : v))
-      );
-      setEditingVideo(null);
-    } catch (err) {
-      alert(err.response?.data?.message || err.message);
-    } finally {
-      setSavingEdit(false);
-    }
-  };
-
-  const displayUser = channelUser || currentUser;
-
-  return (
-    <div className="container channel-page">
-      {/* Channel Header */}
-      <header className="channel-hero">
-        <div className="channel-hero-texture" aria-hidden="true" />
-        {displayUser?.avatar ? (
-          <img src={displayUser.avatar} alt="" className="channel-hero-avatar" />
-        ) : (
-          <div className="channel-hero-avatar channel-hero-avatar-fallback">
-            {displayUser?.username?.charAt(0).toUpperCase() || <FiUser />}
+  const renderOwnerControls = (video) => {
+    const isMenuOpen = activeMenuId === video._id;
+    return (
+      <div className="owner-menu">
+        <button
+          type="button"
+          className="btn-icon owner-menu-trigger"
+          onClick={() => setActiveMenuId(isMenuOpen ? null : video._id)}
+          aria-label={t('channel.videoOptions')}
+          aria-expanded={isMenuOpen}
+          aria-haspopup="menu"
+        >
+          <MdMoreVert />
+        </button>
+        {isMenuOpen && (
+          <div className="menu-panel owner-menu-panel" role="menu">
+            <button
+              type="button"
+              className="dropdown-item"
+              onClick={() => {
+                setActiveMenuId(null);
+                setEditingVideo(video);
+              }}
+            >
+              <MdOutlineEdit />
+              <span>{t('channel.editVideo')}</span>
+            </button>
+            <div className="dropdown-divider" />
+            {VISIBILITY_MODES.filter((mode) => mode !== video.visibility).map((mode) => {
+              const Icon = VISIBILITY_ICON[mode];
+              return (
+                <button
+                  key={mode}
+                  type="button"
+                  className="dropdown-item"
+                  onClick={() => handleSetVisibility(video, mode)}
+                >
+                  <Icon />
+                  <span>{t('channel.setVisibilityTo', { mode: t(`visibility.${mode}`) })}</span>
+                </button>
+              );
+            })}
+            <div className="dropdown-divider" />
+            <button type="button" className="dropdown-item" onClick={() => handleDelete(video._id)}>
+              <MdOutlineDelete />
+              <span>{t('channel.deleteVideo')}</span>
+            </button>
           </div>
         )}
-        <div className="channel-hero-text">
-          <span className="section-label">{t('channel.pageLabel')}</span>
-          <h1 className="channel-hero-name display-heading">
-            {displayUser?.displayName || displayUser?.username || 'Channel'}
-          </h1>
-          <p className="channel-hero-handle">
-            @{displayUser?.username}
+      </div>
+    );
+  };
+
+  const visibilityBadge = (video) => {
+    const Icon = VISIBILITY_ICON[video.visibility] || VISIBILITY_ICON.public;
+    return (
+      <span className="video-visibility-badge">
+        <Icon aria-hidden="true" />
+        {t(`visibility.${video.visibility || 'public'}`)}
+      </span>
+    );
+  };
+
+  let videosBody;
+  if (list.status === 'loading') {
+    videosBody = (
+      <div className="video-grid">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <SkeletonCard key={i} avatar={false} />
+        ))}
+      </div>
+    );
+  } else if (list.status === 'error' && videos.length === 0) {
+    videosBody = (
+      <div className="empty-state">
+        <MdErrorOutline className="empty-state-icon" aria-hidden="true" />
+        <p className="empty-state-title">{t('home.loadErrorTitle')}</p>
+        <button type="button" className="btn btn-secondary" onClick={list.retry}>
+          {t('home.retry')}
+        </button>
+      </div>
+    );
+  } else if (videos.length === 0) {
+    videosBody = (
+      <div className="empty-state">
+        <MdOutlineVideoLibrary className="empty-state-icon" aria-hidden="true" />
+        <p className="empty-state-title">{isOwner ? t('channel.emptyOwner') : t('channel.empty')}</p>
+        {isOwner && (
+          <Link to="/upload" className="btn btn-primary">
+            {t('home.emptyAction')}
+          </Link>
+        )}
+      </div>
+    );
+  } else {
+    videosBody = (
+      <>
+        <div className="video-grid">
+          {videos.map((video) => (
+            <div key={video._id} className="channel-card">
+              <VideoCard
+                video={video}
+                showAvatar={false}
+                thumbnailOverlay={isOwner ? visibilityBadge(video) : null}
+              />
+              {isOwner && renderOwnerControls(video)}
+            </div>
+          ))}
+          {list.status === 'loadingMore' &&
+            Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={`more-${i}`} avatar={false} />)}
+        </div>
+        <LoadMoreFooter list={list} />
+      </>
+    );
+  }
+
+  return (
+    <div className="channel-page">
+      <header className="channel-header">
+        <Avatar
+          src={displayUser?.avatar}
+          className="channel-header-avatar"
+          fallbackClassName="avatar-placeholder channel-header-avatar"
+        >
+          {displayUser?.username?.charAt(0).toUpperCase() || '?'}
+        </Avatar>
+        <div className="channel-header-text">
+          <h1 className="channel-header-name">{channelName}</h1>
+          <p className="channel-header-meta">
+            {displayUser?.username && <span className="channel-header-handle">@{displayUser.username}</span>}
+            {list.status !== 'loading' && (
+              <span>{t('channel.videoCount', { count: list.total })}</span>
+            )}
           </p>
-          {displayUser?.channelDescription && (
-            <p className="channel-hero-desc">
-              {displayUser.channelDescription}
-            </p>
+          {description && (
+            <button
+              type="button"
+              className={`channel-header-desc ${descExpanded ? 'is-expanded' : ''}`}
+              onClick={() => setDescExpanded((v) => !v)}
+              aria-expanded={descExpanded}
+            >
+              {description}
+            </button>
+          )}
+          {isOwner && (
+            <div className="channel-header-actions">
+              <Link to="/settings" className="btn btn-secondary">
+                {t('channel.customize')}
+              </Link>
+              <Link to="/upload" className="btn btn-secondary">
+                {t('nav.uploadVideo')}
+              </Link>
+            </div>
           )}
         </div>
       </header>
 
-      {/* Videos */}
-      <h2 className="channel-section-title">
-        {isOwner ? t('channel.yourVideos') : t('channel.videos')}
-      </h2>
+      <div className="channel-tabs" role="tablist">
+        <button
+          type="button"
+          role="tab"
+          className="channel-tab"
+          aria-selected={tab === 'videos'}
+          onClick={() => setTab('videos')}
+        >
+          {t('channel.videos')}
+        </button>
+        <button
+          type="button"
+          role="tab"
+          className="channel-tab"
+          aria-selected={tab === 'about'}
+          onClick={() => setTab('about')}
+        >
+          {t('channel.about')}
+        </button>
+      </div>
 
-      {loading ? (
-        <div className="video-grid">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i}>
-              <div className="skeleton skeleton-thumb" />
-              <div className="channel-skeleton-lines">
-                <div className="skeleton channel-skeleton-line" />
-                <div className="skeleton channel-skeleton-line short" />
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : videos.length > 0 ? (
-        <>
-          <div className="video-grid">
-            {videos.map((video) => (
-              <div key={video._id} className="channel-video-card-wrapper">
-                <VideoCard video={video} />
-                {isOwner && (() => {
-                  const VisibilityIcon = VISIBILITY_ICON[video.visibility] ?? FiGlobe;
-                  const isMenuOpen = activeMenuId === video._id;
-
-                  return (
-                    <div className="video-card-menu-container">
-                      <button
-                        className={`video-card-menu-trigger ${isMenuOpen ? 'active' : ''}`}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          setActiveMenuId(isMenuOpen ? null : video._id);
-                        }}
-                        title="Tùy chọn video"
-                        aria-label="Video options"
-                      >
-                        <FiMoreVertical size={16} />
-                      </button>
-
-                      {isMenuOpen && (
-                        <div
-                          className="video-card-dropdown menu-panel"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <button
-                            className="dropdown-item"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              setActiveMenuId(null);
-                              handleOpenEdit(video);
-                            }}
-                          >
-                            <FiEdit3 size={15} />
-                            <span>{t('channel.editVideo')}</span>
-                          </button>
-
-                          {/* Danh sách các chế độ hiển thị khác mà người dùng có thể chọn trực tiếp */}
-                          {VISIBILITY_CYCLE.filter((mode) => mode !== video.visibility).map((mode) => {
-                            const ModeIcon = VISIBILITY_ICON[mode] ?? FiGlobe;
-                            return (
-                              <button
-                                key={mode}
-                                className="dropdown-item"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  setActiveMenuId(null);
-                                  handleSetVisibility(video, mode);
-                                }}
-                              >
-                                <ModeIcon size={15} />
-                                <span>{t('channel.setVisibilityTo', { mode: t(`visibility.${mode}`) })}</span>
-                              </button>
-                            );
-                          })}
-
-                          <div className="dropdown-divider" />
-
-                          <button
-                            className="dropdown-item dropdown-item-danger"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              setActiveMenuId(null);
-                              handleDelete(video._id);
-                            }}
-                          >
-                            <FiTrash2 size={15} />
-                            <span>{t('channel.deleteVideo')}</span>
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })()}
-                {/* Nhãn góc trái nói đúng chế độ đang đặt */}
-                {isOwner && video.visibility !== 'public' && (
-                  <span className="video-visibility-badge">
-                    {video.visibility === 'unlisted' ? <FiLink size={11} /> : <FiLock size={11} />}
-                    {t(`visibility.${video.visibility}`)}
-                  </span>
-                )}
-              </div>
+      {tab === 'videos' ? (
+        <section className="channel-videos" role="tabpanel">
+          <div className="channel-sort" role="radiogroup" aria-label={t('channel.sortLabel')}>
+            {SORTS.map((key) => (
+              <button
+                key={key}
+                type="button"
+                role="radio"
+                className="chip"
+                aria-checked={sort === key}
+                onClick={() => setSort(key)}
+              >
+                {t(`channel.sort.${key}`)}
+              </button>
             ))}
           </div>
-
-          {pagination && pagination.pages > 1 && (
-            <div className="channel-pagination">
-              {Array.from({ length: pagination.pages }).map((_, i) => (
-                <button
-                  key={i}
-                  className={`btn ${page === i + 1 ? 'btn-primary' : 'btn-secondary'}`}
-                  onClick={() => setPage(i + 1)}
-                >
-                  {i + 1}
-                </button>
-              ))}
-            </div>
-          )}
-        </>
+          {videosBody}
+        </section>
       ) : (
-        <div className="channel-empty">
-          <p>{t('channel.empty')}</p>
-        </div>
+        <section className="channel-about" role="tabpanel">
+          <h2 className="channel-about-heading">{t('channel.description')}</h2>
+          <p className="channel-about-desc">{description || t('channel.noDescription')}</p>
+          <h2 className="channel-about-heading">{t('channel.stats')}</h2>
+          <ul className="channel-about-stats">
+            {displayUser?.createdAt && (
+              <li>{t('channel.joined', { date: formatDate(i18n.resolvedLanguage, displayUser.createdAt) })}</li>
+            )}
+            <li>{t('channel.videoCount', { count: list.total })}</li>
+          </ul>
+        </section>
       )}
 
-      {/* Edit Video Modal */}
       {editingVideo && (
-        <div
-          className="channel-modal-overlay"
-          onClick={() => !savingEdit && setEditingVideo(null)}
-        >
-          <div
-            className="channel-modal-card"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="channel-modal-header">
-              <div className="channel-modal-title-group">
-                <span className="channel-modal-icon"><FiEdit3 size={18} /></span>
-                <h3 className="channel-modal-title">{t('channel.editModalTitle')}</h3>
-              </div>
-              <button
-                type="button"
-                className="channel-modal-close"
-                onClick={() => setEditingVideo(null)}
-                disabled={savingEdit}
-                aria-label="Close"
-              >
-                <FiX size={18} />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveEdit} className="channel-modal-form">
-              <div className="form-group">
-                <label className="form-label" htmlFor="edit-title">
-                  {t('channel.editTitleLabel')} <span className="required-mark">*</span>
-                </label>
-                <input
-                  id="edit-title"
-                  type="text"
-                  className="form-control"
-                  value={editTitle}
-                  onChange={(e) => setEditTitle(e.target.value)}
-                  maxLength={100}
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label" htmlFor="edit-desc">
-                  {t('channel.editDescLabel')}
-                </label>
-                <textarea
-                  id="edit-desc"
-                  className="form-control"
-                  rows={4}
-                  value={editDescription}
-                  onChange={(e) => setEditDescription(e.target.value)}
-                  maxLength={5000}
-                />
-              </div>
-
-              <div className="form-group">
-                <label className="form-label" htmlFor="edit-category">
-                  {t('channel.editCategoryLabel')}
-                </label>
-                <select
-                  id="edit-category"
-                  className="form-control"
-                  value={editCategory}
-                  onChange={(e) => setEditCategory(e.target.value)}
-                >
-                  {UPLOAD_CATEGORIES.map((cat) => (
-                    <option key={cat.value} value={cat.value}>
-                      {t(`categories.${cat.key}`)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label" htmlFor="edit-visibility">
-                  {t('channel.editVisibilityLabel', 'Chế độ hiển thị')}
-                </label>
-                <select
-                  id="edit-visibility"
-                  className="form-control"
-                  value={editVisibility}
-                  onChange={(e) => setEditVisibility(e.target.value)}
-                >
-                  <option value="public">{t('visibility.public')}</option>
-                  <option value="unlisted">{t('visibility.unlisted')}</option>
-                  <option value="private">{t('visibility.private')}</option>
-                </select>
-              </div>
-
-              <div className="channel-modal-actions">
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={() => setEditingVideo(null)}
-                  disabled={savingEdit}
-                >
-                  {t('channel.editCancel')}
-                </button>
-                <button
-                  type="submit"
-                  className="btn btn-primary"
-                  disabled={savingEdit}
-                >
-                  {savingEdit ? (
-                    <>
-                      <div className="spinner spinner-sm" />
-                      <span>{t('channel.editSaving')}</span>
-                    </>
-                  ) : (
-                    <>
-                      <FiCheck size={16} />
-                      <span>{t('channel.editSave')}</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <EditVideoDialog
+          video={editingVideo}
+          onClose={() => setEditingVideo(null)}
+          onSaved={handleSaved}
+        />
       )}
 
+      {toast}
     </div>
   );
 };
