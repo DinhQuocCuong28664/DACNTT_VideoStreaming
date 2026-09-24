@@ -1,0 +1,29 @@
+/* Logo VidShare: ô vuông xanh ngọc lục thương hiệu kèm chữ. Tách riêng để trang lỗi
+   và màn hình sập ứng dụng dùng được mà không kéo theo CSS thanh trên. */
+
+.brand-logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 40px;
+  padding-right: var(--space-sm);
+}
+
+.brand-logo-tile {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* Ô vuông chứ không phải hình chữ nhật dẹt: tránh trùng dáng logo YouTube */
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: var(--brand);
+  color: #ffffff;
+}
+
+.brand-logo-text {
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  color: var(--text-primary);
+}

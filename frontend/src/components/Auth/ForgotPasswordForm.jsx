@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Trans, useTranslation } from 'react-i18next';
+import { MdOutlineMarkEmailRead } from 'react-icons/md';
 import authApi from '../../api/authApi';
-import LogoIcon from '../Layout/LogoIcon';
-import AuthLayout from './AuthLayout';
+import AuthLayout, { AuthField, AuthError } from './AuthLayout';
 
 const ForgotPasswordForm = () => {
   const { t } = useTranslation();
@@ -26,56 +26,54 @@ const ForgotPasswordForm = () => {
       await authApi.forgotPassword(email);
       setSent(true);
     } catch (err) {
-      setError(
-        err.response?.data?.message || t('auth.forgotFailed')
-      );
+      setError(err.response?.data?.message || t('auth.forgotFailed'));
     } finally {
       setLoading(false);
     }
   };
 
+  const backLink = (
+    <Link to="/login" state={location.state} className="btn btn-ghost">
+      {t('auth.backToLogin')}
+    </Link>
+  );
+
   return (
-    <AuthLayout>
-      <div className="auth-logo">
-        <div className="logo-icon"><LogoIcon /></div>
-        <span className="logo-text">VidShare</span>
-      </div>
-      <h1 className="auth-title">{t('auth.forgotTitle')}</h1>
-      <p className="auth-subtitle">
-        {t('auth.forgotSubtitle')}
-      </p>
-
-      {error && <div className="alert alert-error">{error}</div>}
-
+    <AuthLayout title={t('auth.forgotTitle')} subtitle={t('auth.forgotSubtitle')}>
       {sent ? (
-        <div className="alert alert-success">
-          <Trans i18nKey="auth.forgotSent" values={{ email }} components={{ 1: <strong /> }} />
+        <div className="auth-form">
+          <div className="auth-state">
+            <MdOutlineMarkEmailRead className="auth-state-icon" aria-hidden="true" />
+            <p className="auth-state-title">{t('auth.checkInbox')}</p>
+            <p className="auth-state-desc">
+              <Trans i18nKey="auth.forgotSent" values={{ email }} components={{ 1: <strong /> }} />
+            </p>
+          </div>
+          <div className="auth-actions">{backLink}</div>
         </div>
       ) : (
         <form className="auth-form" onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label className="label" htmlFor="email">Email</label>
-            <input
-              id="email"
-              name="email"
-              type="email"
-              className="input"
-              placeholder="you@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
+          <AuthError>{error}</AuthError>
+          <AuthField
+            id="email"
+            name="email"
+            type="email"
+            label="Email"
+            help={t('auth.forgotHelp')}
+            autoComplete="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            autoFocus
+          />
+          <div className="auth-actions">
+            {backLink}
+            <button type="submit" className="btn btn-primary" disabled={loading}>
+              {loading ? t('auth.forgotSubmitting') : t('auth.forgotSubmit')}
+            </button>
           </div>
-
-          <button type="submit" className="btn btn-primary" disabled={loading}>
-            {loading ? t('auth.forgotSubmitting') : t('auth.forgotSubmit')}
-          </button>
         </form>
       )}
-
-      <p className="auth-footer">
-        <Link to="/login" state={location.state}>← {t('auth.backToLogin')}</Link>
-      </p>
     </AuthLayout>
   );
 };

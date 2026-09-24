@@ -6,16 +6,36 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>VidShare</title>
     <!--
-      Ba họ chữ của hệ thiết kế: Calistoga cho tiêu đề, Inter cho giao diện và
-      nội dung, JetBrains Mono cho nhãn kỹ thuật. Cả ba đều có bộ ký tự tiếng
-      Việt. Nạp bằng thẻ link thay vì @import trong CSS: @import chỉ bắt đầu tải
-      sau khi chính tệp CSS đã tải xong, thêm một vòng chờ trước khi chữ hiện.
+      Thẻ mô tả cho công cụ tìm kiếm và thẻ Open Graph cho lúc dán liên kết
+      vào tin nhắn hay mạng xã hội. Thiếu chúng thì liên kết hiện ra chỉ là
+      một dòng địa chỉ trơ. Ảnh xem trước dùng chính ảnh chụp trang danh mục
+      đã có trong thư mục public, địa chỉ phải tuyệt đối mới đọc được.
+    -->
+    <meta
+      name="description"
+      content="VidShare tự động chuyển mã video sang HLS 360p, 720p và 1080p trên hạ tầng AWS, rồi phát qua CloudFront."
+    />
+    <meta name="theme-color" content="#ffffff" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="VidShare" />
+    <meta property="og:title" content="VidShare" />
+    <meta
+      property="og:description"
+      content="Nền tảng chia sẻ video với chuyển mã HLS tự động trên AWS."
+    />
+    <meta property="og:url" content="https://zelostech.site/" />
+    <meta property="og:image" content="https://zelostech.site/preview-catalogue.jpg" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <!--
+      Một họ chữ Roboto cho toàn bộ giao diện (có bộ ký tự tiếng Việt), đúng
+      tinh thần giao diện kiểu YouTube. Nạp bằng thẻ link thay vì @import trong
+      CSS: @import chỉ bắt đầu tải sau khi chính tệp CSS đã tải xong.
     -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Calistoga&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap"
     />
     <!--
       Google Identity Services dựng chữ bên trong nút đăng nhập, và nó chốt

@@ -6,15 +6,14 @@
   position: relative;
   width: 100%;
   background: #000;
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-md);
   overflow: hidden;
   aspect-ratio: 16 / 9;
   outline: none;
-  box-shadow: var(--shadow-xl);
 }
 
 .video-player-wrapper:focus-visible {
-  box-shadow: 0 0 0 2px var(--bg-primary), 0 0 0 4px var(--ring), var(--shadow-xl);
+  box-shadow: 0 0 0 2px var(--bg-primary), 0 0 0 4px var(--ring);
 }
 
 .video-element {
@@ -35,7 +34,7 @@
   height: 72px;
   padding-left: 4px;
   border-radius: 50%;
-  background: var(--accent-gradient);
+  background: rgba(0, 0, 0, 0.6);
   border: none;
   color: #ffffff;
   font-size: 28px;
@@ -43,16 +42,13 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 0 0 0 8px rgba(0, 82, 255, 0.18), var(--shadow-accent-lg);
-  transition: transform var(--transition-fast), box-shadow var(--transition-fast),
-    filter var(--transition-fast);
+  transition: transform var(--transition-fast), background-color var(--transition-fast);
   z-index: 5;
 }
 
 .center-play-btn:hover {
-  transform: translate(-50%, -50%) scale(1.08);
-  box-shadow: 0 0 0 12px rgba(0, 82, 255, 0.2), var(--shadow-accent-lg);
-  filter: brightness(1.08);
+  transform: translate(-50%, -50%) scale(1.06);
+  background: var(--brand);
 }
 
 /* ── Thông báo lỗi phát video ── */
@@ -64,7 +60,7 @@
   max-width: 80%;
   padding: 14px 20px;
   border-radius: var(--radius-md);
-  background: rgba(15, 23, 42, 0.88);
+  background: rgba(0, 0, 0, 0.8);
   border: 1px solid rgba(255, 255, 255, 0.12);
   backdrop-filter: blur(12px);
   color: #ffffff;
@@ -81,7 +77,7 @@
   right: 0;
   bottom: 0;
   padding: 28px 14px 10px;
-  background: linear-gradient(to top, rgba(15, 23, 42, 0.9), rgba(15, 23, 42, 0.35) 60%, transparent);
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0.25) 60%, transparent);
   opacity: 1;
   transition: opacity var(--transition-base);
   z-index: 6;
@@ -103,8 +99,8 @@
 /* Thanh tiến trình */
 .player-progress-container {
   position: relative;
-  height: 4px;
-  border-radius: 999px;
+  height: 3px;
+  border-radius: 0;
   cursor: pointer;
   margin-bottom: 10px;
   transition: height var(--transition-fast);
@@ -121,7 +117,6 @@
   top: 0;
   left: 0;
   height: 100%;
-  border-radius: 999px;
 }
 
 .player-progress-track {
@@ -134,18 +129,17 @@
 }
 
 .player-progress-played {
-  background: linear-gradient(90deg, #0052ff, #4d7cff);
+  background: var(--brand);
 }
 
 .player-progress-thumb {
   position: absolute;
   top: 50%;
-  width: 14px;
-  height: 14px;
+  width: 13px;
+  height: 13px;
   border-radius: 50%;
-  background: #ffffff;
-  box-shadow: 0 0 0 3px #0052ff, 0 2px 8px rgba(0, 0, 0, 0.4);
-  transform: translate(-50%, -50%) scale(0.85);
+  background: var(--brand);
+  transform: translate(-50%, -50%) scale(0);
   transition: transform var(--transition-fast);
 }
 
@@ -169,7 +163,7 @@
 .player-scrub-preview {
   width: 148px;
   aspect-ratio: 16 / 9;
-  border-radius: 10px;
+  border-radius: 8px;
   overflow: hidden;
   border: 2px solid rgba(255, 255, 255, 0.9);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
@@ -183,14 +177,12 @@
 }
 
 .player-scrub-time {
-  background: rgba(15, 23, 42, 0.92);
+  background: rgba(0, 0, 0, 0.8);
   color: #ffffff;
-  font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
   padding: 3px 8px;
-  border-radius: 6px;
-  letter-spacing: 0.04em;
+  border-radius: 4px;
 }
 
 /* Hàng nút */
@@ -209,9 +201,9 @@
   padding: 0;
   background: none;
   border: none;
-  border-radius: var(--radius-sm);
+  border-radius: 50%;
   color: #ffffff;
-  font-size: 18px;
+  font-size: 20px;
   cursor: pointer;
   transition: background var(--transition-fast), transform var(--transition-fast);
   flex-shrink: 0;
@@ -226,7 +218,7 @@
 }
 
 .control-btn:focus-visible {
-  outline-color: #a9c1ff;
+  outline-color: #ffffff;
 }
 
 .volume-control {
@@ -238,17 +230,17 @@
 .volume-slider {
   width: 72px;
   height: 3px;
-  accent-color: #4d7cff;
+  accent-color: #ffffff;
   cursor: pointer;
 }
 
 .time-display {
-  font-family: var(--font-mono);
-  font-size: 11.5px;
-  color: rgba(255, 255, 255, 0.88);
+  /* Đồng hồ đổi mỗi giây: chữ số cùng bề rộng để các nút bên cạnh đứng yên */
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.92);
   white-space: nowrap;
   margin-left: 6px;
-  letter-spacing: 0.02em;
 }
 
 .spacer {
@@ -267,13 +259,9 @@
   width: 232px;
   max-height: 290px;
   overflow-y: auto;
-  padding: 6px;
-  background: rgba(15, 23, 42, 0.94);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: var(--radius-lg);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.45);
+  padding: 8px 0;
+  background: rgba(28, 28, 28, 0.9);
+  border-radius: 12px;
   animation: player-menu-in 180ms var(--ease-out);
 }
 
@@ -286,11 +274,11 @@
   margin-bottom: 4px;
   border: none;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  border-radius: 0;
   background: none;
   color: #ffffff;
   font-size: var(--font-size-sm);
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
   text-align: left;
 }
@@ -305,11 +293,11 @@
   justify-content: space-between;
   width: 100%;
   min-height: 38px;
-  padding: 8px 10px;
+  padding: 8px 16px;
   border: none;
-  border-radius: var(--radius-sm);
+  border-radius: 0;
   background: none;
-  color: rgba(255, 255, 255, 0.92);
+  color: #ffffff;
   font-size: var(--font-size-sm);
   cursor: pointer;
   transition: background var(--transition-fast), color var(--transition-fast);
@@ -320,19 +308,18 @@
   background: rgba(255, 255, 255, 0.08);
 }
 
-/* Lựa chọn đang áp dụng: màu nhấn bản sáng, đọc rõ trên nền slate */
+/* Lựa chọn đang áp dụng: chữ đậm trên nền sáng hơn một chút */
 .settings-option.active {
-  color: #a9c1ff;
-  background: rgba(77, 124, 255, 0.14);
+  font-weight: 500;
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .settings-option-value {
   display: flex;
   align-items: center;
   gap: 2px;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.55);
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
 }
 
 .settings-option-icon-label {
@@ -354,7 +341,7 @@
 
 @media (max-width: 768px) {
   .video-player-wrapper {
-    border-radius: var(--radius-lg);
+    border-radius: 0;
   }
 
   .video-controls-bar {
@@ -372,7 +359,7 @@
   }
 
   .time-display {
-    font-size: 10.5px;
+    font-size: 12px;
   }
 
   .settings-menu {

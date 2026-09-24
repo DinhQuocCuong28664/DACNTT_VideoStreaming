@@ -1,44 +1,45 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { FiEye, FiClock, FiPlay } from 'react-icons/fi';
+import { FiPlay } from 'react-icons/fi';
+import Avatar from '../Common/Avatar';
+import { formatViews, formatDuration, timeAgo } from '../../utils/format';
 import './VideoCard.css';
 
-const VideoCard = ({ video }) => {
+/**
+ * Thẻ video kiểu YouTube, ba biến thể dùng chung một nguồn dữ liệu:
+ * - `grid`: lưới trang chủ và trang kênh (thumbnail trên, thông tin dưới).
+ * - `compact`: danh sách "Tiếp theo" ở cột phải trang xem (thumbnail 168 px bên trái).
+ * - `row`: kết quả tìm kiếm (thumbnail lớn bên trái, có mô tả ngắn).
+ *
+ * Trang kênh tắt `showAvatar` (mọi video cùng một kênh) và dùng
+ * `thumbnailOverlay` để gắn nhãn chế độ hiển thị lên ảnh bìa.
+ */
+const VideoCard = ({ video, variant = 'grid', showAvatar = true, thumbnailOverlay = null }) => {
   const { t } = useTranslation();
   /**
    * Ảnh đại diện có thể tồn tại trong cơ sở dữ liệu nhưng không tải được:
    * tệp bị xoá khỏi kho lưu trữ, đường dẫn trỏ tới bucket cũ, hoặc quyền truy
-   * cập đã đổi. Trước đây chỉ có phương án dự phòng cho trường hợp *thiếu*
-   * thumbnailUrl, nên khi liên kết có mà hỏng, trình duyệt hiển thị biểu tượng
-   * ảnh vỡ kèm nguyên tên tệp — nhìn như trang bị lỗi. Theo dõi sự kiện lỗi để
-   * quay về đúng khối dự phòng vốn đã có.
+   * cập đã đổi. Theo dõi sự kiện lỗi để quay về khối dự phòng thay vì để trình
+   * duyệt vẽ biểu tượng ảnh vỡ kèm nguyên tên tệp.
    */
   const [thumbnailFailed, setThumbnailFailed] = useState(false);
   const showThumbnail = Boolean(video.thumbnailUrl) && !thumbnailFailed;
-  const formatViews = (views) => {
-    if (views >= 1000000) return `${(views / 1000000).toFixed(1)}M`;
-    if (views >= 1000) return `${(views / 1000).toFixed(1)}K`;
-    return views;
-  };
-
-  const formatTimeAgo = (dateStr) => {
-    const seconds = Math.floor((Date.now() - new Date(dateStr)) / 1000);
-    if (seconds < 60) return t('videoCard.justNow');
-    const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return t('videoCard.minutesAgo', { count: minutes });
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return t('videoCard.hoursAgo', { count: hours });
-    const days = Math.floor(hours / 24);
-    if (days < 30) return t('videoCard.daysAgo', { count: days });
-    const months = Math.floor(days / 30);
-    return t('videoCard.monthsAgo', { count: months });
-  };
 
   const user = video.user || {};
+  const channelName = user.displayName || user.username || t('videoCard.unknownChannel');
+  const meta = `${t('videoCard.views', { value: formatViews(video.views) })} · ${timeAgo(t, video.createdAt)}`;
+
+  const avatar = (
+    <div className="video-card-avatar">
+      <Avatar src={user.avatar} fallbackClassName="mini-avatar">
+        {user.username?.charAt(0).toUpperCase() || '?'}
+      </Avatar>
+    </div>
+  );
 
   return (
-    <Link to={`/watch/${video._id}`} className="video-card">
+    <Link to={`/watch/${video._id}`} className={`video-card video-card-${variant}`}>
       <div className="video-card-thumbnail">
         {showThumbnail ? (
           <img
@@ -49,19 +50,14 @@ const VideoCard = ({ video }) => {
           />
         ) : (
           <div className="thumbnail-placeholder">
-            <span className="thumbnail-placeholder-icon"><FiPlay /></span>
+            <FiPlay />
           </div>
         )}
         {video.duration > 0 && (
-          <span className="video-duration">
-            {Math.floor(video.duration / 60)}:{String(Math.floor(video.duration % 60)).padStart(2, '0')}
-          </span>
+          <span className="video-duration">{formatDuration(video.duration)}</span>
         )}
         {video.status === 'PROCESSING' && (
-          <span className="video-status-badge">
-            <span className="video-status-pulse" aria-hidden="true" />
-            {t('videoCard.processing')}
-          </span>
+          <span className="video-status-badge">{t('videoCard.processing')}</span>
         )}
         {/* Chỉ chủ kênh nhìn thấy video hỏng, vì danh mục công khai chỉ liệt kê
             video đã READY. Không có nhãn này thì video chuyển mã thất bại trông
@@ -72,28 +68,31 @@ const VideoCard = ({ video }) => {
             {t('videoCard.failed')}
           </span>
         )}
+        {thumbnailOverlay}
       </div>
 
       <div className="video-card-info">
-        <div className="video-card-avatar">
-          {user.avatar ? (
-            <img src={user.avatar} alt="" />
-          ) : (
-            <div className="mini-avatar">
-              {user.username?.charAt(0).toUpperCase() || '?'}
-            </div>
-          )}
-        </div>
+        {variant === 'grid' && showAvatar && avatar}
 
         <div className="video-card-details">
           <h3 className="video-card-title">{video.title}</h3>
-          <p className="video-card-channel">
-            {user.displayName || user.username || t('videoCard.unknownChannel')}
-          </p>
-          <div className="video-card-meta">
-            <span><FiEye /> {t('videoCard.views', { value: formatViews(video.views) })}</span>
-            <span><FiClock /> {formatTimeAgo(video.createdAt)}</span>
-          </div>
+          {variant === 'row' ? (
+            <>
+              <p className="video-card-meta">{meta}</p>
+              <div className="video-card-channel-row">
+                {avatar}
+                <span className="video-card-channel">{channelName}</span>
+              </div>
+              {video.description && (
+                <p className="video-card-description">{video.description}</p>
+              )}
+            </>
+          ) : (
+            <>
+              <p className="video-card-channel">{channelName}</p>
+              <p className="video-card-meta">{meta}</p>
+            </>
+          )}
         </div>
       </div>
     </Link>

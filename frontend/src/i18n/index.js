@@ -31,4 +31,14 @@ i18n
     },
   });
 
+// Thuộc tính lang của thẻ <html> phải chạy theo ngôn ngữ đang chọn. Nó quyết
+// định giọng đọc của trình đọc màn hình và cách trình duyệt ngắt từ; để cứng
+// "en" trong index.html thì cả trang tiếng Việt vẫn bị đọc bằng giọng Anh.
+const syncDocumentLanguage = (lng) => {
+  document.documentElement.lang = lng?.startsWith('en') ? 'en' : 'vi';
+};
+
+syncDocumentLanguage(i18n.resolvedLanguage || i18n.language);
+i18n.on('languageChanged', syncDocumentLanguage);
+
 export default i18n;

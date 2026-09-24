@@ -1,302 +1,268 @@
 import { useState, useRef, useEffect } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import {
+  MdMenu,
+  MdSearch,
+  MdArrowBack,
+  MdMoreVert,
+  MdOutlineVideoCall,
+  MdOutlineFileUpload,
+  MdOutlineSettings,
+  MdOutlineLogout,
+  MdOutlineDarkMode,
+  MdOutlineLightMode,
+  MdOutlineTranslate,
+  MdOutlineInfo,
+  MdOutlineAccountCircle,
+  MdOutlineVideoLibrary,
+} from 'react-icons/md';
 import { useAuth } from '../../context/useAuth';
 import { useTheme } from '../../context/useTheme';
-import { FiUpload, FiSearch, FiLogOut, FiVideo, FiMoon, FiSun, FiInfo, FiMenu, FiX, FiSettings } from 'react-icons/fi';
-import LogoIcon from './LogoIcon';
-import LanguageToggle from './LanguageToggle';
+import Avatar from '../Common/Avatar';
+import Logo from './Logo';
 import './Navbar.css';
 
-const Navbar = () => {
-  const { t } = useTranslation();
+/**
+ * Thanh trên cùng kiểu YouTube: nút menu và logo bên trái, ô tìm kiếm ở giữa,
+ * nút tạo video và ảnh đại diện bên phải. Dưới 656 px ô tìm kiếm thu thành
+ * một nút; bấm vào thì cả thanh chuyển thành ô tìm kiếm có nút quay lại.
+ */
+const Navbar = ({ onMenuClick }) => {
+  const { t, i18n } = useTranslation();
   const { user, isAuthenticated, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
 
-  const [showDropdown, setShowDropdown] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [showMobileSearch, setShowMobileSearch] = useState(false);
-  const [showMobileDrawer, setShowMobileDrawer] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
+  const [mobileSearch, setMobileSearch] = useState(false);
+  const menuRef = useRef(null);
 
-  const dropdownRef = useRef(null);
-
-  // Close dropdown & mobile drawer on route change
+  // Ô tìm kiếm phản ánh truy vấn trên URL, kể cả khi người dùng bấm quay lại.
   useEffect(() => {
-    setShowDropdown(false);
-    setShowMobileDrawer(false);
-    setShowMobileSearch(false);
+    setSearchQuery(searchParams.get('q') || '');
+  }, [searchParams]);
+
+  useEffect(() => {
+    setMenuOpen(false);
+    setMobileSearch(false);
   }, [location.pathname]);
 
-  // Close dropdown when clicking outside
   useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
-        setShowDropdown(false);
-      }
+    if (!menuOpen) return undefined;
+    const onPointer = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false);
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+    const onKey = (e) => {
+      if (e.key === 'Escape') setMenuOpen(false);
+    };
+    document.addEventListener('mousedown', onPointer);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onPointer);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [menuOpen]);
 
   const handleLogout = () => {
+    setMenuOpen(false);
     logout();
-    setShowDropdown(false);
-    setShowMobileDrawer(false);
     navigate('/');
   };
 
   const handleSearch = (e) => {
     e.preventDefault();
-    if (searchQuery.trim()) {
-      navigate(`/?q=${encodeURIComponent(searchQuery.trim())}`);
-      setShowMobileSearch(false);
-    } else {
-      navigate('/');
-    }
+    const q = searchQuery.trim();
+    navigate(q ? `/?q=${encodeURIComponent(q)}` : '/');
+    setMobileSearch(false);
   };
 
-  return (
+  const nextLang = i18n.resolvedLanguage === 'en' ? 'vi' : 'en';
+  const themeLabel = t('nav.theme', {
+    mode: theme === 'dark' ? t('nav.themeDark') : t('nav.themeLight'),
+  });
+  const languageLabel = t('nav.languageRow', { lang: t(`language.${i18n.resolvedLanguage}`) });
+
+  const searchForm = (
+    <form className="topbar-search" role="search" onSubmit={handleSearch}>
+      <input
+        type="search"
+        className="topbar-search-input"
+        placeholder={t('nav.searchPlaceholder')}
+        aria-label={t('nav.search')}
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        autoFocus={mobileSearch}
+      />
+      <button type="submit" className="topbar-search-btn" aria-label={t('nav.search')}>
+        <MdSearch />
+      </button>
+    </form>
+  );
+
+  /* Các dòng chung cho cả menu ảnh đại diện (đã đăng nhập) và menu "Thêm"
+     (khách): đổi giao diện, đổi ngôn ngữ, trang giới thiệu. */
+  const preferenceRows = (
     <>
-      <nav className="navbar">
-        <div className="navbar-inner">
-          {/* Mobile Menu Button */}
-          <button
-            className="mobile-hamburger-btn"
-            onClick={() => setShowMobileDrawer(!showMobileDrawer)}
-            aria-label={t('nav.toggleMenu')}
-          >
-            {showMobileDrawer ? <FiX /> : <FiMenu />}
-          </button>
+      <button type="button" className="dropdown-item" onClick={toggleTheme}>
+        {theme === 'dark' ? <MdOutlineLightMode /> : <MdOutlineDarkMode />}
+        <span>{themeLabel}</span>
+      </button>
+      <button
+        type="button"
+        className="dropdown-item"
+        onClick={() => i18n.changeLanguage(nextLang)}
+        title={t('language.switchTo', { lang: t(`language.${nextLang}`) })}
+      >
+        <MdOutlineTranslate />
+        <span>{languageLabel}</span>
+      </button>
+      <Link to="/landing" className="dropdown-item" onClick={() => setMenuOpen(false)}>
+        <MdOutlineInfo />
+        <span>{t('nav.aboutVidShare')}</span>
+      </Link>
+    </>
+  );
 
-          {/* Logo */}
-          <Link to="/" className="navbar-logo">
-            <div className="logo-icon"><LogoIcon /></div>
-            <span className="logo-text">VidShare</span>
-          </Link>
+  if (mobileSearch) {
+    return (
+      <header className="topbar topbar-searching">
+        <button
+          type="button"
+          className="btn-icon"
+          onClick={() => setMobileSearch(false)}
+          aria-label={t('nav.back')}
+        >
+          <MdArrowBack />
+        </button>
+        {searchForm}
+      </header>
+    );
+  }
 
-          {/* Desktop Search Bar */}
-          <form className="navbar-search" onSubmit={handleSearch}>
-            <input
-              type="text"
-              className="search-input"
-              placeholder={t('nav.searchPlaceholder')}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-            <button type="submit" className="search-btn" aria-label={t('nav.search')}>
-              <FiSearch />
-            </button>
-          </form>
+  return (
+    <header className="topbar">
+      <div className="topbar-start">
+        <button
+          type="button"
+          className="btn-icon"
+          onClick={onMenuClick}
+          aria-label={t('nav.toggleMenu')}
+        >
+          <MdMenu />
+        </button>
+        <Logo />
+      </div>
 
-          {/* Mobile Search Toggle Icon */}
-          <button
-            className="mobile-search-toggle-btn"
-            onClick={() => setShowMobileSearch(!showMobileSearch)}
-            aria-label={t('nav.search')}
-          >
-            {showMobileSearch ? <FiX /> : <FiSearch />}
-          </button>
+      <div className="topbar-center">{searchForm}</div>
 
-          {/* Desktop Actions */}
-          <div className="navbar-actions">
-            <Link to="/landing" className="nav-landing-link" title={t('nav.aboutTitle')}>
-              <FiInfo />
-              <span className="landing-text">{t('nav.about')}</span>
+      <div className="topbar-end">
+        <button
+          type="button"
+          className="btn-icon topbar-search-toggle"
+          onClick={() => setMobileSearch(true)}
+          aria-label={t('nav.search')}
+        >
+          <MdSearch />
+        </button>
+
+        {isAuthenticated ? (
+          <>
+            <Link
+              to="/upload"
+              className="btn-icon"
+              aria-label={t('nav.create')}
+              title={t('nav.create')}
+            >
+              <MdOutlineVideoCall />
             </Link>
 
-            <LanguageToggle className="btn btn-secondary lang-toggle-btn" />
+            <div className="topbar-menu" ref={menuRef}>
+              <button
+                type="button"
+                className="topbar-avatar-btn"
+                onClick={() => setMenuOpen((v) => !v)}
+                aria-label={t('nav.accountMenu')}
+                aria-expanded={menuOpen}
+                aria-haspopup="menu"
+              >
+                <Avatar src={user?.avatar} className="topbar-avatar" fallbackClassName="avatar-placeholder topbar-avatar">
+                  {user?.username?.charAt(0).toUpperCase()}
+                </Avatar>
+              </button>
 
-            {isAuthenticated ? (
-              <>
-                <button
-                  className="btn btn-primary upload-btn"
-                  onClick={() => navigate('/upload')}
-                >
-                  <FiUpload />
-                  <span className="upload-text">{t('nav.upload')}</span>
-                </button>
-
-                <div className="user-menu" ref={dropdownRef}>
-                  <button
-                    className="avatar-btn"
-                    onClick={() => setShowDropdown(!showDropdown)}
-                  >
-                    {user?.avatar ? (
-                      <img src={user.avatar} alt="" className="avatar-img" />
-                    ) : (
-                      <div className="avatar-placeholder">
-                        {user?.username?.charAt(0).toUpperCase()}
-                      </div>
-                    )}
-                  </button>
-
-                  {showDropdown && (
-                    <div className="dropdown-menu menu-panel">
-                      <div className="dropdown-header">
-                        <div className="avatar-placeholder avatar-lg">
-                          {user?.username?.charAt(0).toUpperCase()}
-                        </div>
-                        <div>
-                          <p className="dropdown-name">{user?.displayName || user?.username}</p>
-                          <p className="dropdown-email">{user?.email}</p>
-                        </div>
-                      </div>
-                      <div className="dropdown-divider" />
+              {menuOpen && (
+                <div className="topbar-dropdown menu-panel" role="menu">
+                  <div className="account-header">
+                    <Avatar src={user?.avatar} className="account-avatar" fallbackClassName="avatar-placeholder account-avatar">
+                      {user?.username?.charAt(0).toUpperCase()}
+                    </Avatar>
+                    <div className="account-text">
+                      <p className="account-name">{user?.displayName || user?.username}</p>
+                      <p className="account-handle">@{user?.username}</p>
                       <Link
                         to={`/channel/${user?._id}`}
-                        className="dropdown-item"
-                        onClick={() => setShowDropdown(false)}
+                        className="account-channel-link"
+                        onClick={() => setMenuOpen(false)}
                       >
-                        <FiVideo /> {t('nav.myChannel')}
+                        {t('nav.viewChannel')}
                       </Link>
-                      <Link
-                        to="/upload"
-                        className="dropdown-item"
-                        onClick={() => setShowDropdown(false)}
-                      >
-                        <FiUpload /> {t('nav.uploadVideo')}
-                      </Link>
-                      <Link
-                        to="/settings"
-                        className="dropdown-item"
-                        onClick={() => setShowDropdown(false)}
-                      >
-                        <FiSettings /> {t('nav.settings')}
-                      </Link>
-                      <div className="dropdown-divider" />
-                      <button className="dropdown-item" onClick={toggleTheme}>
-                        {theme === 'dark' ? <FiSun /> : <FiMoon />}
-                        <span>{t('nav.theme', { mode: theme === 'dark' ? t('nav.themeDark') : t('nav.themeLight') })}</span>
-                      </button>
-                      <div className="dropdown-divider" />
-                      <button className="dropdown-item dropdown-logout" onClick={handleLogout}>
-                        <FiLogOut /> {t('nav.logout')}
-                      </button>
                     </div>
-                  )}
-                </div>
-              </>
-            ) : (
-              <div className="auth-buttons">
-                <button
-                  className="btn-icon theme-toggle-btn"
-                  onClick={toggleTheme}
-                  title={theme === 'dark' ? t('nav.switchToLight') : t('nav.switchToDark')}
-                  aria-label={theme === 'dark' ? t('nav.switchToLight') : t('nav.switchToDark')}
-                >
-                  {theme === 'dark' ? <FiSun /> : <FiMoon />}
-                </button>
-                <Link to="/login" className="btn btn-secondary nav-login-btn">
-                  {t('nav.login')}
-                </Link>
-                <Link to="/register" className="btn btn-primary nav-register-btn">
-                  {t('nav.register')}
-                </Link>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Mobile Search Overlay Form */}
-        {showMobileSearch && (
-          <div className="mobile-search-bar">
-            <form onSubmit={handleSearch} className="mobile-search-form">
-              <input
-                type="text"
-                className="search-input"
-                placeholder={t('nav.searchPlaceholder')}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                autoFocus
-              />
-              <button type="submit" className="btn btn-primary">
-                <FiSearch />
-              </button>
-            </form>
-          </div>
-        )}
-      </nav>
-
-      {/* Mobile Navigation Drawer */}
-      {showMobileDrawer && (
-        <div className="mobile-drawer-overlay" onClick={() => setShowMobileDrawer(false)}>
-          <div className="mobile-drawer" onClick={(e) => e.stopPropagation()}>
-            <div className="mobile-drawer-header">
-              <Link to="/" className="navbar-logo" onClick={() => setShowMobileDrawer(false)}>
-                <div className="logo-icon"><LogoIcon /></div>
-                <span className="logo-text">VidShare</span>
-              </Link>
-              <button className="mobile-drawer-close" onClick={() => setShowMobileDrawer(false)}>
-                <FiX />
-              </button>
-            </div>
-
-            <div className="mobile-drawer-body">
-              {isAuthenticated && (
-                <div className="mobile-user-card">
-                  <div className="avatar-placeholder avatar-lg">
-                    {user?.username?.charAt(0).toUpperCase()}
                   </div>
-                  <div>
-                    <p className="mobile-user-name">{user?.displayName || user?.username}</p>
-                    <p className="mobile-user-email">{user?.email}</p>
-                  </div>
+                  <div className="dropdown-divider" />
+                  <Link to={`/channel/${user?._id}`} className="dropdown-item" onClick={() => setMenuOpen(false)}>
+                    <MdOutlineVideoLibrary />
+                    <span>{t('nav.yourChannel')}</span>
+                  </Link>
+                  <Link to="/upload" className="dropdown-item" onClick={() => setMenuOpen(false)}>
+                    <MdOutlineFileUpload />
+                    <span>{t('nav.uploadVideo')}</span>
+                  </Link>
+                  <Link to="/settings" className="dropdown-item" onClick={() => setMenuOpen(false)}>
+                    <MdOutlineSettings />
+                    <span>{t('nav.settings')}</span>
+                  </Link>
+                  <div className="dropdown-divider" />
+                  {preferenceRows}
+                  <div className="dropdown-divider" />
+                  <button type="button" className="dropdown-item" onClick={handleLogout}>
+                    <MdOutlineLogout />
+                    <span>{t('nav.logout')}</span>
+                  </button>
                 </div>
               )}
-
-              <nav className="mobile-nav-links">
-                <Link to="/" className="mobile-nav-item" onClick={() => setShowMobileDrawer(false)}>
-                  <FiVideo /> {t('nav.home')}
-                </Link>
-                <Link to="/landing" className="mobile-nav-item" onClick={() => setShowMobileDrawer(false)}>
-                  <FiInfo /> {t('nav.aboutTitle')}
-                </Link>
-
-                {isAuthenticated ? (
-                  <>
-                    <Link to={`/channel/${user?._id}`} className="mobile-nav-item" onClick={() => setShowMobileDrawer(false)}>
-                      <FiVideo /> {t('nav.myChannel')}
-                    </Link>
-                    <Link to="/upload" className="mobile-nav-item" onClick={() => setShowMobileDrawer(false)}>
-                      <FiUpload /> {t('nav.uploadVideo')}
-                    </Link>
-                    <Link to="/settings" className="mobile-nav-item" onClick={() => setShowMobileDrawer(false)}>
-                      <FiSettings /> {t('nav.settings')}
-                    </Link>
-                  </>
-                ) : (
-                  <>
-                    <Link to="/login" className="mobile-nav-item" onClick={() => setShowMobileDrawer(false)}>
-                      {t('nav.login')}
-                    </Link>
-                    <Link to="/register" className="mobile-nav-item" onClick={() => setShowMobileDrawer(false)}>
-                      {t('nav.registerAccount')}
-                    </Link>
-                  </>
-                )}
-
-                <LanguageToggle className="mobile-nav-item theme-switch-item" />
-
-                <button className="mobile-nav-item theme-switch-item" onClick={toggleTheme}>
-                  {theme === 'dark' ? <FiSun /> : <FiMoon />}
-                  <span>{t('nav.themeMode', { mode: theme === 'dark' ? t('nav.themeDark') : t('nav.themeLight') })}</span>
-                </button>
-              </nav>
             </div>
-
-            {isAuthenticated && (
-              <div className="mobile-drawer-footer">
-                <button className="btn btn-secondary mobile-logout-btn" onClick={handleLogout}>
-                  <FiLogOut /> {t('nav.logout')}
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-    </>
+          </>
+        ) : (
+          <>
+            <div className="topbar-menu" ref={menuRef}>
+              <button
+                type="button"
+                className="btn-icon"
+                onClick={() => setMenuOpen((v) => !v)}
+                aria-label={t('nav.more')}
+                aria-expanded={menuOpen}
+                aria-haspopup="menu"
+              >
+                <MdMoreVert />
+              </button>
+              {menuOpen && (
+                <div className="topbar-dropdown menu-panel" role="menu">
+                  {preferenceRows}
+                </div>
+              )}
+            </div>
+            <Link to="/login" state={{ from: `${location.pathname}${location.search}` }} className="btn btn-outline topbar-signin">
+              <MdOutlineAccountCircle />
+              <span>{t('nav.login')}</span>
+            </Link>
+          </>
+        )}
+      </div>
+    </header>
   );
 };
 

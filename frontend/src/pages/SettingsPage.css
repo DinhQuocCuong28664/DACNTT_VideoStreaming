@@ -1,124 +1,210 @@
-/* ── Trang cài đặt tài khoản ── */
+/* ── Cài đặt kiểu YouTube ──
+   Cột menu cài đặt bên trái, nội dung bên phải tối đa 880 px. Mỗi mục là
+   một hàng: tiêu đề mục 240 px bên trái, điều khiển bên phải. */
 
 .settings-page {
-  padding-top: var(--space-2xl);
-  padding-bottom: var(--space-3xl);
-  max-width: 700px;
+  display: grid;
+  grid-template-columns: 220px minmax(0, 880px);
+  gap: var(--space-xl);
+  padding: var(--space-lg) var(--space-lg) var(--space-3xl);
 }
 
-.settings-title {
-  font-size: clamp(2.25rem, 5vw, 3rem);
-}
-
-.settings-card {
-  margin-bottom: var(--space-lg);
-  padding: var(--space-xl);
-  border-radius: var(--radius-xl);
-}
-
-.settings-section-title {
-  display: flex;
-  align-items: center;
-  gap: 0.625rem;
-  font-size: var(--font-size-lg);
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  margin-bottom: var(--space-lg);
-}
-
-/* Vạch gradient ngắn trước tên mục — nhấn nhẹ, không cần biểu tượng riêng */
-.settings-section-title::before {
-  content: '';
-  width: 4px;
-  height: 18px;
-  border-radius: 2px;
-  background: var(--accent-gradient);
-}
-
-.settings-section-desc {
-  color: var(--text-muted);
-  font-size: var(--font-size-sm);
-  line-height: 1.65;
-  margin-bottom: var(--space-md);
-}
-
-.settings-info-list {
+.settings-nav {
   display: flex;
   flex-direction: column;
+  position: sticky;
+  top: calc(var(--navbar-height) + var(--space-lg));
+  align-self: start;
 }
 
-.settings-info-list div {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: var(--space-md);
-  padding: 0.875rem 0;
+.settings-nav-title {
+  padding: 0 12px var(--space-sm);
+  font-size: var(--font-size-base);
+  font-weight: 500;
+}
+
+.settings-nav-item {
+  width: 100%;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.settings-head {
+  padding-bottom: var(--space-lg);
   border-bottom: 1px solid var(--border-color);
 }
 
-.settings-info-list div:first-child {
-  padding-top: 0;
+.settings-title {
+  font-size: var(--font-size-2xl);
+  font-weight: 400;
 }
 
-.settings-info-list div:last-child {
-  border-bottom: none;
-  padding-bottom: 0;
-}
-
-.settings-info-list dt {
-  font-family: var(--font-mono);
-  font-size: var(--font-size-xs);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-}
-
-.settings-info-list dd {
-  font-weight: 500;
-  overflow-wrap: anywhere;
-  text-align: right;
-}
-
-.settings-linked-status {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0.875rem;
-  border-radius: var(--radius-full);
-  background: var(--success-soft);
-  color: var(--success);
+.settings-subtitle {
+  margin-top: 4px;
   font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+
+.settings-section {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: var(--space-md) var(--space-lg);
+  padding: var(--space-lg) 0;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.settings-section:last-child {
+  border-bottom: none;
+}
+
+.settings-section-title {
+  font-size: var(--font-size-base);
   font-weight: 500;
+}
+
+.settings-section-body {
+  min-width: 0;
+}
+
+.settings-desc {
+  margin-bottom: var(--space-md);
+  font-size: var(--font-size-sm);
+  line-height: 20px;
+  color: var(--text-secondary);
 }
 
 .settings-avatar-row {
   display: flex;
   align-items: center;
   gap: var(--space-lg);
-  flex-wrap: wrap;
 }
 
-.settings-avatar-preview {
-  width: 96px;
-  height: 96px;
-  border-radius: var(--radius-full);
-  object-fit: cover;
-  font-family: var(--font-display);
-  font-size: 2.25rem;
+.settings-avatar {
+  width: 88px;
+  height: 88px;
   flex-shrink: 0;
-  box-shadow: 0 0 0 4px var(--bg-card), 0 0 0 6px var(--accent-border);
+  border-radius: 50%;
+  object-fit: cover;
+  font-size: 2.25rem;
 }
 
-.settings-avatar-hint {
-  margin: 0.5rem 0 0;
+.settings-avatar-btn {
+  margin-left: -12px;
+  padding: 0 12px;
 }
 
-.settings-error {
-  margin: var(--space-md) 0;
+.settings-info-list > div {
+  display: grid;
+  grid-template-columns: 160px minmax(0, 1fr);
+  gap: var(--space-md);
+  padding: 12px 0;
+  font-size: var(--font-size-sm);
 }
 
-@media (max-width: 576px) {
-  .settings-card {
-    padding: var(--space-lg);
+.settings-info-list > div + div {
+  border-top: 1px solid var(--border-color);
+}
+
+.settings-info-list > div:first-child {
+  padding-top: 0;
+}
+
+.settings-info-list dt {
+  color: var(--text-secondary);
+}
+
+.settings-info-list dd {
+  overflow-wrap: anywhere;
+}
+
+.settings-link {
+  color: var(--accent-primary);
+}
+
+.settings-linked-status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: var(--font-size-sm);
+}
+
+.settings-linked-status svg {
+  flex-shrink: 0;
+  font-size: 1.25rem;
+  color: var(--success);
+}
+
+/* ── Tab giao diện ── */
+.settings-radio-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+
+.settings-radio {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 40px;
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+}
+
+.settings-radio input {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--text-primary);
+  cursor: pointer;
+}
+
+.settings-select {
+  max-width: 320px;
+}
+
+@media (max-width: 1000px) {
+  .settings-page {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-md);
   }
+
+  .settings-nav {
+    position: static;
+    flex-direction: row;
+    gap: var(--space-sm);
+    overflow-x: auto;
+  }
+
+  .settings-nav-title {
+    display: none;
+  }
+
+  .settings-nav-item {
+    width: auto;
+  }
+}
+
+@media (max-width: 640px) {
+  .settings-page {
+    padding: var(--space-md) var(--space-md) var(--space-2xl);
+  }
+
+  .settings-section {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .settings-info-list > div {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+}
+
+.settings-section-body .google-signin-button {
+  justify-content: flex-start;
+  width: fit-content;
 }

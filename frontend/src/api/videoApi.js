@@ -32,8 +32,9 @@ export const videoApi = {
   getPlaybackAuth: (id) =>
     axiosClient.get(`/videos/${id}/playback-auth`),
 
-  getUserVideos: (userId, page = 1, limit = 12) =>
-    axiosClient.get(`/videos/user/${userId}`, { params: { page, limit } }),
+  /** sort: 'latest' (mặc định) | 'popular' | 'oldest' */
+  getUserVideos: (userId, page = 1, limit = 12, sort = 'latest') =>
+    axiosClient.get(`/videos/user/${userId}`, { params: { page, limit, sort } }),
 
   toggleLike: (id) =>
     axiosClient.post(`/videos/${id}/like`),

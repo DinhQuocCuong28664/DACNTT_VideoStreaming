@@ -1,158 +1,141 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { FiInbox, FiUploadCloud } from 'react-icons/fi';
+import { MdOutlineVideoLibrary, MdOutlineSearchOff, MdErrorOutline } from 'react-icons/md';
 import videoApi from '../api/videoApi';
 import VideoCard from '../components/Video/VideoCard';
-import { CATEGORIES, ALL_CATEGORY, categoryLabel } from '../i18n/categories';
+import { SkeletonCard, LoadMoreFooter } from '../components/Video/VideoListParts';
+import useInfiniteList from '../hooks/useInfiniteList';
+import { CATEGORIES, ALL_CATEGORY } from '../i18n/categories';
 import './HomePage.css';
 
-const SKELETON_COUNT = 8;
+const PAGE_SIZE = 12;
 
+/**
+ * Trang chủ kiểu YouTube: hàng chip lọc dính dưới thanh trên, lưới thẻ phẳng
+ * và cuộn vô hạn thay cho phân trang số (xem useInfiniteList). Khi có từ khoá
+ * tìm kiếm, lưới đổi thành danh sách hàng ngang như trang kết quả của YouTube.
+ */
 const HomePage = () => {
   const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [videos, setVideos] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(1);
-  const [pagination, setPagination] = useState(null);
 
   const selectedCategory = searchParams.get('category') || ALL_CATEGORY;
   const searchQuery = searchParams.get('q') || '';
+  const isSearch = Boolean(searchQuery);
 
+  const fetchPage = useCallback(
+    async (page) => {
+      const res = await videoApi.getAllVideos({
+        page,
+        limit: PAGE_SIZE,
+        category: selectedCategory !== ALL_CATEGORY ? selectedCategory : undefined,
+        q: searchQuery || undefined,
+      });
+      const { videos, pagination } = res.data.data;
+      return { items: videos, pages: pagination?.pages, total: pagination?.total };
+    },
+    [selectedCategory, searchQuery],
+  );
+
+  const list = useInfiniteList(fetchPage);
+
+  // Đổi bộ lọc hay từ khoá thì quay về đầu trang.
   useEffect(() => {
-    const fetchVideos = async () => {
-      setLoading(true);
-      try {
-        const params = {
-          page,
-          limit: 12,
-          category: selectedCategory !== ALL_CATEGORY ? selectedCategory : undefined,
-          q: searchQuery || undefined,
-        };
-
-        const res = await videoApi.getAllVideos(params);
-        setVideos(res.data.data.videos);
-        setPagination(res.data.data.pagination);
-      } catch (err) {
-        console.error('Failed to load videos:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchVideos();
-  }, [page, selectedCategory, searchQuery]);
+    window.scrollTo({ top: 0 });
+  }, [fetchPage]);
 
   const handleCategorySelect = (cat) => {
-    setPage(1);
-    const newParams = new URLSearchParams(searchParams);
-    if (cat === ALL_CATEGORY) {
-      newParams.delete('category');
-    } else {
-      newParams.set('category', cat);
-    }
-    setSearchParams(newParams);
+    const next = new URLSearchParams(searchParams);
+    if (cat === ALL_CATEGORY) next.delete('category');
+    else next.set('category', cat);
+    setSearchParams(next);
   };
 
-  const sectionTitle = searchQuery
-    ? t('home.resultsFor', { query: searchQuery })
-    : selectedCategory !== ALL_CATEGORY
-      ? categoryLabel(t, selectedCategory)
-      : t('home.latest');
+  const isFiltered = isSearch || selectedCategory !== ALL_CATEGORY;
+  const listClass = isSearch ? 'video-list' : 'video-grid';
 
-  /**
-   * Trạng thái rỗng nói đúng nguyên nhân thay vì một câu chung chung.
-   * Khi người dùng vừa tìm kiếm mà không ra kết quả, gợi ý "thử từ khóa khác"
-   * mới có ích; còn khi thư viện thật sự chưa có video nào thì lời khuyên đó
-   * vô nghĩa, cái họ cần là nút tải video lên.
-   */
-  const isFiltered = Boolean(searchQuery) || selectedCategory !== ALL_CATEGORY;
-
-  return (
-    <div className="container home-page">
-      <header className="home-hero">
-        <span className="section-label is-live">{t('home.libraryLabel')}</span>
-        <div className="home-section-header">
-          <h2 className="home-section-title display-heading">{sectionTitle}</h2>
-          {!loading && pagination?.total > 0 && (
-            <span className="home-section-count">
-              {t('home.videoCount', { count: pagination.total })}
-            </span>
-          )}
-        </div>
-      </header>
-
-      <div className="category-bar" role="tablist" aria-label={t('home.filterByCategory')}>
-        {CATEGORIES.map((cat) => (
-          <button
-            key={cat.value}
-            role="tab"
-            aria-selected={selectedCategory === cat.value}
-            className={`category-pill ${selectedCategory === cat.value ? 'active' : ''}`}
-            onClick={() => handleCategorySelect(cat.value)}
-          >
-            {t(`categories.${cat.key}`)}
-          </button>
+  let body;
+  if (list.status === 'loading') {
+    body = (
+      <div className={listClass}>
+        {Array.from({ length: isSearch ? 4 : 8 }).map((_, i) => (
+          <SkeletonCard key={i} row={isSearch} />
         ))}
       </div>
-
-      {loading ? (
-        <div className="video-grid">
-          {Array.from({ length: SKELETON_COUNT }).map((_, i) => (
-            <div key={i} className="skeleton-card">
-              <div className="skeleton skeleton-thumb" />
-              <div className="skeleton-card-body">
-                <div className="skeleton skeleton-avatar" />
-                <div className="skeleton-lines">
-                  <div className="skeleton skeleton-line" />
-                  <div className="skeleton skeleton-line short" />
-                </div>
-              </div>
-            </div>
+    );
+  } else if (list.status === 'error' && list.items.length === 0) {
+    body = (
+      <div className="empty-state">
+        <MdErrorOutline className="empty-state-icon" aria-hidden="true" />
+        <p className="empty-state-title">{t('home.loadErrorTitle')}</p>
+        <button type="button" className="btn btn-secondary" onClick={list.retry}>
+          {t('home.retry')}
+        </button>
+      </div>
+    );
+  } else if (list.items.length === 0) {
+    body = (
+      <div className="empty-state">
+        {isFiltered ? (
+          <MdOutlineSearchOff className="empty-state-icon" aria-hidden="true" />
+        ) : (
+          <MdOutlineVideoLibrary className="empty-state-icon" aria-hidden="true" />
+        )}
+        <p className="empty-state-title">
+          {isFiltered ? t('home.emptyFilteredTitle') : t('home.emptyTitle')}
+        </p>
+        <p className="empty-state-desc">
+          {isFiltered ? t('home.emptyFilteredDesc') : t('home.emptyDesc')}
+        </p>
+        {!isFiltered && (
+          <Link to="/upload" className="btn btn-primary">
+            {t('home.emptyAction')}
+          </Link>
+        )}
+      </div>
+    );
+  } else {
+    body = (
+      <>
+        <div className={listClass}>
+          {list.items.map((video) => (
+            <VideoCard key={video._id} video={video} variant={isSearch ? 'row' : 'grid'} />
           ))}
+          {list.status === 'loadingMore' &&
+            Array.from({ length: isSearch ? 2 : 4 }).map((_, i) => (
+              <SkeletonCard key={`more-${i}`} row={isSearch} />
+            ))}
         </div>
-      ) : videos.length > 0 ? (
-        <>
-          <div className="video-grid video-grid-enter">
-            {videos.map((video) => (
-              <VideoCard key={video._id} video={video} />
+        <LoadMoreFooter list={list} />
+      </>
+    );
+  }
+
+  return (
+    <div className={`home-page ${isSearch ? 'home-page-search' : ''}`}>
+      {isSearch ? (
+        <h1 className="home-results-heading">{t('home.resultsFor', { query: searchQuery })}</h1>
+      ) : (
+        <div className="chip-bar">
+          <div className="chip-bar-scroll" role="tablist" aria-label={t('home.filterByCategory')}>
+            {CATEGORIES.map((cat) => (
+              <button
+                key={cat.value}
+                type="button"
+                role="tab"
+                aria-selected={selectedCategory === cat.value}
+                className="chip"
+                onClick={() => handleCategorySelect(cat.value)}
+              >
+                {t(`categories.${cat.key}`)}
+              </button>
             ))}
           </div>
-
-          {pagination && pagination.pages > 1 && (
-            <nav className="pagination" aria-label={t('home.pagination')}>
-              {Array.from({ length: pagination.pages }).map((_, i) => (
-                <button
-                  key={i}
-                  className={`btn ${page === i + 1 ? 'btn-primary' : 'btn-secondary'}`}
-                  aria-current={page === i + 1 ? 'page' : undefined}
-                  onClick={() => setPage(i + 1)}
-                >
-                  {i + 1}
-                </button>
-              ))}
-            </nav>
-          )}
-        </>
-      ) : (
-        <div className="empty-state">
-          <div className="empty-state-icon">
-            <FiInbox />
-          </div>
-          <p className="empty-state-title">
-            {isFiltered ? t('home.emptyFilteredTitle') : t('home.emptyTitle')}
-          </p>
-          <p className="empty-state-desc">
-            {isFiltered ? t('home.emptyFilteredDesc') : t('home.emptyDesc')}
-          </p>
-          {!isFiltered && (
-            <Link to="/upload" className="btn btn-primary empty-state-action">
-              <FiUploadCloud /> {t('home.emptyAction')}
-            </Link>
-          )}
         </div>
       )}
+
+      {body}
     </div>
   );
 };

@@ -1,16 +1,30 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useParams, Link, Navigate } from 'react-router-dom';
+import { useParams, Link, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { FiEye, FiClock, FiShare2, FiUser, FiThumbsUp, FiThumbsDown, FiMessageSquare, FiTrash2 } from 'react-icons/fi';
+import {
+  MdOutlineThumbUp,
+  MdThumbUp,
+  MdOutlineThumbDown,
+  MdThumbDown,
+  MdOutlineShare,
+  MdCheck,
+  MdMoreVert,
+  MdErrorOutline,
+  MdOutlineDelete,
+} from 'react-icons/md';
+import Avatar from '../components/Common/Avatar';
 import { useAuth } from '../context/useAuth';
 import videoApi from '../api/videoApi';
 import VideoPlayer from '../components/Video/VideoPlayer';
 import VideoCard from '../components/Video/VideoCard';
+import { formatViews, formatDate, timeAgo } from '../utils/format';
 import './WatchPage.css';
 
 const WatchPage = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { id } = useParams();
+  const navigate = useNavigate();
+  const location = useLocation();
   const { user: currentUser, isAuthenticated } = useAuth();
   const [video, setVideo] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -29,18 +43,25 @@ const WatchPage = () => {
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState('');
   const [postingComment, setPostingComment] = useState(false);
+  const [composerFocused, setComposerFocused] = useState(false);
+  const [openCommentMenu, setOpenCommentMenu] = useState(null);
 
   // Related videos state
   const [relatedVideos, setRelatedVideos] = useState([]);
+  const [relatedFilter, setRelatedFilter] = useState('all');
+
+  const [descExpanded, setDescExpanded] = useState(false);
 
   useEffect(() => {
     const fetchVideoAndComments = async () => {
       setLoading(true);
+      setDescExpanded(false);
+      setRelatedFilter('all');
       try {
         const [videoRes, commentsRes, relatedRes] = await Promise.all([
           videoApi.getVideoById(id),
           videoApi.getComments(id),
-          videoApi.getRelatedVideos(id, 6).catch(() => ({ data: { data: { videos: [] } } })),
+          videoApi.getRelatedVideos(id, 10).catch(() => ({ data: { data: { videos: [] } } })),
         ]);
 
         const v = videoRes.data.data.video;
@@ -107,6 +128,22 @@ const WatchPage = () => {
     return () => clearInterval(interval);
   }, [id, video?.status]);
 
+  // Đóng menu ba chấm của bình luận khi bấm ra ngoài hoặc nhấn Esc.
+  useEffect(() => {
+    if (!openCommentMenu) return undefined;
+    const close = (e) => {
+      if (e.type === 'keydown' && e.key !== 'Escape') return;
+      if (e.type === 'mousedown' && e.target.closest('.comment-menu')) return;
+      setOpenCommentMenu(null);
+    };
+    document.addEventListener('mousedown', close);
+    document.addEventListener('keydown', close);
+    return () => {
+      document.removeEventListener('mousedown', close);
+      document.removeEventListener('keydown', close);
+    };
+  }, [openCommentMenu]);
+
   /**
    * Được trình phát gọi một lần sau khi video đã phát đủ ngưỡng thời gian.
    * Lỗi ở đây không cần hiển thị cho người dùng vì việc đếm lượt xem
@@ -137,8 +174,12 @@ const WatchPage = () => {
     await videoApi.getPlaybackAuth(id);
   }, [id]);
 
+  /* Khách bấm thích, không thích hay bình luận: đưa sang trang đăng nhập rồi
+     quay lại đúng video này, thay vì hộp thoại alert của trình duyệt. */
+  const goToLogin = () => navigate('/login', { state: { from: location.pathname } });
+
   const handleLike = async () => {
-    if (!isAuthenticated) return alert(t('watch.loginToLike'));
+    if (!isAuthenticated) return goToLogin();
     try {
       const res = await videoApi.toggleLike(id);
       setLikesCount(res.data.data.likesCount);
@@ -151,7 +192,7 @@ const WatchPage = () => {
   };
 
   const handleDislike = async () => {
-    if (!isAuthenticated) return alert(t('watch.loginToDislike'));
+    if (!isAuthenticated) return goToLogin();
     try {
       const res = await videoApi.toggleDislike(id);
       setLikesCount(res.data.data.likesCount);
@@ -166,13 +207,14 @@ const WatchPage = () => {
   const handleAddComment = async (e) => {
     e.preventDefault();
     if (!newComment.trim()) return;
-    if (!isAuthenticated) return alert(t('watch.loginToComment'));
+    if (!isAuthenticated) return goToLogin();
 
     setPostingComment(true);
     try {
       const res = await videoApi.addComment(id, newComment.trim());
       setComments([res.data.data.comment, ...comments]);
       setNewComment('');
+      setComposerFocused(false);
     } catch (err) {
       console.error('Failed to post comment:', err);
     } finally {
@@ -181,6 +223,7 @@ const WatchPage = () => {
   };
 
   const handleDeleteComment = async (commentId) => {
+    setOpenCommentMenu(null);
     if (!window.confirm(t('watch.confirmDeleteComment'))) return;
     try {
       await videoApi.deleteComment(commentId);
@@ -196,26 +239,16 @@ const WatchPage = () => {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const formatDate = (dateStr) => {
-    return new Date(dateStr).toLocaleDateString('vi-VN', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
-  };
-
-  const formatViews = (views) => {
-    if (views >= 1000000) return `${(views / 1000000).toFixed(1)}M`;
-    if (views >= 1000) return `${(views / 1000).toFixed(1)}K`;
-    return views;
-  };
-
   if (loading) {
     return (
       <div className="container watch-page">
-        <div className="skeleton skeleton-thumb watch-skeleton-player" />
-        <div className="skeleton watch-skeleton-title" />
-        <div className="skeleton watch-skeleton-meta" />
+        <div className="watch-layout">
+          <div className="watch-main">
+            <div className="skeleton skeleton-thumb watch-skeleton-player" />
+            <div className="skeleton watch-skeleton-title" />
+            <div className="skeleton watch-skeleton-meta" />
+          </div>
+        </div>
       </div>
     );
   }
@@ -225,8 +258,19 @@ const WatchPage = () => {
   }
 
   const user = video.user || {};
+  const channelName = user.displayName || user.username;
   const videoSrc = video.hlsUrl || null;
   const isReady = video.status === 'READY' && videoSrc && playbackReady;
+  const locale = i18n.resolvedLanguage === 'en' ? 'en-US' : 'vi-VN';
+
+  const canDelete = (c) =>
+    currentUser && (currentUser._id === c.user?._id || currentUser._id === user._id);
+
+  const fromChannel = relatedVideos.filter((v) => v.user?._id === user._id);
+  const shownRelated = relatedFilter === 'channel' ? fromChannel : relatedVideos;
+
+  const description = video.description || '';
+  const collapsible = description.length > 220 || description.split('\n').length > 3;
 
   return (
     <div className="container watch-page">
@@ -243,149 +287,236 @@ const WatchPage = () => {
               onAuthExpired={handleAuthExpired}
             />
           ) : (
-        <div className="player-placeholder">
-          {video.status === 'PROCESSING' ? (
-            <>
-              <div className="spinner" />
-              <p>{t('watch.transcoding')}</p>
-              <span className="badge badge-processing">PROCESSING</span>
-            </>
-          ) : video.status === 'ERROR' ? (
-            <>
-              <p className="player-placeholder-error">{t('watch.processingFailed')}</p>
-              <span className="badge badge-error">ERROR</span>
-            </>
-          ) : (
-            <>
-              <p>{t('watch.queued')}</p>
-              <span className="badge badge-processing">UPLOADING</span>
-            </>
-          )}
-        </div>
-      )}
-
-      {/* Thông tin video */}
-      <div className="watch-info">
-        <h1 className="watch-title">{video.title}</h1>
-
-        <div className="watch-meta-row">
-          <div className="watch-stats">
-            <span>
-              <FiEye /> {t('watch.views', { value: formatViews(video.views) })}
-            </span>
-            <span aria-hidden="true">•</span>
-            <span>
-              <FiClock /> {formatDate(video.createdAt)}
-            </span>
-          </div>
-
-          <div className="watch-actions">
-            <button
-              className={`btn ${hasLiked ? 'btn-primary' : 'btn-secondary'}`}
-              onClick={handleLike}
-              aria-pressed={hasLiked}
-            >
-              <FiThumbsUp /> {likesCount}
-            </button>
-            <button
-              className={`btn ${hasDisliked ? 'btn-primary' : 'btn-secondary'}`}
-              onClick={handleDislike}
-              aria-pressed={hasDisliked}
-            >
-              <FiThumbsDown /> {dislikesCount}
-            </button>
-            <button className="btn btn-secondary" onClick={handleShare}>
-              <FiShare2 /> {copied ? t('watch.copied') : t('watch.share')}
-            </button>
-          </div>
-        </div>
-
-        {/* Kênh */}
-        <Link to={`/channel/${user._id}`} className="channel-card">
-          {user.avatar ? (
-            <img src={user.avatar} alt="" className="channel-avatar" />
-          ) : (
-            <div className="channel-avatar channel-avatar-fallback">
-              {user.username?.charAt(0).toUpperCase() || <FiUser />}
+            <div className="player-placeholder">
+              {video.status === 'ERROR' ? (
+                <>
+                  <MdErrorOutline className="player-placeholder-icon" aria-hidden="true" />
+                  <p>{t('watch.processingFailed')}</p>
+                </>
+              ) : (
+                <>
+                  <div className="spinner" />
+                  <p>{video.status === 'PROCESSING' ? t('watch.transcoding') : t('watch.queued')}</p>
+                </>
+              )}
             </div>
           )}
-          <div>
-            <p className="channel-name">{user.displayName || user.username}</p>
-            <p className="channel-handle">@{user.username}</p>
-          </div>
-        </Link>
 
-        {/* Mô tả */}
-        {video.description && (
-          <div className="watch-description">{video.description}</div>
-        )}
-      </div>
+          <h1 className="watch-title">{video.title}</h1>
 
-      {/* Bình luận */}
-      <section className="comments-section">
-        <h3 className="comments-heading">
-          <FiMessageSquare /> {t('watch.commentsHeading', { count: comments.length })}
-        </h3>
+          {/* Hàng kênh và nút thao tác. Dự án không có tính năng đăng ký kênh,
+              nên không có nút Subscribe như YouTube. */}
+          <div className="watch-owner-row">
+            <Link to={`/channel/${user._id}`} className="watch-owner">
+              <Avatar
+                src={user.avatar}
+                className="watch-owner-avatar"
+                fallbackClassName="avatar-placeholder watch-owner-avatar"
+              >
+                {user.username?.charAt(0).toUpperCase() || '?'}
+              </Avatar>
+              <div className="watch-owner-text">
+                <p className="watch-owner-name">{channelName}</p>
+                <p className="watch-owner-handle">@{user.username}</p>
+              </div>
+            </Link>
 
-          {isAuthenticated ? (
-            <form onSubmit={handleAddComment} className="comment-form">
-              <input
-                type="text"
-                className="form-control"
-                placeholder={t('watch.commentPlaceholder')}
-                value={newComment}
-                onChange={(e) => setNewComment(e.target.value)}
-                aria-label={t('watch.commentAriaLabel')}
-              />
-              <button type="submit" className="btn btn-primary" disabled={postingComment}>
-                {postingComment ? t('watch.commentSubmitting') : t('watch.commentSubmit')}
+            <div className="watch-actions">
+              <div className="segmented-pill">
+                <button
+                  type="button"
+                  onClick={handleLike}
+                  aria-pressed={hasLiked}
+                  aria-label={t('watch.like')}
+                  title={t('watch.like')}
+                >
+                  {hasLiked ? <MdThumbUp /> : <MdOutlineThumbUp />}
+                  <span className="tabular-nums">{formatViews(likesCount)}</span>
+                </button>
+                <span className="segmented-divider" aria-hidden="true" />
+                <button
+                  type="button"
+                  onClick={handleDislike}
+                  aria-pressed={hasDisliked}
+                  aria-label={t('watch.dislike')}
+                  title={t('watch.dislike')}
+                >
+                  {hasDisliked ? <MdThumbDown /> : <MdOutlineThumbDown />}
+                  {dislikesCount > 0 && (
+                    <span className="tabular-nums">{formatViews(dislikesCount)}</span>
+                  )}
+                </button>
+              </div>
+
+              <button type="button" className="btn btn-secondary" onClick={handleShare}>
+                {copied ? <MdCheck /> : <MdOutlineShare />}
+                <span>{copied ? t('watch.copied') : t('watch.share')}</span>
               </button>
-            </form>
-          ) : (
-            <p className="comment-login-hint">
-              <Link to="/login">{t('nav.login')}</Link> {t('watch.loginPrompt')}
-            </p>
-          )}
-
-          <div className="comment-list">
-            {comments.map((c) => (
-              <article key={c._id} className="comment-item">
-                <div className="comment-avatar">
-                  {c.user?.username?.charAt(0).toUpperCase() || 'U'}
-                </div>
-                <div className="comment-body">
-                  <div className="comment-head">
-                    <span className="comment-author">
-                      {c.user?.displayName || c.user?.username}
-                    </span>
-                    {currentUser &&
-                      (currentUser._id === c.user?._id || currentUser._id === user._id) && (
-                        <button
-                          type="button"
-                          className="comment-delete"
-                          onClick={() => handleDeleteComment(c._id)}
-                          title={t('watch.deleteComment')}
-                          aria-label={t('watch.deleteComment')}
-                        >
-                          <FiTrash2 size={14} />
-                        </button>
-                      )}
-                  </div>
-                  <p className="comment-text">{c.content}</p>
-                </div>
-              </article>
-            ))}
+            </div>
           </div>
-        </section>
+
+          {/* Hộp mô tả xám: dòng đầu là lượt xem và ngày đăng; mô tả dài thì
+              thu gọn còn ba dòng, bấm vào hộp để mở rộng như YouTube. */}
+          <div
+            className={`watch-description${descExpanded ? ' is-expanded' : ''}${collapsible ? ' is-collapsible' : ''}`}
+            onClick={() => collapsible && !descExpanded && setDescExpanded(true)}
+          >
+            <p className="watch-description-meta">
+              <span>{t('watch.viewsFull', { value: Number(video.views || 0).toLocaleString(locale) })}</span>
+              <span>{formatDate(i18n.resolvedLanguage, video.createdAt)}</span>
+            </p>
+            {description && <div className="watch-description-text">{description}</div>}
+            {collapsible && (
+              <button
+                type="button"
+                className="watch-description-toggle"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setDescExpanded((v) => !v);
+                }}
+                aria-expanded={descExpanded}
+              >
+                {descExpanded ? t('watch.showLess') : t('watch.showMore')}
+              </button>
+            )}
+          </div>
+
+          {/* Bình luận */}
+          <section className="comments-section" aria-labelledby="comments-heading">
+            <h2 id="comments-heading" className="comments-heading">
+              {t('watch.commentsHeading', { count: comments.length })}
+            </h2>
+
+            {isAuthenticated ? (
+              <form onSubmit={handleAddComment} className="comment-form">
+                <Avatar
+                  src={currentUser?.avatar}
+                  className="comment-avatar"
+                  fallbackClassName="avatar-placeholder comment-avatar"
+                >
+                  {currentUser?.username?.charAt(0).toUpperCase()}
+                </Avatar>
+                <div className="comment-form-body">
+                  <input
+                    type="text"
+                    className="comment-input"
+                    placeholder={t('watch.commentPlaceholder')}
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    onFocus={() => setComposerFocused(true)}
+                    aria-label={t('watch.commentAriaLabel')}
+                  />
+                  {(composerFocused || newComment) && (
+                    <div className="comment-form-actions">
+                      <button
+                        type="button"
+                        className="btn btn-plain"
+                        onClick={() => {
+                          setNewComment('');
+                          setComposerFocused(false);
+                        }}
+                      >
+                        {t('common.cancel')}
+                      </button>
+                      <button
+                        type="submit"
+                        className="btn btn-primary"
+                        disabled={postingComment || !newComment.trim()}
+                      >
+                        {postingComment ? t('watch.commentSubmitting') : t('watch.commentSubmit')}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </form>
+            ) : (
+              <p className="comment-login-hint">
+                <Link to="/login" state={{ from: location.pathname }}>
+                  {t('nav.login')}
+                </Link>{' '}
+                {t('watch.loginPrompt')}
+              </p>
+            )}
+
+            <div className="comment-list">
+              {comments.map((c) => (
+                <article key={c._id} className="comment-item">
+                  <Avatar
+                    src={c.user?.avatar}
+                    className="comment-avatar"
+                    fallbackClassName="avatar-placeholder comment-avatar"
+                  >
+                    {c.user?.username?.charAt(0).toUpperCase() || '?'}
+                  </Avatar>
+                  <div className="comment-body">
+                    <p className="comment-head">
+                      <Link to={`/channel/${c.user?._id}`} className="comment-author">
+                        @{c.user?.username}
+                      </Link>
+                      {c.createdAt && <span className="comment-time">{timeAgo(t, c.createdAt)}</span>}
+                    </p>
+                    <p className="comment-text">{c.content}</p>
+                  </div>
+                  {canDelete(c) && (
+                    <div className="comment-menu">
+                      <button
+                        type="button"
+                        className="btn-icon comment-menu-trigger"
+                        onClick={() => setOpenCommentMenu(openCommentMenu === c._id ? null : c._id)}
+                        aria-label={t('watch.commentActions')}
+                        aria-expanded={openCommentMenu === c._id}
+                        aria-haspopup="menu"
+                      >
+                        <MdMoreVert />
+                      </button>
+                      {openCommentMenu === c._id && (
+                        <div className="menu-panel comment-menu-panel" role="menu">
+                          <button
+                            type="button"
+                            className="dropdown-item"
+                            onClick={() => handleDeleteComment(c._id)}
+                          >
+                            <MdOutlineDelete />
+                            <span>{t('watch.deleteComment')}</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </article>
+              ))}
+            </div>
+          </section>
         </div>
 
-        {/* Cột video đề xuất bên phải */}
+        {/* Cột phải: video tiếp theo */}
         {relatedVideos.length > 0 && (
-          <aside className="watch-sidebar">
-            <h3 className="watch-sidebar-heading section-label">{t('watch.relatedVideos')}</h3>
+          <aside className="watch-sidebar" aria-label={t('watch.relatedVideos')}>
+            {fromChannel.length > 0 && (
+              <div className="watch-sidebar-chips" role="tablist">
+                <button
+                  type="button"
+                  role="tab"
+                  className="chip"
+                  aria-selected={relatedFilter === 'all'}
+                  onClick={() => setRelatedFilter('all')}
+                >
+                  {t('categories.all')}
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  className="chip"
+                  aria-selected={relatedFilter === 'channel'}
+                  onClick={() => setRelatedFilter('channel')}
+                >
+                  {t('watch.fromChannel', { name: channelName })}
+                </button>
+              </div>
+            )}
             <div className="watch-sidebar-list">
-              {relatedVideos.map((item) => (
-                <VideoCard key={item._id} video={item} />
+              {shownRelated.map((item) => (
+                <VideoCard key={item._id} video={item} variant="compact" />
               ))}
             </div>
           </aside>
@@ -396,4 +527,3 @@ const WatchPage = () => {
 };
 
 export default WatchPage;
-

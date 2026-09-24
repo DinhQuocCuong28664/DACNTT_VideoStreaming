@@ -1,0 +1,11 @@
+/* Khung trang 404, 403 và màn hình lỗi ứng dụng nằm ở index.css (.status-*).
+   Tệp này chỉ thêm phần riêng của linh vật. */
+
+.status-mascot {
+  display: flex;
+  justify-content: center;
+  width: 240px;
+  height: 240px;
+  align-items: center;
+  margin-bottom: var(--space-md);
+}

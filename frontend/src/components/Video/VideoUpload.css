@@ -1,131 +1,192 @@
-/* ── Trang tải video lên ── */
+/* ── Tải lên kiểu hộp thoại YouTube Studio ──
+   Một tấm panel 960 px ở giữa vùng nội dung, dùng lại khung .dialog chung
+   (tiêu đề, thân, chân) trong index.css. */
 
-.upload-container {
-  padding-top: var(--space-2xl);
-  padding-bottom: var(--space-3xl);
-  max-width: 760px;
+.upload-page {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-lg) var(--space-lg) var(--space-3xl);
 }
 
-.upload-title {
-  font-size: clamp(2.25rem, 5vw, 3.25rem);
+.upload-panel {
+  max-width: 960px;
+  max-height: none;
+  min-height: min(640px, calc(100dvh - var(--navbar-height) - 2 * var(--space-lg)));
+  border: 1px solid var(--border-color);
+  box-shadow: none;
+}
+
+[data-theme='dark'] .upload-panel {
+  border-color: transparent;
 }
 
 .upload-error {
-  margin-bottom: var(--space-md);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-sm);
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-size: var(--font-size-sm);
+  line-height: 20px;
+  text-align: left;
 }
 
-/* ── Bước 1: vùng thả tệp ── */
+.upload-error svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  font-size: 1rem;
+}
+
+/* ── Bước 1 ── */
 .upload-dropzone {
-  position: relative;
-  overflow: hidden;
+  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: var(--space-sm);
+  padding: var(--space-2xl) var(--space-lg);
   text-align: center;
-  min-height: 340px;
-  padding: var(--space-2xl);
-  border: 2px dashed var(--border-hover);
-  border-radius: var(--radius-xl);
-  background:
-    radial-gradient(circle at 50% 0%, var(--accent-soft), transparent 65%),
-    var(--bg-card);
   cursor: pointer;
-  transition: border-color var(--transition-base), box-shadow var(--transition-base),
-    transform var(--transition-base);
+  outline: none;
+  transition: background-color var(--transition-fast);
 }
 
-.upload-dropzone:hover {
-  border-color: var(--accent-primary);
-  box-shadow: var(--shadow-xl);
-  transform: translateY(-2px);
+.upload-dropzone:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--ring);
 }
 
-.dropzone-icon-tile {
+.upload-dropzone.is-dragging {
+  background: var(--accent-soft);
+}
+
+.upload-dropzone .upload-error {
+  margin-bottom: var(--space-md);
+}
+
+.dropzone-circle {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 72px;
-  height: 72px;
-  margin-bottom: var(--space-lg);
-  border-radius: 20px;
-  background: var(--accent-gradient);
-  box-shadow: var(--shadow-accent-lg);
-  transition: transform var(--transition-base);
+  width: 136px;
+  height: 136px;
+  margin-bottom: var(--space-md);
+  border-radius: 50%;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  font-size: 4rem;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
 }
 
-.upload-dropzone:hover .dropzone-icon-tile {
-  transform: scale(1.08) translateY(-2px);
-}
-
-.dropzone-icon {
-  font-size: 2rem;
-  color: #ffffff;
+.upload-dropzone.is-dragging .dropzone-circle {
+  background: var(--accent-soft);
+  color: var(--accent-primary);
 }
 
 .dropzone-text {
-  font-size: var(--font-size-lg);
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  color: var(--text-primary);
-  margin-bottom: var(--space-xs);
+  font-size: var(--font-size-base);
+}
+
+.dropzone-sub {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+
+.dropzone-btn {
+  margin-top: var(--space-lg);
 }
 
 .dropzone-hint {
-  font-family: var(--font-mono);
+  margin-top: var(--space-2xl);
   font-size: var(--font-size-xs);
-  letter-spacing: 0.08em;
-  color: var(--text-muted);
+  color: var(--text-secondary);
 }
 
-/* ── Bước 2: thông tin video ── */
-.upload-form-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-xl);
-  padding: var(--space-xl);
-  box-shadow: var(--shadow-lg);
-}
-
-.upload-file-info {
+/* ── Stepper bước 2 ── */
+.upload-stepper {
   display: flex;
-  align-items: center;
-  gap: var(--space-md);
-  padding: 0.75rem var(--space-md);
-  background: var(--bg-tertiary);
-  border-radius: var(--radius-lg);
-  margin-bottom: var(--space-xl);
+  justify-content: center;
+  gap: 0;
+  list-style: none;
+  padding: var(--space-md) var(--space-lg) 0;
 }
 
-.upload-file-icon {
+.upload-step {
+  position: relative;
+  flex: 0 1 200px;
+}
+
+/* Đường nối giữa hai chấm */
+.upload-step + .upload-step::before {
+  content: '';
+  position: absolute;
+  left: -50%;
+  right: 50%;
+  bottom: 11px;
+  height: 2px;
+  background: var(--border-color);
+}
+
+.upload-step.is-active + .upload-step::before,
+.upload-step.is-done + .upload-step::before {
+  background: var(--text-primary);
+}
+
+.upload-step button {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.upload-step.is-active button,
+.upload-step.is-done button {
+  color: var(--text-primary);
+}
+
+/* Chấm nằm trên đường nối: ::before của bước sau vẽ sau trong DOM nên cần
+   z-index để không đè lên chấm của bước trước. */
+.upload-step-dot {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
-  flex-shrink: 0;
-  border-radius: var(--radius-md);
-  background: var(--accent-gradient);
-  color: #ffffff;
-  font-size: 1.25rem;
-  box-shadow: var(--shadow-accent);
-}
-
-.file-name {
-  font-weight: 600;
-  font-size: var(--font-size-sm);
-  color: var(--text-primary);
-  word-break: break-all;
-}
-
-.file-size {
-  font-family: var(--font-mono);
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid var(--border-hover);
+  background: var(--bg-secondary);
   font-size: var(--font-size-xs);
-  color: var(--text-muted);
 }
 
-.upload-file-info .btn-icon {
-  margin-left: auto;
+.upload-step.is-active .upload-step-dot {
+  border-color: var(--text-primary);
+}
+
+.upload-step.is-done .upload-step-dot {
+  border-color: var(--text-primary);
+  background: var(--text-primary);
+  color: var(--bg-secondary);
+}
+
+/* ── Thân bước 2 và 3: biểu mẫu trái, xem trước phải ── */
+.upload-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: var(--space-lg);
+  align-items: start;
 }
 
 .upload-form {
@@ -134,120 +195,161 @@
   gap: var(--space-lg);
 }
 
-.form-row {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: var(--space-md);
+.upload-section-title {
+  font-size: var(--font-size-xl);
+  font-weight: 700;
 }
 
-.upload-submit {
-  width: 100%;
-  min-height: 56px;
-  font-size: var(--font-size-base);
-  margin-top: var(--space-sm);
-}
-
-/* ── Bước 3: đang tải lên ── */
-.upload-progress-card {
-  position: relative;
+.upload-preview {
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
   overflow: hidden;
+}
+
+.upload-preview-frame {
+  position: relative;
+  aspect-ratio: 16 / 9;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 3.5rem var(--space-xl);
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-xl);
-  text-align: center;
-  box-shadow: var(--shadow-lg);
+  justify-content: center;
+  gap: var(--space-sm);
+  background: var(--bg-pressed);
+  color: var(--text-secondary);
+  font-size: var(--font-size-xs);
 }
 
-.progress-icon-wrap {
-  margin-bottom: var(--space-lg);
+.upload-preview-frame svg {
+  font-size: 2rem;
 }
 
-.progress-done-icon {
-  width: 64px;
-  height: 64px;
-  padding: 16px;
-  border-radius: var(--radius-full);
-  background: var(--success-soft);
-  color: var(--success);
-  animation: fade-up 500ms var(--ease-out);
+.upload-preview-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 4px;
+  background: rgba(0, 0, 0, 0.15);
 }
 
-.progress-text {
-  font-family: var(--font-display);
-  font-size: var(--font-size-2xl);
-  color: var(--text-primary);
-  margin-bottom: var(--space-lg);
+.upload-preview-bar > div {
+  height: 100%;
+  background: var(--brand);
+  transition: width 200ms linear;
 }
 
-/* Rãnh có màu riêng để thanh tiến trình đọc được ngay từ những phần trăm đầu
-   tiên; trước đây rãnh trùng màu thẻ nên ở 3% chỉ thấy một chấm lẻ loi. */
+.upload-preview-info {
+  padding: 12px var(--space-md) var(--space-md);
+}
+
+.upload-preview-info dt {
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+}
+
+.upload-preview-info dd {
+  margin-bottom: 12px;
+  font-size: var(--font-size-sm);
+  overflow-wrap: anywhere;
+}
+
+.upload-preview-info dd:last-child {
+  margin-bottom: 0;
+}
+
+/* ── Chân ── */
+.upload-footer {
+  gap: var(--space-sm);
+}
+
+.upload-footer-note {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-right: auto;
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+
+.upload-footer-note svg {
+  font-size: 1.25rem;
+}
+
+/* ── Bước 3 ── */
+.upload-transfer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.upload-percent {
+  font-size: 3rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
 .upload-progress-track {
-  width: 100%;
-  max-width: 440px;
-  height: 10px;
-  background: var(--bg-tertiary);
-  border-radius: var(--radius-full);
+  height: 4px;
+  border-radius: 2px;
+  background: var(--bg-pressed);
   overflow: hidden;
-  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.06);
 }
 
 .upload-progress-fill {
   height: 100%;
-  min-width: 10px;
-  background: var(--accent-gradient);
-  border-radius: var(--radius-full);
-  transition: width 0.3s ease-out;
+  background: var(--brand);
+  transition: width 200ms linear;
 }
 
 .upload-telemetry {
   display: flex;
   flex-wrap: wrap;
-  justify-content: center;
+  gap: var(--space-sm);
+  list-style: none;
+}
+
+.upload-telemetry li {
+  padding: 4px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-tertiary);
+  font-size: var(--font-size-sm);
+}
+
+.upload-done {
+  display: flex;
   align-items: center;
   gap: var(--space-sm);
-  margin-top: var(--space-lg);
-  max-width: 520px;
+  color: var(--success);
+  font-weight: 500;
 }
 
-.upload-telemetry-item {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.3125rem 0.75rem;
-  border-radius: var(--radius-full);
-  border: 1px solid var(--border-color);
-  background: var(--bg-secondary);
+.upload-transfer-note {
+  max-width: 60ch;
+  font-size: var(--font-size-sm);
+  line-height: 20px;
   color: var(--text-secondary);
-  font-family: var(--font-mono);
-  font-size: var(--font-size-xs);
 }
 
-.upload-cancel-btn {
-  flex-basis: 100%;
-  max-width: fit-content;
-  margin: var(--space-md) auto 0;
-  color: var(--danger);
-  border-color: color-mix(in srgb, var(--danger) 30%, transparent);
-}
-
-.upload-cancel-btn:hover:not(:disabled) {
-  background: var(--danger-soft);
-  border-color: var(--danger);
-}
-
-@media (max-width: 600px) {
-  .upload-container {
-    padding-top: var(--space-xl);
+@media (max-width: 760px) {
+  .upload-page {
+    padding: 0;
   }
 
-  .upload-form-card {
-    padding: var(--space-lg);
+  .upload-panel {
+    min-height: calc(100dvh - var(--navbar-height));
+    border: none;
+    border-radius: 0;
   }
 
-  .form-row {
-    grid-template-columns: 1fr;
+  .upload-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .upload-preview {
+    order: -1;
+  }
+
+  .upload-footer-note {
+    display: none;
   }
 }
