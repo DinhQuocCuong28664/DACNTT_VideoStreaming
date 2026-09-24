@@ -85,7 +85,7 @@ Tạo bản ghi CNAME đưa `cdn.zelostech.site` về tên miền phân phối c
 
 ### Bước 5 — Cấu hình Backend
 
-Đặt các biến môi trường sau cho Backend (trong môi trường production nên đọc từ AWS Secrets Manager thay vì ghi vào tệp `.env`):
+Backend cần bốn biến môi trường:
 
 ```
 CLOUDFRONT_DOMAIN=cdn.zelostech.site
@@ -93,6 +93,24 @@ CLOUDFRONT_KEY_PAIR_ID=<giá trị từ terraform output>
 CLOUDFRONT_PRIVATE_KEY=<nội dung cloudfront-private.pem>
 COOKIE_DOMAIN=.zelostech.site
 ```
+
+Trên EC2, `scripts/ec2-userdata.sh` tự ghi cả bốn biến vào `backend/.env` lúc
+máy khởi động: `CLOUDFRONT_KEY_PAIR_ID` do Terraform chèn từ
+`module.cloudfront.signing_key_pair_id`, còn khoá riêng đọc từ secret
+`dacntt-dev/cloudfront-private-key`. Terraform chỉ tạo vỏ secret đó; giá trị
+phải nạp **một lần** từ nơi đang giữ khoá, để khoá không đi qua tfvars hay
+Terraform state:
+
+```bash
+aws secretsmanager put-secret-value --region ap-southeast-1 \
+  --secret-id dacntt-dev/cloudfront-private-key \
+  --secret-string file://cloudfront-private.pem
+```
+
+Nạp xong thì có thể xoá tệp `.pem` khỏi máy cá nhân. Trước 2026-09-24 khoá chỉ
+nằm trong `.env` trên EC2, nên dựng lại máy là mất khoá và mọi video bị
+CloudFront trả 403; ngày đó khoá đã được EC2 tự nạp từ `.env` của chính nó vào
+secret (sha256 đối chiếu khớp) mà không đi qua máy cá nhân nào.
 
 Khi ba biến `CLOUDFRONT_DOMAIN`, `CLOUDFRONT_KEY_PAIR_ID` và `CLOUDFRONT_PRIVATE_KEY` chưa được cấu hình đầy đủ, hệ thống tự động chạy ở chế độ không ký. Cơ chế này giữ cho môi trường phát triển cục bộ hoạt động bình thường mà không cần dựng CloudFront.
 

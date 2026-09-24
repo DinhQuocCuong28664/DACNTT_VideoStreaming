@@ -89,10 +89,15 @@ resource "aws_instance" "backend_api" {
   associate_public_ip_address = true
 
   # Script là tệp tĩnh (không phải templatefile, vì nó dùng rất nhiều cú pháp
-  # ${...} của bash); chỉ thay đúng một chuỗi đánh dấu bằng địa chỉ gửi mail,
-  # cùng giá trị var.email_user mà Job Definition của transcoder đang dùng.
-  # Mật khẩu thì script tự đọc từ Secrets Manager lúc khởi động.
-  user_data                   = replace(file("${path.module}/../../../scripts/ec2-userdata.sh"), "__EMAIL_USER__", var.email_user)
+  # ${...} của bash); chỉ thay hai chuỗi đánh dấu bằng giá trị không bí mật:
+  # địa chỉ gửi mail (cùng var.email_user mà Job Definition của transcoder
+  # dùng) và ID public key ký CloudFront. Mật khẩu Gmail và khoá riêng
+  # CloudFront thì script tự đọc từ Secrets Manager lúc khởi động.
+  user_data = replace(
+    replace(file("${path.module}/../../../scripts/ec2-userdata.sh"), "__EMAIL_USER__", var.email_user),
+    "__CLOUDFRONT_KEY_PAIR_ID__",
+    module.cloudfront.signing_key_pair_id != null ? module.cloudfront.signing_key_pair_id : ""
+  )
   user_data_replace_on_change = true
 
   root_block_device {

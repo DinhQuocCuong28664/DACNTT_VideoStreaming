@@ -114,17 +114,17 @@ Giữ nguyên Proxy (đám mây cam) và SSL/TLS ở chế độ **Flexible** nh
 
 `scripts/ec2-userdata.sh` tự làm phần lớn việc này khi Terraform dựng máy: cài
 Node 24, Nginx (port 80 → 5000, bắt buộc vì Cloudflare free không chuyển tiếp
-port 5000), pm2, và ghi `backend/.env` với `MONGODB_URI`, `JWT_SECRET` và mật
-khẩu Gmail đọc từ Secrets Manager. `EMAIL_USER` được Terraform chèn từ
-`var.email_user`, cùng giá trị Job Definition của transcoder dùng.
+port 5000), pm2, và ghi đủ `backend/.env`: `MONGODB_URI`, `JWT_SECRET`, mật
+khẩu Gmail và khoá riêng ký CloudFront đọc từ Secrets Manager; `EMAIL_USER` và
+`CLOUDFRONT_KEY_PAIR_ID` do Terraform chèn vào script (từ `var.email_user` và
+`module.cloudfront.signing_key_pair_id`). Không còn biến nào phải sửa tay.
 
-Việc còn phải làm tay:
+Việc còn phải làm:
 
-- Khôi phục `CLOUDFRONT_DOMAIN`, `CLOUDFRONT_KEY_PAIR_ID`,
-  `CLOUDFRONT_PRIVATE_KEY`, `COOKIE_DOMAIN` trong `backend/.env` (xem
-  `docs/PRIVATE_VIDEO_SIGNED_COOKIES.md`), rồi `pm2 restart backend-api
-  --update-env`. Userdata chưa cấp phát nhóm biến này; thiếu chúng thì trình
-  phát bị CloudFront trả 403.
+- Tài khoản AWS mới: nạp khoá riêng CloudFront vào secret
+  `dacntt-dev/cloudfront-private-key` **trước** khi dựng EC2 (lệnh ở
+  `docs/PRIVATE_VIDEO_SIGNED_COOKIES.md`, bước 5). Thiếu thì
+  `/var/log/user-data.log` in cảnh báo và trình phát bị CloudFront trả 403.
 - Cập nhật GitHub Secrets: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`.
 - Đọc `pm2 logs backend-api` sau khi máy lên: phải thấy dòng
   `✉️  SMTP ready as ...`. Nếu thấy `⚠️  Email is not configured` hoặc
@@ -172,8 +172,15 @@ node scripts/measure-transcode.js samples/video-100mb.mp4 verify-rebuild
    (phát hiện 2026-09-24). Giờ userdata tự lấy từ Secrets Manager và backend
    kiểm tra SMTP lúc khởi động.
 5. **Sửa `scripts/ec2-userdata.sh` rồi `terraform apply` là dựng lại máy
-   backend** (`user_data_replace_on_change = true`). Các biến CloudFront trong
-   `backend/.env` sẽ mất theo; chuẩn bị giá trị trước khi apply.
+   backend** (`user_data_replace_on_change = true`). Từ 2026-09-24 mọi giá trị
+   trong `backend/.env` đều được userdata dựng lại từ Secrets Manager và biến
+   Terraform, nên việc này không còn làm mất cấu hình; vẫn nên đọc
+   `/var/log/user-data.log` và `pm2 logs` sau khi máy mới lên.
+6. **Chuỗi đánh dấu trong userdata bị `replace()` thay ở mọi chỗ.** Terraform
+   thay `__EMAIL_USER__` và `__CLOUDFRONT_KEY_PAIR_ID__` bằng giá trị thật ở
+   *mọi* lần xuất hiện trong script. Đừng viết lại đúng chuỗi đó trong câu so
+   sánh (`[ "$X" = "__EMAIL_USER__" ]` sẽ thành "đã cấu hình thì xoá trắng");
+   dùng mẫu `case "$X" in __*__)` như script đang làm.
 
 ---
 

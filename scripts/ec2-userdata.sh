@@ -12,6 +12,11 @@ REPO_URL="https://github.com/DinhQuocCuong28664/DACNTT_VideoStreaming.git"
 # infrastructure/environments/dev/backend-ec2.tf), cùng biến mà Job Definition
 # của transcoder dùng, nên hai nơi gửi mail luôn cùng một tài khoản.
 EMAIL_USER="__EMAIL_USER__"
+# Tương tự: Terraform thay bằng ID public key trong Key Group ký cookie
+# (module.cloudfront.signing_key_pair_id).
+CLOUDFRONT_KEY_PAIR_ID="__CLOUDFRONT_KEY_PAIR_ID__"
+CLOUDFRONT_DOMAIN="cdn.zelostech.site"
+COOKIE_DOMAIN=".zelostech.site"
 
 # Install Node.js 24 LTS, Git, AWS CLI & Nginx
 #
@@ -116,16 +121,41 @@ EMAIL_APP_PASSWORD=$(aws secretsmanager get-secret-value \
 # Gmail hiển thị mật khẩu ứng dụng thành bốn nhóm cách nhau bởi dấu cách
 EMAIL_APP_PASSWORD=${EMAIL_APP_PASSWORD// /}
 
-if [ "$EMAIL_USER" = "__EMAIL_USER__" ]; then
-  # Script bị chạy tay chứ không qua Terraform, nên chưa được thay giá trị
-  EMAIL_USER=""
-fi
+# Script bị chạy tay chứ không qua Terraform thì chuỗi đánh dấu còn nguyên.
+# So bằng mẫu __*__ chứ không viết lại đúng chuỗi đánh dấu: replace() của
+# Terraform thay MỌI lần xuất hiện, kể cả trong câu so sánh này, và sẽ biến nó
+# thành "nếu đã cấu hình thì xoá trắng".
+case "$EMAIL_USER" in __*__) EMAIL_USER="" ;; esac
 
 EMAIL_WARNING=""
 if [ -z "$EMAIL_USER" ] || [ -z "$EMAIL_APP_PASSWORD" ]; then
   EMAIL_WARNING="Email chua cau hinh (thieu EMAIL_USER hoac secret ${PROJECT_SECRET_PREFIX}/email-app-password): mail dat lai mat khau se KHONG gui duoc."
   echo "CANH BAO: $EMAIL_WARNING"
 fi
+
+# >>> cloudfront-signing
+# Khoá riêng ký CloudFront Signed Cookie. Trước 2026-09-24 khoá này và ba biến
+# đi kèm chỉ tồn tại trong .env trên máy chủ, ghi bằng tay: dựng lại máy là
+# mất, backend rơi về chế độ không ký và CloudFront trả 403 cho mọi video.
+# Giờ khoá nằm ở secret "${PREFIX}/cloudfront-private-key" (Terraform tạo vỏ,
+# giá trị nạp một lần — xem docs/PRIVATE_VIDEO_SIGNED_COOKIES.md).
+#
+# PEM nhiều dòng được ghi vào .env thành một dòng với "\n" (trong ngoặc kép);
+# cloudfrontService.normalizePrivateKey đổi lại thành xuống dòng thật.
+CLOUDFRONT_PRIVATE_KEY=$(aws secretsmanager get-secret-value \
+  --secret-id "${PROJECT_SECRET_PREFIX}/cloudfront-private-key" \
+  --region "$AWS_REGION" \
+  --query SecretString --output text 2>/dev/null) || CLOUDFRONT_PRIVATE_KEY=""
+CLOUDFRONT_PRIVATE_KEY=$(printf '%s\n' "$CLOUDFRONT_PRIVATE_KEY" | tr -d '\r' | awk 'NF { printf "%s\\n", $0 }')
+
+case "$CLOUDFRONT_KEY_PAIR_ID" in __*__) CLOUDFRONT_KEY_PAIR_ID="" ;; esac
+
+CLOUDFRONT_WARNING=""
+if [ -z "$CLOUDFRONT_KEY_PAIR_ID" ] || [ -z "$CLOUDFRONT_PRIVATE_KEY" ]; then
+  CLOUDFRONT_WARNING="Thieu CLOUDFRONT_KEY_PAIR_ID hoac secret ${PROJECT_SECRET_PREFIX}/cloudfront-private-key: backend chay che do khong ky, CloudFront se tra 403 khi phat video."
+  echo "CANH BAO: $CLOUDFRONT_WARNING"
+fi
+# <<< cloudfront-signing
 
 # Write production .env file (values injected at boot, never hardcoded)
 cat << EOF > .env
@@ -149,6 +179,10 @@ EMAIL_PORT=587
 EMAIL_USER=${EMAIL_USER}
 EMAIL_APP_PASSWORD=${EMAIL_APP_PASSWORD}
 EMAIL_FROM=DACNTT Video Platform <${EMAIL_USER}>
+CLOUDFRONT_DOMAIN=${CLOUDFRONT_DOMAIN}
+CLOUDFRONT_KEY_PAIR_ID=${CLOUDFRONT_KEY_PAIR_ID}
+CLOUDFRONT_PRIVATE_KEY="${CLOUDFRONT_PRIVATE_KEY}"
+COOKIE_DOMAIN=${COOKIE_DOMAIN}
 EOF
 
 chmod 600 .env
@@ -189,7 +223,5 @@ sudo -u ubuntu pm2 save
 pm2 startup systemd -u ubuntu --hp /home/ubuntu
 echo "Backend API deployment complete!"
 [ -n "$EMAIL_WARNING" ] && echo "⚠️  $EMAIL_WARNING"
-# Script này chưa cấp phát các biến ký cookie CloudFront (CLOUDFRONT_DOMAIN,
-# CLOUDFRONT_KEY_PAIR_ID, CLOUDFRONT_PRIVATE_KEY, COOKIE_DOMAIN). Thiếu chúng
-# thì backend chạy chế độ không ký và trình phát bị CloudFront trả 403.
-echo "⚠️  Nho khoi phuc bien CLOUDFRONT_* va COOKIE_DOMAIN trong backend/.env (xem docs/PRIVATE_VIDEO_SIGNED_COOKIES.md)."
+[ -n "$CLOUDFRONT_WARNING" ] && echo "⚠️  $CLOUDFRONT_WARNING"
+true
