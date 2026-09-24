@@ -100,12 +100,15 @@ const ChannelPage = () => {
    * nhảy ngược lại. Hoà theo trường khiến việc đó không thể xảy ra.
    *
    * Với cuộn vô hạn, danh sách đang hiển thị trải trên nhiều trang, nên lượt
-   * nạp lại lấy một lần đủ số video đã hiện (trang 1, limit = số trang × 12).
+   * nạp lại lấy một lần đủ số video đã hiện (trang 1, limit = số trang × 12),
+   * tối đa 48 vì API chặn limit ở 50 (backend/src/utils/pagination.js). Video
+   * đang xử lý là video vừa tải lên nên hầu như luôn nằm trong nhóm đầu này.
    */
   const loadedPages = list.page;
   const refreshPipelineFields = useCallback(async () => {
     try {
-      const res = await videoApi.getUserVideos(userId, 1, Math.max(loadedPages, 1) * PAGE_SIZE, sort);
+      const refreshLimit = Math.min(Math.max(loadedPages, 1), 4) * PAGE_SIZE;
+      const res = await videoApi.getUserVideos(userId, 1, refreshLimit, sort);
       const fresh = new Map(res.data.data.videos.map((v) => [v._id, v]));
 
       setVideos((prev) =>
