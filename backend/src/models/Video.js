@@ -87,6 +87,9 @@ const videoSchema = new mongoose.Schema(
 
 // Indexes for query performance
 videoSchema.index({ user: 1, createdAt: -1 });
+// Phục vụ sắp xếp "Phổ biến" trên trang kênh (xem USER_VIDEO_SORTS trong
+// videoService.js): lọc theo user rồi sắp theo lượt xem giảm dần.
+videoSchema.index({ user: 1, views: -1, createdAt: -1 });
 videoSchema.index({ status: 1 });
 videoSchema.index({ category: 1 });
 videoSchema.index({ tags: 1 });
