@@ -16,9 +16,16 @@ import {
 import useRevealOnScroll from '../hooks/useRevealOnScroll';
 import './LandingPage.css';
 
+/**
+ * Số liệu lấy từ báo cáo, không làm tròn cho đẹp:
+ * - 90.7%: mức tiết kiệm docs/FINOPS_COST_ANALYSIS.md khuyến nghị trích dẫn
+ *   (tính cả CloudFront ở hai vế); 98.87% chỉ là phần compute + lưu trữ.
+ * - 110 ms: trung vị TTFF qua CloudFront edge SGN50, bảng tab:ttff-cloudfront
+ *   ở chương 6.
+ */
 const STATS = [
-  { value: '98.87%', label: 'landing.statCostLabel', desc: 'landing.statCostDesc' },
-  { value: '< 1.2s', label: 'landing.statTtffLabel', desc: 'landing.statCdnDesc' },
+  { value: '90.7%', label: 'landing.statCostLabel', desc: 'landing.statCostDesc' },
+  { value: '110 ms', label: 'landing.statTtffLabel', desc: 'landing.statCdnDesc' },
   { value: '360p - 1080p', label: 'landing.statAbrLabel', desc: 'landing.statAbrDesc' },
   { value: '100%', label: 'landing.statCicdLabel', desc: 'landing.statCicdDesc' },
 ];

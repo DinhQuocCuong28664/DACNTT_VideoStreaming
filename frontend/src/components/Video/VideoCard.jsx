@@ -28,7 +28,7 @@ const VideoCard = ({ video, variant = 'grid', showAvatar = true, thumbnailOverla
 
   const user = video.user || {};
   const channelName = user.displayName || user.username || t('videoCard.unknownChannel');
-  const meta = `${t('videoCard.views', { value: formatViews(video.views) })} · ${timeAgo(t, video.createdAt)}`;
+  const meta = `${t('videoCard.views', { count: video.views || 0, value: formatViews(video.views) })} · ${timeAgo(t, video.createdAt)}`;
 
   const avatar = (
     <div className="video-card-avatar">

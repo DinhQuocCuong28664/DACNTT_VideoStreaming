@@ -362,7 +362,7 @@ const WatchPage = () => {
             onClick={() => collapsible && !descExpanded && setDescExpanded(true)}
           >
             <p className="watch-description-meta">
-              <span>{t('watch.viewsFull', { value: Number(video.views || 0).toLocaleString(locale) })}</span>
+              <span>{t('watch.viewsFull', { count: video.views || 0, value: Number(video.views || 0).toLocaleString(locale) })}</span>
               <span>{formatDate(i18n.resolvedLanguage, video.createdAt)}</span>
             </p>
             {description && <div className="watch-description-text">{description}</div>}

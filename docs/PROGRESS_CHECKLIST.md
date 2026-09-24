@@ -1,6 +1,6 @@
 # Checklist tiến độ thực tế (đối chiếu với README)
 
-> Cập nhật: 2026-09-09. README mô tả đề tài ở dạng "dự kiến" (ngôn ngữ đề xuất/báo cáo học thuật);
+> Cập nhật: 2026-09-24. README mô tả đề tài ở dạng "dự kiến" (ngôn ngữ đề xuất/báo cáo học thuật);
 > checklist này ghi lại trạng thái **thực tế đã triển khai** tại thời điểm hiện tại, đối chiếu
 > trực tiếp với code/hạ tầng đang chạy, không phải chỉ dựa vào mô tả trong README.
 
@@ -23,24 +23,34 @@
       thanh tua (timeline scrubber), hiển thị mốc thời gian tại điểm đang trỏ kèm ảnh xem trước
       (ảnh bìa cố định, không phải khung hình tại vị trí tua: transcoder chỉ trích một ảnh tại
       giây thứ 5, không sinh sprite sheet nên chưa xem trước theo khung hình được)
-- [x] **Gợi ý video liên quan (Related Videos)** ở thanh bên trang xem video (`GET /api/videos/:id/related`),
+- [x] **Gợi ý video liên quan (Related Videos)** ở danh sách "Tiếp theo" cột phải trang xem video
+      (`GET /api/videos/:id/related`, có chip lọc "Tất cả / Từ kênh này"),
       thuật toán đề xuất theo tag và danh mục tương đồng, sắp theo lượt xem giảm dần (kèm bù
       bằng video xem nhiều nhất khi chưa đủ số lượng); bảo
       vệ 2 lớp: khoá cứng bộ lọc `visibility: 'public'` và `status: 'READY'`, đồng thời đóng kín
       lỗ hổng existence oracle (trả 404 cho video nguồn không có quyền xem thay vì lộ sự tồn tại)
 - [x] Tự động chuyển sang phát video ngay khi transcode xong, không cần F5 (polling trạng thái)
 - [x] Chia sẻ video công khai / riêng tư — phân quyền 2 lớp đồng bộ ở cả Backend API và CloudFront Signed Cookies
-- [x] Trang cá nhân (Channel) — quản lý video, xem lượt xem, theo dõi trạng thái xử lý, xoá video
+- [x] Trang cá nhân (Channel) — quản lý video, xem lượt xem, theo dõi trạng thái xử lý, xoá video;
+      tab Video / Giới thiệu và chip sắp xếp **Mới nhất / Phổ biến / Cũ nhất**
+      (`GET /api/videos/user/:userId?sort=latest|popular|oldest`)
 - [x] **Quản lý video nâng cao**: Menu 3 chấm (3-dot dropdown) thao tác nhanh đổi trạng thái hiển
-      thị trực tiếp (Public, Unlisted, Private); Modal chỉnh sửa video (Edit Modal) giao diện
-      glassmorphic hỗ trợ sửa Tiêu đề, Mô tả, Danh mục và Quyền riêng tư ngay trên web
-      (Tags vẫn chỉ đặt được ở biểu mẫu tải lên — `handleSaveEdit` không gửi trường này)
+      thị trực tiếp (Public, Unlisted, Private); hộp thoại chỉnh sửa kiểu YouTube Studio hỗ trợ
+      sửa Tiêu đề, Mô tả, Danh mục và Quyền riêng tư ngay trên web
+      (Tags vẫn chỉ đặt được ở biểu mẫu tải lên — `EditVideoDialog` không gửi trường này)
 - [x] Tìm kiếm & lọc video, Like/Dislike, Bình luận, Danh mục, Đa ngôn ngữ (i18n), Responsive Mobile
+- [x] **Giao diện kiểu YouTube** (2026-09-24): thanh trên + menu trái thu gọn được, thẻ video phẳng,
+      trang chủ và trang kênh cuộn vô hạn thay phân trang số, chủ đề sáng / tối / theo thiết bị ở
+      Settings → Giao diện, màu thương hiệu xanh ngọc lục `#10a37f`. Trang xem vẫn giữ cột trình
+      phát 880 px bằng cách ẩn menu trái ở trang đó
+- [x] API danh sách chặn `limit` ở 50 và không nhận `page` âm (`parsePaging`), trước đó
+      `?limit=100000` kéo cả collection và `?page=-1` thành HTTP 500
 - [x] Email thông báo video chuyển mã xong (READY) hoặc thất bại (ERROR) — code có sẵn từ trước
       nhưng **chưa từng gửi được** do thiếu `ref: 'User'` trong schema transcoder khiến populate
       luôn trả `email: undefined`; đã sửa và verify bằng data thật trong phiên này
-- [x] **Bộ kiểm thử tự động toàn diện:** 209/209 tests PASS trên 14 test suites toàn dự án (115
-      backend tests bao gồm `relatedVideos`, `cloudfrontService`, `uploadValidation`, `authService`...
+- [x] **Bộ kiểm thử tự động toàn diện:** 229/229 tests PASS trên 16 test suites toàn dự án (135
+      backend tests bao gồm `relatedVideos`, `userVideosSort`, `pagination`, `cloudfrontService`,
+      `uploadValidation`, `authService`...
       và 94 transcoder tests gồm `framerate` — GOP bám theo framerate thật của video nguồn —
       `bandwidth` — BANDWIDTH lấy đỉnh đo từ segment thật thay vì hằng số cấu hình —
       và `codecs` — chuỗi codec đọc từ luồng đã mã hoá thay vì suy từ cấu hình)
