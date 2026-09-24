@@ -112,12 +112,23 @@ Giữ nguyên Proxy (đám mây cam) và SSL/TLS ở chế độ **Flexible** nh
 
 ### 7. Khôi phục backend trên EC2
 
-- Tạo file `.env` trên máy chủ (không nằm trong git — xem `backend/.env.example`)
-- Cài Node 24, `npm install --production`, chạy bằng pm2
-- Cài Nginx reverse proxy port 80 → 5000 (bắt buộc, vì Cloudflare free không
-  chuyển tiếp port 5000)
-- Cập nhật GitHub Secrets: `EC2_HOST`, `EC2_SSH_KEY`, `AWS_ACCESS_KEY_ID`,
-  `AWS_SECRET_ACCESS_KEY`
+`scripts/ec2-userdata.sh` tự làm phần lớn việc này khi Terraform dựng máy: cài
+Node 24, Nginx (port 80 → 5000, bắt buộc vì Cloudflare free không chuyển tiếp
+port 5000), pm2, và ghi `backend/.env` với `MONGODB_URI`, `JWT_SECRET` và mật
+khẩu Gmail đọc từ Secrets Manager. `EMAIL_USER` được Terraform chèn từ
+`var.email_user`, cùng giá trị Job Definition của transcoder dùng.
+
+Việc còn phải làm tay:
+
+- Khôi phục `CLOUDFRONT_DOMAIN`, `CLOUDFRONT_KEY_PAIR_ID`,
+  `CLOUDFRONT_PRIVATE_KEY`, `COOKIE_DOMAIN` trong `backend/.env` (xem
+  `docs/PRIVATE_VIDEO_SIGNED_COOKIES.md`), rồi `pm2 restart backend-api
+  --update-env`. Userdata chưa cấp phát nhóm biến này; thiếu chúng thì trình
+  phát bị CloudFront trả 403.
+- Cập nhật GitHub Secrets: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`.
+- Đọc `pm2 logs backend-api` sau khi máy lên: phải thấy dòng
+  `✉️  SMTP ready as ...`. Nếu thấy `⚠️  Email is not configured` hoặc
+  `❌ SMTP check failed` thì mail đặt lại mật khẩu sẽ không tới người dùng.
 
 ### 8. Nạp lại video demo
 
@@ -154,6 +165,15 @@ node scripts/measure-transcode.js samples/video-100mb.mp4 verify-rebuild
 3. **Kiểm tra `statusReason` của job Batch khi thất bại**, đừng chỉ nhìn trạng
    thái FAILED. Một lỗi cấu hình từng làm mọi container chết trước khi chạy, và
    nó bị bỏ sót vì lúc đó đang chạy thí nghiệm mà job vốn dĩ được dự kiến sẽ fail.
+4. **Mail đặt lại mật khẩu hỏng im lặng.** Userdata cũ ghi `EMAIL_USER` và
+   `EMAIL_APP_PASSWORD` thành `REPLACE_ME_AFTER_BOOT` để sửa tay sau; sau lần
+   dựng lại không ai sửa, và vì API quên mật khẩu cố ý trả cùng một câu dù gửi
+   được hay không, lỗi SMTP 535 chỉ nằm trong log pm2 cho tới khi có người thử
+   (phát hiện 2026-09-24). Giờ userdata tự lấy từ Secrets Manager và backend
+   kiểm tra SMTP lúc khởi động.
+5. **Sửa `scripts/ec2-userdata.sh` rồi `terraform apply` là dựng lại máy
+   backend** (`user_data_replace_on_change = true`). Các biến CloudFront trong
+   `backend/.env` sẽ mất theo; chuẩn bị giá trị trước khi apply.
 
 ---
 

@@ -7,6 +7,7 @@ const connectDB = require('./config/db');
 const validateEnv = require('./config/validateEnv');
 const errorHandler = require('./middleware/errorHandler');
 const { apiLimiter } = require('./middleware/rateLimiter');
+const { verifyEmailTransport } = require('./services/emailService');
 
 // Route imports
 const authRoutes = require('./routes/authRoutes');
@@ -85,6 +86,9 @@ if (require.main === module) {
   app.listen(PORT, () => {
     console.log(`🚀 Server is running on port ${PORT}`);
     console.log(`📡 Environment: ${process.env.NODE_ENV || 'development'}`);
+    // Chạy nền, không chặn việc nhận request; chỉ để lỗi cấu hình mail hiện
+    // ngay trong log thay vì im lặng tới khi có người dùng thử quên mật khẩu.
+    verifyEmailTransport();
   });
 }
 

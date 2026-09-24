@@ -8,6 +8,10 @@ echo "Starting Backend API installation..."
 PROJECT_SECRET_PREFIX="dacntt-dev"   # matches "${project_name}-${environment}" in Terraform
 AWS_REGION="ap-southeast-1"
 REPO_URL="https://github.com/DinhQuocCuong28664/DACNTT_VideoStreaming.git"
+# Terraform thay chuỗi này bằng var.email_user lúc dựng máy (xem
+# infrastructure/environments/dev/backend-ec2.tf), cùng biến mà Job Definition
+# của transcoder dùng, nên hai nơi gửi mail luôn cùng một tài khoản.
+EMAIL_USER="__EMAIL_USER__"
 
 # Install Node.js 24 LTS, Git, AWS CLI & Nginx
 #
@@ -94,13 +98,34 @@ JWT_SECRET=$(aws secretsmanager get-secret-value \
   --region "$AWS_REGION" \
   --query SecretString --output text)
 
-# Email credentials are not yet stored in Secrets Manager.
-# Set them manually AFTER first boot via SSH (do not commit real values):
-#   sudo sed -i 's|^EMAIL_USER=.*|EMAIL_USER=your_email@gmail.com|' /home/ubuntu/app/backend/.env
-#   sudo sed -i 's|^EMAIL_APP_PASSWORD=.*|EMAIL_APP_PASSWORD=your_gmail_app_password|' /home/ubuntu/app/backend/.env
-#   sudo -u ubuntu pm2 restart backend-api
-EMAIL_USER="REPLACE_ME_AFTER_BOOT"
-EMAIL_APP_PASSWORD="REPLACE_ME_AFTER_BOOT"
+# Mật khẩu ứng dụng Gmail lấy cùng chỗ với transcoder: secret
+# "${PREFIX}/email-app-password" do module secrets tạo từ var.email_app_password.
+#
+# Trước đây hai biến email được ghi thành "REPLACE_ME_AFTER_BOOT" và chờ ai đó
+# SSH vào sửa tay. Sau lần dựng lại máy không ai sửa, và mail đặt lại mật khẩu
+# hỏng suốt nhiều tuần mà không lộ ra đâu cả: API cố ý trả cùng một câu dù gửi
+# được hay không, còn lỗi SMTP 535 chỉ nằm trong log pm2. Phát hiện 2026-09-24.
+#
+# Thiếu secret hoặc thiếu EMAIL_USER thì để trống thay vì ghi chuỗi giữ chỗ:
+# backend kiểm tra SMTP lúc khởi động và báo lỗi rõ trong log (xem
+# verifyEmailTransport trong backend/src/services/emailService.js).
+EMAIL_APP_PASSWORD=$(aws secretsmanager get-secret-value \
+  --secret-id "${PROJECT_SECRET_PREFIX}/email-app-password" \
+  --region "$AWS_REGION" \
+  --query SecretString --output text 2>/dev/null) || EMAIL_APP_PASSWORD=""
+# Gmail hiển thị mật khẩu ứng dụng thành bốn nhóm cách nhau bởi dấu cách
+EMAIL_APP_PASSWORD=${EMAIL_APP_PASSWORD// /}
+
+if [ "$EMAIL_USER" = "__EMAIL_USER__" ]; then
+  # Script bị chạy tay chứ không qua Terraform, nên chưa được thay giá trị
+  EMAIL_USER=""
+fi
+
+EMAIL_WARNING=""
+if [ -z "$EMAIL_USER" ] || [ -z "$EMAIL_APP_PASSWORD" ]; then
+  EMAIL_WARNING="Email chua cau hinh (thieu EMAIL_USER hoac secret ${PROJECT_SECRET_PREFIX}/email-app-password): mail dat lai mat khau se KHONG gui duoc."
+  echo "CANH BAO: $EMAIL_WARNING"
+fi
 
 # Write production .env file (values injected at boot, never hardcoded)
 cat << EOF > .env
@@ -163,4 +188,8 @@ sudo -u ubuntu pm2 start src/server.js --name "backend-api"
 sudo -u ubuntu pm2 save
 pm2 startup systemd -u ubuntu --hp /home/ubuntu
 echo "Backend API deployment complete!"
-echo "⚠️  Remember to set real EMAIL_USER / EMAIL_APP_PASSWORD via SSH — see comment above."
+[ -n "$EMAIL_WARNING" ] && echo "⚠️  $EMAIL_WARNING"
+# Script này chưa cấp phát các biến ký cookie CloudFront (CLOUDFRONT_DOMAIN,
+# CLOUDFRONT_KEY_PAIR_ID, CLOUDFRONT_PRIVATE_KEY, COOKIE_DOMAIN). Thiếu chúng
+# thì backend chạy chế độ không ký và trình phát bị CloudFront trả 403.
+echo "⚠️  Nho khoi phuc bien CLOUDFRONT_* va COOKIE_DOMAIN trong backend/.env (xem docs/PRIVATE_VIDEO_SIGNED_COOKIES.md)."

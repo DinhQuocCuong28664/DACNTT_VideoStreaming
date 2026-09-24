@@ -57,10 +57,10 @@
 - [x] AWS Batch Fargate (`FARGATE_SPOT` tiết kiệm 70% chi phí).
 
 ### 9. CI/CD Pipeline & DevSecOps
-- [x] `ci-backend.yml`: Jest Unit Tests (135/135 pass trên 11 test suite) + ESLint (0 errors) + Gitleaks + Trivy SCA Scan.
-  - Phạm vi kiểm thử: `videoService`, `s3Service`, `authService`, `cloudfrontService`, `relatedVideos` (10 tests kiểm thử phân quyền, lọc public/READY và chống existence oracle), `userVideosSort` (10 tests kiểm thử sắp xếp trang kênh và chặn giá trị sort lạ), `pagination` (10 tests kiểm thử chặn limit và page không hợp lệ), `forgotPassword`, middleware xác thực JWT, kiểm soát quyền riêng tư video, và kiểm tra dữ liệu đầu vào khi tải lên (mức HTTP với `supertest`).
+- [x] `ci-backend.yml`: Jest Unit Tests (144/144 pass trên 12 test suite) + ESLint (0 errors) + Gitleaks + Trivy SCA Scan.
+  - Phạm vi kiểm thử: `videoService`, `s3Service`, `authService`, `cloudfrontService`, `relatedVideos` (10 tests kiểm thử phân quyền, lọc public/READY và chống existence oracle), `userVideosSort` (10 tests kiểm thử sắp xếp trang kênh và chặn giá trị sort lạ), `pagination` (10 tests kiểm thử chặn limit và page không hợp lệ), `emailConfig` (9 tests kiểm thử phát hiện cấu hình email còn chuỗi giữ chỗ và kiểm tra SMTP lúc khởi động), `forgotPassword`, middleware xác thực JWT, kiểm soát quyền riêng tư video, và kiểm tra dữ liệu đầu vào khi tải lên (mức HTTP với `supertest`).
 - [x] `ci-transcoder.yml`: Jest Unit Tests (94/94 pass trên 5 test suite — `dbHandler` idempotency, `emailService`, `framerate` 32 tests kiểm tra GOP bám theo framerate thật của nguồn, `bandwidth` 18 tests kiểm tra BANDWIDTH đo từ segment thật theo RFC 8216 §4.3.4.2, `codecs` 32 tests kiểm tra chuỗi codec đọc từ luồng đã mã hoá theo RFC 6381) + ESLint + Gitleaks + Build Docker Image + Trivy Scan + ECR Push + Update Job Definition.
-- [x] **Toàn bộ test suite tự động:** Đạt **229/229 tests PASS** trên 16 test suites toàn dự án (135 backend + 94 transcoder).
+- [x] **Toàn bộ test suite tự động:** Đạt **238/238 tests PASS** trên 17 test suites toàn dự án (144 backend + 94 transcoder).
 - [x] `ci-frontend.yml`: oxlint + Build Vite + Deploy S3 Static Hosting.
 - [x] `security-scan.yml`: Gitleaks Secret Detection + Trivy Dependency Scan trên mọi Pull Request.
 - [x] `cd-staging.yml` & `cd-deploy.yml`: Triển khai môi trường Staging (`develop`) và Production (`main`).
@@ -100,4 +100,4 @@
 - [x] **Bộ số liệu thực nghiệm đầy đủ 100%:** Đo kiểm TTFF đa vùng (6 regions), thời gian chuyển mã (100MB, 500MB, 1GB), so sánh scaling 1 vCPU vs 4 vCPU, và Stress Test đồng thời 100 video với k6 / Node.js. Sẵn sàng 100% để bảo vệ.
 
 ---
-> 📌 **Trạng thái cập nhật (2026-09-24):** Toàn bộ 15/15 mục đã hoàn thành 100%. CloudFront video CDN đã triển khai và đo kiểm đa vùng; Stress Test đồng thời 100 video đã thực thi hoàn tất với dữ liệu thực nghiệm đầy đủ; toàn bộ test suite backend (135/135) và transcoder (94/94) đều pass (tổng 229/229 tests tự động).
+> 📌 **Trạng thái cập nhật (2026-09-24):** Toàn bộ 15/15 mục đã hoàn thành 100%. CloudFront video CDN đã triển khai và đo kiểm đa vùng; Stress Test đồng thời 100 video đã thực thi hoàn tất với dữ liệu thực nghiệm đầy đủ; toàn bộ test suite backend (144/144) và transcoder (94/94) đều pass (tổng 238/238 tests tự động).
