@@ -1,5 +1,6 @@
 const videoService = require('../services/videoService');
 const cloudfrontService = require('../services/cloudfrontService');
+const { parsePaging } = require('../utils/pagination');
 
 /**
  * @route   POST /api/videos/initiate-upload
@@ -58,8 +59,7 @@ const confirmUpload = async (req, res, next) => {
  */
 const getAllVideos = async (req, res, next) => {
   try {
-    const page = parseInt(req.query.page, 10) || 1;
-    const limit = parseInt(req.query.limit, 10) || 12;
+    const { page, limit } = parsePaging(req.query, 12);
     const category = req.query.category || null;
     const searchQuery = req.query.q || null;
 
@@ -194,8 +194,7 @@ const toggleDislike = async (req, res, next) => {
  */
 const getComments = async (req, res, next) => {
   try {
-    const page = parseInt(req.query.page, 10) || 1;
-    const limit = parseInt(req.query.limit, 10) || 20;
+    const { page, limit } = parsePaging(req.query, 20);
 
     const result = await videoService.getComments(req.params.id, page, limit, req.user);
 
@@ -257,8 +256,7 @@ const deleteComment = async (req, res, next) => {
  */
 const getUserVideos = async (req, res, next) => {
   try {
-    const page = parseInt(req.query.page, 10) || 1;
-    const limit = parseInt(req.query.limit, 10) || 12;
+    const { page, limit } = parsePaging(req.query, 12);
     // `?sort=a&sort=b` làm Express trả về mảng; chỉ nhận chuỗi, còn lại về mặc định.
     const sort = typeof req.query.sort === 'string' ? req.query.sort : 'latest';
 
