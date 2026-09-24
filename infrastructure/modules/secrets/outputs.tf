@@ -12,3 +12,7 @@ output "jwt_secret_arn" {
 output "email_app_password_secret_arn" {
   value = length(aws_secretsmanager_secret.email_app_password) > 0 ? aws_secretsmanager_secret.email_app_password[0].arn : ""
 }
+
+output "cloudfront_private_key_secret_arn" {
+  value = aws_secretsmanager_secret.cloudfront_private_key.arn
+}

@@ -64,3 +64,22 @@ resource "aws_secretsmanager_secret_version" "email_app_password" {
   secret_id     = aws_secretsmanager_secret.email_app_password[0].id
   secret_string = var.email_app_password
 }
+
+# Khoá riêng ký CloudFront Signed Cookie cho backend (xem
+# docs/PRIVATE_VIDEO_SIGNED_COOKIES.md). Terraform chỉ tạo vỏ secret; giá trị
+# được nạp một lần bằng put-secret-value từ nơi đang giữ khoá, không đi qua
+# biến Terraform, nên khoá không nằm trong tfvars hay state.
+#
+# Trước 2026-09-24 khoá chỉ tồn tại trong backend/.env trên EC2: dựng lại máy
+# là mất khoá, backend rơi về chế độ không ký và CloudFront trả 403 cho mọi
+# video. Giờ scripts/ec2-userdata.sh đọc khoá ở đây lúc khởi động, như cách
+# đọc mongodb-uri, jwt-secret và email-app-password.
+resource "aws_secretsmanager_secret" "cloudfront_private_key" {
+  name                    = "${var.project_name}/cloudfront-private-key"
+  description             = "CloudFront Signed Cookie private key (PEM) for the Backend API; value set out of band"
+  recovery_window_in_days = var.recovery_window_in_days
+
+  tags = merge(var.tags, {
+    Name = "${var.project_name}-cloudfront-private-key"
+  })
+}
