@@ -1,0 +1,4 @@
+# Script shell phải giữ đuôi dòng LF dù checkout trên Windows (core.autocrlf=true).
+# scripts/ec2-userdata.sh được Terraform đọc thẳng từ bản checkout và chạy bằng
+# bash trên EC2; một ký tự \r cuối dòng làm cả script hỏng từ dòng đầu.
+*.sh text eol=lf
