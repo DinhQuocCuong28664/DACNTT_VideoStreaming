@@ -88,7 +88,11 @@ resource "aws_instance" "backend_api" {
 
   associate_public_ip_address = true
 
-  user_data                   = file("${path.module}/../../../scripts/ec2-userdata.sh")
+  # Script là tệp tĩnh (không phải templatefile, vì nó dùng rất nhiều cú pháp
+  # ${...} của bash); chỉ thay đúng một chuỗi đánh dấu bằng địa chỉ gửi mail,
+  # cùng giá trị var.email_user mà Job Definition của transcoder đang dùng.
+  # Mật khẩu thì script tự đọc từ Secrets Manager lúc khởi động.
+  user_data                   = replace(file("${path.module}/../../../scripts/ec2-userdata.sh"), "__EMAIL_USER__", var.email_user)
   user_data_replace_on_change = true
 
   root_block_device {

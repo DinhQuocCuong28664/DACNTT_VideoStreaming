@@ -84,6 +84,43 @@ const sendPasswordResetEmail = async (to, resetUrl, language = DEFAULT_LANGUAGE)
   await transporter.sendMail(mailOptions);
 };
 
+/**
+ * Cấu hình email có dùng được không, xét trước khi chạm tới mạng: thiếu biến,
+ * hoặc còn chuỗi giữ chỗ kiểu "REPLACE_ME_AFTER_BOOT" mà script dựng máy cũ
+ * từng để lại.
+ */
+const PLACEHOLDER = /REPLACE_ME|^your_/i;
+
+const isEmailConfigured = (env = process.env) =>
+  [env.EMAIL_USER, env.EMAIL_APP_PASSWORD].every((v) => Boolean(v) && !PLACEHOLDER.test(v));
+
+/**
+ * Kiểm tra SMTP một lần lúc máy chủ khởi động và ghi kết quả ra log.
+ *
+ * Luồng quên mật khẩu cố ý trả cùng một câu trả lời dù gửi mail được hay không
+ * (để không lộ email nào có tài khoản), nên cấu hình sai không bao giờ hiện ra
+ * phía người dùng. Ngày 2026-09-24 mail đặt lại mật khẩu đã hỏng như vậy suốt
+ * từ lần dựng lại máy chủ, chỉ vì .env còn chuỗi giữ chỗ. Dòng log này biến lỗi
+ * đó thành thứ thấy ngay trong `pm2 logs` sau mỗi lần deploy. Không bao giờ ném
+ * lỗi: thiếu email không được làm sập API.
+ */
+const verifyEmailTransport = async (logger = console) => {
+  if (!isEmailConfigured()) {
+    logger.warn('⚠️  Email is not configured (EMAIL_USER / EMAIL_APP_PASSWORD missing or placeholder): password reset emails will not be delivered');
+    return false;
+  }
+  try {
+    await createTransporter().verify();
+    logger.log(`✉️  SMTP ready as ${process.env.EMAIL_USER}`);
+    return true;
+  } catch (err) {
+    logger.error(`❌ SMTP check failed: ${err.message} — password reset emails will not be delivered`);
+    return false;
+  }
+};
+
 module.exports = {
   sendPasswordResetEmail,
+  isEmailConfigured,
+  verifyEmailTransport,
 };
