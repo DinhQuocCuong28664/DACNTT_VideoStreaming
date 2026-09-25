@@ -122,12 +122,12 @@ resource "aws_instance" "backend_api" {
     # bản plan tại thời điểm thêm dòng này đã hiện đúng như vậy
     # (ami-0ed6a65b84536f6ce -> ami-02a51b0cea2315d19, "forces replacement").
     #
-    # Cái mất đi không chỉ là một máy ảo. Máy chủ này mang trạng thái được cấu
-    # hình bằng tay và KHÔNG nằm trong Terraform: tệp backend/.env (chuỗi kết
-    # nối MongoDB, JWT_SECRET, khoá riêng ký CloudFront, mật khẩu ứng dụng
-    # Gmail), cấu hình nginx, chứng chỉ Let's Encrypt, và trạng thái tiến trình
-    # pm2. Địa chỉ IP công khai cũng đổi theo, làm hỏng bản ghi A trên
-    # Cloudflare cho api.zelostech.site.
+    # Khi dòng này được viết, máy chủ mang trạng thái cấu hình tay nằm ngoài
+    # Terraform: backend/.env, cấu hình nginx, chứng chỉ Let's Encrypt. Đến
+    # 2026-09-25 cả ba đã do scripts/ec2-userdata.sh dựng lại từ Secrets
+    # Manager (kể cả chứng chỉ, qua certbot dns-cloudflare), và Elastic IP bên
+    # dưới giữ nguyên địa chỉ. Dựng lại máy vẫn có vài phút gián đoạn, nên việc
+    # đó vẫn phải là hành động có chủ đích.
     #
     # Nâng cấp AMI vì thế phải là hành động có chủ đích — thay bằng
     # `terraform apply -replace=aws_instance.backend_api` sau khi đã sao lưu

@@ -17,6 +17,7 @@ EMAIL_USER="__EMAIL_USER__"
 CLOUDFRONT_KEY_PAIR_ID="__CLOUDFRONT_KEY_PAIR_ID__"
 CLOUDFRONT_DOMAIN="cdn.zelostech.site"
 COOKIE_DOMAIN=".zelostech.site"
+API_DOMAIN="api.zelostech.site"
 
 # Install Node.js 24 LTS, Git, AWS CLI & Nginx
 #
@@ -187,8 +188,63 @@ EOF
 
 chmod 600 .env
 
+# >>> tls
 # ═══════════════════════════════════════════════════
-# Nginx reverse proxy: cổng 80 → Node ở cổng 5000
+# Chứng chỉ TLS cho nginx (Let's Encrypt, DNS-01 qua Cloudflare)
+# ═══════════════════════════════════════════════════
+# Cloudflare đang ở chế độ SSL Full/Full (strict): nó kết nối về máy chủ qua
+# cổng 443, không phải cổng 80. Máy chỉ có nginx cổng 80 thì Cloudflare trả 521
+# cho mọi request API. Kiểm chứng 2026-09-25: mọi kết nối từ dải IP Cloudflare
+# đều vào :443, không có kết nối nào vào :80.
+#
+# Trước ngày đó chứng chỉ và token Cloudflare chỉ tồn tại trên máy, cài tay,
+# nên dựng lại máy là mất HTTPS. Giờ token nằm ở secret
+# "${PREFIX}/cloudflare-api-token" (Terraform tạo vỏ, giá trị nạp một lần).
+#
+# DNS-01 thay vì HTTP-01: máy nằm sau proxy Cloudflare, và DNS-01 không cần
+# nginx chạy hay cổng 80 mở ra Internet lúc xin chứng chỉ. certbot bản apt tự
+# bật certbot.timer để gia hạn; hook deploy reload nginx sau mỗi lần gia hạn.
+CLOUDFLARE_API_TOKEN=$(aws secretsmanager get-secret-value \
+  --secret-id "${PROJECT_SECRET_PREFIX}/cloudflare-api-token" \
+  --region "$AWS_REGION" \
+  --query SecretString --output text 2>/dev/null) || CLOUDFLARE_API_TOKEN=""
+
+TLS_CERT_DIR="/etc/letsencrypt/live/${API_DOMAIN}"
+TLS_WARNING=""
+if [ -n "$CLOUDFLARE_API_TOKEN" ]; then
+  wait_for_apt
+  apt-get install $APT_OPTS certbot python3-certbot-dns-cloudflare
+
+  install -d -m 700 /root/.secrets
+  (umask 077 && printf 'dns_cloudflare_api_token = %s\n' "$CLOUDFLARE_API_TOKEN" > /root/.secrets/cloudflare.ini)
+
+  mkdir -p /etc/letsencrypt/renewal-hooks/deploy
+  printf '#!/bin/bash\nsystemctl reload nginx\n' > /etc/letsencrypt/renewal-hooks/deploy/reload-nginx.sh
+  chmod 755 /etc/letsencrypt/renewal-hooks/deploy/reload-nginx.sh
+
+  if [ -n "$EMAIL_USER" ]; then
+    CERTBOT_CONTACT=(--email "$EMAIL_USER")
+  else
+    CERTBOT_CONTACT=(--register-unsafely-without-email)
+  fi
+
+  certbot certonly --non-interactive --agree-tos "${CERTBOT_CONTACT[@]}" \
+    --dns-cloudflare \
+    --dns-cloudflare-credentials /root/.secrets/cloudflare.ini \
+    --dns-cloudflare-propagation-seconds 30 \
+    --key-type ecdsa \
+    -d "$API_DOMAIN" \
+    || echo "CANH BAO: certbot that bai, xem /var/log/letsencrypt/letsencrypt.log"
+fi
+
+if [ ! -f "${TLS_CERT_DIR}/fullchain.pem" ]; then
+  TLS_WARNING="Khong co chung chi TLS cho ${API_DOMAIN} (thieu secret ${PROJECT_SECRET_PREFIX}/cloudflare-api-token hoac certbot that bai): nginx chi nghe cong 80, Cloudflare o che do Full se tra 521."
+  echo "CANH BAO: $TLS_WARNING"
+fi
+# <<< tls
+
+# ═══════════════════════════════════════════════════
+# Nginx reverse proxy: cổng 80 (và 443 nếu có chứng chỉ) → Node ở cổng 5000
 # ═══════════════════════════════════════════════════
 cat << 'NGINXEOF' > /etc/nginx/sites-available/api
 server {
@@ -210,6 +266,32 @@ server {
 }
 NGINXEOF
 
+# Khối 443 chỉ được thêm khi đã có chứng chỉ: nginx từ chối khởi động nếu
+# ssl_certificate trỏ tới tệp không tồn tại, và khi đó mất luôn cả cổng 80.
+if [ -z "$TLS_WARNING" ]; then
+cat << 'NGINXEOF' >> /etc/nginx/sites-available/api
+
+server {
+    listen 443 ssl default_server;
+    server_name api.zelostech.site _;
+
+    ssl_certificate     /etc/letsencrypt/live/api.zelostech.site/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/api.zelostech.site/privkey.pem;
+
+    client_max_body_size 50M;
+
+    location / {
+        proxy_pass http://127.0.0.1:5000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+NGINXEOF
+fi
+
 # Gỡ site mặc định để nó không tranh default_server với cấu hình trên
 rm -f /etc/nginx/sites-enabled/default
 ln -sf /etc/nginx/sites-available/api /etc/nginx/sites-enabled/api
@@ -224,4 +306,5 @@ pm2 startup systemd -u ubuntu --hp /home/ubuntu
 echo "Backend API deployment complete!"
 [ -n "$EMAIL_WARNING" ] && echo "⚠️  $EMAIL_WARNING"
 [ -n "$CLOUDFRONT_WARNING" ] && echo "⚠️  $CLOUDFRONT_WARNING"
+[ -n "$TLS_WARNING" ] && echo "⚠️  $TLS_WARNING"
 true

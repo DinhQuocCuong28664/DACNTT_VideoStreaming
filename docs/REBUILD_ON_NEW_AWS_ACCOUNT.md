@@ -108,7 +108,10 @@ docker push "$ECR:latest"
 | `zelostech.site` (CNAME) | Endpoint S3 website mới, hoặc domain CloudFront nếu đã bật |
 | `api` (A) | IP public của EC2 backend mới |
 
-Giữ nguyên Proxy (đám mây cam) và SSL/TLS ở chế độ **Flexible** như hiện tại.
+Giữ nguyên Proxy (đám mây cam) và SSL/TLS ở chế độ **Full/Full (strict)** như hiện tại.
+Ở chế độ này Cloudflare kết nối về máy chủ qua **cổng 443** (kiểm chứng 2026-09-25: mọi
+kết nối từ dải IP Cloudflare đều vào `:443`), nên nginx phải có chứng chỉ thật — xem
+bước 7. Tài liệu này trước đây ghi "Flexible", là sai.
 
 ### 7. Khôi phục backend trên EC2
 
@@ -119,12 +122,23 @@ khẩu Gmail và khoá riêng ký CloudFront đọc từ Secrets Manager; `EMAIL
 `CLOUDFRONT_KEY_PAIR_ID` do Terraform chèn vào script (từ `var.email_user` và
 `module.cloudfront.signing_key_pair_id`). Không còn biến nào phải sửa tay.
 
+Script cũng tự xin chứng chỉ Let's Encrypt cho `api.zelostech.site` bằng
+certbot + plugin `dns-cloudflare` (DNS-01, vì máy nằm sau proxy Cloudflare),
+với Cloudflare API token đọc từ secret `dacntt-dev/cloudflare-api-token`, rồi
+bật nginx cổng 443. Trước 2026-09-25 phần này cài tay trên máy, và dựng lại
+máy thì Cloudflare trả 521 cho mọi request API.
+
 Việc còn phải làm:
 
 - Tài khoản AWS mới: nạp khoá riêng CloudFront vào secret
   `dacntt-dev/cloudfront-private-key` **trước** khi dựng EC2 (lệnh ở
   `docs/PRIVATE_VIDEO_SIGNED_COOKIES.md`, bước 5). Thiếu thì
   `/var/log/user-data.log` in cảnh báo và trình phát bị CloudFront trả 403.
+- Tài khoản AWS mới: nạp Cloudflare API token (quyền Zone → DNS → Edit cho
+  `zelostech.site`) vào secret `dacntt-dev/cloudflare-api-token` **trước** khi
+  dựng EC2: `aws secretsmanager put-secret-value --secret-id
+  dacntt-dev/cloudflare-api-token --secret-string <token>`. Thiếu thì nginx chỉ
+  nghe cổng 80 và API trả 521 qua Cloudflare.
 - Cập nhật GitHub Secrets: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`.
 - Đọc `pm2 logs backend-api` sau khi máy lên: phải thấy dòng
   `✉️  SMTP ready as ...`. Nếu thấy `⚠️  Email is not configured` hoặc
@@ -385,7 +399,10 @@ curl -s -o /dev/null -w "%{http_code}\n" http://<IP_MOI>/
 | `www` (CNAME) | ❌ Không | `zelostech.site` |
 | `_272aca68…` (CNAME) | ❌ Không | Xác thực chứng chỉ ACM — **đừng xoá**, cần cho CloudFront sau này |
 
-Giữ nguyên Proxy (đám mây cam) và SSL/TLS ở chế độ **Flexible**.
+Giữ nguyên Proxy (đám mây cam) và SSL/TLS ở chế độ **Full/Full (strict)** như hiện tại.
+Ở chế độ này Cloudflare kết nối về máy chủ qua **cổng 443** (kiểm chứng 2026-09-25: mọi
+kết nối từ dải IP Cloudflare đều vào `:443`), nên nginx phải có chứng chỉ thật — xem
+bước 7. Tài liệu này trước đây ghi "Flexible", là sai.
 
 ## Muốn khỏi phải sửa DNS mỗi lần?
 

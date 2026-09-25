@@ -16,3 +16,7 @@ output "email_app_password_secret_arn" {
 output "cloudfront_private_key_secret_arn" {
   value = aws_secretsmanager_secret.cloudfront_private_key.arn
 }
+
+output "cloudflare_api_token_secret_arn" {
+  value = aws_secretsmanager_secret.cloudflare_api_token.arn
+}
