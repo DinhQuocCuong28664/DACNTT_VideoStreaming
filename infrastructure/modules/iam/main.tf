@@ -142,6 +142,27 @@ resource "aws_iam_role_policy" "transcoder_sqs" {
   })
 }
 
+# Kiểm duyệt nội dung: transcoder gửi khung hình trích từ video tới Amazon
+# Rekognition (transcoder/src/moderation.js). DetectModerationLabels với mô
+# hình gốc không gắn với tài nguyên cụ thể nào — tài liệu IAM của Rekognition
+# chỉ cho giới hạn theo ARN khi dùng custom adapter — nên Resource là "*";
+# quyền vẫn hẹp vì chỉ gồm đúng một hành động chỉ-đọc, không tạo tài nguyên.
+resource "aws_iam_role_policy" "transcoder_rekognition" {
+  name = "${var.project_name}-transcoder-rekognition-policy"
+  role = aws_iam_role.transcoder_task.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = ["rekognition:DetectModerationLabels"]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
 # ── Lambda Job Submitter Role ─────────────────────
 resource "aws_iam_role" "lambda_job_submitter" {
   name = "${var.project_name}-lambda-job-submitter-role"

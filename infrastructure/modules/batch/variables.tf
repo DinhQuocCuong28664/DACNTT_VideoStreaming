@@ -85,6 +85,42 @@ variable "email_app_password_secret_arn" {
   default     = ""
 }
 
+# ── Kiểm duyệt nội dung (Amazon Rekognition) ──
+variable "moderation_enabled" {
+  description = "Bật kiểm duyệt nội dung tự động trước khi công khai video"
+  type        = bool
+  default     = true
+}
+
+variable "moderation_review_confidence" {
+  description = "Độ tin cậy (%) tối thiểu để đưa video vào hàng rà soát"
+  type        = number
+  default     = 60
+}
+
+variable "moderation_block_confidence" {
+  description = "Độ tin cậy (%) tối thiểu để tự động gỡ video"
+  type        = number
+  default     = 90
+
+  validation {
+    condition     = var.moderation_block_confidence >= var.moderation_review_confidence
+    error_message = "Ngưỡng gỡ video phải lớn hơn hoặc bằng ngưỡng rà soát."
+  }
+}
+
+variable "moderation_frame_interval" {
+  description = "Khoảng cách (giây) giữa hai khung hình được phân tích"
+  type        = number
+  default     = 5
+}
+
+variable "moderation_max_frames" {
+  description = "Số khung hình tối đa mỗi video — trần chi phí $0.001 × số khung"
+  type        = number
+  default     = 120
+}
+
 variable "transcoder_log_group" {
   type = string
 }

@@ -79,7 +79,15 @@ resource "aws_batch_job_definition" "transcoder" {
         { name = "SQS_QUEUE_URL", value = var.sqs_queue_url },
         { name = "CLOUDFRONT_DOMAIN", value = var.cloudfront_domain },
         { name = "EMAIL_HOST", value = var.email_host },
-        { name = "EMAIL_PORT", value = var.email_port }
+        { name = "EMAIL_PORT", value = var.email_port },
+        # Kiểm duyệt nội dung (transcoder/src/moderation.js). Ghi tường minh
+        # thay vì dựa vào mặc định trong code, để đọc job definition là biết
+        # production đang kiểm duyệt với ngưỡng nào.
+        { name = "MODERATION_ENABLED", value = tostring(var.moderation_enabled) },
+        { name = "MODERATION_REVIEW_CONFIDENCE", value = tostring(var.moderation_review_confidence) },
+        { name = "MODERATION_BLOCK_CONFIDENCE", value = tostring(var.moderation_block_confidence) },
+        { name = "MODERATION_FRAME_INTERVAL", value = tostring(var.moderation_frame_interval) },
+        { name = "MODERATION_MAX_FRAMES", value = tostring(var.moderation_max_frames) }
       ],
       var.email_user != "" ? [{ name = "EMAIL_USER", value = var.email_user }] : [],
       var.email_from != "" ? [{ name = "EMAIL_FROM", value = var.email_from }] : [],
