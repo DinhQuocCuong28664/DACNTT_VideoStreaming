@@ -1,5 +1,11 @@
 require('dotenv').config();
 
+/** Đọc số dương từ biến môi trường, sai hoặc thiếu thì dùng giá trị mặc định. */
+const positiveNumber = (value, fallback) => {
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? n : fallback;
+};
+
 const config = {
   // MongoDB
   mongodbUri: process.env.MONGODB_URI,
@@ -29,6 +35,25 @@ const config = {
     user: process.env.EMAIL_USER,
     appPassword: process.env.EMAIL_APP_PASSWORD,
     from: process.env.EMAIL_FROM || 'DACNTT Video Platform <noreply@zelostech.site>',
+  },
+
+  // Kiểm duyệt nội dung bằng Amazon Rekognition (xem src/moderation.js).
+  //
+  // Bật mặc định, chỉ tắt khi ghi rõ MODERATION_ENABLED=false: quên cấu hình
+  // thì hệ thống vẫn kiểm duyệt, thay vì lặng lẽ công khai mọi video.
+  moderation: {
+    enabled: process.env.MODERATION_ENABLED !== 'false',
+    // Một khung hình mỗi 5 giây, tối đa 120 khung: trần $0.12/video theo giá
+    // $0.001/ảnh; video dài hơn 10 phút thì khoảng cách tự giãn ra.
+    interval: positiveNumber(process.env.MODERATION_FRAME_INTERVAL, 5),
+    maxFrames: Math.floor(positiveNumber(process.env.MODERATION_MAX_FRAMES, 120)),
+    // AWS: MinConfidence dưới 50 cho nhiều dương tính giả. 60 để vào hàng rà
+    // soát, 90 mới tự động gỡ — phần lưng chừng dành cho con người quyết.
+    reviewConfidence: positiveNumber(process.env.MODERATION_REVIEW_CONFIDENCE, 60),
+    blockConfidence: positiveNumber(process.env.MODERATION_BLOCK_CONFIDENCE, 90),
+    // Phân tích được dưới 80% số khung dự kiến thì không tự động công khai.
+    minCoverage: 0.8,
+    concurrency: 3,
   },
 
   // FFmpeg Settings

@@ -85,6 +85,37 @@ describe('dbHandler — ghi có điều kiện chống xử lý trùng', () => {
         updateVideoReady(videoId, { hlsUrl: 'https://cdn/master.m3u8' })
       ).rejects.toThrow(`Video not found: ${videoId}`);
     });
+
+    it('ghi kết quả kiểm duyệt trong CÙNG lệnh ghi READY, theo từng trường con', async () => {
+      // Hai lệnh ghi riêng sẽ để lộ một khoảng hở: video đã READY (hiện trên
+      // trang chủ) trong khi nhãn blocked chưa kịp ghi. Ghi theo trường con
+      // để không xoá mất moderation.openReports do backend quản lý.
+      mockVideoModel.findOneAndUpdate.mockResolvedValue({ _id: videoId, status: 'READY' });
+
+      await updateVideoReady(videoId, {
+        hlsUrl: 'https://cdn/master.m3u8',
+        moderation: {
+          status: 'blocked',
+          labels: [{ name: 'Graphic Violence', confidence: 96, action: 'block', timestamp: 7.5, frames: 1 }],
+          maxConfidence: 96,
+          framesAnalyzed: 2,
+          framesPlanned: 2,
+          modelVersion: '7.0',
+          error: null,
+        },
+      });
+
+      const [filter, update] = mockVideoModel.findOneAndUpdate.mock.calls[0];
+      expect(filter).toEqual({ _id: videoId, status: { $ne: 'READY' } });
+      expect(update.$set).toMatchObject({
+        status: 'READY',
+        'moderation.status': 'blocked',
+        'moderation.source': 'auto',
+        'moderation.maxConfidence': 96,
+      });
+      expect(update.$set['moderation.checkedAt']).toBeInstanceOf(Date);
+      expect(update.$set).not.toHaveProperty('moderation');
+    });
   });
 
   describe('updateVideoError', () => {
