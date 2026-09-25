@@ -14,6 +14,7 @@ import WatchPage from './pages/WatchPage';
 import ChannelPage from './pages/ChannelPage';
 import LandingPage from './pages/LandingPage';
 import SettingsPage from './pages/SettingsPage';
+import AdminPage from './pages/AdminPage';
 import NotFoundPage from './pages/NotFoundPage';
 import ForbiddenPage from './pages/ForbiddenPage';
 
@@ -42,6 +43,23 @@ const ProtectedRoute = ({ children }) => {
   }
 
   return children;
+};
+
+/**
+ * Admin Route — chỉ quản trị viên (role === 'admin').
+ *
+ * Khách được đưa sang đăng nhập như ProtectedRoute; người dùng thường nhận
+ * trang 403. Đây chỉ là lớp giao diện: mọi endpoint /api/admin tự kiểm tra
+ * vai trò ở máy chủ (middleware requireAdmin).
+ */
+const AdminRoute = ({ children }) => {
+  const { user } = useAuth();
+
+  return (
+    <ProtectedRoute>
+      {user?.role === 'admin' ? children : <Navigate to="/403" replace />}
+    </ProtectedRoute>
+  );
 };
 
 /**
@@ -125,6 +143,14 @@ function App() {
               <ProtectedRoute>
                 <SettingsPage />
               </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin"
+            element={
+              <AdminRoute>
+                <AdminPage />
+              </AdminRoute>
             }
           />
         </Route>

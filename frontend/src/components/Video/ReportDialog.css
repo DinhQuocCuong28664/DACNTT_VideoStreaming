@@ -1,0 +1,33 @@
+.report-modal {
+  width: min(480px, calc(100% - 2 * var(--space-md)));
+}
+
+.report-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.report-reasons {
+  border: none;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+
+.report-reasons .radio-row {
+  align-items: center;
+  padding: 10px 12px;
+}
+
+.report-reasons .radio-row input {
+  margin-top: 0;
+}
+
+.report-error {
+  margin-top: 0;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--danger-soft);
+  font-size: var(--font-size-sm);
+}

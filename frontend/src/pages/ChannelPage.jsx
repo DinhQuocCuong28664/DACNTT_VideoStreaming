@@ -91,7 +91,7 @@ const ChannelPage = () => {
   );
 
   /**
-   * Chỉ hoà lại bốn trường do đường ống chuyển mã ghi (xem updateVideoReady
+   * Chỉ hoà lại các trường do đường ống chuyển mã ghi (xem updateVideoReady
    * trong transcoder/src/dbHandler.js), thay vì thay nguyên danh sách.
    *
    * Thay nguyên danh sách sẽ giẫm lên các cập nhật lạc quan: đổi chế độ hiển
@@ -121,6 +121,8 @@ const ChannelPage = () => {
             hlsUrl: next.hlsUrl,
             thumbnailUrl: next.thumbnailUrl,
             duration: next.duration,
+            // Kết quả kiểm duyệt được ghi cùng lúc với READY.
+            moderation: next.moderation,
           };
         })
       );

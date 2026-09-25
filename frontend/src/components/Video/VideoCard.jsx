@@ -68,6 +68,15 @@ const VideoCard = ({ video, variant = 'grid', showAvatar = true, thumbnailOverla
             {t('videoCard.failed')}
           </span>
         )}
+        {/* Cũng chỉ chủ kênh thấy: danh mục công khai đã lọc bỏ video bị ẩn. */}
+        {video.status === 'READY' && video.moderation?.status === 'blocked' && (
+          <span className="video-status-badge video-status-badge-error">
+            {t('videoCard.removed')}
+          </span>
+        )}
+        {video.status === 'READY' && video.moderation?.status === 'flagged' && (
+          <span className="video-status-badge">{t('videoCard.underReview')}</span>
+        )}
         {thumbnailOverlay}
       </div>
 

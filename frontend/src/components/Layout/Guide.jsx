@@ -16,6 +16,8 @@ import {
   MdOutlineInfo,
   MdOutlineAccountCircle,
   MdChevronRight,
+  MdOutlineAdminPanelSettings,
+  MdAdminPanelSettings,
 } from 'react-icons/md';
 import { useAuth } from '../../context/useAuth';
 import { CATEGORIES, ALL_CATEGORY } from '../../i18n/categories';
@@ -81,7 +83,14 @@ const Guide = ({ variant = 'full', onNavigate }) => {
           activeIcon: MdSettings,
           active: location.pathname === '/settings',
         },
-      ]
+        user?.role === 'admin' && {
+          to: '/admin',
+          label: t('nav.admin'),
+          icon: MdOutlineAdminPanelSettings,
+          activeIcon: MdAdminPanelSettings,
+          active: location.pathname === '/admin',
+        },
+      ].filter(Boolean)
     : [];
 
   const renderItem = (item) => {

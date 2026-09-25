@@ -16,6 +16,7 @@ import {
   MdOutlineInfo,
   MdOutlineAccountCircle,
   MdOutlineVideoLibrary,
+  MdOutlineAdminPanelSettings,
 } from 'react-icons/md';
 import { useAuth } from '../../context/useAuth';
 import { useTheme } from '../../context/useTheme';
@@ -225,6 +226,12 @@ const Navbar = ({ onMenuClick }) => {
                     <MdOutlineSettings />
                     <span>{t('nav.settings')}</span>
                   </Link>
+                  {user?.role === 'admin' && (
+                    <Link to="/admin" className="dropdown-item" onClick={() => setMenuOpen(false)}>
+                      <MdOutlineAdminPanelSettings />
+                      <span>{t('nav.admin')}</span>
+                    </Link>
+                  )}
                   <div className="dropdown-divider" />
                   {preferenceRows}
                   <div className="dropdown-divider" />

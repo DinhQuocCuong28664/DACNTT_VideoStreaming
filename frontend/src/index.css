@@ -663,6 +663,33 @@ button, input, select, textarea {
   border-top: 1px solid var(--border-color);
 }
 
+/* Hộp thoại dựng trên <dialog> gốc (components/Common/Modal.jsx). Phần tử
+   <dialog> chỉ là khung trong suốt; thẻ `.dialog` bên trong phủ kín nó để bấm
+   ra ngoài thẻ nghĩa là bấm vào ::backdrop. */
+.modal {
+  width: min(560px, calc(100% - 2 * var(--space-md)));
+  max-width: none;
+  max-height: calc(100dvh - 2 * var(--space-md));
+  margin: auto;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  overflow: visible;
+}
+
+.modal[open] {
+  animation: fade-up 200ms var(--ease-out);
+}
+
+.modal::backdrop {
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.modal > .dialog {
+  max-height: inherit;
+}
+
 /* ── Ô nhập kiểu Studio: nhãn nằm trong viền, phía trên ── */
 .studio-field {
   display: block;

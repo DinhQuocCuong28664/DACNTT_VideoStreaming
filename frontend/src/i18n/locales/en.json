@@ -31,7 +31,8 @@
     "viewChannel": "View your channel",
     "aboutVidShare": "About VidShare",
     "signInPrompt": "Sign in to upload videos, comment and like.",
-    "languageRow": "Language: {{lang}}"
+    "languageRow": "Language: {{lang}}",
+    "admin": "Moderation"
   },
   "categories": {
     "all": "All",
@@ -64,7 +65,9 @@
     "daysAgo": "{{count}} d ago",
     "monthsAgo": "{{count}} mo ago",
     "views_one": "{{value}} view",
-    "views_other": "{{value}} views"
+    "views_other": "{{value}} views",
+    "underReview": "Under review",
+    "removed": "Removed"
   },
   "upload": {
     "dropzone": "Drag and drop a video file to upload",
@@ -239,7 +242,16 @@
     "viewsFull_one": "{{value}} view",
     "viewsFull_other": "{{value}} views",
     "commentsHeading_one": "{{count}} Comment",
-    "commentsHeading_other": "{{count}} Comments"
+    "commentsHeading_other": "{{count}} Comments",
+    "report": "Report",
+    "removedTitle": "This video has been removed",
+    "removedBody": "It broke the community guidelines on sexual, violent, disturbing or hateful content.",
+    "underReviewTitle": "This video is under review",
+    "underReviewBody": "Our moderators are checking this video before it can be watched publicly. Please come back later.",
+    "ownerRemovedNotice": "Your video was removed for breaking the community guidelines and can no longer be played. Only you can see this page.",
+    "ownerUnderReviewNotice": "Your video is waiting for a moderator to review it. Only you can see it until the review is done.",
+    "adminNotice": "You are viewing this as an administrator. Moderation status: {{status}}.",
+    "moderationNote": "Moderator note: {{note}}"
   },
   "player": {
     "authFailed": "Could not authorise this playback session. Please reload the page.",
@@ -343,5 +355,87 @@
     "cancel": "Cancel",
     "close": "Close",
     "required": "required"
+  },
+  "moderationStatus": {
+    "approved": "Approved",
+    "flagged": "Under review",
+    "blocked": "Removed"
+  },
+  "report": {
+    "title": "Report video",
+    "question": "What's going on?",
+    "reasons": {
+      "sexual": "Sexual content",
+      "violent": "Violent or repulsive content",
+      "hateful": "Hateful or abusive content",
+      "harassment": "Harassment or bullying",
+      "dangerous": "Harmful or dangerous acts",
+      "child_abuse": "Child abuse",
+      "spam": "Spam or misleading",
+      "other": "Something else"
+    },
+    "detailsLabel": "Add details (optional)",
+    "detailsPlaceholder": "e.g. violent scene at 2:15",
+    "hint": "The uploader won't see who reported it. Our moderators will review it and remove the video if it breaks the rules.",
+    "submit": "Report",
+    "submitting": "Sending...",
+    "success": "Thanks for reporting. Our moderators will review this video.",
+    "already": "You have already reported this video. Our moderators are reviewing it.",
+    "failed": "Couldn't send the report: {{message}}"
+  },
+  "admin": {
+    "title": "Content moderation",
+    "subtitle": "Review videos flagged by the automated check or reported by viewers.",
+    "statReview": "To review",
+    "statOpenReports": "Open reports",
+    "statBlocked": "Removed",
+    "statAutoBlocked": "Removed automatically",
+    "tabReview": "To review",
+    "tabBlocked": "Removed",
+    "emptyReview": "Nothing left to review",
+    "emptyReviewDesc": "Videos flagged by the automated check or reported by viewers show up here.",
+    "emptyBlocked": "No videos have been removed",
+    "loadFailed": "Couldn't load the list",
+    "flaggedAuto": "Flagged automatically",
+    "blockedAuto": "Removed automatically",
+    "blockedBy": "Removed by {{name}}",
+    "approvedBy": "Approved by {{name}}",
+    "reportCount_one": "{{count}} report",
+    "reportCount_other": "{{count}} reports",
+    "uploadedBy": "Uploaded by {{name}}",
+    "detected": "Detected",
+    "labelAt": "at {{time}}",
+    "noLabels": "The automated check found nothing that breaks the rules.",
+    "checkError": "The automated check did not finish: {{error}}",
+    "reveal": "Show image",
+    "conceal": "Blur again",
+    "blurHint": "Blurred to limit exposure to disturbing content",
+    "watch": "Watch video",
+    "showReports": "Show reports",
+    "hideReports": "Hide reports",
+    "reportsLoading": "Loading reports...",
+    "noReports": "No reports yet.",
+    "reportStatus": {
+      "open": "Open",
+      "dismissed": "Dismissed",
+      "actioned": "Actioned"
+    },
+    "note": "Note: {{note}}",
+    "approve": "Keep",
+    "restore": "Restore",
+    "block": "Remove video",
+    "confirmBlockTitle": "Remove this video?",
+    "confirmApproveTitle": "Keep this video?",
+    "confirmRestoreTitle": "Restore this video?",
+    "confirmBlockBody": "The video will be hidden from everyone and even its uploader won't be able to play it. Open reports are marked as actioned.",
+    "confirmApproveBody": "The video goes back to normal, with the visibility its uploader chose. Open reports are dismissed.",
+    "noteLabel": "Note to the uploader (optional)",
+    "confirm": "Confirm",
+    "saving": "Saving...",
+    "blockedToast": "Removed \"{{title}}\"",
+    "approvedToast": "Kept \"{{title}}\"",
+    "decideFailed": "Couldn't save the decision: {{message}}",
+    "loadMore": "Load more",
+    "restoredToast": "Restored \"{{title}}\""
   }
 }
