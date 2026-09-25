@@ -121,7 +121,66 @@ const sendVideoFailedEmail = async (to, { title, displayName }) => {
   await transporter.sendMail(mailOptions);
 };
 
+const MODERATION_COPY = {
+  blocked: {
+    subject: '⛔ Your video was removed · Video của bạn đã bị gỡ — DACNTT Video Platform',
+    en: 'Our automated review found content in your video <strong>"{title}"</strong> that breaks the community guidelines (sexual, violent, disturbing or hateful content), so it has been removed and is not visible to anyone.',
+    enHint: 'If you believe this is a mistake, contact the support team and a moderator will review it again.',
+    vi: 'Hệ thống kiểm duyệt tự động phát hiện video <strong>"{title}"</strong> có nội dung vi phạm nguyên tắc cộng đồng (khiêu dâm, bạo lực, gây sốc hoặc thù ghét), nên video đã bị gỡ và không ai xem được.',
+    viHint: 'Nếu bạn cho rằng đây là nhầm lẫn, hãy liên hệ đội ngũ hỗ trợ để được xem xét lại.',
+  },
+  flagged: {
+    subject: '🕵️ Your video is under review · Video của bạn đang được rà soát — DACNTT Video Platform',
+    en: 'Your video <strong>"{title}"</strong> has finished processing, but our automated review needs a moderator to take a look before it goes public.',
+    enHint: 'You can still see it on your channel. We will publish it as soon as the review is done.',
+    vi: 'Video <strong>"{title}"</strong> đã xử lý xong, nhưng hệ thống kiểm duyệt tự động cần đội ngũ vận hành xem qua trước khi công khai.',
+    viHint: 'Bạn vẫn thấy video trên kênh của mình. Video sẽ được công khai ngay khi rà soát xong.',
+  },
+};
+
+/**
+ * Gửi email báo kết quả kiểm duyệt tự động — thay cho email "video đã sẵn
+ * sàng", vì gửi đường link xem cho một video đã bị gỡ là sai.
+ *
+ * Cố ý không nêu nhãn và độ tin cậy cụ thể: người vi phạm có chủ đích có thể
+ * dùng chúng để chỉnh video cho lọt qua bộ lọc.
+ *
+ * @param {string} to
+ * @param {{ title: string, displayName?: string, outcome: 'blocked'|'flagged' }} video
+ */
+const sendVideoModerationEmail = async (to, { title, displayName, outcome }) => {
+  const copy = MODERATION_COPY[outcome];
+  if (!copy) return;
+
+  const transporter = createTransporter();
+  const greetingEn = displayName ? `Hello ${displayName},` : 'Hello,';
+  const greeting = displayName ? `Xin chào ${displayName},` : 'Xin chào,';
+  const fill = (text) => text.replace('{title}', title);
+
+  await transporter.sendMail({
+    from: config.email.from,
+    to,
+    subject: copy.subject,
+    html: `
+      <div style="${emailStyles.wrapper}">
+        <h2 style="${emailStyles.heading}">🎬 DACNTT Video Platform</h2>
+        <hr style="${emailStyles.hr}" />
+        <p>${greetingEn}</p>
+        <p>${fill(copy.en)}</p>
+        <p style="${emailStyles.muted}">${copy.enHint}</p>
+        <hr style="${emailStyles.hr}" />
+        <p>${greeting}</p>
+        <p>${fill(copy.vi)}</p>
+        <p style="${emailStyles.muted}">${copy.viHint}</p>
+        <hr style="${emailStyles.hr}" />
+        <p style="${emailStyles.footer}">© 2026 DACNTT Video Platform — zelostech.site</p>
+      </div>
+    `,
+  });
+};
+
 module.exports = {
   sendVideoReadyEmail,
   sendVideoFailedEmail,
+  sendVideoModerationEmail,
 };

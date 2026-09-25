@@ -2,7 +2,8 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const config = require('./config');
-const { transcodeToHLS } = require('./transcoder');
+const { transcodeToHLS, probeVideo } = require('./transcoder');
+const { moderateVideo } = require('./moderation');
 const { downloadFromS3, uploadDirectoryToS3 } = require('./s3Handler');
 const {
   connectDB,
@@ -13,7 +14,11 @@ const {
   getVideoWithUser,
 } = require('./dbHandler');
 const { pollMessages, parseS3Event, startHeartbeat, deleteMessage } = require('./sqsHandler');
-const { sendVideoReadyEmail, sendVideoFailedEmail } = require('./emailService');
+const {
+  sendVideoReadyEmail,
+  sendVideoFailedEmail,
+  sendVideoModerationEmail,
+} = require('./emailService');
 
 /**
  * Gửi email thông báo mà không bao giờ làm crash job chính.
@@ -96,6 +101,20 @@ const processVideo = async (videoId, rawS3Key, { force = false } = {}) => {
     // Step 2: Download raw video from S3
     await downloadFromS3(config.s3RawBucket, rawS3Key, inputPath);
 
+    // Step 2.5: Kiểm duyệt nội dung (Amazon Rekognition). Chạy trước chuyển
+    // mã vì rẻ và nhanh hơn nhiều; kết quả được giữ lại để ghi CÙNG lúc với
+    // status READY ở bước 5. Video bị chặn vẫn được chuyển mã để quản trị viên
+    // xem lại được khi chủ video khiếu nại — chỉ là không ai khác phát được.
+    // Bỏ qua khi chuyển mã lại video đã READY bằng --force: lệnh ghi READY sẽ
+    // bị từ chối nên kết quả kiểm duyệt cũng không có chỗ để ghi.
+    let moderation = null;
+    if (config.moderation.enabled && existingVideo?.status !== 'READY') {
+      const { duration: probedDuration } = await probeVideo(inputPath);
+      moderation = await moderateVideo(inputPath, probedDuration, workDir);
+    } else if (!config.moderation.enabled) {
+      console.warn('⚠️  MODERATION_ENABLED=false: this video will go public without content moderation.');
+    }
+
     // Step 3: Transcode to HLS (360p / 720p / 1080p)
     const { duration } = await transcodeToHLS(inputPath, outputDir);
 
@@ -107,7 +126,7 @@ const processVideo = async (videoId, rawS3Key, { force = false } = {}) => {
     const hlsUrl = config.getPublicUrl(`${s3Prefix}/master.m3u8`);
     const thumbnailUrl = config.getPublicUrl(`${s3Prefix}/thumbnail.jpg`);
 
-    const { updated } = await updateVideoReady(videoId, { hlsUrl, thumbnailUrl, duration });
+    const { updated } = await updateVideoReady(videoId, { hlsUrl, thumbnailUrl, duration, moderation });
 
     const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
     console.log(`\n🎉 ════════════════════════════════════════`);
@@ -120,16 +139,25 @@ const processVideo = async (videoId, rawS3Key, { force = false } = {}) => {
     // gửi thêm ở đây sẽ khiến người dùng nhận email trùng.
     if (updated) {
       const videoWithUser = await getVideoWithUser(videoId);
-      await notifySafely(
-        sendVideoReadyEmail,
-        videoWithUser?.user?.email,
-        {
-          title: videoWithUser?.title,
-          videoId,
-          displayName: videoWithUser?.user?.displayName || videoWithUser?.user?.username,
-        },
-        'video ready'
-      );
+      const recipient = videoWithUser?.user?.email;
+      const displayName = videoWithUser?.user?.displayName || videoWithUser?.user?.username;
+      const outcome = moderation?.status;
+
+      if (outcome === 'blocked' || outcome === 'flagged') {
+        await notifySafely(
+          sendVideoModerationEmail,
+          recipient,
+          { title: videoWithUser?.title, displayName, outcome },
+          `video ${outcome}`
+        );
+      } else {
+        await notifySafely(
+          sendVideoReadyEmail,
+          recipient,
+          { title: videoWithUser?.title, videoId, displayName },
+          'video ready'
+        );
+      }
     }
   } catch (err) {
     console.error(`❌ Transcoding failed for ${videoId}:`, err.message);

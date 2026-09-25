@@ -20,6 +20,29 @@ const videoSchema = new mongoose.Schema(
     views: Number,
     tags: [String],
     visibility: String,
+    // Phải khai báo ở đây: Mongoose ở chế độ strict sẽ lặng lẽ bỏ các đường
+    // dẫn không có trong schema khỏi lệnh cập nhật. Khớp với backend/src/models/Video.js.
+    moderation: {
+      status: String,
+      source: String,
+      labels: [
+        {
+          _id: false,
+          name: String,
+          parentName: String,
+          action: String,
+          confidence: Number,
+          timestamp: Number,
+          frames: Number,
+        },
+      ],
+      maxConfidence: Number,
+      framesAnalyzed: Number,
+      framesPlanned: Number,
+      modelVersion: String,
+      error: String,
+      checkedAt: Date,
+    },
   },
   { timestamps: true }
 );
@@ -66,11 +89,28 @@ const disconnectDB = async () => {
  * (không crash hẳn), hoặc do deleteMessage() thất bại sau khi đã xử lý xong.
  * Nếu 2 job cùng chạy, chỉ job ghi trước làm status chuyển sang READY thành
  * công; job ghi sau nhận về null và bị bỏ qua thay vì ghi đè.
+ *
+ * Kết quả kiểm duyệt đi chung trong CÙNG lệnh ghi với status READY. Nếu ghi
+ * làm hai bước, sẽ có một khoảng hở video đã READY — tức đã hiện trên trang
+ * chủ — trong khi nhãn "blocked" chưa kịp ghi. Ghi theo từng trường con
+ * (`moderation.status`...) thay vì cả object để không xoá mất
+ * `moderation.openReports` do backend quản lý.
  */
-const updateVideoReady = async (videoId, { hlsUrl, thumbnailUrl, duration }) => {
+const updateVideoReady = async (videoId, { hlsUrl, thumbnailUrl, duration, moderation }) => {
   const update = { status: 'READY', hlsUrl };
   if (thumbnailUrl) update.thumbnailUrl = thumbnailUrl;
   if (duration) update.duration = duration;
+  if (moderation) {
+    update['moderation.status'] = moderation.status;
+    update['moderation.source'] = 'auto';
+    update['moderation.labels'] = moderation.labels;
+    update['moderation.maxConfidence'] = moderation.maxConfidence;
+    update['moderation.framesAnalyzed'] = moderation.framesAnalyzed;
+    update['moderation.framesPlanned'] = moderation.framesPlanned;
+    update['moderation.modelVersion'] = moderation.modelVersion;
+    update['moderation.error'] = moderation.error;
+    update['moderation.checkedAt'] = new Date();
+  }
 
   const video = await Video.findOneAndUpdate(
     { _id: videoId, status: { $ne: 'READY' } },
