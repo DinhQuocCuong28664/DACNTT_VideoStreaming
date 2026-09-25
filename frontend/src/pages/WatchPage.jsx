@@ -11,12 +11,17 @@ import {
   MdMoreVert,
   MdErrorOutline,
   MdOutlineDelete,
+  MdOutlinedFlag,
+  MdBlock,
+  MdOutlineShield,
 } from 'react-icons/md';
 import Avatar from '../components/Common/Avatar';
+import useToast from '../components/Common/Toast';
 import { useAuth } from '../context/useAuth';
 import videoApi from '../api/videoApi';
 import VideoPlayer from '../components/Video/VideoPlayer';
 import VideoCard from '../components/Video/VideoCard';
+import ReportDialog from '../components/Video/ReportDialog';
 import { formatViews, formatDate, timeAgo } from '../utils/format';
 import './WatchPage.css';
 
@@ -32,6 +37,12 @@ const WatchPage = () => {
   // Chỉ dựng trình phát sau khi đã xin xong quyền phát (Signed Cookie)
   const [playbackReady, setPlaybackReady] = useState(false);
   const [playbackDenied, setPlaybackDenied] = useState(false);
+  // Mã lỗi kiểm duyệt từ máy chủ (VIDEO_REMOVED, VIDEO_UNDER_REVIEW): hiện màn
+  // hình giải thích thay vì đưa người xem sang trang 404 chung chung.
+  const [unavailable, setUnavailable] = useState(null);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [toast, showToast] = useToast();
+  const isAdmin = currentUser?.role === 'admin';
 
   // Engagement state
   const [likesCount, setLikesCount] = useState(0);
@@ -57,6 +68,7 @@ const WatchPage = () => {
       setLoading(true);
       setDescExpanded(false);
       setRelatedFilter('all');
+      setUnavailable(null);
       try {
         const [videoRes, commentsRes, relatedRes] = await Promise.all([
           videoApi.getVideoById(id),
@@ -80,7 +92,10 @@ const WatchPage = () => {
         // Xin CloudFront Signed Cookie TRƯỚC khi dựng trình phát. Nếu khởi tạo
         // HLS.js trước, các yêu cầu tải manifest đầu tiên sẽ bị CloudFront từ
         // chối với mã 403 vì trình duyệt chưa có cookie hợp lệ.
-        if (v.status === 'READY') {
+        //
+        // Video đã bị gỡ thì chủ video vẫn mở được trang nhưng không phát được
+        // (máy chủ trả 403 VIDEO_REMOVED) — không xin cookie để khỏi bị chuyển sang trang 403.
+        if (v.status === 'READY' && (v.moderation?.status !== 'blocked' || isAdmin)) {
           try {
             await videoApi.getPlaybackAuth(id);
           } catch (authErr) {
@@ -91,14 +106,19 @@ const WatchPage = () => {
 
         setPlaybackReady(true);
       } catch (err) {
-        console.error('Failed to load video or comments:', err);
+        const code = err.response?.data?.code;
+        if (code === 'VIDEO_REMOVED' || code === 'VIDEO_UNDER_REVIEW') {
+          setUnavailable(code);
+        } else {
+          console.error('Failed to load video or comments:', err);
+        }
       } finally {
         setLoading(false);
       }
     };
 
     fetchVideoAndComments();
-  }, [id, currentUser]);
+  }, [id, currentUser, isAdmin]);
 
   // Video còn đang xử lý — tự động kiểm tra lại định kỳ để chuyển sang phát
   // ngay khi chuyển mã xong, thay vì bắt người xem tự bấm F5.
@@ -110,7 +130,9 @@ const WatchPage = () => {
         const res = await videoApi.getVideoById(id);
         const v = res.data.data.video;
 
-        if (v.status === 'READY') {
+        // Chuyển mã xong cũng là lúc kiểm duyệt có kết quả: video vừa bị gỡ
+        // thì không xin cookie, như ở lần tải trang đầu.
+        if (v.status === 'READY' && (v.moderation?.status !== 'blocked' || isAdmin)) {
           try {
             await videoApi.getPlaybackAuth(id);
           } catch (authErr) {
@@ -126,7 +148,7 @@ const WatchPage = () => {
     }, 5000);
 
     return () => clearInterval(interval);
-  }, [id, video?.status]);
+  }, [id, video?.status, isAdmin]);
 
   // Đóng menu ba chấm của bình luận khi bấm ra ngoài hoặc nhấn Esc.
   useEffect(() => {
@@ -233,6 +255,16 @@ const WatchPage = () => {
     }
   };
 
+  const handleOpenReport = () => {
+    if (!isAuthenticated) return goToLogin();
+    setReportOpen(true);
+  };
+
+  const handleReported = (alreadyReported) => {
+    setReportOpen(false);
+    showToast(alreadyReported ? t('report.already') : t('report.success'));
+  };
+
   const handleShare = () => {
     navigator.clipboard.writeText(window.location.href);
     setCopied(true);
@@ -253,6 +285,27 @@ const WatchPage = () => {
     );
   }
 
+  if (unavailable) {
+    const removed = unavailable === 'VIDEO_REMOVED';
+    const Icon = removed ? MdBlock : MdOutlineShield;
+    return (
+      <div className="container watch-page">
+        <div className="empty-state watch-unavailable" role="alert">
+          <Icon className="empty-state-icon" aria-hidden="true" />
+          <p className="empty-state-title">
+            {removed ? t('watch.removedTitle') : t('watch.underReviewTitle')}
+          </p>
+          <p className="empty-state-desc">
+            {removed ? t('watch.removedBody') : t('watch.underReviewBody')}
+          </p>
+          <Link to="/" className="btn btn-secondary">
+            {t('forbidden.home')}
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   if (!video) {
     return <Navigate to="/404" replace />;
   }
@@ -260,7 +313,13 @@ const WatchPage = () => {
   const user = video.user || {};
   const channelName = user.displayName || user.username;
   const videoSrc = video.hlsUrl || null;
-  const isReady = video.status === 'READY' && videoSrc && playbackReady;
+  const moderationStatus = video.moderation?.status;
+  const isRemoved = moderationStatus === 'blocked';
+  const isOwnVideo = Boolean(currentUser && currentUser._id === user._id);
+  // Chủ video bị gỡ vẫn xem được trang, nhưng trình phát bị thay bằng thông báo.
+  const isReady = video.status === 'READY' && videoSrc && playbackReady && (!isRemoved || isAdmin);
+  const canReport =
+    video.status === 'READY' && !isOwnVideo && moderationStatus !== 'flagged' && !isRemoved;
   const locale = i18n.resolvedLanguage === 'en' ? 'en-US' : 'vi-VN';
 
   const canDelete = (c) =>
@@ -279,6 +338,11 @@ const WatchPage = () => {
           {/* Trình phát */}
           {playbackDenied ? (
             <Navigate to="/403" replace />
+          ) : isRemoved && !isAdmin ? (
+            <div className="player-placeholder">
+              <MdBlock className="player-placeholder-icon" aria-hidden="true" />
+              <p>{t('watch.removedTitle')}</p>
+            </div>
           ) : isReady ? (
             <VideoPlayer
               src={videoSrc}
@@ -299,6 +363,26 @@ const WatchPage = () => {
                   <p>{video.status === 'PROCESSING' ? t('watch.transcoding') : t('watch.queued')}</p>
                 </>
               )}
+            </div>
+          )}
+
+          {/* Chỉ chủ video và quản trị viên nhận được video đang bị ẩn — với
+              mọi người khác máy chủ đã trả 403 từ trước. */}
+          {(moderationStatus === 'flagged' || isRemoved) && (
+            <div className={`watch-moderation-notice${isRemoved ? ' is-removed' : ''}`} role="status">
+              {isRemoved ? <MdBlock aria-hidden="true" /> : <MdOutlineShield aria-hidden="true" />}
+              <div>
+                <p>
+                  {isAdmin && !isOwnVideo
+                    ? t('watch.adminNotice', { status: t(`moderationStatus.${moderationStatus}`) })
+                    : isRemoved
+                      ? t('watch.ownerRemovedNotice')
+                      : t('watch.ownerUnderReviewNotice')}
+                </p>
+                {video.moderation?.note && (
+                  <p className="watch-moderation-note">{t('watch.moderationNote', { note: video.moderation.note })}</p>
+                )}
+              </div>
             </div>
           )}
 
@@ -352,6 +436,13 @@ const WatchPage = () => {
                 {copied ? <MdCheck /> : <MdOutlineShare />}
                 <span>{copied ? t('watch.copied') : t('watch.share')}</span>
               </button>
+
+              {canReport && (
+                <button type="button" className="btn btn-secondary" onClick={handleOpenReport}>
+                  <MdOutlinedFlag />
+                  <span>{t('watch.report')}</span>
+                </button>
+              )}
             </div>
           </div>
 
@@ -522,6 +613,11 @@ const WatchPage = () => {
           </aside>
         )}
       </div>
+
+      {reportOpen && (
+        <ReportDialog videoId={id} onClose={() => setReportOpen(false)} onReported={handleReported} />
+      )}
+      {toast}
     </div>
   );
 };

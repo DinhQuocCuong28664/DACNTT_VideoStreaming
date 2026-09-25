@@ -31,7 +31,8 @@
     "viewChannel": "Xem kênh của bạn",
     "aboutVidShare": "Giới thiệu VidShare",
     "signInPrompt": "Đăng nhập để tải video lên, bình luận và thích video.",
-    "languageRow": "Ngôn ngữ: {{lang}}"
+    "languageRow": "Ngôn ngữ: {{lang}}",
+    "admin": "Kiểm duyệt"
   },
   "categories": {
     "all": "Tất cả",
@@ -63,7 +64,9 @@
     "hoursAgo": "{{count}} giờ trước",
     "daysAgo": "{{count}} ngày trước",
     "monthsAgo": "{{count}} tháng trước",
-    "views_other": "{{value}} lượt xem"
+    "views_other": "{{value}} lượt xem",
+    "underReview": "Đang rà soát",
+    "removed": "Đã bị gỡ"
   },
   "upload": {
     "dropzone": "Kéo và thả tệp video để tải lên",
@@ -236,7 +239,16 @@
     "commentActions": "Thao tác với bình luận",
     "fromChannel": "Từ {{name}}",
     "viewsFull_other": "{{value}} lượt xem",
-    "commentsHeading_other": "{{count}} bình luận"
+    "commentsHeading_other": "{{count}} bình luận",
+    "report": "Báo cáo",
+    "removedTitle": "Video này đã bị gỡ",
+    "removedBody": "Video vi phạm nguyên tắc cộng đồng về nội dung khiêu dâm, bạo lực, gây sốc hoặc thù ghét.",
+    "underReviewTitle": "Video này đang được rà soát",
+    "underReviewBody": "Đội ngũ vận hành đang kiểm tra video trước khi cho phép xem công khai. Vui lòng quay lại sau.",
+    "ownerRemovedNotice": "Video của bạn đã bị gỡ vì vi phạm nguyên tắc cộng đồng và không phát được nữa. Chỉ bạn thấy trang này.",
+    "ownerUnderReviewNotice": "Video của bạn đang chờ đội ngũ vận hành rà soát. Chỉ bạn thấy video này cho tới khi rà soát xong.",
+    "adminNotice": "Bạn đang xem với quyền quản trị viên. Trạng thái kiểm duyệt: {{status}}.",
+    "moderationNote": "Ghi chú của quản trị viên: {{note}}"
   },
   "player": {
     "authFailed": "Không xác thực được phiên xem video. Vui lòng tải lại trang.",
@@ -340,5 +352,86 @@
     "cancel": "Huỷ",
     "close": "Đóng",
     "required": "bắt buộc"
+  },
+  "moderationStatus": {
+    "approved": "Đã duyệt",
+    "flagged": "Chờ rà soát",
+    "blocked": "Đã gỡ"
+  },
+  "report": {
+    "title": "Báo cáo video",
+    "question": "Video này có vấn đề gì?",
+    "reasons": {
+      "sexual": "Nội dung khiêu dâm",
+      "violent": "Nội dung bạo lực hoặc gây sốc",
+      "hateful": "Nội dung thù ghét hoặc lăng mạ",
+      "harassment": "Quấy rối hoặc bắt nạt",
+      "dangerous": "Hành vi nguy hiểm, có hại",
+      "child_abuse": "Xâm hại trẻ em",
+      "spam": "Spam hoặc gây hiểu lầm",
+      "other": "Lý do khác"
+    },
+    "detailsLabel": "Mô tả thêm (không bắt buộc)",
+    "detailsPlaceholder": "Ví dụ: cảnh bạo lực ở phút 2:15",
+    "hint": "Chủ video sẽ không biết ai đã báo cáo. Đội ngũ vận hành sẽ xem xét và gỡ video nếu vi phạm.",
+    "submit": "Gửi báo cáo",
+    "submitting": "Đang gửi...",
+    "success": "Cảm ơn bạn đã báo cáo. Đội ngũ vận hành sẽ xem xét video này.",
+    "already": "Bạn đã báo cáo video này rồi. Đội ngũ vận hành đang xem xét.",
+    "failed": "Không gửi được báo cáo: {{message}}"
+  },
+  "admin": {
+    "title": "Kiểm duyệt nội dung",
+    "subtitle": "Rà soát video bị hệ thống tự động đánh dấu hoặc bị người xem báo cáo.",
+    "statReview": "Cần rà soát",
+    "statOpenReports": "Báo cáo chưa xử lý",
+    "statBlocked": "Đã gỡ",
+    "statAutoBlocked": "Trong đó gỡ tự động",
+    "tabReview": "Cần rà soát",
+    "tabBlocked": "Đã gỡ",
+    "emptyReview": "Không còn video nào cần rà soát",
+    "emptyReviewDesc": "Video bị hệ thống đánh dấu hoặc bị người xem báo cáo sẽ xuất hiện ở đây.",
+    "emptyBlocked": "Chưa có video nào bị gỡ",
+    "loadFailed": "Không tải được danh sách",
+    "flaggedAuto": "Hệ thống đánh dấu",
+    "blockedAuto": "Hệ thống tự động gỡ",
+    "blockedBy": "Gỡ bởi {{name}}",
+    "approvedBy": "Duyệt bởi {{name}}",
+    "reportCount_other": "{{count}} báo cáo",
+    "uploadedBy": "Tải lên bởi {{name}}",
+    "detected": "Hệ thống phát hiện",
+    "labelAt": "tại {{time}}",
+    "noLabels": "Hệ thống không phát hiện nội dung vi phạm.",
+    "checkError": "Kiểm duyệt tự động chưa trọn vẹn: {{error}}",
+    "reveal": "Hiện ảnh",
+    "conceal": "Làm mờ lại",
+    "blurHint": "Ảnh được làm mờ để giảm tiếp xúc với nội dung gây sốc",
+    "watch": "Xem video",
+    "showReports": "Xem báo cáo",
+    "hideReports": "Ẩn báo cáo",
+    "reportsLoading": "Đang tải báo cáo...",
+    "noReports": "Chưa có báo cáo nào.",
+    "reportStatus": {
+      "open": "Chưa xử lý",
+      "dismissed": "Đã bác bỏ",
+      "actioned": "Đã xử lý"
+    },
+    "note": "Ghi chú: {{note}}",
+    "approve": "Giữ lại",
+    "restore": "Khôi phục",
+    "block": "Gỡ video",
+    "confirmBlockTitle": "Gỡ video này?",
+    "confirmApproveTitle": "Giữ lại video này?",
+    "confirmRestoreTitle": "Khôi phục video này?",
+    "confirmBlockBody": "Video sẽ bị ẩn khỏi mọi người và chủ video cũng không phát được nữa. Các báo cáo đang mở được đánh dấu là đã xử lý.",
+    "confirmApproveBody": "Video hiển thị lại bình thường theo chế độ mà chủ video đã chọn. Các báo cáo đang mở bị bác bỏ.",
+    "noteLabel": "Ghi chú cho chủ video (không bắt buộc)",
+    "confirm": "Xác nhận",
+    "saving": "Đang lưu...",
+    "blockedToast": "Đã gỡ video \"{{title}}\"",
+    "approvedToast": "Đã giữ lại video \"{{title}}\"",
+    "decideFailed": "Không lưu được quyết định: {{message}}",
+    "loadMore": "Tải thêm",
+    "restoredToast": "Đã khôi phục video \"{{title}}\""
   }
 }

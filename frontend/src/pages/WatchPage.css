@@ -84,6 +84,43 @@
   color: #aaaaaa;
 }
 
+/* ── Thông báo kiểm duyệt (chỉ chủ video và quản trị viên thấy) ── */
+.watch-moderation-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 12px var(--space-md);
+  border-radius: var(--radius-md);
+  background: var(--accent-soft);
+  font-size: var(--font-size-sm);
+  line-height: 20px;
+}
+
+.watch-moderation-notice > svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+  font-size: 20px;
+  color: var(--accent-primary);
+}
+
+.watch-moderation-notice.is-removed {
+  background: var(--danger-soft);
+}
+
+.watch-moderation-notice.is-removed > svg {
+  color: var(--danger);
+}
+
+.watch-moderation-note {
+  margin-top: 4px;
+  color: var(--text-secondary);
+}
+
+.watch-unavailable {
+  margin-top: var(--space-2xl);
+}
+
 /* ── Tiêu đề và hàng kênh ── */
 .watch-title {
   margin-top: 12px;

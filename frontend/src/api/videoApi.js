@@ -57,6 +57,10 @@ export const videoApi = {
   deleteVideo: (id) =>
     axiosClient.delete(`/videos/${id}`),
 
+  /** reason: một trong REPORT_REASONS ở backend (src/utils/moderation.js) */
+  reportVideo: (id, reason, details = '') =>
+    axiosClient.post(`/videos/${id}/report`, { reason, details }),
+
   /**
    * Upload file directly to S3 using Pre-signed URL
    * @param {string} presignedUrl - S3 Pre-signed PUT URL
