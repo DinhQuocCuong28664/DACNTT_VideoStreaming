@@ -40,6 +40,20 @@ const uploadLimiter = rateLimit({
 });
 
 /**
+ * Giới hạn gửi báo cáo vi phạm. Mỗi người chỉ có một báo cáo mở cho mỗi video
+ * (chỉ mục duy nhất trong models/Report.js), giới hạn này chặn thêm việc một
+ * tài khoản rải báo cáo lên hàng loạt video để làm ngập hàng rà soát.
+ */
+const reportLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 giờ
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: skipInTest,
+  message: (req) => ({ success: false, message: t(req, 'rate.tooManyReports') }),
+});
+
+/**
  * Giới hạn chung cho toàn bộ API, đủ rộng để không ảnh hưởng người dùng thật.
  */
 const apiLimiter = rateLimit({
@@ -51,4 +65,4 @@ const apiLimiter = rateLimit({
   message: (req) => ({ success: false, message: t(req, 'rate.tooManyRequests') }),
 });
 
-module.exports = { authLimiter, uploadLimiter, apiLimiter };
+module.exports = { authLimiter, uploadLimiter, reportLimiter, apiLimiter };

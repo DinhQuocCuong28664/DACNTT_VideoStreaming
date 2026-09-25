@@ -13,6 +13,7 @@ const { verifyEmailTransport } = require('./services/emailService');
 const authRoutes = require('./routes/authRoutes');
 const videoRoutes = require('./routes/videoRoutes');
 const userRoutes = require('./routes/userRoutes');
+const adminRoutes = require('./routes/adminRoutes');
 const { translate, DEFAULT_LANGUAGE } = require('./config/i18n');
 
 // Dừng sớm nếu thiếu cấu hình bắt buộc, trước khi mở cổng lắng nghe
@@ -73,6 +74,7 @@ app.get('/', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/videos', videoRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Global error handler (must be AFTER routes)
 app.use(errorHandler);

@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { MODERATION_STATUSES, MAX_MODERATION_NOTE } = require('../utils/moderation');
 
 const videoSchema = new mongoose.Schema(
   {
@@ -79,6 +80,48 @@ const videoSchema = new mongoose.Schema(
       enum: ['public', 'private', 'unlisted'],
       default: 'public',
     },
+
+    /**
+     * Kiểm duyệt nội dung.
+     *
+     * `status` do transcoder ghi khi chuyển mã xong (xem transcoder/src/
+     * moderation.js), hoặc do quản trị viên đặt lại ở trang rà soát:
+     * - thiếu hẳn: video tải lên trước khi có tính năng này, coi như hợp lệ;
+     * - `approved`: đã qua kiểm duyệt tự động hoặc được quản trị viên giữ lại;
+     * - `flagged`: chờ rà soát, ẩn khỏi mọi người trừ chủ video và quản trị viên;
+     * - `blocked`: đã bị gỡ, không ai ngoài quản trị viên phát được.
+     *
+     * `openReports` là bộ đếm báo cáo chưa xử lý, giữ ngay trên video để hàng
+     * rà soát lọc và sắp xếp được bằng một truy vấn có phân trang.
+     */
+    moderation: {
+      status: { type: String, enum: MODERATION_STATUSES },
+      source: { type: String, enum: ['auto', 'admin'] },
+      labels: [
+        {
+          _id: false,
+          name: String,
+          parentName: String,
+          action: String,
+          confidence: Number,
+          timestamp: Number,
+          frames: Number,
+        },
+      ],
+      maxConfidence: Number,
+      framesAnalyzed: Number,
+      framesPlanned: Number,
+      modelVersion: String,
+      error: String,
+      checkedAt: Date,
+      reviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      reviewedAt: Date,
+      note: {
+        type: String,
+        maxlength: [MAX_MODERATION_NOTE, `Moderation note cannot exceed ${MAX_MODERATION_NOTE} characters`],
+      },
+      openReports: { type: Number, default: 0 },
+    },
   },
   {
     timestamps: true,
@@ -94,6 +137,9 @@ videoSchema.index({ status: 1 });
 videoSchema.index({ category: 1 });
 videoSchema.index({ tags: 1 });
 videoSchema.index({ visibility: 1, status: 1, createdAt: -1 });
+// Hàng rà soát của quản trị viên (xem moderationService.listQueue).
+videoSchema.index({ 'moderation.status': 1, updatedAt: -1 });
+videoSchema.index({ 'moderation.openReports': -1, createdAt: -1 });
 
 // Ghi chu: truoc day o day co mot text index { title: 'text', description: 'text' }.
 // No da duoc go bo vi khong truy van nao dung den — getAllVideos() tim kiem bang
@@ -106,10 +152,22 @@ videoSchema.index({ visibility: 1, status: 1, createdAt: -1 });
 // hanh vi tim kiem — regex hien tai khop duoc chuoi con o giua tu va khop ca
 // truong tags, hai dieu ma $text khong lam duoc.
 
-// Remove __v from JSON output
+/**
+ * Chỉ để lộ trạng thái kiểm duyệt ra ngoài, không để lộ chi tiết.
+ *
+ * Nhãn, độ tin cậy và số báo cáo chỉ dành cho quản trị viên: công bố chúng cho
+ * người tải lên là chỉ cho kẻ vi phạm có chủ đích biết cần chỉnh video ở đâu
+ * để lọt bộ lọc. Trang quản trị đọc bằng truy vấn `.lean()`, vốn không đi qua
+ * hàm này, nên vẫn thấy đầy đủ.
+ */
 videoSchema.methods.toJSON = function () {
   const video = this.toObject();
   delete video.__v;
+  if (video.moderation) {
+    video.moderation = video.moderation.status
+      ? { status: video.moderation.status, note: video.moderation.note }
+      : undefined;
+  }
   return video;
 };
 

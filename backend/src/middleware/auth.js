@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const { t } = require('../config/i18n');
 
 /**
  * Token co duoc cap TRUOC lan doi mat khau gan nhat khong?
@@ -105,5 +106,23 @@ const optionalAuth = async (req, res, next) => {
   }
 };
 
+/**
+ * Chỉ cho quản trị viên đi qua. Đặt SAU `auth`, vì cần `req.user`.
+ *
+ * Vai trò đọc từ bản ghi User vừa nạp trong `auth`, không từ claim trong JWT:
+ * thu hồi quyền admin có hiệu lực ngay ở request kế tiếp, không phải chờ
+ * token cũ hết hạn.
+ */
+const requireAdmin = (req, res, next) => {
+  if (!req.user || req.user.role !== 'admin') {
+    return res.status(403).json({
+      success: false,
+      message: t(req, 'admin.forbidden'),
+    });
+  }
+  next();
+};
+
 module.exports = auth;
 module.exports.optionalAuth = optionalAuth;
+module.exports.requireAdmin = requireAdmin;

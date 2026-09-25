@@ -107,8 +107,9 @@ const getVideoById = async (req, res, next) => {
  */
 const getPlaybackAuth = async (req, res, next) => {
   try {
-    // Ném lỗi 404 nếu video riêng tư và người gọi không phải chủ sở hữu
-    await videoService.getVideoById(req.params.id, req.user);
+    // Ném lỗi 404 nếu video riêng tư và người gọi không phải chủ sở hữu,
+    // 403 VIDEO_REMOVED nếu video đã bị gỡ vì vi phạm (kể cả với chủ sở hữu)
+    await videoService.getPlayableVideo(req.params.id, req.user);
 
     if (!cloudfrontService.isSigningEnabled()) {
       // Môi trường chưa bật cơ chế ký (ví dụ khi phát triển cục bộ):
