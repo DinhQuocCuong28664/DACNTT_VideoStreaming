@@ -83,3 +83,24 @@ resource "aws_secretsmanager_secret" "cloudfront_private_key" {
     Name = "${var.project_name}-cloudfront-private-key"
   })
 }
+
+# Cloudflare API token (quyền Zone:DNS:Edit) cho certbot trên backend.
+#
+# Cloudflare đang ở chế độ SSL Full/Full (strict), tức là kết nối về máy chủ
+# qua cổng 443 và cần một chứng chỉ thật ở nginx. Chứng chỉ Let's Encrypt đó
+# được xin bằng DNS-01 (plugin dns-cloudflare) vì máy nằm sau proxy Cloudflare.
+# Trước 2026-09-25 token và chứng chỉ chỉ tồn tại trên máy, cài tay: dựng lại
+# máy thì nginx chỉ còn cổng 80 và Cloudflare trả 521 cho mọi request API.
+#
+# Cùng cách làm với cloudfront_private_key ở trên: Terraform chỉ tạo vỏ, giá
+# trị nạp một lần từ nơi đang giữ token, nên token không nằm trong tfvars hay
+# state. scripts/ec2-userdata.sh đọc nó lúc khởi động để xin chứng chỉ.
+resource "aws_secretsmanager_secret" "cloudflare_api_token" {
+  name                    = "${var.project_name}/cloudflare-api-token"
+  description             = "Cloudflare API token (Zone DNS edit) for certbot dns-cloudflare on the Backend API; value set out of band"
+  recovery_window_in_days = var.recovery_window_in_days
+
+  tags = merge(var.tags, {
+    Name = "${var.project_name}-cloudflare-api-token"
+  })
+}
