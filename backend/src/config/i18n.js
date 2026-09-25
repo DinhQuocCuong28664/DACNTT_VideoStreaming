@@ -32,6 +32,10 @@ const MESSAGES = {
     'upload.badAvatarType': 'Định dạng ảnh không được hỗ trợ. Chỉ chấp nhận: {types}',
     'upload.avatarTooLarge': 'Ảnh vượt quá dung lượng tối đa cho phép ({limit} MB)',
     'cloudfront.notConfigured': 'CloudFront signing chưa được cấu hình trên máy chủ',
+    'admin.forbidden': 'Chỉ quản trị viên mới truy cập được chức năng này',
+    'rate.tooManyReports': 'Bạn đã gửi quá nhiều báo cáo trong một giờ. Vui lòng thử lại sau.',
+    'report.received': 'Cảm ơn bạn. Đội ngũ vận hành sẽ xem xét báo cáo này.',
+    'report.alreadyReported': 'Bạn đã báo cáo video này rồi. Đội ngũ vận hành đang xem xét.',
   },
   en: {
     'cors.forbiddenOrigin': 'Origin not allowed by the CORS policy: {origin}',
@@ -49,6 +53,10 @@ const MESSAGES = {
     'upload.badAvatarType': 'Unsupported image type. Accepted types: {types}',
     'upload.avatarTooLarge': 'The image exceeds the maximum allowed size ({limit} MB)',
     'cloudfront.notConfigured': 'CloudFront signing is not configured on the server',
+    'admin.forbidden': 'Only administrators can use this feature',
+    'rate.tooManyReports': 'You have sent too many reports in the past hour. Please try again later.',
+    'report.received': 'Thanks for reporting. Our moderators will review this video.',
+    'report.alreadyReported': 'You have already reported this video. Our moderators are reviewing it.',
   },
 };
 

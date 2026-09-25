@@ -63,6 +63,10 @@ const errorHandler = (err, req, res, _next) => {
   res.status(statusCode).json({
     success: false,
     message: clientMessage,
+    // Mã máy đọc được (vd. VIDEO_REMOVED) để giao diện chọn màn hình thông
+    // báo phù hợp thay vì phải so chuỗi thông điệp. Chỉ đặt bởi code của dự
+    // án (thuộc tính riêng `errorCode`, không phải `err.code` của Node/Mongo).
+    ...(!isUnexpected && err.errorCode && { code: err.errorCode }),
     ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
   });
 };

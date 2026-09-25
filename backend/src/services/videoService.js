@@ -1,7 +1,12 @@
 const mongoose = require('mongoose');
 const Video = require('../models/Video');
 const Comment = require('../models/Comment');
+const Report = require('../models/Report');
 const s3Service = require('./s3Service');
+const { publicListingFilter } = require('../utils/moderation');
+const httpError = require('../utils/httpError');
+
+const isAdminUser = (user) => Boolean(user && user.role === 'admin');
 
 /**
  * Initiate upload flow:
@@ -78,7 +83,9 @@ const getVideoById = async (videoId, requesterUser = null) => {
   const isOwner =
     requesterUser && requesterUser._id && requesterUser._id.toString() === video.user._id.toString();
 
-  if (!isOwner) {
+  // Quản trị viên cần xem được mọi video để rà soát, kể cả video riêng tư bị
+  // báo cáo qua đường link cũ hay video đã bị gỡ.
+  if (!isOwner && !isAdminUser(requesterUser)) {
     if (video.visibility === 'private') {
       const error = new Error('Video not found');
       error.statusCode = 404;
@@ -90,6 +97,39 @@ const getVideoById = async (videoId, requesterUser = null) => {
       error.statusCode = 400;
       throw error;
     }
+
+    // Kiểm tra SAU visibility: video riêng tư vẫn phải trả 404 như cũ, không
+    // được để lộ nó tồn tại qua một mã lỗi kiểm duyệt khác đi.
+    //
+    // Cố ý KHÔNG dùng 410 Gone. 410 thuộc nhóm được cache theo heuristic (RFC
+    // 9111 §4.2.2) và Chrome thực sự cache nó dù không có Cache-Control: khi
+    // thử nghiệm, trình duyệt trả lại 410 đã lưu từ lượt xem của một tài khoản
+    // cho cả chủ video đăng nhập sau đó. Trạng thái "bị gỡ" lại đảo ngược được
+    // (quản trị viên khôi phục) và khác nhau theo người xem, nên 403 kèm mã máy
+    // đọc được mới đúng.
+    const moderationStatus = video.moderation && video.moderation.status;
+    if (moderationStatus === 'blocked') {
+      throw httpError(403, 'This video has been removed for violating the community guidelines', 'VIDEO_REMOVED');
+    }
+    if (moderationStatus === 'flagged') {
+      throw httpError(403, 'This video is being reviewed by moderators', 'VIDEO_UNDER_REVIEW');
+    }
+  }
+
+  return video;
+};
+
+/**
+ * Như getVideoById nhưng dành cho việc PHÁT video (cấp Signed Cookie).
+ *
+ * Chủ video vẫn xem được trang của video đã bị gỡ — để biết nó bị gỡ — nhưng
+ * không phát được nữa. Chỉ quản trị viên phát được, để rà soát khiếu nại.
+ */
+const getPlayableVideo = async (videoId, requesterUser = null) => {
+  const video = await getVideoById(videoId, requesterUser);
+
+  if (video.moderation && video.moderation.status === 'blocked' && !isAdminUser(requesterUser)) {
+    throw httpError(403, 'This video has been removed for violating the community guidelines', 'VIDEO_REMOVED');
   }
 
   return video;
@@ -101,7 +141,7 @@ const getVideoById = async (videoId, requesterUser = null) => {
 const getAllVideos = async (page = 1, limit = 12, category = null, searchQuery = null) => {
   const skip = (page - 1) * limit;
 
-  const filter = { visibility: 'public', status: 'READY' };
+  const filter = publicListingFilter();
 
   if (category && category !== 'Tất cả') {
     filter.category = category;
@@ -166,13 +206,10 @@ const getVideosByUser = async (userId, page = 1, limit = 12, requesterId = null,
     ? USER_VIDEO_SORTS[sort]
     : USER_VIDEO_SORTS.latest;
 
-  const filter = { user: userId };
-  if (requesterId && requesterId.toString() === userId.toString()) {
-    // Owner sees all their videos
-  } else {
-    filter.visibility = 'public';
-    filter.status = 'READY';
-  }
+  // Chủ kênh thấy mọi video của mình, kể cả video đang chờ rà soát hay đã bị
+  // gỡ — trang kênh là nơi duy nhất họ biết được điều đó.
+  const isOwner = requesterId && requesterId.toString() === userId.toString();
+  const filter = isOwner ? { user: userId } : { ...publicListingFilter(), user: userId };
 
   const [videos, total] = await Promise.all([
     Video.find(filter)
@@ -348,8 +385,9 @@ const deleteVideo = async (videoId, userId) => {
     console.warn(`⚠️ Failed to delete S3 processed directory videos/${videoId}/:`, err.message);
   }
 
-  // 3. Delete comments
+  // 3. Delete comments and reports
   await Comment.deleteMany({ video: videoId });
+  await Report.deleteMany({ video: videoId });
 
   // 4. Delete DB record
   await Video.findByIdAndDelete(videoId);
@@ -391,7 +429,7 @@ const pruneViewCache = (now) => {
  * @returns {Promise<{counted: boolean, views: number}>}
  */
 const registerView = async (videoId, requesterUser, clientIp) => {
-  const video = await Video.findById(videoId).select('user status views');
+  const video = await Video.findById(videoId).select('user status views moderation.status');
 
   if (!video) {
     const error = new Error('Video not found');
@@ -399,7 +437,9 @@ const registerView = async (videoId, requesterUser, clientIp) => {
     throw error;
   }
 
-  if (video.status !== 'READY') {
+  // Quản trị viên phát video bị gỡ để rà soát không phải lượt xem thật.
+  const moderationStatus = video.moderation && video.moderation.status;
+  if (video.status !== 'READY' || moderationStatus === 'flagged' || moderationStatus === 'blocked') {
     return { counted: false, views: video.views };
   }
 
@@ -442,9 +482,8 @@ const getRelatedVideos = async (videoId, limit = 8, requesterUser = null) => {
   const currentVideo = await getVideoById(videoId, requesterUser);
 
   const query = {
+    ...publicListingFilter(),
     _id: { $ne: currentVideo._id },
-    status: 'READY',
-    visibility: 'public',
   };
 
   if (currentVideo.category || (currentVideo.tags && currentVideo.tags.length > 0)) {
@@ -463,9 +502,8 @@ const getRelatedVideos = async (videoId, limit = 8, requesterUser = null) => {
   if (related.length < limit) {
     const existingIds = [currentVideo._id, ...related.map((v) => v._id)];
     const backfill = await Video.find({
+      ...publicListingFilter(),
       _id: { $nin: existingIds },
-      status: 'READY',
-      visibility: 'public',
     })
       .populate('user', 'username displayName avatar')
       .sort({ views: -1, createdAt: -1 })
@@ -481,6 +519,7 @@ module.exports = {
   initiateUpload,
   confirmUpload,
   getVideoById,
+  getPlayableVideo,
   getAllVideos,
   getVideosByUser,
   USER_VIDEO_SORTS,

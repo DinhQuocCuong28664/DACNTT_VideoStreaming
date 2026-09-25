@@ -3,7 +3,7 @@ const router = express.Router();
 const auth = require('../middleware/auth');
 const { optionalAuth } = require('../middleware/auth');
 const { validateRequest, validateUploadMetadata } = require('../middleware/validateRequest');
-const { uploadLimiter } = require('../middleware/rateLimiter');
+const { uploadLimiter, reportLimiter } = require('../middleware/rateLimiter');
 const {
   initiateUpload,
   confirmUpload,
@@ -21,6 +21,7 @@ const {
   updateVideo,
   deleteVideo,
 } = require('../controllers/videoController');
+const { reportVideo } = require('../controllers/moderationController');
 
 // Public routes (with optional auth to detect owner)
 router.get('/', getAllVideos);
@@ -45,6 +46,7 @@ router.post('/:id/like', auth, toggleLike);
 router.post('/:id/dislike', auth, toggleDislike);
 router.post('/:id/comments', auth, addComment);
 router.delete('/comments/:commentId', auth, deleteComment);
+router.post('/:id/report', auth, reportLimiter, validateRequest(['reason']), reportVideo);
 router.put('/:id', auth, updateVideo);
 router.delete('/:id', auth, deleteVideo);
 

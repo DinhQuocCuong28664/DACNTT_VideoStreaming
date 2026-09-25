@@ -57,6 +57,18 @@ const userSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    /**
+     * Vai trò. `admin` mở trang rà soát nội dung (/admin).
+     *
+     * Không endpoint nào ghi trường này: đăng ký và đăng nhập Google chỉ đặt
+     * các trường liệt kê tường minh, nên người dùng không tự nâng quyền được.
+     * Cấp quyền bằng script: `node scripts/set-role.js <email> admin`.
+     */
+    role: {
+      type: String,
+      enum: ['user', 'admin'],
+      default: 'user',
+    },
     // Password Reset
     resetPasswordToken: String,
     resetPasswordExpire: Date,
