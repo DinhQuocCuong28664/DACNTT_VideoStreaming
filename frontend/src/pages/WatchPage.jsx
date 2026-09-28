@@ -78,14 +78,13 @@ const WatchPage = () => {
 
         const v = videoRes.data.data.video;
         setVideo(v);
-        setLikesCount(v.likes?.length || 0);
-        setDislikesCount(v.dislikes?.length || 0);
+        setLikesCount(v.likesCount || 0);
+        setDislikesCount(v.dislikesCount || 0);
         setRelatedVideos(relatedRes.data?.data?.videos || []);
 
-        if (currentUser) {
-          setHasLiked(v.likes?.includes(currentUser._id));
-          setHasDisliked(v.dislikes?.includes(currentUser._id));
-        }
+        // API chỉ trả số lượng; lựa chọn của chính người xem nằm ở viewerReaction.
+        setHasLiked(v.viewerReaction === 'like');
+        setHasDisliked(v.viewerReaction === 'dislike');
 
         setComments(commentsRes.data.data.comments || []);
 

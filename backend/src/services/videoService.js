@@ -9,6 +9,13 @@ const httpError = require('../utils/httpError');
 const isAdminUser = (user) => Boolean(user && user.role === 'admin');
 
 /**
+ * Danh sách video (trang chủ, trang kênh, video liên quan) không cần hai mảng
+ * người đã Like/Dislike: thẻ video không hiện chúng, và mảng dài ra theo mức
+ * độ nổi tiếng của video. Bỏ ngay từ truy vấn để không kéo chúng ra khỏi DB.
+ */
+const LIST_PROJECTION = '-likes -dislikes';
+
+/**
  * Initiate upload flow:
  * 1. Create DB record FIRST (status: UPLOADING) to get Mongo _id (videoId)
  * 2. Generate S3 key using Mongo _id: videos/{userId}/{videoId}/{filename}
@@ -157,7 +164,7 @@ const getAllVideos = async (page = 1, limit = 12, category = null, searchQuery =
   }
 
   const [videos, total] = await Promise.all([
-    Video.find(filter)
+    Video.find(filter, LIST_PROJECTION)
       .populate('user', 'username displayName avatar')
       .sort({ createdAt: -1 })
       .skip(skip)
@@ -212,7 +219,7 @@ const getVideosByUser = async (userId, page = 1, limit = 12, requesterId = null,
   const filter = isOwner ? { user: userId } : { ...publicListingFilter(), user: userId };
 
   const [videos, total] = await Promise.all([
-    Video.find(filter)
+    Video.find(filter, LIST_PROJECTION)
       .populate('user', 'username displayName avatar')
       .sort(sortSpec)
       .skip(skip)
@@ -229,6 +236,20 @@ const getVideosByUser = async (userId, page = 1, limit = 12, requesterId = null,
       pages: Math.ceil(total / limit),
     },
   };
+};
+
+/**
+ * Lựa chọn của chính người đang xem: 'like', 'dislike' hoặc null.
+ *
+ * Tính ở máy chủ vì danh sách người đã bấm không còn được gửi ra ngoài (xem
+ * Video.toJSON). Nhận document đã nạp đủ hai mảng.
+ */
+const reactionOf = (video, requesterUser) => {
+  if (!requesterUser || !requesterUser._id) return null;
+  const has = (list) => Array.isArray(list) && list.some((id) => id.equals(requesterUser._id));
+  if (has(video.likes)) return 'like';
+  if (has(video.dislikes)) return 'dislike';
+  return null;
 };
 
 /** Mảng của từng loại phản hồi và mảng loại trừ nó (Like bỏ Dislike và ngược lại). */
@@ -523,7 +544,7 @@ const getRelatedVideos = async (videoId, limit = 8, requesterUser = null) => {
     ];
   }
 
-  let related = await Video.find(query)
+  let related = await Video.find(query, LIST_PROJECTION)
     .populate('user', 'username displayName avatar')
     .sort({ views: -1, createdAt: -1 })
     .limit(limit);
@@ -531,10 +552,13 @@ const getRelatedVideos = async (videoId, limit = 8, requesterUser = null) => {
   // If fewer than limit, backfill with most viewed public READY videos
   if (related.length < limit) {
     const existingIds = [currentVideo._id, ...related.map((v) => v._id)];
-    const backfill = await Video.find({
-      ...publicListingFilter(),
-      _id: { $nin: existingIds },
-    })
+    const backfill = await Video.find(
+      {
+        ...publicListingFilter(),
+        _id: { $nin: existingIds },
+      },
+      LIST_PROJECTION
+    )
       .populate('user', 'username displayName avatar')
       .sort({ views: -1, createdAt: -1 })
       .limit(limit - related.length);
@@ -554,6 +578,7 @@ module.exports = {
   getVideosByUser,
   USER_VIDEO_SORTS,
   getRelatedVideos,
+  reactionOf,
   toggleLike,
   toggleDislike,
   getComments,

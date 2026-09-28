@@ -163,6 +163,17 @@ videoSchema.index({ 'moderation.openReports': -1, createdAt: -1 });
 videoSchema.methods.toJSON = function () {
   const video = this.toObject();
   delete video.__v;
+
+  // Chỉ trả số lượng, không trả danh sách ID người đã Like/Dislike: endpoint
+  // xem video là công khai, nên trước đây bất kỳ ai cũng đọc được ai đã bấm
+  // Dislike video nào. Người đang xem biết lựa chọn của chính mình qua trường
+  // `viewerReaction` do controller gắn (xem videoService.reactionOf). Danh sách
+  // nạp bằng .select('-likes -dislikes') thì không có mảng để đếm.
+  if (Array.isArray(video.likes)) video.likesCount = video.likes.length;
+  if (Array.isArray(video.dislikes)) video.dislikesCount = video.dislikes.length;
+  delete video.likes;
+  delete video.dislikes;
+
   if (video.moderation) {
     video.moderation = video.moderation.status
       ? { status: video.moderation.status, note: video.moderation.note }
