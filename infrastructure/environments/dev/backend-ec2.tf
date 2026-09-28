@@ -88,13 +88,12 @@ resource "aws_security_group" "backend_api" {
     cidr_blocks = local.cloudflare_ipv4_cidrs
   }
 
-  ingress {
-    description = "SSH quan tri"
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
+  # Không mở cổng 22. Máy không gắn key pair nào nên không SSH được, và mọi
+  # thao tác quản trị đi qua SSM (deploy trong cd-deploy.yml, đọc log bằng
+  # Session Manager) — Session Manager không cần cổng inbound nào. Rule SSH cho
+  # 0.0.0.0/0 trước đây chỉ để lộ sshd ra Internet mà không dùng vào việc gì.
+  # (Mô tả của security group vẫn nhắc SSH vì đổi mô tả buộc Terraform thay mới
+  # cả nhóm đang gắn vào máy.)
 
   # MongoDB Atlas, S3, Secrets Manager va cac mirror apt/npm deu khong co dai
   # IP co dinh de ghim; day cung la egress mac dinh AWS tu tao cho moi
