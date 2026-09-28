@@ -10,6 +10,7 @@ const {
   disconnectDB,
   updateVideoReady,
   updateVideoError,
+  markVideoProcessing,
   getVideo,
   getVideoWithUser,
 } = require('./dbHandler');
@@ -83,7 +84,16 @@ const processVideo = async (videoId, rawS3Key, { force = false } = {}) => {
   // có gì để ghi, và vì `updated` bằng false nên cũng không gửi lại email
   // "video đã sẵn sàng" cho chủ video.
   const existingVideo = await getVideo(videoId);
-  if (existingVideo && existingVideo.status === 'READY') {
+
+  // Bản ghi luôn được tạo TRƯỚC khi cấp URL tải lên (initiate-upload), nên
+  // không tìm thấy nghĩa là chủ video đã xoá nó. Chuyển mã tiếp chỉ để lại một
+  // thư mục HLS mồ côi trên S3 mà không bản ghi nào trỏ tới.
+  if (!existingVideo) {
+    console.warn(`⚠️  Video ${videoId} no longer exists (deleted by its owner); skipping the job.`);
+    return;
+  }
+
+  if (existingVideo.status === 'READY') {
     if (!force) {
       console.warn(
         `⚠️  Video ${videoId} is already READY; skipping the duplicate job without downloading or transcoding again.`
@@ -94,6 +104,12 @@ const processVideo = async (videoId, rawS3Key, { force = false } = {}) => {
   }
 
   try {
+    // Step 0: Báo cho hệ thống biết job đã thực sự bắt đầu (xem markVideoProcessing).
+    // Video READY chỉ tới được đây bằng --force, và giữ nguyên READY.
+    if (existingVideo.status !== 'READY') {
+      await markVideoProcessing(videoId);
+    }
+
     // Step 1: Create work directories
     fs.mkdirSync(path.join(workDir, 'input'), { recursive: true });
     fs.mkdirSync(outputDir, { recursive: true });

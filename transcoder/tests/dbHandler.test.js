@@ -27,7 +27,36 @@ jest.mock('mongoose', () => {
   };
 });
 
-const { updateVideoReady, updateVideoError } = require('../src/dbHandler');
+const { updateVideoReady, updateVideoError, markVideoProcessing } = require('../src/dbHandler');
+
+describe('markVideoProcessing — đánh dấu job đã bắt đầu', () => {
+  const videoId = '6a78c10f1c4541ef615cf01d';
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('chuyển sang PROCESSING, kể cả từ UPLOADING hay ERROR, nhưng không đụng video READY', async () => {
+    mockVideoModel.findOneAndUpdate.mockResolvedValue({ _id: videoId, status: 'PROCESSING' });
+
+    const result = await markVideoProcessing(videoId);
+
+    expect(mockVideoModel.findOneAndUpdate).toHaveBeenCalledWith(
+      { _id: videoId, status: { $ne: 'READY' } },
+      { $set: { status: 'PROCESSING' } },
+      { returnDocument: 'after' }
+    );
+    expect(result.updated).toBe(true);
+  });
+
+  it('báo updated=false khi video đã READY hoặc không còn tồn tại', async () => {
+    mockVideoModel.findOneAndUpdate.mockResolvedValue(null);
+
+    const result = await markVideoProcessing(videoId);
+
+    expect(result.updated).toBe(false);
+  });
+});
 
 describe('dbHandler — ghi có điều kiện chống xử lý trùng', () => {
   const videoId = '6a78c10f1c4541ef615cf01d';
