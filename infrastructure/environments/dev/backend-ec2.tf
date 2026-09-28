@@ -29,36 +29,17 @@ data "aws_ami" "ubuntu" {
 # ── Dải IP Cloudflare ──────────────────────────────
 #
 # api.zelostech.site là bản ghi proxied trên Cloudflare, nên người dùng không
-# bao giờ kết nối thẳng tới máy chủ: mọi request hợp lệ đều tới từ các dải dưới
-# đây. Trước đây cổng 80/443 mở cho 0.0.0.0/0, ai biết địa chỉ Elastic IP là gọi
-# thẳng được, vòng qua toàn bộ lớp chống DDoS và WAF của Cloudflare.
+# bao giờ kết nối thẳng tới máy chủ: mọi request hợp lệ đều tới từ các dải của
+# modules/cloudflare-ips. Trước đây cổng 80/443 mở cho 0.0.0.0/0, ai biết địa
+# chỉ Elastic IP là gọi thẳng được, vòng qua toàn bộ lớp chống DDoS và WAF của
+# Cloudflare.
 #
 # Cloudflare xếp cách này ở mức "khá an toàn": nó chặn được việc vòng qua
 # Cloudflare, nhưng mọi khách hàng Cloudflare đều đi ra từ cùng các dải này.
 # Mạnh hơn là Authenticated Origin Pulls (mTLS) hoặc Cloudflare Tunnel.
-#
-# Lấy từ https://www.cloudflare.com/ips-v4 ngày 2026-09-28. Cloudflare yêu cầu
-# cập nhật định kỳ; khi đổi thì sửa cùng lúc với backend/src/config/
-# trustedProxies.js, nơi Express dùng cùng danh sách để đọc đúng IP người dùng.
 # Chỉ có IPv4 vì VPC này không cấp IPv6.
-locals {
-  cloudflare_ipv4_cidrs = [
-    "173.245.48.0/20",
-    "103.21.244.0/22",
-    "103.22.200.0/22",
-    "103.31.4.0/22",
-    "141.101.64.0/18",
-    "108.162.192.0/18",
-    "190.93.240.0/20",
-    "188.114.96.0/20",
-    "197.234.240.0/22",
-    "198.41.128.0/17",
-    "162.158.0.0/15",
-    "104.16.0.0/13",
-    "104.24.0.0/14",
-    "172.64.0.0/13",
-    "131.0.72.0/22",
-  ]
+module "cloudflare_ips" {
+  source = "../../modules/cloudflare-ips"
 }
 
 resource "aws_security_group" "backend_api" {
@@ -77,7 +58,7 @@ resource "aws_security_group" "backend_api" {
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
-    cidr_blocks = local.cloudflare_ipv4_cidrs
+    cidr_blocks = module.cloudflare_ips.ipv4_cidrs
   }
 
   ingress {
@@ -85,7 +66,7 @@ resource "aws_security_group" "backend_api" {
     from_port   = 443
     to_port     = 443
     protocol    = "tcp"
-    cidr_blocks = local.cloudflare_ipv4_cidrs
+    cidr_blocks = module.cloudflare_ips.ipv4_cidrs
   }
 
   # Không mở cổng 22. Máy không gắn key pair nào nên không SSH được, và mọi

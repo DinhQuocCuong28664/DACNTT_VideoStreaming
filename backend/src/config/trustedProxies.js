@@ -22,8 +22,8 @@
  *
  * Danh sách lấy từ https://www.cloudflare.com/ips-v4 và /ips-v6 ngày
  * 2026-09-28. Cloudflare yêu cầu cập nhật định kỳ; khi đổi thì sửa cùng lúc với
- * `cloudflare_ipv4_cidrs` trong infrastructure/environments/dev/backend-ec2.tf,
- * nơi security group dùng cùng danh sách này.
+ * infrastructure/modules/cloudflare-ips, nơi security group backend của mọi
+ * môi trường lấy cùng danh sách này.
  */
 
 const CLOUDFLARE_IPV4 = [
