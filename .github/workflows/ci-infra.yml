@@ -30,7 +30,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        environment: [dev, prod]
+        environment: [dev, staging, prod]
 
     steps:
       - name: Checkout code
