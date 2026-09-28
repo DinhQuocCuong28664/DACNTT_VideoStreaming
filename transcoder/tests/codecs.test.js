@@ -51,6 +51,15 @@ describe('H.264 level không được ghim cứng', () => {
     expect(args).toContain('-maxrate');
     expect(args).toContain('-bufsize');
   });
+
+  it('ép 8-bit 4:2:0 cho mọi rendition', () => {
+    // Thiếu cờ này thì nguồn 4:4:4 hay 10-bit (HDR của iPhone) làm libx264
+    // từ chối mở encoder với profile main, và cả job thất bại.
+    const args = buildFFmpegArgs('vao.mp4', '/ra', RENDITIONS, 30);
+    const pixFmts = args.filter((arg, i) => args[i - 1] === '-pix_fmt');
+
+    expect(pixFmts).toEqual(RENDITIONS.map(() => 'yuv420p'));
+  });
 });
 
 /** Nguyên văn `ffprobe -show_data` trên segment 1080p (Main, level 4.0). */
