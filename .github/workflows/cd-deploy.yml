@@ -114,7 +114,7 @@ jobs:
             --instance-ids "${{ steps.find.outputs.instance_id }}" \
             --document-name "AWS-RunShellScript" \
             --comment "CD deploy ${{ env.DEPLOY_SHA }}" \
-            --parameters commands="[\"sudo -u ubuntu bash -lc 'set -e; cd /home/ubuntu/app; git fetch origin; git reset --hard ${{ env.DEPLOY_SHA }}; cd backend; npm install --omit=dev; (pm2 restart backend-api --update-env || pm2 start src/server.js --name backend-api); pm2 save'\"]" \
+            --parameters commands="[\"sudo -u ubuntu bash -lc 'set -e; cd /home/ubuntu/app; git fetch origin; git reset --hard ${{ env.DEPLOY_SHA }}; cd backend; grep -q ^NODE_ENV= .env || { echo; echo NODE_ENV=production; } >> .env; npm install --omit=dev; (pm2 restart backend-api --update-env || pm2 start src/server.js --name backend-api); pm2 save'\"]" \
             --query "Command.CommandId" --output text)
 
           echo "CommandId: $COMMAND_ID"
