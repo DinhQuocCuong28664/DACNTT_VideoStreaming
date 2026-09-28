@@ -3,6 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
+const cookieParser = require('cookie-parser');
 const connectDB = require('./config/db');
 const validateEnv = require('./config/validateEnv');
 const { TRUSTED_PROXIES } = require('./config/trustedProxies');
@@ -66,6 +67,8 @@ app.use(
 // và ảnh đi thẳng lên S3. 10 MB chỉ để một người gửi hàng trăm khối JSON khổng
 // lồ bắt máy 1 GB RAM parse (OWASP API4:2023, Unrestricted Resource Consumption).
 app.use(express.json({ limit: '100kb' }));
+// Đọc cookie chỉ mục của cookie phát video (xem cloudfrontService.js).
+app.use(cookieParser());
 // Production ghi đủ IP (nay là IP thật, xem config/trustedProxies.js), mốc thời
 // gian, user-agent và referrer theo định dạng Apache "combined" — những thứ cần
 // khi lần lại một sự cố hay một đợt lạm dụng. "dev" không có các trường đó và

@@ -111,7 +111,7 @@ const getPlaybackAuth = async (req, res, next) => {
   try {
     // Ném lỗi 404 nếu video riêng tư và người gọi không phải chủ sở hữu,
     // 403 VIDEO_REMOVED nếu video đã bị gỡ vì vi phạm (kể cả với chủ sở hữu)
-    await videoService.getPlayableVideo(req.params.id, req.user);
+    const video = await videoService.getPlayableVideo(req.params.id, req.user);
 
     if (!cloudfrontService.isSigningEnabled()) {
       // Môi trường chưa bật cơ chế ký (ví dụ khi phát triển cục bộ):
@@ -122,7 +122,9 @@ const getPlaybackAuth = async (req, res, next) => {
       });
     }
 
-    const { expiresAt } = cloudfrontService.attachPlaybackCookies(res, req.params.id);
+    // ID lấy từ bản ghi, không từ URL: MongoDB nhận cả ID viết hoa, nhưng thư
+    // mục HLS trên S3 (và Path của cookie) luôn là hex thường.
+    const { expiresAt } = cloudfrontService.attachPlaybackCookies(req, res, video._id.toString());
 
     res.status(200).json({
       success: true,

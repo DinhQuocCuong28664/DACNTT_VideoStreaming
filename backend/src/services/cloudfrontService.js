@@ -109,31 +109,104 @@ const generatePlaybackCookies = (videoId) => {
 };
 
 /**
- * Gắn bộ Signed Cookie vào phản hồi HTTP.
+ * Cookie chỉ mục: danh sách video đã được cấp bộ cookie trong trình duyệt này.
  *
- * Thuộc tính `domain` được đặt ở tên miền cha (ví dụ `.zelostech.site`) để cookie
- * sinh ra từ API cũng được trình duyệt gửi kèm khi tải segment từ CDN. Cờ
- * `httpOnly` ngăn mã JavaScript đọc được chữ ký, còn `secure` bảo đảm cookie chỉ
- * truyền trên kết nối HTTPS.
+ * Mỗi video có bộ cookie riêng ở Path=/videos/{id}/ (xem attachPlaybackCookies),
+ * nên lúc đăng xuất máy chủ phải biết những đường dẫn nào để xoá — cookie
+ * httpOnly thì trình duyệt không tự xoá được, và máy chủ không đọc được cookie
+ * đặt cho đường dẫn khác. Cookie chỉ mục nằm ở /api trên chính tên miền API nên
+ * đi kèm cả request cấp cookie lẫn request đăng xuất.
  */
-const attachPlaybackCookies = (res, videoId) => {
-  const { cookies, expiresAt, resource } = generatePlaybackCookies(videoId);
+const PLAYBACK_INDEX_COOKIE = 'vidshare-playback-videos';
 
+/** Số video tối đa được theo dõi; video cũ hơn bị thu hồi cookie ngay. */
+const MAX_TRACKED_VIDEOS = 20;
+
+/** Chỉ chấp nhận ObjectId dạng hex — giá trị cookie đến từ trình duyệt. */
+const VIDEO_ID_PATTERN = /^[0-9a-f]{24}$/;
+
+const videoCookiePath = (videoId) => `/videos/${videoId}/`;
+
+/**
+ * Thuộc tính chung của cookie phát video. Lúc đặt và lúc xoá phải dùng đúng
+ * cùng domain/path/sameSite/secure, nếu không trình duyệt coi lệnh xoá là cho
+ * một cookie khác và cookie cũ vẫn còn nguyên.
+ */
+const playbackCookieOptions = (path) => {
   const options = {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
-    expires: expiresAt,
-    path: '/',
+    path,
   };
 
   if (process.env.COOKIE_DOMAIN) {
     options.domain = process.env.COOKIE_DOMAIN;
   }
 
+  return options;
+};
+
+const indexCookieOptions = () => ({
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'lax',
+  path: '/api',
+});
+
+const clearCookieSet = (res, path) => {
+  const options = playbackCookieOptions(path);
+  res.clearCookie(COOKIE_NAMES.policy, options);
+  res.clearCookie(COOKIE_NAMES.signature, options);
+  res.clearCookie(COOKIE_NAMES.keyPairId, options);
+};
+
+const readIssuedVideoIds = (req) => {
+  const raw = (req && req.cookies && req.cookies[PLAYBACK_INDEX_COOKIE]) || '';
+  return String(raw)
+    .split(',')
+    .filter((id) => VIDEO_ID_PATTERN.test(id));
+};
+
+/**
+ * Gắn bộ Signed Cookie vào phản hồi HTTP.
+ *
+ * Thuộc tính `domain` được đặt ở tên miền cha (ví dụ `.zelostech.site`) để cookie
+ * sinh ra từ API cũng được trình duyệt gửi kèm khi tải segment từ CDN. Cờ
+ * `httpOnly` ngăn mã JavaScript đọc được chữ ký, còn `secure` bảo đảm cookie chỉ
+ * truyền trên kết nối HTTPS.
+ *
+ * Mỗi video một bộ cookie ở Path=/videos/{id}/. Trước đây cả ba cookie nằm ở
+ * Path=/ với cùng một tên cho mọi video, nên mở video thứ hai (tab khác) là ghi
+ * đè bộ cookie của video thứ nhất: tab kia bắt đầu nhận 403, trình phát xin lại
+ * cookie, và hai tab giành nhau ở từng segment. CloudFront chỉ cho một statement
+ * với một Resource trong mỗi custom policy, nên không thể ký gộp nhiều video vào
+ * một bộ; tài liệu của nó dùng thuộc tính Path cho đúng trường hợp này. Trình
+ * duyệt chỉ gửi bộ cookie khớp đường dẫn của request, nên các bộ cùng tồn tại.
+ *
+ * @param {object} req - để đọc cookie chỉ mục hiện có
+ * @param {object} res
+ * @param {string} videoId - ID dạng hex thường, đúng như thư mục trên S3
+ */
+const attachPlaybackCookies = (req, res, videoId) => {
+  const { cookies, expiresAt, resource } = generatePlaybackCookies(videoId);
+
+  const options = { ...playbackCookieOptions(videoCookiePath(videoId)), expires: expiresAt };
   res.cookie(COOKIE_NAMES.policy, cookies['CloudFront-Policy'], options);
   res.cookie(COOKIE_NAMES.signature, cookies['CloudFront-Signature'], options);
   res.cookie(COOKIE_NAMES.keyPairId, cookies['CloudFront-Key-Pair-Id'], options);
+
+  // Bộ cookie kiểu cũ ở Path=/ (trước khi tách theo video) có thể còn trong
+  // trình duyệt tới hai giờ sau lần deploy; để nó lại thì request tới CDN mang
+  // hai bộ trùng tên. Xoá đi là vô hại khi nó không tồn tại.
+  clearCookieSet(res, '/');
+
+  const tracked = [...readIssuedVideoIds(req).filter((id) => id !== videoId), videoId];
+  const evicted = tracked.splice(0, Math.max(0, tracked.length - MAX_TRACKED_VIDEOS));
+  for (const id of evicted) {
+    clearCookieSet(res, videoCookiePath(id));
+  }
+  res.cookie(PLAYBACK_INDEX_COOKIE, tracked.join(','), { ...indexCookieOptions(), expires: expiresAt });
 
   return { expiresAt, resource };
 };
@@ -148,24 +221,15 @@ const attachPlaybackCookies = (res, videoId) => {
  * người ngồi vào sau vẫn tải được segment video riêng tư của người trước nếu
  * biết đường dẫn.
  *
- * Các thuộc tính domain/path/sameSite/secure phải trùng khớp với lúc đặt, nếu
- * không trình duyệt coi đó là cookie khác và cookie cũ vẫn còn nguyên.
+ * Xoá bộ cookie của mọi video trong cookie chỉ mục, bộ kiểu cũ ở Path=/, rồi
+ * chính cookie chỉ mục.
  */
-const clearPlaybackCookies = (res) => {
-  const options = {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    path: '/',
-  };
-
-  if (process.env.COOKIE_DOMAIN) {
-    options.domain = process.env.COOKIE_DOMAIN;
+const clearPlaybackCookies = (req, res) => {
+  for (const id of readIssuedVideoIds(req)) {
+    clearCookieSet(res, videoCookiePath(id));
   }
-
-  res.clearCookie(COOKIE_NAMES.policy, options);
-  res.clearCookie(COOKIE_NAMES.signature, options);
-  res.clearCookie(COOKIE_NAMES.keyPairId, options);
+  clearCookieSet(res, '/');
+  res.clearCookie(PLAYBACK_INDEX_COOKIE, indexCookieOptions());
 };
 
 module.exports = {
@@ -176,4 +240,6 @@ module.exports = {
   buildResourcePattern,
   COOKIE_TTL_SECONDS,
   COOKIE_NAMES,
+  PLAYBACK_INDEX_COOKIE,
+  MAX_TRACKED_VIDEOS,
 };
