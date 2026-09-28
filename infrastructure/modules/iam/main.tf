@@ -5,6 +5,14 @@
 data "aws_caller_identity" "current" {}
 data "aws_region" "current" {}
 
+locals {
+  own_secrets = "arn:aws:secretsmanager:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:secret:${var.project_name}/*"
+
+  # Giữ đúng dạng chuỗi khi không có secret dùng chung, để policy của các môi
+  # trường không dùng biến này không đổi một byte nào.
+  readable_secrets = length(var.extra_secret_arns) == 0 ? local.own_secrets : concat([local.own_secrets], var.extra_secret_arns)
+}
+
 # ── Batch Service Role ─────────────────────────────
 resource "aws_iam_role" "batch_service" {
   name = "${var.project_name}-batch-service-role"
@@ -68,7 +76,7 @@ resource "aws_iam_role_policy" "ecs_task_execution_secrets" {
         Action = [
           "secretsmanager:GetSecretValue"
         ]
-        Resource = "arn:aws:secretsmanager:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:secret:${var.project_name}/*"
+        Resource = local.readable_secrets
       }
     ]
   })
@@ -224,7 +232,7 @@ resource "aws_iam_role_policy" "ec2_backend_secrets" {
         Action = [
           "secretsmanager:GetSecretValue"
         ]
-        Resource = "arn:aws:secretsmanager:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:secret:${var.project_name}/*"
+        Resource = local.readable_secrets
       }
     ]
   })
@@ -246,7 +254,7 @@ resource "aws_iam_role_policy" "ec2_backend_s3" {
 
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [
+    Statement = concat([
       {
         Effect = "Allow"
         Action = [
@@ -269,7 +277,15 @@ resource "aws_iam_role_policy" "ec2_backend_s3" {
           var.processed_bucket_arn
         ]
       }
-    ]
+      ], var.static_bucket_arn == "" ? [] : [
+      # Ảnh đại diện: backend chỉ ký presigned POST vào avatars/, không cần
+      # đọc, xoá hay liệt kê gì trong bucket host frontend.
+      {
+        Effect   = "Allow"
+        Action   = ["s3:PutObject"]
+        Resource = ["${var.static_bucket_arn}/avatars/*"]
+      }
+    ])
   })
 }
 
