@@ -126,7 +126,9 @@ resource "aws_instance" "backend_api" {
   # Script dùng chung với staging, điền giá trị của production qua
   # module.backend_userdata (bên dưới). Mật khẩu Gmail, khoá riêng CloudFront
   # và token Cloudflare thì script tự đọc từ Secrets Manager lúc khởi động.
-  user_data                   = module.backend_userdata.rendered
+  # Nén gzip vì bản điền đủ giá trị đã chạm giới hạn 16 KB của EC2 (xem
+  # modules/backend-userdata).
+  user_data_base64            = module.backend_userdata.rendered_base64gzip
   user_data_replace_on_change = true
 
   root_block_device {
@@ -171,7 +173,7 @@ resource "aws_instance" "backend_api" {
     # lại máy production ở lần apply kế tiếp. Máy nhận script mới khi chủ động
     # chạy `terraform apply -replace=aws_instance.backend_api`. Staging không bỏ
     # qua: mỗi lần bật là một máy mới, luôn chạy script mới nhất.
-    ignore_changes = [ami, user_data]
+    ignore_changes = [ami, user_data, user_data_base64]
   }
 }
 
