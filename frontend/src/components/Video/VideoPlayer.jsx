@@ -546,7 +546,18 @@ const VideoPlayer = ({
     handleActivity();
   };
 
-  const getQualityLabel = (height) => {
+  /**
+   * Nhãn chất lượng theo cỡ khung 16:9 tương đương, như cách YouTube đặt tên.
+   *
+   * Transcoder giữ nguyên tỉ lệ nguồn, nên chiều cao không còn luôn là
+   * 360/720/1080: video dọc 1080x1920 cao 1920, phim màn ảnh rộng 1920x800 cao
+   * 800. Lấy số lớn hơn giữa cạnh ngắn và (cạnh dài x 9/16) thì cả hai đều ra
+   * "1080p", còn khung 16:9 thường vẫn ra đúng chiều cao của nó.
+   */
+  const getQualityLabel = ({ width, height }) => {
+    if (width > 0 && height > 0) {
+      height = Math.max(Math.min(width, height), Math.round((Math.max(width, height) * 9) / 16));
+    }
     if (height >= 1080) return '1080p';
     if (height >= 720) return '720p';
     if (height >= 480) return '480p';
@@ -556,7 +567,7 @@ const VideoPlayer = ({
 
   const getCurrentQualityLabel = () => {
     if (!hlsRef.current || hlsRef.current.currentLevel === -1) return 'Auto';
-    if (levels[currentLevel]) return getQualityLabel(levels[currentLevel].height);
+    if (levels[currentLevel]) return getQualityLabel(levels[currentLevel]);
     return 'Auto';
   };
 
@@ -721,7 +732,7 @@ const VideoPlayer = ({
                         className={`settings-option ${currentLevel === index && hlsRef.current?.currentLevel !== -1 ? 'active' : ''}`}
                         onClick={() => handleQualityChange(index)}
                       >
-                        <span>{getQualityLabel(level.height)}</span>
+                        <span>{getQualityLabel(level)}</span>
                         {currentLevel === index && hlsRef.current?.currentLevel !== -1 && <FiCheck />}
                       </button>
                     ))}
