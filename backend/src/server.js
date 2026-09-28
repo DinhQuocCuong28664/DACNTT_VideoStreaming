@@ -5,6 +5,7 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const connectDB = require('./config/db');
 const validateEnv = require('./config/validateEnv');
+const { TRUSTED_PROXIES } = require('./config/trustedProxies');
 const errorHandler = require('./middleware/errorHandler');
 const { apiLimiter } = require('./middleware/rateLimiter');
 const { verifyEmailTransport } = require('./services/emailService');
@@ -21,9 +22,10 @@ validateEnv();
 
 const app = express();
 
-// Chạy sau reverse proxy (Nginx/ALB) nên cần tin cậy X-Forwarded-For,
-// nếu không rate limiter sẽ nhìn mọi request đến từ cùng một IP của proxy.
-app.set('trust proxy', 1);
+// Chạy sau Cloudflare và nginx: chỉ tin X-Forwarded-For do hai lớp đó ghi, để
+// req.ip là IP người dùng chứ không phải IP máy Cloudflare (xem
+// config/trustedProxies.js — `trust proxy` bằng 1 từng cho ra đúng IP đó).
+app.set('trust proxy', TRUSTED_PROXIES);
 
 // Connect to MongoDB Atlas-dqc
 connectDB();
