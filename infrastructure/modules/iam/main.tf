@@ -9,8 +9,10 @@ locals {
   own_secrets = "arn:aws:secretsmanager:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:secret:${var.project_name}/*"
 
   # Giữ đúng dạng chuỗi khi không có secret dùng chung, để policy của các môi
-  # trường không dùng biến này không đổi một byte nào.
-  readable_secrets = length(var.extra_secret_arns) == 0 ? local.own_secrets : concat([local.own_secrets], var.extra_secret_arns)
+  # trường không dùng biến này không đổi một byte nào. Hai nhánh của biểu thức
+  # điều kiện phải cùng kiểu, nên cả hai đều là chuỗi JSON rồi mới giải mã lại
+  # (một chuỗi, hoặc một danh sách).
+  readable_secrets = jsondecode(length(var.extra_secret_arns) == 0 ? jsonencode(local.own_secrets) : jsonencode(concat([local.own_secrets], var.extra_secret_arns)))
 }
 
 # ── Batch Service Role ─────────────────────────────
