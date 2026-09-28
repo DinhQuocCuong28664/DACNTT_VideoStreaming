@@ -182,6 +182,26 @@ const parseExistingBandwidths = (text) => {
   return map;
 };
 
+/**
+ * Đọc RESOLUTION đang khai, để giữ nguyên khi dựng lại.
+ *
+ * Từ khi transcoder chọn kích thước theo nguồn (planRenditions), "720p" của
+ * một video dọc hay video 480p không còn là 1280x720. Ghi lại khung cố định
+ * trong config sẽ làm sai RESOLUTION thật của những video đó.
+ */
+const parseExistingResolutions = (text) => {
+  const map = new Map();
+  const pattern = /#EXT-X-STREAM-INF:[^\n]*RESOLUTION=(\d+)x(\d+)[^\n]*NAME="([^"]+)"/g;
+  let m = pattern.exec(text);
+
+  while (m !== null) {
+    map.set(m[3], { width: Number(m[1]), height: Number(m[2]) });
+    m = pattern.exec(text);
+  }
+
+  return map;
+};
+
 /** Dựng nội dung master.m3u8 — giữ đúng định dạng của `generateMasterPlaylist`. */
 const buildMaster = (entries) => {
   let content = '#EXTM3U\n#EXT-X-VERSION:3\n\n';
@@ -204,6 +224,7 @@ const processVideo = async (videoId) => {
 
   const currentMaster = await getText(`${prefix}master.m3u8`);
   const existing = parseExistingBandwidths(currentMaster);
+  const resolutions = parseExistingResolutions(currentMaster);
   const entries = [];
   const problems = [];
 
@@ -214,6 +235,7 @@ const processVideo = async (videoId) => {
     if (!sizes.has(playlistKey)) continue; // rendition không tồn tại cho video này
 
     const playlistText = await getText(playlistKey);
+    const { width, height } = resolutions.get(r.name) || { width: r.width, height: r.height };
     const stats = measureFromS3(playlistText, sizes, renditionPrefix);
     const declared = parseInt(r.videoBitrate) * 1000 + parseInt(r.audioBitrate) * 1000;
     const before = existing.get(r.name) ?? declared;
@@ -224,7 +246,7 @@ const processVideo = async (videoId) => {
     if (!stats) {
       problems.push(`${r.name}: không đo được bitrate, giữ nguyên ${before}`);
       entries.push({
-        name: r.name, width: r.width, height: r.height,
+        name: r.name, width, height,
         bandwidth: before, stats: null, before, codecs,
       });
       continue;
@@ -236,8 +258,8 @@ const processVideo = async (videoId) => {
 
     entries.push({
       name: r.name,
-      width: r.width,
-      height: r.height,
+      width,
+      height,
       bandwidth: stats.peak,
       stats,
       before,

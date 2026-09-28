@@ -121,15 +121,20 @@ const transcodeToHLS = async (inputPath, outputDir) => {
   console.log('════════════════════════════════════════\n');
 
   // Step 1: Probe input file for duration and real framerate
-  const { duration, fps, fpsSource } = await probeVideo(inputPath);
+  const { duration, fps, fpsSource, width, height } = await probeVideo(inputPath);
   console.log(`📊 Input video duration: ${duration.toFixed(1)}s`);
   console.log(`📊 Input framerate: ${fps.toFixed(3)} fps (nguồn: ${fpsSource})`);
   if (fpsSource === 'default') {
     console.warn('⚠️  Không đọc được framerate từ ffprobe, dùng mặc định 30 fps');
   }
 
-  // Step 2: Create output directories
-  const renditions = config.ffmpeg.renditions;
+  // Step 2: Chọn các mức theo kích thước nguồn, rồi tạo thư mục đầu ra
+  const source = width && height ? { width, height } : null;
+  const renditions = planRenditions(source);
+  console.log(
+    `📐 Source ${source ? `${width}x${height}` : 'size unknown'} → ` +
+      renditions.map((r) => `${r.name}=${r.outWidth || r.width}x${r.outHeight || r.height}`).join(', ')
+  );
   for (const r of renditions) {
     const dir = path.join(outputDir, r.name);
     fs.mkdirSync(dir, { recursive: true });
@@ -175,9 +180,16 @@ const buildFFmpegArgs = (inputPath, outputDir, renditions, fps = DEFAULT_FPS) =>
     const playlistPath = path.join(outputDir, r.name, 'playlist.m3u8');
     const segmentPath = path.join(outputDir, r.name, 'segment_%03d.ts');
 
+    // Có kích thước đã tính (planRenditions): co đúng về đó, giữ tỉ lệ nguồn,
+    // không đệm viền. Không có (không đọc được kích thước nguồn): khung cố
+    // định kèm đệm như trước.
+    const scaleFilter = r.outWidth
+      ? `scale=${r.outWidth}:${r.outHeight},setsar=1`
+      : `scale=${r.width}:${r.height}:force_original_aspect_ratio=decrease,pad=${r.width}:${r.height}:(ow-iw)/2:(oh-ih)/2`;
+
     args.push(
       // Video settings
-      '-vf', `scale=${r.width}:${r.height}:force_original_aspect_ratio=decrease,pad=${r.width}:${r.height}:(ow-iw)/2:(oh-ih)/2`,
+      '-vf', scaleFilter,
       '-c:v', 'libx264',
       '-b:v', r.videoBitrate,
       '-maxrate', r.maxrate,
@@ -530,7 +542,7 @@ const generateMasterPlaylist = (outputDir, renditions, codecsByRendition = {}) =
       ? `,CODECS="${codecsByRendition[r.name]}"`
       : '';
 
-    content += `#EXT-X-STREAM-INF:BANDWIDTH=${bandwidth}${codecs},RESOLUTION=${r.width}x${r.height},NAME="${r.name}"\n`;
+    content += `#EXT-X-STREAM-INF:BANDWIDTH=${bandwidth}${codecs},RESOLUTION=${r.outWidth || r.width}x${r.outHeight || r.height},NAME="${r.name}"\n`;
     content += `${r.name}/playlist.m3u8\n\n`;
   }
 
@@ -601,6 +613,82 @@ const extractThumbnail = async (inputPath, outputDir, duration) => {
   });
 };
 
+/** Góc xoay ghi trong luồng: Display Matrix (ffmpeg mới) hoặc thẻ `rotate` (cũ). */
+const streamRotation = (stream) => {
+  const matrix = (stream.side_data_list || []).find((d) => d.rotation !== undefined);
+  if (matrix) return Number(matrix.rotation) || 0;
+  return Number(stream.tags && stream.tags.rotate) || 0;
+};
+
+/**
+ * Kích thước khung hình khi HIỂN THỊ, không phải kích thước lưu trong tệp.
+ *
+ * Điện thoại quay dọc thường lưu khung ngang kèm cờ xoay 90°, và ffmpeg tự xoay
+ * khi mã hoá — nên phải hoán đổi rộng/cao thì mới biết video thực sự là dọc.
+ * Điểm ảnh không vuông (SAR khác 1:1, vd. nguồn DV) thì chiều rộng hiển thị là
+ * rộng × SAR; đầu ra luôn dùng điểm ảnh vuông (setsar=1).
+ */
+const displaySize = (stream) => {
+  let width = Number(stream && stream.width);
+  let height = Number(stream && stream.height);
+  if (!(width > 0 && height > 0)) return null;
+
+  const sar = /^(\d+):(\d+)$/.exec(stream.sample_aspect_ratio || '');
+  if (sar && Number(sar[1]) > 0 && Number(sar[2]) > 0) {
+    width = (width * Number(sar[1])) / Number(sar[2]);
+  }
+
+  if (Math.abs(streamRotation(stream)) % 180 === 90) {
+    [width, height] = [height, width];
+  }
+
+  return { width: Math.round(width), height: Math.round(height) };
+};
+
+/** Số chẵn gần nhất, tối thiểu 2 — H.264 4:2:0 cần rộng và cao chẵn. */
+const evenDimension = (value) => Math.max(2, 2 * Math.round(value / 2));
+
+/**
+ * Chọn các mức chất lượng theo kích thước nguồn.
+ *
+ * Bản trước luôn sinh đủ 360p/720p/1080p trong khung 16:9 cố định, kèm đệm
+ * viền đen. Hệ quả:
+ * - nguồn 480p vẫn có bản "1080p" 4 Mbps — phóng to 2,25 lần, tốn dung lượng
+ *   và băng thông mà không thêm chi tiết nào, và hls.js chọn nó khi mạng tốt;
+ * - video quay dọc bị đệm thành 1920x1080 với hai dải đen hai bên (clip dọc
+ *   576x1024 ghi trong ghi chú của generateMasterPlaylist là một ví dụ thật).
+ *
+ * Mỗi mức giờ co nguồn vào khung của nó (khung dọc cho video dọc), giữ nguyên
+ * tỉ lệ — Apple HLS Authoring Spec 1.33: mọi variant nên cùng tỉ lệ khung — và
+ * không bao giờ phóng to quá nguồn. Mức nào chạm trần nguồn thì trùng kích
+ * thước với mức trước và bị bỏ, nên nguồn 480p cho ra 360p và 480p. Đây là
+ * bước cơ bản của thang bitrate theo nội dung (Netflix, per-title encoding),
+ * chưa chọn bitrate theo độ phức tạp của từng video.
+ *
+ * @param {{width: number, height: number}|null} source - kích thước hiển thị
+ * @returns rendition kèm outWidth/outHeight; nguồn không rõ thì trả nguyên
+ *   danh sách cấu hình (buildFFmpegArgs lùi về khung cố định + đệm).
+ */
+const planRenditions = (source, renditions = config.ffmpeg.renditions) => {
+  if (!source) return renditions;
+
+  const portrait = source.height > source.width;
+  const planned = [];
+
+  for (const r of renditions) {
+    const boxWidth = portrait ? r.height : r.width;
+    const boxHeight = portrait ? r.width : r.height;
+    const factor = Math.min(boxWidth / source.width, boxHeight / source.height, 1);
+    const outWidth = evenDimension(source.width * factor);
+    const outHeight = evenDimension(source.height * factor);
+
+    if (planned.some((p) => p.outWidth === outWidth && p.outHeight === outHeight)) continue;
+    planned.push({ ...r, outWidth, outHeight });
+  }
+
+  return planned;
+};
+
 /**
  * Đọc thời lượng và framerate của video bằng một lần gọi ffprobe.
  *
@@ -631,10 +719,13 @@ const probeVideo = (inputPath) => {
         const info = JSON.parse(stdout);
         const stream = (info.streams || [])[0];
         const { fps, source } = resolveFrameRate(stream);
+        const size = displaySize(stream);
         resolve({
           duration: parseFloat(info.format && info.format.duration) || 0,
           fps,
           fpsSource: source,
+          width: size ? size.width : null,
+          height: size ? size.height : null,
         });
       } catch (e) {
         reject(new Error(`Failed to parse ffprobe output: ${e.message}`));
@@ -710,4 +801,6 @@ module.exports = {
   probeRenditionCodecs,
   firstSegmentPath,
   pickThumbnailTime,
+  displaySize,
+  planRenditions,
 };
