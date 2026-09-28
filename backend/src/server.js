@@ -9,6 +9,7 @@ const { TRUSTED_PROXIES } = require('./config/trustedProxies');
 const errorHandler = require('./middleware/errorHandler');
 const { apiLimiter } = require('./middleware/rateLimiter');
 const { verifyEmailTransport } = require('./services/emailService');
+const { startVideoReconciler } = require('./services/videoReconciler');
 
 // Route imports
 const authRoutes = require('./routes/authRoutes');
@@ -93,6 +94,8 @@ if (require.main === module) {
     // Chạy nền, không chặn việc nhận request; chỉ để lỗi cấu hình mail hiện
     // ngay trong log thay vì im lặng tới khi có người dùng thử quên mật khẩu.
     verifyEmailTransport();
+    // Dọn video kẹt ở PROCESSING/UPLOADING (xem services/videoReconciler.js).
+    startVideoReconciler();
   });
 }
 

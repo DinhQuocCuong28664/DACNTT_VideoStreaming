@@ -1,6 +1,7 @@
 const {
   S3Client,
   PutObjectCommand,
+  HeadObjectCommand,
   DeleteObjectCommand,
   ListObjectsV2Command,
   DeleteObjectsCommand,
@@ -101,6 +102,25 @@ const getAvatarPublicUrl = (key) =>
   `https://s3.${process.env.AWS_REGION}.amazonaws.com/${process.env.S3_STATIC_BUCKET_NAME}/${key}`;
 
 /**
+ * Tệp có tồn tại trên S3 không.
+ *
+ * Máy chủ có quyền s3:ListBucket trên bucket, nên tệp không tồn tại trả 404
+ * (NotFound) chứ không phải 403; mọi lỗi khác được ném ra để người gọi không
+ * nhầm "không kiểm tra được" thành "không có tệp".
+ */
+const objectExists = async (bucket, key) => {
+  try {
+    await s3Client.send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
+    return true;
+  } catch (err) {
+    if (err.name === 'NotFound' || (err.$metadata && err.$metadata.httpStatusCode === 404)) {
+      return false;
+    }
+    throw err;
+  }
+};
+
+/**
  * Delete a single object from S3
  */
 const deleteObject = async (bucket, key) => {
@@ -151,6 +171,7 @@ module.exports = {
   generateAvatarKey,
   generateAvatarUploadUrl,
   getAvatarPublicUrl,
+  objectExists,
   deleteObject,
   deleteDirectory,
 };

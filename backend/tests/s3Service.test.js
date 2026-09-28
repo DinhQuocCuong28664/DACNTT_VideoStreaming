@@ -1,4 +1,28 @@
+const { S3Client } = require('@aws-sdk/client-s3');
 const s3Service = require('../src/services/s3Service');
+
+describe('objectExists', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('true khi HeadObject thành công', async () => {
+    jest.spyOn(S3Client.prototype, 'send').mockResolvedValue({});
+    await expect(s3Service.objectExists('b', 'k')).resolves.toBe(true);
+  });
+
+  it('false khi S3 trả 404', async () => {
+    const notFound = Object.assign(new Error('NotFound'), { name: 'NotFound', $metadata: { httpStatusCode: 404 } });
+    jest.spyOn(S3Client.prototype, 'send').mockRejectedValue(notFound);
+    await expect(s3Service.objectExists('b', 'k')).resolves.toBe(false);
+  });
+
+  it('ném lỗi khác ra ngoài thay vì coi là không có tệp', async () => {
+    const denied = Object.assign(new Error('AccessDenied'), { name: 'AccessDenied', $metadata: { httpStatusCode: 403 } });
+    jest.spyOn(S3Client.prototype, 'send').mockRejectedValue(denied);
+    await expect(s3Service.objectExists('b', 'k')).rejects.toThrow('AccessDenied');
+  });
+});
 
 describe('s3Service Unit Tests', () => {
   describe('generateS3Key', () => {
