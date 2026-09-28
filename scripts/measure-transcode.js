@@ -74,7 +74,7 @@ async function initiateUpload(filename, fileSize) {
   }
 
   const body = await res.json();
-  return { videoId: body.data.video._id, uploadUrl: body.data.uploadUrl };
+  return { videoId: body.data.video._id, upload: body.data.upload };
 }
 
 /**
@@ -96,15 +96,20 @@ async function confirmUpload(videoId) {
   }
 }
 
-/** Bước 2: tải tệp trực tiếp lên S3 qua Pre-signed URL */
-async function uploadToS3(uploadUrl, filePath) {
-  const fileBuffer = fs.readFileSync(filePath);
+/**
+ * Bước 2: tải tệp trực tiếp lên S3 qua presigned POST.
+ *
+ * Mọi trường policy đứng trước `file` (S3 bỏ qua trường đứng sau nó).
+ * fs.openAsBlob đọc tệp theo luồng khi gửi, không nạp cả tệp 1 GB vào RAM.
+ */
+async function uploadToS3({ url, fields }, filePath) {
+  const form = new FormData();
+  for (const [name, value] of Object.entries(fields)) {
+    form.append(name, value);
+  }
+  form.append('file', await fs.openAsBlob(filePath, { type: 'video/mp4' }), path.basename(filePath));
 
-  const res = await fetch(uploadUrl, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'video/mp4' },
-    body: fileBuffer,
-  });
+  const res = await fetch(url, { method: 'POST', body: form });
 
   if (!res.ok) {
     throw new Error(`Tải lên S3 thất bại: HTTP ${res.status}`);
@@ -211,12 +216,12 @@ async function measure(filePath, label) {
   const t0 = performance.now();
 
   console.log('  Bước 1/3: Xin Pre-signed URL…');
-  const { videoId, uploadUrl } = await initiateUpload(filename, stats.size);
+  const { videoId, upload } = await initiateUpload(filename, stats.size);
   const tInitiate = performance.now();
   console.log(`  → videoId = ${videoId} (${((tInitiate - t0) / 1000).toFixed(2)} giây)`);
 
   console.log('  Bước 2/3: Tải tệp lên Amazon S3…');
-  await uploadToS3(uploadUrl, filePath);
+  await uploadToS3(upload, filePath);
   const tUploaded = performance.now();
   const uploadSec = (tUploaded - tInitiate) / 1000;
   console.log(`  → Hoàn tất sau ${uploadSec.toFixed(2)} giây (${(sizeMB / uploadSec).toFixed(2)} MB/s)`);

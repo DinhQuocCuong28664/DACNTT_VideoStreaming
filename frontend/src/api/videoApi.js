@@ -62,25 +62,32 @@ export const videoApi = {
     axiosClient.post(`/videos/${id}/report`, { reason, details }),
 
   /**
-   * Upload file directly to S3 using Pre-signed URL
-   * @param {string} presignedUrl - S3 Pre-signed PUT URL
+   * Upload file directly to S3 using a presigned POST
+   *
+   * S3 kiểm tra policy do máy chủ ký (đúng key, đúng Content-Type, tối đa 2 GB)
+   * trước khi nhận tệp. `file` phải là trường cuối cùng vì S3 bỏ qua mọi trường
+   * đứng sau nó; không tự đặt Content-Type để trình duyệt điền boundary.
+   *
+   * @param {{url: string, fields: Object<string, string>}} upload - từ initiate-upload
    * @param {File} file - File object to upload
    * @param {function} onProgress - Callback ({ percent, loaded, total }) for progress updates
    * @param {AbortSignal} signal - Optional abort signal for cancellation
    */
-  uploadToS3: (presignedUrl, file, onProgress, signal) =>
-    axios.put(presignedUrl, file, {
+  uploadToS3: ({ url, fields }, file, onProgress, signal) => {
+    const form = new FormData();
+    Object.entries(fields).forEach(([name, value]) => form.append(name, value));
+    form.append('file', file);
+
+    return axios.post(url, form, {
       signal,
-      headers: {
-        'Content-Type': file.type,
-      },
       onUploadProgress: (progressEvent) => {
         const total = progressEvent.total || file.size;
         const loaded = progressEvent.loaded || 0;
         const percent = total > 0 ? Math.min(100, Math.round((loaded * 100) / total)) : 0;
         if (onProgress) onProgress({ percent, loaded, total });
       },
-    }),
+    });
+  },
 };
 
 export default videoApi;

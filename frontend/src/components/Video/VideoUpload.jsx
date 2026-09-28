@@ -169,7 +169,7 @@ const VideoUpload = () => {
         .map((tag) => tag.trim())
         .filter((tag) => tag);
 
-      // Step 1: Initiate upload (Creates DB record FIRST with status UPLOADING to get videoId, returns uploadUrl)
+      // Step 1: Initiate upload (Creates DB record FIRST with status UPLOADING to get videoId, returns a presigned POST)
       const initRes = await videoApi.initiateUpload({
         title: formData.title,
         description: formData.description,
@@ -181,13 +181,13 @@ const VideoUpload = () => {
         visibility: formData.visibility,
       });
 
-      const { video, uploadUrl } = initRes.data.data;
+      const { video, upload } = initRes.data.data;
       const videoId = video._id;
       currentVideoIdRef.current = videoId;
 
-      // Step 2: Upload file directly to S3 via Pre-signed URL with telemetry & cancellation
+      // Step 2: Upload file directly to S3 via presigned POST with telemetry & cancellation
       await videoApi.uploadToS3(
-        uploadUrl,
+        upload,
         file,
         ({ percent, loaded, total }) => {
           setUploadProgress(percent);

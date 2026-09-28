@@ -1,12 +1,10 @@
 const {
   S3Client,
-  PutObjectCommand,
   HeadObjectCommand,
   DeleteObjectCommand,
   ListObjectsV2Command,
   DeleteObjectsCommand,
 } = require('@aws-sdk/client-s3');
-const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 const { createPresignedPost } = require('@aws-sdk/s3-presigned-post');
 
 // Initialize S3 Client (AWS SDK v3)
@@ -42,22 +40,15 @@ const generateS3Key = (userId, videoId, filename) => {
 };
 
 /**
- * Generate Pre-signed PUT URL for direct upload to S3 Raw Bucket
- * URL expires in 15 minutes
+ * Presigned POST để trình duyệt tải video gốc thẳng lên S3 Raw Bucket.
+ *
+ * Trước đây là pre-signed PUT URL, và giới hạn 2 GB chỉ là con số `fileSize`
+ * do chính client khai (bỏ trống là qua): URL PUT không ký Content-Length nên
+ * tải lên được tới trần 5 GB của một lệnh PUT. Policy của POST đặt trần ngay
+ * tại S3 (xem createUploadPost). Hết hạn sau 15 phút như trước.
  */
-const generatePresignedUploadUrl = async (key, contentType) => {
-  const command = new PutObjectCommand({
-    Bucket: process.env.S3_RAW_BUCKET_NAME,
-    Key: key,
-    ContentType: contentType,
-  });
-
-  const url = await getSignedUrl(s3Client, command, {
-    expiresIn: 15 * 60, // 15 minutes
-  });
-
-  return url;
-};
+const generateVideoUploadPost = (key, contentType, maxBytes) =>
+  createUploadPost({ bucket: process.env.S3_RAW_BUCKET_NAME, key, contentType, maxBytes });
 
 /**
  * Presigned POST: S3 tự kiểm tra các điều kiện trong policy trước khi nhận
@@ -211,7 +202,7 @@ const deleteDirectory = async (bucket, prefix) => {
 
 module.exports = {
   generateS3Key,
-  generatePresignedUploadUrl,
+  generateVideoUploadPost,
   createUploadPost,
   generateAvatarKey,
   isAvatarKeyOf,
