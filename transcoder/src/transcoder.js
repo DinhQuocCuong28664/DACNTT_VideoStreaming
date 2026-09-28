@@ -145,14 +145,14 @@ const transcodeToHLS = async (inputPath, outputDir) => {
   const codecsByRendition = await probeRenditionCodecs(outputDir, renditions);
   generateMasterPlaylist(outputDir, renditions, codecsByRendition);
 
-  // Step 5: Extract thumbnail
-  await extractThumbnail(inputPath, outputDir);
+  // Step 5: Extract thumbnail (null khi không lấy được khung hình nào)
+  const thumbnailPath = await extractThumbnail(inputPath, outputDir, duration);
 
   console.log('\n✅ ════════════════════════════════════════');
   console.log('   Transcoding Complete!');
   console.log('════════════════════════════════════════\n');
 
-  return { duration, fps };
+  return { duration, fps, thumbnailPath };
 };
 
 /**
@@ -542,16 +542,32 @@ const generateMasterPlaylist = (outputDir, renditions, codecsByRendition = {}) =
 };
 
 /**
- * Extract thumbnail from video at specified time
+ * Mốc lấy ảnh bìa: giây thứ 5 như trước, nhưng không vượt quá giữa video.
+ *
+ * Trước đây luôn lấy ở giây thứ 5. Với video ngắn hơn 5 giây, ffmpeg không có
+ * khung hình nào để ghi ("Nothing was written into output file ...
+ * Conversion failed!"), nên không có thumbnail.jpg — trong khi DB vẫn trỏ
+ * thumbnailUrl vào tệp không tồn tại. Các video 3 giây dùng trong bài đo chịu
+ * tải rơi đúng vào trường hợp này.
  */
-const extractThumbnail = async (inputPath, outputDir) => {
+const pickThumbnailTime = (duration, preferred = config.ffmpeg.thumbnailTime) =>
+  Number.isFinite(duration) && duration > 0 ? Math.min(preferred, duration / 2) : 0;
+
+/**
+ * Extract a thumbnail frame. Resolves to the file path, or null when no frame
+ * could be written — the caller then leaves thumbnailUrl unset.
+ *
+ * `-ss` đặt trước `-i` (tua ở đầu vào): ffmpeg nhảy thẳng tới keyframe gần mốc
+ * rồi giải mã tiếp tới đúng mốc, thay vì giải mã từ đầu tệp.
+ */
+const extractThumbnail = async (inputPath, outputDir, duration) => {
   const thumbnailPath = path.join(outputDir, 'thumbnail.jpg');
-  const thumbTime = config.ffmpeg.thumbnailTime;
+  const thumbTime = pickThumbnailTime(duration);
 
   const args = [
+    '-ss', thumbTime.toFixed(3),
     '-i', inputPath,
-    '-ss', String(thumbTime),
-    '-vframes', '1',
+    '-frames:v', '1',
     '-q:v', '2',
     '-vf', 'scale=640:-1',
     '-y',
@@ -561,16 +577,18 @@ const extractThumbnail = async (inputPath, outputDir) => {
   return new Promise((resolve) => {
     const proc = spawn('ffmpeg', args);
     proc.on('close', (code) => {
-      if (code === 0) {
-        console.log(`🖼️  Thumbnail extracted at ${thumbTime}s → thumbnail.jpg`);
+      // Kiểm tra cả tệp: đừng tin riêng mã thoát khi quyết định có ghi
+      // thumbnailUrl vào DB hay không.
+      if (code === 0 && fs.existsSync(thumbnailPath)) {
+        console.log(`🖼️  Thumbnail extracted at ${thumbTime.toFixed(2)}s → thumbnail.jpg`);
         resolve(thumbnailPath);
       } else {
-        console.warn(`⚠️  Thumbnail extraction failed (code ${code}), skipping`);
+        console.warn(`⚠️  Thumbnail extraction failed (code ${code}), the video will have no thumbnail`);
         resolve(null);
       }
     });
     proc.on('error', (err) => {
-      console.warn(`⚠️  Thumbnail extraction error: ${err.message}, skipping`);
+      console.warn(`⚠️  Thumbnail extraction error: ${err.message}, the video will have no thumbnail`);
       resolve(null);
     });
   });
@@ -684,4 +702,5 @@ module.exports = {
   probeSegmentCodecs,
   probeRenditionCodecs,
   firstSegmentPath,
+  pickThumbnailTime,
 };
