@@ -112,6 +112,23 @@ resource "aws_security_group" "backend_api" {
   })
 }
 
+module "backend_userdata" {
+  source = "../../modules/backend-userdata"
+
+  project_prefix       = "${var.project_name}-${var.environment}"
+  shared_secret_prefix = "${var.project_name}-${var.environment}"
+  git_ref              = "master"
+  frontend_url         = "https://zelostech.site"
+  # Bỏ localhost:5173/3000 khỏi danh sách cũ: đó là origin phát triển cục bộ,
+  # không có lý do gì để API production chấp nhận request kèm credentials từ đó.
+  cors_origins           = "https://zelostech.site,https://www.zelostech.site,http://zelostech.site,http://www.zelostech.site"
+  static_bucket_name     = aws_s3_bucket.frontend.bucket
+  api_domain             = "api.zelostech.site"
+  cloudfront_domain      = "cdn.zelostech.site"
+  email_user             = var.email_user
+  cloudfront_key_pair_id = module.cloudfront.signing_key_pair_id != null ? module.cloudfront.signing_key_pair_id : ""
+}
+
 resource "aws_instance" "backend_api" {
   ami           = data.aws_ami.ubuntu.id
   instance_type = var.backend_instance_type
@@ -125,16 +142,10 @@ resource "aws_instance" "backend_api" {
 
   associate_public_ip_address = true
 
-  # Script là tệp tĩnh (không phải templatefile, vì nó dùng rất nhiều cú pháp
-  # ${...} của bash); chỉ thay hai chuỗi đánh dấu bằng giá trị không bí mật:
-  # địa chỉ gửi mail (cùng var.email_user mà Job Definition của transcoder
-  # dùng) và ID public key ký CloudFront. Mật khẩu Gmail và khoá riêng
-  # CloudFront thì script tự đọc từ Secrets Manager lúc khởi động.
-  user_data = replace(
-    replace(file("${path.module}/../../../scripts/ec2-userdata.sh"), "__EMAIL_USER__", var.email_user),
-    "__CLOUDFRONT_KEY_PAIR_ID__",
-    module.cloudfront.signing_key_pair_id != null ? module.cloudfront.signing_key_pair_id : ""
-  )
+  # Script dùng chung với staging, điền giá trị của production qua
+  # module.backend_userdata (bên dưới). Mật khẩu Gmail, khoá riêng CloudFront
+  # và token Cloudflare thì script tự đọc từ Secrets Manager lúc khởi động.
+  user_data                   = module.backend_userdata.rendered
   user_data_replace_on_change = true
 
   root_block_device {
@@ -173,7 +184,13 @@ resource "aws_instance" "backend_api" {
     # Lưu ý user_data_replace_on_change = true ở trên cũng thay mới máy chủ khi
     # scripts/ec2-userdata.sh đổi. Điều đó là cố ý, nhưng nay mang đúng những
     # hậu quả vừa liệt kê, nên hãy sửa tệp đó một cách có ý thức.
-    ignore_changes = [ami]
+    #
+    # `user_data` cũng được bỏ qua vì cùng lý do: script dùng chung với staging
+    # và sẽ còn được sửa, mà mỗi lần sửa thì user_data_replace_on_change sẽ dựng
+    # lại máy production ở lần apply kế tiếp. Máy nhận script mới khi chủ động
+    # chạy `terraform apply -replace=aws_instance.backend_api`. Staging không bỏ
+    # qua: mỗi lần bật là một máy mới, luôn chạy script mới nhất.
+    ignore_changes = [ami, user_data]
   }
 }
 
