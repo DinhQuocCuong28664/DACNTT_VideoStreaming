@@ -167,6 +167,29 @@ const updateVideoError = async (videoId, errorMessage) => {
 };
 
 /**
+ * Đánh dấu video PROCESSING khi một job bắt đầu xử lý nó.
+ *
+ * Trước đây chỉ trình duyệt đặt PROCESSING (qua confirm-upload). Người dùng
+ * đóng tab ngay sau khi tải xong thì video vẫn chuyển mã bình thường nhưng
+ * nằm ở UPLOADING suốt quá trình, và "UPLOADING" không còn phân biệt được
+ * "chưa có job nào chạy" với "đang chạy". Bộ đối soát ở backend
+ * (videoReconciler.js) dựa vào đúng sự phân biệt đó.
+ *
+ * Ghi mỗi lần job khởi động, kể cả lần thử lại của Batch, nên `updatedAt`
+ * luôn là mốc lần thử gần nhất. Cho phép đi từ ERROR: đó là trường hợp bộ đối
+ * soát đã đánh lỗi một job xếp hàng quá lâu, rồi job ấy vẫn chạy được.
+ * Không bao giờ hạ một video đã READY, cùng lý do với updateVideoReady.
+ */
+const markVideoProcessing = async (videoId) => {
+  const video = await Video.findOneAndUpdate(
+    { _id: videoId, status: { $ne: 'READY' } },
+    { $set: { status: 'PROCESSING' } },
+    { returnDocument: 'after' }
+  );
+  return { video, updated: Boolean(video) };
+};
+
+/**
  * Get video by ID
  */
 const getVideo = async (videoId) => {
@@ -188,6 +211,7 @@ module.exports = {
   disconnectDB,
   updateVideoReady,
   updateVideoError,
+  markVideoProcessing,
   getVideo,
   getVideoWithUser,
 };
