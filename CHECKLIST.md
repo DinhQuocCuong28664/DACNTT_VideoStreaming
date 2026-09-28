@@ -63,7 +63,7 @@
 - [x] **Toàn bộ test suite tự động:** Đạt **360/360 tests PASS** trên 30 test suites toàn dự án (220 backend + 140 transcoder), đo lại ngày 2026-09-29.
 - [x] `ci-frontend.yml`: oxlint + Build Vite + Deploy S3 Static Hosting (`s3 sync --delete` loại trừ `avatars/`, không còn xoá ảnh đại diện người dùng ở mỗi lần deploy).
 - [x] `security-scan.yml`: Gitleaks Secret Detection + Trivy Dependency Scan trên mọi Pull Request.
-- [x] `cd-staging.yml`: `terraform validate` môi trường `dev` khi push vào `develop` (chỉ kiểm tra cấu hình, không triển khai).
+- [x] **Môi trường Staging** (`infrastructure/environments/staging`, `scripts/staging-up.sh` / `staging-down.sh`): máy chủ backend chỉ tồn tại khi đang thử; `cd-staging.yml` deploy transcoder + backend + frontend của một nhánh, smoke test và quét DAST bằng OWASP ZAP baseline. Chờ `terraform apply` lần đầu.
 - [x] `cd-deploy.yml`: chỉ chạy sau khi `CI — Backend` thành công (`workflow_run`), triển khai đúng commit CI vừa kiểm lên EC2 qua SSM.
 - [x] **GitHub Actions → AWS bằng OIDC** (`infrastructure/environments/dev/github-oidc.tf`): ba role quyền tối thiểu thay cho khoá tĩnh; trust policy dùng *immutable subject* của repo. Chờ `terraform apply` và đặt biến repository để bật.
 - [x] **Quality Gate hai lớp:** Mỗi bước quét Trivy được tách thành lớp *Báo cáo* (`CRITICAL,HIGH` — `exit-code: 0`) và lớp *Quality Gate* (`CRITICAL` — `exit-code: 1`) thực sự chặn Pull Request. Áp dụng cho cả quét mã nguồn, quét Docker Image và quét cấu hình Terraform.
