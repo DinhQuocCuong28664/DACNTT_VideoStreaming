@@ -139,14 +139,17 @@ jobs:
 
       # Kiem chung that su thay vi tin vao viec lenh chay xong: pm2 co the khoi
       # dong lai roi tien trinh sap ngay sau do, luc do SSM van bao Success.
+      #
+      # Goi qua ten mien, khong goi thang IP may chu: security group chi mo cong
+      # 80/443 cho dai IP Cloudflare (backend-ec2.tf), nen runner GitHub goi
+      # thang IP se bi chan. Di qua ten mien cung la kiem dung duong nguoi dung
+      # di: Cloudflare -> nginx -> pm2.
       - name: Verify API responds
+        env:
+          API_URL: https://api.zelostech.site/
         run: |
-          IP=$(aws ec2 describe-instances \
-            --instance-ids "${{ steps.find.outputs.instance_id }}" \
-            --query "Reservations[0].Instances[0].PublicIpAddress" --output text)
-
           for i in $(seq 1 10); do
-            CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "http://$IP/" || echo 000)
+            CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$API_URL" || echo 000)
             if [ "$CODE" = "200" ]; then
               echo "API phan hoi OK (HTTP $CODE)"
               exit 0

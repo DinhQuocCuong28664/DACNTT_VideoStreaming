@@ -26,6 +26,41 @@ data "aws_ami" "ubuntu" {
   }
 }
 
+# ── Dải IP Cloudflare ──────────────────────────────
+#
+# api.zelostech.site là bản ghi proxied trên Cloudflare, nên người dùng không
+# bao giờ kết nối thẳng tới máy chủ: mọi request hợp lệ đều tới từ các dải dưới
+# đây. Trước đây cổng 80/443 mở cho 0.0.0.0/0, ai biết địa chỉ Elastic IP là gọi
+# thẳng được, vòng qua toàn bộ lớp chống DDoS và WAF của Cloudflare.
+#
+# Cloudflare xếp cách này ở mức "khá an toàn": nó chặn được việc vòng qua
+# Cloudflare, nhưng mọi khách hàng Cloudflare đều đi ra từ cùng các dải này.
+# Mạnh hơn là Authenticated Origin Pulls (mTLS) hoặc Cloudflare Tunnel.
+#
+# Lấy từ https://www.cloudflare.com/ips-v4 ngày 2026-09-28. Cloudflare yêu cầu
+# cập nhật định kỳ; khi đổi thì sửa cùng lúc với backend/src/config/
+# trustedProxies.js, nơi Express dùng cùng danh sách để đọc đúng IP người dùng.
+# Chỉ có IPv4 vì VPC này không cấp IPv6.
+locals {
+  cloudflare_ipv4_cidrs = [
+    "173.245.48.0/20",
+    "103.21.244.0/22",
+    "103.22.200.0/22",
+    "103.31.4.0/22",
+    "141.101.64.0/18",
+    "108.162.192.0/18",
+    "190.93.240.0/20",
+    "188.114.96.0/20",
+    "197.234.240.0/22",
+    "198.41.128.0/17",
+    "162.158.0.0/15",
+    "104.16.0.0/13",
+    "104.24.0.0/14",
+    "172.64.0.0/13",
+    "131.0.72.0/22",
+  ]
+}
+
 resource "aws_security_group" "backend_api" {
   name        = "${var.project_name}-${var.environment}-backend-sg"
   description = "Backend API: HTTP/HTTPS tu Internet, SSH de quan tri"
@@ -34,20 +69,23 @@ resource "aws_security_group" "backend_api" {
   # Nginx nhận cổng 80 rồi chuyển tiếp nội bộ sang Node (cổng 5000). Cổng 5000
   # KHÔNG mở ra Internet: Cloudflare gói Free không proxy được cổng đó, và mở
   # thừa chỉ làm tăng bề mặt tấn công.
+  #
+  # 15 dải x 2 cổng = 30 rule, dưới hạn mức mặc định 60 rule inbound IPv4 của
+  # một security group.
   ingress {
-    description = "HTTP (Nginx reverse proxy)"
+    description = "HTTP (Nginx reverse proxy), chi tu Cloudflare"
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = local.cloudflare_ipv4_cidrs
   }
 
   ingress {
-    description = "HTTPS (du phong cho khi dung chung chi TLS truc tiep tren may chu)"
+    description = "HTTPS (Cloudflare che do Full ket noi qua cong nay), chi tu Cloudflare"
     from_port   = 443
     to_port     = 443
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    cidr_blocks = local.cloudflare_ipv4_cidrs
   }
 
   ingress {
