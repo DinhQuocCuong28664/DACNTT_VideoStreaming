@@ -132,7 +132,7 @@ const processVideo = async (videoId, rawS3Key, { force = false } = {}) => {
     }
 
     // Step 3: Transcode to HLS (360p / 720p / 1080p)
-    const { duration } = await transcodeToHLS(inputPath, outputDir);
+    const { duration, thumbnailPath } = await transcodeToHLS(inputPath, outputDir);
 
     // Step 4: Upload HLS output to S3 Processed Bucket
     const s3Prefix = `videos/${videoId}`;
@@ -140,7 +140,8 @@ const processVideo = async (videoId, rawS3Key, { force = false } = {}) => {
 
     // Step 5: Update MongoDB — status → READY
     const hlsUrl = config.getPublicUrl(`${s3Prefix}/master.m3u8`);
-    const thumbnailUrl = config.getPublicUrl(`${s3Prefix}/thumbnail.jpg`);
+    // Không có tệp thì không trỏ URL vào đó: giao diện tự hiện ảnh thay thế.
+    const thumbnailUrl = thumbnailPath ? config.getPublicUrl(`${s3Prefix}/thumbnail.jpg`) : null;
 
     const { updated } = await updateVideoReady(videoId, { hlsUrl, thumbnailUrl, duration, moderation });
 
