@@ -171,7 +171,7 @@
     "registerSubmitting": "Đang tạo tài khoản...",
     "registerFailed": "Đăng ký thất bại. Vui lòng thử lại.",
     "usernameLabel": "Tên người dùng",
-    "passwordHint": "Dùng từ 6 ký tự trở lên",
+    "passwordHint": "Dùng từ 8 ký tự trở lên",
     "confirmPasswordLabel": "Xác nhận mật khẩu",
     "passwordMismatch": "Mật khẩu xác nhận không khớp",
     "forgotTitle": "Khôi phục tài khoản",
