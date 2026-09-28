@@ -115,8 +115,13 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
+      # --delete xoa moi object co tren bucket ma khong co trong dist/. Bucket
+      # nay cung chua anh dai dien nguoi dung tai len (avatars/, xem
+      # backend/src/services/s3Service.js), nen truoc day MOI lan deploy
+      # frontend deu xoa sach avatar trong khi DB van tro toi chung. Theo tai
+      # lieu AWS CLI, object bi loai bang --exclude cung duoc loai khoi viec xoa.
       - name: Sync dist/ to S3 (Static Website Hosting bucket)
-        run: aws s3 sync dist/ "s3://${{ env.S3_BUCKET }}" --delete
+        run: aws s3 sync dist/ "s3://${{ env.S3_BUCKET }}" --delete --exclude "avatars/*"
 
       # Distribution nam o mot AWS account rieng (account A) khac voi account B
       # o tren (S3) — xem infrastructure/environments/dev/providers.tf. Khong
