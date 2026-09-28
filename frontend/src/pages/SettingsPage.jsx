@@ -54,9 +54,9 @@ const AccountTab = () => {
     setUploading(true);
     try {
       const presignRes = await userApi.presignAvatarUpload(file.name, file.type, file.size);
-      const { uploadUrl, key } = presignRes.data.data;
+      const { upload, key } = presignRes.data.data;
 
-      await userApi.uploadToS3(uploadUrl, file);
+      await userApi.uploadToS3(upload, file);
 
       const confirmRes = await userApi.updateAvatar(key);
       updateUser(confirmRes.data.data.user);

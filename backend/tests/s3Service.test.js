@@ -42,3 +42,77 @@ describe('s3Service Unit Tests', () => {
     });
   });
 });
+
+/**
+ * Tải lên bằng presigned POST: S3 kiểm tra policy trước khi nhận tệp.
+ *
+ * Presigned PUT của SDK v3 chỉ ký header `host` — người tải lên tự chọn
+ * Content-Type và dung lượng. Các test dưới đây giải mã policy thật do SDK sinh
+ * ra (ký ngoại tuyến bằng khoá giả) để chắc chắn các điều kiện nằm trong đó.
+ */
+describe('createUploadPost — policy do S3 kiểm tra', () => {
+  const savedEnv = { ...process.env };
+
+  beforeAll(() => {
+    process.env.AWS_REGION = 'ap-southeast-1';
+    process.env.AWS_ACCESS_KEY_ID = 'AKIAEXAMPLEEXAMPLE00';
+    process.env.AWS_SECRET_ACCESS_KEY = 'example-secret-key-for-offline-signing00';
+  });
+
+  afterAll(() => {
+    process.env = savedEnv;
+  });
+
+  const decodePolicy = (fields) => JSON.parse(Buffer.from(fields.Policy, 'base64').toString('utf8'));
+
+  it('ghim key, Content-Type và khoảng dung lượng', async () => {
+    const { url, fields } = await s3Service.createUploadPost({
+      bucket: 'raw-bucket',
+      key: 'videos/u/v/a.mp4',
+      contentType: 'video/mp4',
+      maxBytes: 2048,
+    });
+
+    expect(url).toContain('raw-bucket');
+    expect(fields.key).toBe('videos/u/v/a.mp4');
+    expect(fields['Content-Type']).toBe('video/mp4');
+
+    const { conditions } = decodePolicy(fields);
+    expect(conditions).toContainEqual({ key: 'videos/u/v/a.mp4' });
+    expect(conditions).toContainEqual({ 'Content-Type': 'video/mp4' });
+    expect(conditions).toContainEqual(['content-length-range', 1, 2048]);
+  });
+
+  it('hết hạn sau 15 phút theo mặc định', async () => {
+    const before = Date.now();
+    const { fields } = await s3Service.createUploadPost({
+      bucket: 'b',
+      key: 'k',
+      contentType: 'image/png',
+      maxBytes: 1,
+    });
+    const expiresAt = Date.parse(decodePolicy(fields).expiration);
+
+    expect(expiresAt - before).toBeGreaterThan(14 * 60 * 1000);
+    expect(expiresAt - before).toBeLessThanOrEqual(15 * 60 * 1000 + 1000);
+  });
+});
+
+describe('Key ảnh đại diện', () => {
+  it('lấy đuôi từ MIME đã kiểm tra, không từ tên tệp', () => {
+    expect(s3Service.generateAvatarKey('u1', 'image/png')).toMatch(/^avatars\/u1\/\d+\.png$/);
+    expect(s3Service.generateAvatarKey('u1', 'image/jpeg')).toMatch(/\.jpg$/);
+  });
+
+  it('từ chối MIME không phải ảnh', () => {
+    expect(() => s3Service.generateAvatarKey('u1', 'text/html')).toThrow();
+  });
+
+  it('isAvatarKeyOf chỉ nhận key đúng dạng trong thư mục của chính người dùng', () => {
+    expect(s3Service.isAvatarKeyOf('u1', 'avatars/u1/1790000000000.webp')).toBe(true);
+    expect(s3Service.isAvatarKeyOf('u1', 'avatars/u1/1790000000000.html')).toBe(false);
+    expect(s3Service.isAvatarKeyOf('u1', 'avatars/u2/1790000000000.png')).toBe(false);
+    expect(s3Service.isAvatarKeyOf('u1', 'avatars/u1/../u2/1.png')).toBe(false);
+    expect(s3Service.isAvatarKeyOf('u1', null)).toBe(false);
+  });
+});

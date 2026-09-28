@@ -9,7 +9,7 @@ const { getPublicProfile, presignAvatarUpload, updateAvatar } = require('../cont
 router.post(
   '/avatar/presign',
   auth,
-  validateRequest(['filename', 'mimetype']),
+  validateRequest(['mimetype']),
   validateAvatarMetadata,
   presignAvatarUpload
 );
