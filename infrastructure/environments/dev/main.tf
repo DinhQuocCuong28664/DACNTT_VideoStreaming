@@ -64,7 +64,11 @@ module "iam" {
   raw_bucket_arn       = module.s3.raw_bucket_arn
   processed_bucket_arn = module.s3.processed_bucket_arn
   sqs_queue_arn        = module.sqs.queue_arn
-  tags                 = local.common_tags
+  # Ảnh đại diện nằm trong bucket host frontend (frontend.tf). Thiếu dòng này
+  # role EC2 không có quyền ghi vào đó, và presigned POST mà backend ký cho
+  # avatar bị S3 từ chối.
+  static_bucket_arn = aws_s3_bucket.frontend.arn
+  tags              = local.common_tags
 }
 
 # ── 7. SNS Notifications ──────────────────────────
