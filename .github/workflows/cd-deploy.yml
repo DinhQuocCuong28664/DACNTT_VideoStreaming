@@ -54,13 +54,21 @@ jobs:
        github.event.workflow_run.event == 'push' &&
        github.event.workflow_run.head_repository.full_name == github.repository)
     environment: production
+    # id-token: write cho phep job xin token OIDC de doi lay credential AWS tam
+    # thoi (infrastructure/environments/dev/github-oidc.tf).
+    permissions:
+      id-token: write
+      contents: read
 
     steps:
+      # Dung OIDC khi bien AWS_DEPLOY_ROLE_ARN da duoc dat (sau terraform apply
+      # github-oidc.tf); chua dat thi van dung khoa tinh cu de CI khong gay giua chung.
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-access-key-id: ${{ !vars.AWS_DEPLOY_ROLE_ARN && secrets.AWS_ACCESS_KEY_ID || '' }}
+          aws-secret-access-key: ${{ !vars.AWS_DEPLOY_ROLE_ARN && secrets.AWS_SECRET_ACCESS_KEY || '' }}
           aws-region: ${{ env.AWS_REGION }}
 
       # Triển khai qua AWS Systems Manager thay vì SSH.
