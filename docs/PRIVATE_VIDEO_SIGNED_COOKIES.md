@@ -26,13 +26,16 @@ Hệ thống cũng chọn ký theo **Custom Policy** thay vì Canned Policy. Lý
 3. Frontend gọi GET /api/videos/:id/playback-auth   → xin quyền phát
 4. Backend kiểm tra quyền bằng videoService.getVideoById
    ├─ Video riêng tư và người gọi không phải chủ sở hữu → 404, dừng lại
-   └─ Hợp lệ → ký Custom Policy, đặt 3 cookie vào phản hồi
+   └─ Hợp lệ → ký Custom Policy, đặt 3 cookie ở Path=/videos/{id}/
+                và cập nhật cookie chỉ mục (danh sách video đã cấp)
 5. Frontend khởi tạo HLS.js với xhrSetup bật withCredentials
 6. Trình duyệt đính kèm cookie vào mọi yêu cầu manifest và segment
 7. CloudFront xác thực chữ ký
    ├─ Hợp lệ  → phục vụ nội dung từ Edge Location
    └─ Không hợp lệ hoặc thiếu cookie → HTTP 403
 ```
+
+**Mỗi video một bộ cookie.** Một Custom Policy chỉ chứa được một statement với một `Resource`, nên không thể ký gộp nhiều video vào một bộ cookie. Bản đầu đặt cả ba cookie ở `Path=/` với cùng tên cho mọi video, khiến mở video thứ hai (ở tab khác) ghi đè cookie của video thứ nhất và hai tab thay nhau nhận 403 ở từng segment. Nay mỗi bộ cookie nằm ở `Path=/videos/{id}/` — đúng thư mục HLS của video trên CDN — nên trình duyệt chỉ gửi bộ khớp với request và các bộ cùng tồn tại. Vì cookie là `httpOnly` và máy chủ không đọc được cookie của đường dẫn khác, một cookie chỉ mục `httpOnly` ở `/api` ghi danh sách (tối đa 20) video đã cấp; `POST /api/auth/logout` dựa vào đó để xoá từng bộ.
 
 Điểm cốt lõi của thiết kế này là **quyền truy cập chỉ được định nghĩa tại một nơi duy nhất**. Endpoint `playback-auth` không tự viết lại logic phân quyền mà gọi lại chính `videoService.getVideoById` — cùng hàm mà endpoint xem chi tiết video đang dùng. Nhờ đó không thể xảy ra tình trạng API chặn truy cập nhưng CDN vẫn cho phép tải nội dung, vốn là loại lỗi rất khó phát hiện khi hai tầng có logic phân quyền tách rời.
 

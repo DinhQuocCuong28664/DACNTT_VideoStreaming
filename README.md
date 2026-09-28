@@ -8,7 +8,7 @@
 >
 > **Giảng viên hướng dẫn:** Thầy ThS. Mai Văn Mạnh  
 > **Định hướng chuyên sâu:** DEVOPS, CONTAINERIZATION & CLOUD SYSTEMS  
-> **GitHub Repository:** [https://github.com/DinhQuocCuong28664/CUOC_SONG_MOI](https://github.com/DinhQuocCuong28664/CUOC_SONG_MOI)  
+> **GitHub Repository:** [https://github.com/DinhQuocCuong28664/DACNTT_VideoStreaming](https://github.com/DinhQuocCuong28664/DACNTT_VideoStreaming)  
 > **Tên miền ứng dụng (Production Domain):** [https://zelostech.site](https://zelostech.site)
 
 ---
@@ -74,9 +74,9 @@ Từ vấn đề trên, đề tài đề xuất xây dựng một nền tảng c
 ## 5. CÁC CHỨC NĂNG CHÍNH
 
 1. **Đăng ký và đăng nhập:** Hệ thống hỗ trợ người dùng đăng ký và đăng nhập tài khoản. Quá trình xác thực sử dụng JWT Authentication với thời hạn Bearer token an toàn.
-2. **Tải video trực tiếp lên Amazon S3 (Pre-signed URL):** Khi người dùng chọn video từ trình duyệt, Frontend gọi Backend API (`POST /api/videos/initiate-upload`) để tạo bản ghi DB trước và nhận Pre-signed URL có thời hạn. Tệp video sau đó được tải trực tiếp từ trình duyệt lên Amazon S3 mà không đi qua Backend Server, qua đó giảm tải cho máy chủ Backend. Giao diện tích hợp bộ đo telemetry tải lên thời gian thực (tốc độ tải MB/s, thời gian ước tính còn lại ETA, thanh tiến độ phần trăm) và nút Hủy tải lên an toàn (`AbortController` hủy ngay lập tức HTTP PUT lên S3, đồng thời kích hoạt hàm `discardDraftVideo()` tự động dọn dẹp bản ghi nháp `UPLOADING` trên MongoDB ở cả 3 nhánh thoát: Hủy tải, Đổi tệp khác, hoặc Lỗi mạng/S3).
+2. **Tải video trực tiếp lên Amazon S3 (presigned POST):** Khi người dùng chọn video từ trình duyệt, Frontend gọi Backend API (`POST /api/videos/initiate-upload`) để tạo bản ghi DB trước và nhận một **presigned POST** có thời hạn 15 phút. Tệp video sau đó được tải trực tiếp từ trình duyệt lên Amazon S3 mà không đi qua Backend Server, qua đó giảm tải cho máy chủ Backend. Policy của presigned POST do chính S3 kiểm tra trước khi nhận byte nào: đúng key, đúng `Content-Type` đã kiểm tra và dung lượng 1 byte – 2 GB (presigned PUT của AWS SDK v3 chỉ ký `host`, nên không ép được hai điều kiện sau). Giao diện tích hợp bộ đo telemetry tải lên thời gian thực (tốc độ tải MB/s, thời gian ước tính còn lại ETA, thanh tiến độ phần trăm) và nút Hủy tải lên an toàn (`AbortController` hủy ngay lập tức request tải lên S3, đồng thời kích hoạt hàm `discardDraftVideo()` tự động dọn dẹp bản ghi nháp `UPLOADING` trên MongoDB ở cả 3 nhánh thoát: Hủy tải, Đổi tệp khác, hoặc Lỗi mạng/S3).
 3. **Xem video bằng HLS & Trình phát tuỳ biến:** Hệ thống tích hợp thư viện `HLS.js` để phân tích tệp manifest `.m3u8`, tải các đoạn video `.ts` theo thời gian thực và phát nội dung trên trình duyệt. Trình phát được trang bị thanh tua thời gian (timeline scrubber) có tooltip bám theo vị trí con trỏ chuột, hiển thị mốc thời gian tại điểm đang trỏ kèm ảnh xem trước (ảnh bìa cố định, không phải khung hình tại vị trí tua).
-4. **Adaptive Bitrate Streaming (ABR):** Trình phát video có khả năng tự động chuyển đổi giữa các mức chất lượng 360p, 720p và 1080p dựa trên tốc độ mạng hiện tại của người xem, hoặc cho phép người xem chủ động chọn mức chất lượng mong muốn.
+4. **Adaptive Bitrate Streaming (ABR):** Trình phát video có khả năng tự động chuyển đổi giữa các mức chất lượng (tối đa 360p, 720p và 1080p) dựa trên tốc độ mạng hiện tại của người xem, hoặc cho phép người xem chủ động chọn mức chất lượng mong muốn. Các mức được chọn theo kích thước nguồn: không phóng to quá nguồn, giữ nguyên tỉ lệ khung hình (video quay dọc có khung dọc, không đệm viền đen).
 5. **Chia sẻ video & Quản lý quyền riêng tư:** Người dùng có thể chia sẻ video thông qua đường dẫn công khai hoặc riêng tư. Quyền riêng tư được kiểm soát đồng bộ ở cả tầng Backend API lẫn tầng CDN Edge Location qua CloudFront Signed Cookies.
 6. **Trang cá nhân – Channel Management:** Người dùng có thể quản lý danh sách video đã tải lên, theo dõi trạng thái xử lý — đây là nơi duy nhất thấy được video đang ở `PROCESSING` hoặc `ERROR`, vì trang danh mục công khai chỉ liệt kê video đã `READY` — xem lượt xem, thao tác nhanh qua menu 3 chấm hiện đại: đổi trực tiếp trạng thái hiển thị (Public, Unlisted, Private), mở hộp thoại chỉnh sửa kiểu YouTube Studio (tiêu đề, mô tả, danh mục, visibility; tags hiện chỉ đặt được lúc tải lên), hoặc xóa video (xóa sạch DB record và toàn bộ thư mục HLS trên S3). Danh sách video trên trang kênh sắp xếp được theo Mới nhất / Phổ biến / Cũ nhất (`GET /api/videos/user/:userId?sort=`).
 7. **Gợi ý video liên quan (Related Videos) & Tính năng mở rộng:** Hệ thống gợi ý video liên quan (`GET /api/videos/:id/related`) hiển thị ở danh sách "Tiếp theo" bên phải trang xem video, tự động đề xuất dựa trên tag và danh mục tương đồng; thuật toán khoá cứng bộ lọc bảo mật chỉ hiển thị video công khai đã sẵn sàng (`visibility: 'public'` và `status: 'READY'`) đồng thời đóng kín lỗ hổng existence oracle đối với video riêng tư/chưa liệt kê. Bên cạnh đó là các tính năng: Tìm kiếm & lọc video (Search & Filter với regex escaping an toàn), nút Tương tác Like/Dislike, Hệ thống Bình luận (Comments), Đa ngôn ngữ (i18n Tiếng Việt & Tiếng Anh), Phân loại Danh mục (Categories) và Tương thích Responsive Mobile. Giao diện theo bố cục quen thuộc kiểu YouTube: thanh trên với ô tìm kiếm ở giữa, menu trái thu gọn được, lưới thẻ video phẳng cuộn vô hạn, chủ đề sáng / tối / theo thiết bị.
@@ -99,14 +99,14 @@ sequenceDiagram
     participant S3Proc as S3 Processed Bucket
     participant DB as MongoDB Atlas
 
-    User->>S3Raw: Upload Video gốc qua Pre-signed URL
+    User->>S3Raw: Upload Video gốc qua presigned POST (S3 ép key, Content-Type, tối đa 2 GB)
     S3Raw-->>SQS: Trigger Event Notification (s3:ObjectCreated)
     SQS-->>Lambda: Poll Message & Trigger Lambda
     Lambda->>Batch: SubmitJob (với VIDEO_ID & RAW_S3_KEY)
     activate Batch
     Batch->>DB: Cập nhật status = PROCESSING
     Batch->>S3Raw: Download video gốc
-    Batch->>Batch: Transcode FFmpeg (360p, 720p, 1080p, .ts 6s, master.m3u8, thumbnail)
+    Batch->>Batch: Transcode FFmpeg (tối đa 360p/720p/1080p theo nguồn, .ts 6s, master.m3u8, thumbnail)
     Batch->>S3Proc: Upload toàn bộ HLS files & thumbnail
     Batch->>DB: Cập nhật status = READY, duration, hlsUrl, thumbnailUrl
     deactivate Batch
@@ -118,15 +118,17 @@ sequenceDiagram
 2. Sự kiện được chuyển vào **Amazon SQS**. SQS đóng vai trò Message Queue và bộ đệm nhằm bảo đảm các nhiệm vụ xử lý không bị mất khi có hàng trăm video được tải lên cùng thời điểm.
 3. Amazon SQS kích hoạt AWS Batch chạy trên AWS Fargate thông qua Lambda Job Submitter. AWS Batch tự động tạo Docker Container chứa FFmpeg, tải video gốc từ Amazon S3 và thực hiện quá trình chuyển mã.
 4. Video được chuyển sang định dạng HLS và chia thành các đoạn `.ts` có thời lượng 6 giây.
-5. Hệ thống tạo ba phiên bản chất lượng gồm:
+5. Hệ thống tạo tối đa ba phiên bản chất lượng (8-bit 4:2:0, để nguồn 10-bit HDR hay 4:4:4 vẫn chuyển mã được):
    - **360p** với bitrate 400 kbps;
    - **720p** với bitrate 1,5 Mbps;
    - **1080p** với bitrate 4 Mbps.
+
+   Mỗi mức co nguồn vào khung của nó mà không phóng to: nguồn 480p cho ra 360p và một mức ở đúng 854x480 thay vì một bản "1080p" phóng to 2,25 lần. Kết quả HLS được tải lên S3 song song 8 tệp một lúc.
 6. Sau đó, hệ thống sinh Master Playlist có định dạng `.m3u8`, trong đó liệt kê các phiên bản chất lượng khả dụng. HLS.js sử dụng Master Playlist để xác định các mức chất lượng có thể phát.
 7. Khi quá trình chuyển mã hoàn tất, toàn bộ tệp segment `.ts` và manifest `.m3u8` được tải lên S3 Processed Bucket.
 8. Các thông tin metadata gồm tiêu đề, mô tả, URL của manifest, thumbnail và thời lượng video được lưu vào MongoDB Atlas.
 9. Docker Container tự động bị hủy sau khi hoàn thành nhiệm vụ. Hệ thống chỉ phát sinh chi phí cho khoảng thời gian container thực sự thực thi quá trình chuyển mã.
-10. Triển khai cơ chế **Heartbeat Pattern** liên tục gia hạn `VisibilityTimeout` cho SQS message trong suốt quá trình transcoding để tránh xử lý trùng lặp.
+10. Chống xử lý trùng và chống kẹt trạng thái: Lambda xoá message SQS ngay khi nộp job, nên việc thử lại nằm ở `retry_strategy` của AWS Batch (chỉ thử lại lỗi hạ tầng như mất Spot capacity). Mọi lần ghi của transcoder đều có điều kiện (không bao giờ ghi đè video đã `READY`), và một bộ đối soát định kỳ trong backend đưa video kẹt ở `PROCESSING` quá 6 giờ hoặc bản nháp `UPLOADING` bỏ dở quá 1 ngày về trạng thái đúng. (Cơ chế Heartbeat gia hạn `VisibilityTimeout` chỉ dùng ở chế độ `worker` chạy tay của transcoder, không nằm trên đường chạy production.)
 
 ---
 
@@ -163,10 +165,10 @@ graph TD
     B -->|infrastructure/**| I[ci-infra.yml]
     B -->|PR to main| E[security-scan.yml]
     B -->|Push to develop| H[cd-staging.yml]
-    B -->|Merge to main| F[cd-deploy.yml]
 
     C --> C1[Stage 1: Jest Tests + ESLint + npm audit]
     C1 --> C2[Stage 2: Gitleaks + Trivy SCA Scan]
+    C2 -->|CI xanh trên main/master| F[cd-deploy.yml]
 
     D --> D1[Stage 1: ESLint Check]
     D1 --> D2[Stage 2: Gitleaks Scan]
@@ -174,7 +176,7 @@ graph TD
     D3 --> D4[Stage 4: Update AWS Batch Job Definition]
 
     G --> G1[Stage 1: oxlint Code Quality]
-    G1 --> G2[Stage 2: Build Vite + Deploy S3]
+    G1 --> G2[Stage 2: Build Vite + Deploy S3, giữ nguyên avatars/]
 
     I --> I1[Stage 1: terraform fmt + validate dev/prod]
     I1 --> I2[Stage 2: Trivy IaC Config Scan]
@@ -184,18 +186,20 @@ graph TD
     E2 --> E3[Quality Gate: chặn khi có CRITICAL]
     E3 --> E4[SAST: eslint-plugin-security]
 
-    H --> H1[Deploy Dev/Staging Environment]
-    F --> F1[Deploy Backend EC2 + Invalidate CloudFront Cache]
+    H --> H1[terraform validate môi trường dev]
+    F --> F1[Deploy đúng commit đã qua CI lên EC2 qua SSM]
 ```
 
 ### Các Workflows Chính:
-1. `ci-backend.yml`: Chạy Jest Unit Tests (115 test trên 9 test suites) → ESLint check → Gitleaks secret detection → Trivy SCA scan.
-2. `ci-transcoder.yml`: Chạy Jest Unit Tests (94 test trên 5 test suites) → ESLint check → Gitleaks → Build Docker Multi-stage → Trivy Container Scan → Push ECR → Register AWS Batch Job Definition mới.
-3. `ci-frontend.yml`: oxlint Code Quality → Build Vite → Tự động deploy lên S3 Static Hosting khi merge vào `main`/`master`.
+1. `ci-backend.yml`: Chạy Jest Unit Tests (220 test trên 21 test suites) → ESLint check → Gitleaks secret detection → Trivy SCA scan.
+2. `ci-transcoder.yml`: Chạy Jest Unit Tests (140 test trên 9 test suites) → ESLint check → Gitleaks → Build Docker Multi-stage → Trivy Container Scan → Push ECR → Register AWS Batch Job Definition mới.
+3. `ci-frontend.yml`: oxlint Code Quality → Build Vite → Tự động deploy lên S3 Static Hosting khi merge vào `main`/`master` (`s3 sync --delete` loại trừ `avatars/`, nơi chứa ảnh đại diện người dùng tải lên) → Invalidate cache CloudFront của frontend.
 4. `ci-infra.yml`: `terraform fmt -check` → `terraform validate` cho cả `dev` và `prod` → Trivy IaC Config Scan.
 5. `security-scan.yml`: DevSecOps Gate cho mọi Pull Request, gồm Gitleaks Secret Detection, Trivy Dependency Scan và SAST bằng `eslint-plugin-security`.
-6. `cd-staging.yml`: Triển khai môi trường Staging (Dev) khi có push vào nhánh `develop`.
-7. `cd-deploy.yml`: Triển khai Backend API lên Amazon EC2 qua **AWS Systems Manager (SSM Run Command)** — máy chủ backend không gắn key pair SSH nào, nên workflow tìm instance theo tag và thực thi `git pull` + `npm install` + `pm2 restart` từ xa bằng quyền IAM instance profile thay vì SSH — và Invalidate CloudFront Cache khi merge vào `main`.
+6. `cd-staging.yml`: Khi có push vào nhánh `develop`, chạy `terraform init -backend=false` + `terraform validate` cho môi trường `dev` (chỉ kiểm tra cấu hình, không triển khai và không cần khoá AWS).
+7. `cd-deploy.yml`: Chạy sau khi `CI — Backend` **thành công** trên `main`/`master` (sự kiện `workflow_run`), rồi triển khai đúng commit CI vừa kiểm lên Amazon EC2 qua **AWS Systems Manager (SSM Run Command)** — máy chủ backend không gắn key pair SSH nào và security group không mở cổng 22, nên workflow tìm instance theo tag và thực thi `git reset --hard <sha>` + `npm install` + `pm2 restart` từ xa bằng quyền IAM instance profile — rồi kiểm tra API qua tên miền công khai. Workflow này không invalidate CDN video vì nội dung HLS là bất biến.
+
+Các workflow truy cập AWS bằng **OIDC** (role tạm thời trong `infrastructure/environments/dev/github-oidc.tf`, mỗi nhóm job một role với quyền tối thiểu) khi các biến repository `AWS_ECR_PUSH_ROLE_ARN`, `AWS_DEPLOY_ROLE_ARN`, `AWS_CLOUDFRONT_ROLE_ARN` đã được đặt; khi chưa đặt thì vẫn dùng khoá tĩnh cũ.
 
 ### Cơ chế Quality Gate hai lớp
 
@@ -220,7 +224,7 @@ Toàn bộ hạ tầng AWS được quản lý bằng **Terraform** theo phươn
 | `sns` | `infrastructure/modules/sns` | SNS Notification Topics (`transcode-complete`, `dlq-alert`) + Email Subscriptions |
 | `monitoring` | `infrastructure/modules/monitoring` | CloudWatch Log Groups, Alarms (DLQ Depth > 0), CloudWatch Dashboard |
 | `batch` | `infrastructure/modules/batch` | Fargate Compute Environment (SPOT/ON_DEMAND), Job Queue, Job Definition |
-| `lambda` | `infrastructure/modules/lambda` | Lambda Job Submitter (Node.js 18), SQS Event Source Mapping trigger |
+| `lambda` | `infrastructure/modules/lambda` | Lambda Job Submitter (Node.js 22), SQS Event Source Mapping trigger |
 | `cloudfront` | `infrastructure/modules/cloudfront` | CloudFront Distribution, Origin Access Control (OAC), HLS Cache Policy |
 
 Hệ thống phân tách môi trường rõ ràng giữa `infrastructure/environments/dev` và `infrastructure/environments/prod`, hỗ trợ khởi tạo toàn bộ hạ tầng thông qua một lệnh `terraform apply`.
@@ -260,7 +264,7 @@ Hệ thống phân tách môi trường rõ ràng giữa `infrastructure/environ
 ## 14. SẢN PHẨM DỰ KIẾN
 
 1. Phân hệ đăng ký và đăng nhập người dùng (JWT Authentication).
-2. Chức năng tải video trực tiếp lên Amazon S3 bằng Pre-signed URL.
+2. Chức năng tải video trực tiếp lên Amazon S3 bằng presigned POST (S3 ép dung lượng và định dạng).
 3. Trang cá nhân để quản lý video, xem lượt xem và xóa video.
 4. Chức năng chia sẻ video công khai hoặc riêng tư.
 5. Trình phát video hỗ trợ HLS và Adaptive Bitrate Streaming (360p, 720p, 1080p).
