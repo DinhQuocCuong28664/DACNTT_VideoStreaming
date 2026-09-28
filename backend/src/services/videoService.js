@@ -5,6 +5,7 @@ const Report = require('../models/Report');
 const s3Service = require('./s3Service');
 const { publicListingFilter } = require('../utils/moderation');
 const httpError = require('../utils/httpError');
+const { MAX_VIDEO_SIZE_BYTES } = require('../middleware/validateRequest');
 
 const isAdminUser = (user) => Boolean(user && user.role === 'admin');
 
@@ -19,8 +20,9 @@ const LIST_PROJECTION = '-likes -dislikes';
  * Initiate upload flow:
  * 1. Create DB record FIRST (status: UPLOADING) to get Mongo _id (videoId)
  * 2. Generate S3 key using Mongo _id: videos/{userId}/{videoId}/{filename}
- * 3. Generate Pre-signed PUT URL for client
- * 4. Return video record + uploadUrl + s3Key
+ * 3. Generate a presigned POST (url + fields) for the client; S3 enforces the
+ *    exact key, the validated Content-Type and the 2 GB ceiling
+ * 4. Return video record + upload + s3Key
  */
 const initiateUpload = async (userId, videoData) => {
   const video = await Video.create({
@@ -39,9 +41,9 @@ const initiateUpload = async (userId, videoData) => {
   video.rawS3Key = s3Key;
   await video.save();
 
-  const uploadUrl = await s3Service.generatePresignedUploadUrl(s3Key, videoData.mimeType);
+  const upload = await s3Service.generateVideoUploadPost(s3Key, videoData.mimeType, MAX_VIDEO_SIZE_BYTES);
 
-  return { video, uploadUrl, s3Key };
+  return { video, upload, s3Key };
 };
 
 /**

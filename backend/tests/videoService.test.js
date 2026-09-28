@@ -15,7 +15,7 @@ describe('videoService Unit Tests', () => {
   });
 
   describe('initiateUpload', () => {
-    it('should create DB record first with UPLOADING status, generate S3 key with _id, and return uploadUrl', async () => {
+    it('should create DB record first with UPLOADING status, generate S3 key with _id, and return a presigned POST', async () => {
       const mockVideoId = new mongoose.Types.ObjectId();
       const mockUserId = new mongoose.Types.ObjectId();
 
@@ -29,7 +29,8 @@ describe('videoService Unit Tests', () => {
 
       Video.create.mockResolvedValue(mockCreatedVideo);
       s3Service.generateS3Key.mockReturnValue(`videos/${mockUserId}/${mockVideoId}/sample.mp4`);
-      s3Service.generatePresignedUploadUrl.mockResolvedValue('https://s3.amazonaws.com/presigned-url');
+      const mockUpload = { url: 'https://s3.amazonaws.com/raw-bucket', fields: { key: 'k' } };
+      s3Service.generateVideoUploadPost.mockResolvedValue(mockUpload);
 
       const result = await videoService.initiateUpload(mockUserId, {
         title: 'Test Video',
@@ -51,7 +52,13 @@ describe('videoService Unit Tests', () => {
       );
       expect(mockCreatedVideo.rawS3Key).toBe(`videos/${mockUserId}/${mockVideoId}/sample.mp4`);
       expect(mockCreatedVideo.save).toHaveBeenCalled();
-      expect(result.uploadUrl).toBe('https://s3.amazonaws.com/presigned-url');
+      // S3 phải ép trần 2 GB, không chỉ dựa vào fileSize do client khai.
+      expect(s3Service.generateVideoUploadPost).toHaveBeenCalledWith(
+        `videos/${mockUserId}/${mockVideoId}/sample.mp4`,
+        'video/mp4',
+        2 * 1024 * 1024 * 1024
+      );
+      expect(result.upload).toBe(mockUpload);
     });
   });
 

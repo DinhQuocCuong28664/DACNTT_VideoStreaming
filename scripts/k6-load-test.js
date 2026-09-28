@@ -61,10 +61,10 @@ export default function () {
 
   const initSuccess = check(initRes, {
     'initiateUpload status is 201': (r) => r.status === 201,
-    'has uploadUrl and s3Key': (r) => {
+    'has presigned POST and s3Key': (r) => {
       try {
         const body = JSON.parse(r.body);
-        return body.data && body.data.uploadUrl && body.data.s3Key;
+        return body.data && body.data.upload && body.data.upload.url && body.data.s3Key;
       } catch {
         return false;
       }
@@ -74,16 +74,19 @@ export default function () {
   if (initSuccess) {
     const body = JSON.parse(initRes.body);
     const videoId = body.data.video._id;
-    const uploadUrl = body.data.uploadUrl;
+    const upload = body.data.upload;
 
-    // 2. Simulate S3 Direct Upload (PUT request to pre-signed URL)
+    // 2. Simulate S3 Direct Upload (multipart POST with the presigned policy).
+    // Policy fields go first and `file` last, since S3 ignores fields after it.
     const dummyVideoContent = 'MOCK_VIDEO_PAYLOAD_DATA_' + '0'.repeat(1024 * 10); // 10KB mock chunk
-    const s3Res = http.put(uploadUrl, REAL_VIDEO || dummyVideoContent, {
-      headers: { 'Content-Type': 'video/mp4' },
+    const s3Res = http.post(upload.url, {
+      ...upload.fields,
+      file: http.file(REAL_VIDEO || dummyVideoContent, 'video.mp4', 'video/mp4'),
     });
 
     check(s3Res, {
-      'S3 direct upload status is 200': (r) => r.status === 200,
+      // S3 answers a successful POST upload with 204 No Content by default.
+      'S3 direct upload status is 204': (r) => r.status === 204,
     });
 
     // 3. Confirm Upload API

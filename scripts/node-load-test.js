@@ -58,15 +58,17 @@ async function simulateUserUpload(userIdx) {
     }
 
     const initData = await initRes.json();
-    const { video, uploadUrl } = initData.data;
+    const { video, upload } = initData.data;
 
-    // 2. Upload Dummy Video Payload to S3 Pre-signed URL
+    // 2. Upload Dummy Video Payload to S3 via presigned POST (policy fields
+    // first, `file` last — S3 ignores fields after it)
     const dummyPayload = 'MOCK_VIDEO_BINARY_DATA_' + 'X'.repeat(1024 * 5); // 5KB chunk
-    const s3Res = await fetch(uploadUrl, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'video/mp4' },
-      body: dummyPayload,
-    });
+    const form = new FormData();
+    for (const [name, value] of Object.entries(upload.fields)) {
+      form.append(name, value);
+    }
+    form.append('file', new Blob([dummyPayload], { type: 'video/mp4' }), `load_test_${userIdx}.mp4`);
+    const s3Res = await fetch(upload.url, { method: 'POST', body: form });
 
     if (!s3Res.ok) {
       throw new Error(`S3 direct upload failed: HTTP ${s3Res.status}`);
