@@ -22,6 +22,10 @@ const config = {
   // CloudFront (empty = use S3 URL directly for dev)
   cloudfrontDomain: process.env.CLOUDFRONT_DOMAIN || '',
 
+  // Số tệp HLS tải lên S3 cùng lúc (s3Handler.uploadDirectoryToS3). AWS khuyên
+  // đo khi chỉnh con số này; đổi qua biến môi trường, không cần build lại image.
+  s3UploadConcurrency: Math.floor(positiveNumber(process.env.S3_UPLOAD_CONCURRENCY, 8)),
+
   // SQS
   sqsQueueUrl: process.env.SQS_QUEUE_URL || '',
 

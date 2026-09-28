@@ -56,17 +56,58 @@ const uploadFileToS3 = async (localPath, bucket, s3Key) => {
 };
 
 /**
+ * Chạy `worker` trên mọi phần tử, tối đa `limit` việc cùng lúc.
+ *
+ * Lỗi đầu tiên làm cả lượt thất bại, và các luồng còn lại thôi nhận việc mới
+ * thay vì tải tiếp những tệp mà job đằng nào cũng sẽ bị đánh ERROR.
+ *
+ * Chỉ trả về (hay ném lỗi) khi mọi việc đang dở đã dừng hẳn. Promise.all sẽ
+ * reject ngay ở lỗi đầu tiên trong khi các luồng khác vẫn đang đọc tệp, và
+ * khối finally của processVideo xoá thư mục tạm ngay sau đó.
+ */
+const runWithConcurrency = async (items, limit, worker) => {
+  let next = 0;
+  let failed = false;
+
+  const lane = async () => {
+    while (!failed && next < items.length) {
+      const index = next++;
+      try {
+        await worker(items[index], index);
+      } catch (err) {
+        failed = true;
+        throw err;
+      }
+    }
+  };
+
+  const lanes = Array.from({ length: Math.min(limit, items.length) }, lane);
+  const failure = (await Promise.allSettled(lanes)).find((r) => r.status === 'rejected');
+  if (failure) throw failure.reason;
+};
+
+/**
  * Upload an entire local directory tree to S3 under a given prefix
- * Recursively walks localDir and uploads every file
+ *
+ * Tải song song `config.s3UploadConcurrency` tệp một lúc. Bản trước tải lần
+ * lượt từng tệp, trong khi một video có hàng trăm segment .ts nhỏ (3 rendition
+ * x một segment mỗi 6 giây): thời gian bị chi phối bởi độ trễ của từng request
+ * chứ không phải băng thông. AWS khuyến nghị chạy song song nhiều request tới
+ * S3 để tăng thông lượng (Performance design patterns for Amazon S3); mức 8 còn
+ * rất xa trần 3.500 PUT/s mỗi prefix. Mỗi request vẫn đi qua SDK nên giữ nguyên
+ * cơ chế thử lại khi S3 trả 503.
  */
 const uploadDirectoryToS3 = async (localDir, bucket, s3Prefix) => {
   const files = getAllFiles(localDir);
   let totalSize = 0;
   let uploadedCount = 0;
+  const startedAt = Date.now();
 
-  console.log(`⬆️  Uploading ${files.length} files to s3://${bucket}/${s3Prefix}`);
+  console.log(
+    `⬆️  Uploading ${files.length} files to s3://${bucket}/${s3Prefix} (${config.s3UploadConcurrency} at a time)`
+  );
 
-  for (const filePath of files) {
+  await runWithConcurrency(files, config.s3UploadConcurrency, async (filePath) => {
     const relativePath = path.relative(localDir, filePath).replace(/\\/g, '/');
     const s3Key = `${s3Prefix}/${relativePath}`;
 
@@ -74,13 +115,16 @@ const uploadDirectoryToS3 = async (localDir, bucket, s3Prefix) => {
     totalSize += size;
     uploadedCount++;
 
-    if (uploadedCount % 10 === 0 || uploadedCount === files.length) {
+    if (uploadedCount % 50 === 0 || uploadedCount === files.length) {
       console.log(`   📤 ${uploadedCount}/${files.length} files uploaded (${(totalSize / 1048576).toFixed(1)} MB)`);
     }
-  }
+  });
 
-  console.log(`✅ Upload complete: ${files.length} files, ${(totalSize / 1048576).toFixed(1)} MB total`);
-  return { fileCount: files.length, totalSize };
+  const seconds = (Date.now() - startedAt) / 1000;
+  console.log(
+    `✅ Upload complete: ${files.length} files, ${(totalSize / 1048576).toFixed(1)} MB total in ${seconds.toFixed(1)}s`
+  );
+  return { fileCount: files.length, totalSize, seconds };
 };
 
 /**
@@ -119,4 +163,5 @@ module.exports = {
   downloadFromS3,
   uploadFileToS3,
   uploadDirectoryToS3,
+  runWithConcurrency,
 };
