@@ -163,16 +163,22 @@ describe('Dịch vụ cấp CloudFront Signed Cookie', () => {
   describe('attachPlaybackCookies', () => {
     beforeEach(enableSigning);
 
-    const createMockRes = () => ({ cookie: jest.fn() });
+    const VIDEO_A = 'aaaaaaaaaaaaaaaaaaaaaaaa';
+    const VIDEO_B = 'bbbbbbbbbbbbbbbbbbbbbbbb';
+    const INDEX = cloudfrontService.PLAYBACK_INDEX_COOKIE;
+
+    const createMockReq = (indexValue) => ({ cookies: indexValue ? { [INDEX]: indexValue } : {} });
+    const createMockRes = () => ({ cookie: jest.fn(), clearCookie: jest.fn() });
+    const playbackSets = (res) =>
+      res.cookie.mock.calls.filter(([name]) => name !== INDEX);
+    const indexValue = (res) => res.cookie.mock.calls.find(([name]) => name === INDEX)[1];
 
     it('nên đặt đủ ba cookie vào phản hồi', () => {
       const res = createMockRes();
 
-      cloudfrontService.attachPlaybackCookies(res, 'video123');
+      cloudfrontService.attachPlaybackCookies(createMockReq(), res, VIDEO_A);
 
-      expect(res.cookie).toHaveBeenCalledTimes(3);
-      const tenCookie = res.cookie.mock.calls.map((call) => call[0]);
-      expect(tenCookie).toEqual([
+      expect(playbackSets(res).map((call) => call[0])).toEqual([
         'CloudFront-Policy',
         'CloudFront-Signature',
         'CloudFront-Key-Pair-Id',
@@ -182,19 +188,83 @@ describe('Dịch vụ cấp CloudFront Signed Cookie', () => {
     it('nên đặt giá trị thật cho từng cookie, không để rỗng', () => {
       const res = createMockRes();
 
-      cloudfrontService.attachPlaybackCookies(res, 'video123');
+      cloudfrontService.attachPlaybackCookies(createMockReq(), res, VIDEO_A);
 
-      for (const [ten, giaTri] of res.cookie.mock.calls.map((c) => [c[0], c[1]])) {
+      for (const [ten, giaTri] of playbackSets(res)) {
         expect(typeof giaTri).toBe('string');
         expect(giaTri.length).toBeGreaterThan(0);
         expect(ten).toBeTruthy();
       }
     });
 
+    it('nên gắn bộ cookie vào đúng thư mục của video (Path=/videos/{id}/)', () => {
+      const res = createMockRes();
+
+      cloudfrontService.attachPlaybackCookies(createMockReq(), res, VIDEO_A);
+
+      for (const call of playbackSets(res)) {
+        expect(call[2].path).toBe(`/videos/${VIDEO_A}/`);
+      }
+    });
+
+    /**
+     * Lỗi đã sửa: trước đây mọi video dùng chung ba cookie ở Path=/, nên mở
+     * video thứ hai ở tab khác ghi đè cookie của video thứ nhất và hai tab
+     * giành nhau ở từng segment. Giờ cấp cho video B không được đụng tới bộ
+     * cookie của video A.
+     */
+    it('không xoá hay ghi đè bộ cookie của video khác đang xem ở tab khác', () => {
+      const res = createMockRes();
+
+      cloudfrontService.attachPlaybackCookies(createMockReq(VIDEO_A), res, VIDEO_B);
+
+      const touchedPaths = [
+        ...res.cookie.mock.calls.map((call) => call[2].path),
+        ...res.clearCookie.mock.calls.map((call) => call[1].path),
+      ];
+      expect(touchedPaths).not.toContain(`/videos/${VIDEO_A}/`);
+      expect(indexValue(res)).toBe(`${VIDEO_A},${VIDEO_B}`);
+    });
+
+    it('nên xoá bộ cookie kiểu cũ ở Path=/ để request tới CDN không mang hai bộ trùng tên', () => {
+      const res = createMockRes();
+
+      cloudfrontService.attachPlaybackCookies(createMockReq(), res, VIDEO_A);
+
+      const clearedAtRoot = res.clearCookie.mock.calls.filter((call) => call[1].path === '/');
+      expect(clearedAtRoot.map((call) => call[0])).toEqual([
+        'CloudFront-Policy',
+        'CloudFront-Signature',
+        'CloudFront-Key-Pair-Id',
+      ]);
+    });
+
+    it('chỉ theo dõi tối đa MAX_TRACKED_VIDEOS video và thu hồi cookie của video cũ nhất', () => {
+      const max = cloudfrontService.MAX_TRACKED_VIDEOS;
+      const ids = Array.from({ length: max }, (_, i) => i.toString(16).padStart(24, '0'));
+      const res = createMockRes();
+
+      cloudfrontService.attachPlaybackCookies(createMockReq(ids.join(',')), res, VIDEO_A);
+
+      const tracked = indexValue(res).split(',');
+      expect(tracked).toHaveLength(max);
+      expect(tracked).not.toContain(ids[0]);
+      expect(tracked[tracked.length - 1]).toBe(VIDEO_A);
+      expect(res.clearCookie.mock.calls.some((call) => call[1].path === `/videos/${ids[0]}/`)).toBe(true);
+    });
+
+    it('bỏ qua giá trị lạ trong cookie chỉ mục do trình duyệt gửi lên', () => {
+      const res = createMockRes();
+
+      cloudfrontService.attachPlaybackCookies(createMockReq('../../etc,<script>,' + VIDEO_B), res, VIDEO_A);
+
+      expect(indexValue(res)).toBe(`${VIDEO_B},${VIDEO_A}`);
+    });
+
     it('nên đặt cờ httpOnly để JavaScript phía trình duyệt không đọc được chữ ký', () => {
       const res = createMockRes();
 
-      cloudfrontService.attachPlaybackCookies(res, 'video123');
+      cloudfrontService.attachPlaybackCookies(createMockReq(), res, VIDEO_A);
 
       for (const call of res.cookie.mock.calls) {
         expect(call[2].httpOnly).toBe(true);
@@ -205,7 +275,7 @@ describe('Dịch vụ cấp CloudFront Signed Cookie', () => {
       process.env.NODE_ENV = 'production';
       const res = createMockRes();
 
-      cloudfrontService.attachPlaybackCookies(res, 'video123');
+      cloudfrontService.attachPlaybackCookies(createMockReq(), res, VIDEO_A);
 
       for (const call of res.cookie.mock.calls) {
         expect(call[2].secure).toBe(true);
@@ -216,9 +286,9 @@ describe('Dịch vụ cấp CloudFront Signed Cookie', () => {
       process.env.COOKIE_DOMAIN = '.zelostech.site';
       const res = createMockRes();
 
-      cloudfrontService.attachPlaybackCookies(res, 'video123');
+      cloudfrontService.attachPlaybackCookies(createMockReq(), res, VIDEO_A);
 
-      for (const call of res.cookie.mock.calls) {
+      for (const call of playbackSets(res)) {
         expect(call[2].domain).toBe('.zelostech.site');
       }
     });
@@ -227,7 +297,7 @@ describe('Dịch vụ cấp CloudFront Signed Cookie', () => {
       delete process.env.COOKIE_DOMAIN;
       const res = createMockRes();
 
-      cloudfrontService.attachPlaybackCookies(res, 'video123');
+      cloudfrontService.attachPlaybackCookies(createMockReq(), res, VIDEO_A);
 
       for (const call of res.cookie.mock.calls) {
         expect(call[2].domain).toBeUndefined();
@@ -238,17 +308,22 @@ describe('Dịch vụ cấp CloudFront Signed Cookie', () => {
   describe('clearPlaybackCookies', () => {
     beforeEach(enableSigning);
 
-    it('nên xoá đủ cả ba cookie', () => {
+    const VIDEO_A = 'aaaaaaaaaaaaaaaaaaaaaaaa';
+    const VIDEO_B = 'bbbbbbbbbbbbbbbbbbbbbbbb';
+    const INDEX = cloudfrontService.PLAYBACK_INDEX_COOKIE;
+
+    it('nên xoá bộ cookie của mọi video đã cấp, bộ kiểu cũ, và cookie chỉ mục', () => {
       const res = { clearCookie: jest.fn() };
 
-      cloudfrontService.clearPlaybackCookies(res);
+      cloudfrontService.clearPlaybackCookies({ cookies: { [INDEX]: `${VIDEO_A},${VIDEO_B}` } }, res);
 
-      expect(res.clearCookie).toHaveBeenCalledTimes(3);
-      expect(res.clearCookie.mock.calls.map((c) => c[0])).toEqual([
-        'CloudFront-Policy',
-        'CloudFront-Signature',
-        'CloudFront-Key-Pair-Id',
-      ]);
+      const cleared = res.clearCookie.mock.calls.map(([name, options]) => `${options.path} ${name}`);
+      for (const path of [`/videos/${VIDEO_A}/`, `/videos/${VIDEO_B}/`, '/']) {
+        expect(cleared).toContain(`${path} CloudFront-Policy`);
+        expect(cleared).toContain(`${path} CloudFront-Signature`);
+        expect(cleared).toContain(`${path} CloudFront-Key-Pair-Id`);
+      }
+      expect(cleared).toContain(`/api ${INDEX}`);
     });
 
     /**
@@ -265,30 +340,45 @@ describe('Dịch vụ cấp CloudFront Signed Cookie', () => {
     it('nên dùng đúng domain/path/sameSite như lúc đặt, nếu không trình duyệt sẽ không xoá', () => {
       process.env.COOKIE_DOMAIN = '.zelostech.site';
 
-      const resDat = { cookie: jest.fn() };
-      cloudfrontService.attachPlaybackCookies(resDat, 'video123');
-      const optionsLucDat = resDat.cookie.mock.calls[0][2];
+      const resDat = { cookie: jest.fn(), clearCookie: jest.fn() };
+      cloudfrontService.attachPlaybackCookies({ cookies: {} }, resDat, VIDEO_A);
+      const datTheoTen = new Map(resDat.cookie.mock.calls.map(([name, , options]) => [name, options]));
+      const indexLucDat = resDat.cookie.mock.calls.find(([name]) => name === INDEX)[1];
 
       const resXoa = { clearCookie: jest.fn() };
-      cloudfrontService.clearPlaybackCookies(resXoa);
-      const optionsLucXoa = resXoa.clearCookie.mock.calls[0][1];
+      cloudfrontService.clearPlaybackCookies({ cookies: { [INDEX]: indexLucDat } }, resXoa);
 
-      expect(optionsLucXoa.domain).toBe(optionsLucDat.domain);
-      expect(optionsLucXoa.path).toBe(optionsLucDat.path);
-      expect(optionsLucXoa.sameSite).toBe(optionsLucDat.sameSite);
-      expect(optionsLucXoa.secure).toBe(optionsLucDat.secure);
-      expect(optionsLucXoa.httpOnly).toBe(optionsLucDat.httpOnly);
+      for (const name of datTheoTen.keys()) {
+        const optionsLucDat = datTheoTen.get(name);
+        const optionsLucXoa = resXoa.clearCookie.mock.calls.find(
+          ([tenXoa, options]) => tenXoa === name && options.path === optionsLucDat.path
+        );
+        expect(optionsLucXoa).toBeDefined();
+        const [, xoa] = optionsLucXoa;
+        expect(xoa.domain).toBe(optionsLucDat.domain);
+        expect(xoa.sameSite).toBe(optionsLucDat.sameSite);
+        expect(xoa.secure).toBe(optionsLucDat.secure);
+        expect(xoa.httpOnly).toBe(optionsLucDat.httpOnly);
+      }
     });
 
     it('không nên đặt thuộc tính domain khi COOKIE_DOMAIN bỏ trống', () => {
       delete process.env.COOKIE_DOMAIN;
       const res = { clearCookie: jest.fn() };
 
-      cloudfrontService.clearPlaybackCookies(res);
+      cloudfrontService.clearPlaybackCookies({ cookies: {} }, res);
 
       for (const call of res.clearCookie.mock.calls) {
         expect(call[1].domain).toBeUndefined();
       }
+    });
+
+    it('vẫn xoá bộ kiểu cũ khi trình duyệt không gửi cookie chỉ mục', () => {
+      const res = { clearCookie: jest.fn() };
+
+      cloudfrontService.clearPlaybackCookies({}, res);
+
+      expect(res.clearCookie.mock.calls.filter((call) => call[1].path === '/')).toHaveLength(3);
     });
   });
 });

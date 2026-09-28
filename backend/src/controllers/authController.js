@@ -18,7 +18,7 @@ const { t, languageOf } = require('../config/i18n');
  * nhất. Endpoint chỉ xoá cookie của chính người gọi nên không cần danh tính.
  */
 const logout = (req, res) => {
-  clearPlaybackCookies(res);
+  clearPlaybackCookies(req, res);
   res.status(200).json({ success: true, message: t(req, 'auth.loggedOut') });
 };
 
