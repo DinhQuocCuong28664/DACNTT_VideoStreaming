@@ -1,7 +1,6 @@
 # ═══════════════════════════════════════════════════
 # CD — Continuous Deployment (Merge to main)
-# Stages: detect changed paths → deploy backend to EC2
-#         (only if backend/** changed)
+# Stages: CI — Backend passes → deploy that exact commit to EC2
 #
 # Luu y: workflow nay KHONG invalidate cache cua HLS Video CDN.
 # Transcoder ghi moi rendition vao videos/{videoId}/ va khong bao
@@ -18,40 +17,42 @@
 
 name: CD — Deploy
 
+# Chi deploy commit da qua CI.
+#
+# Truoc day workflow nay chay theo `push` len main/master, SONG SONG voi
+# ci-backend.yml tren cung lan push: commit lam hong test van duoc dua len
+# production, va CI chi bao do sau khi code da chay tren may chu. Nay no chay
+# khi "CI — Backend" ket thuc, va chi khi lan chay do thanh cong.
+#
+# CI — Backend chi chay khi backend/** doi (bo loc paths cua no), nen khong
+# con can buoc do thay doi rieng (dorny/paths-filter) nhu truoc.
+#
+# workflow_run duoc dung secrets ke ca khi lan chay goc den tu PR cua fork
+# (GitHub canh bao dieu nay), nen chi nhan lan chay goc la `push` len chinh
+# repo nay.
 on:
   workflow_dispatch:
-  push:
+  workflow_run:
+    workflows: ["CI — Backend"]
+    types: [completed]
     branches: [main, master]
 
 env:
   AWS_REGION: ap-southeast-1
+  # Deploy dung commit CI vua kiem, khong phai "commit moi nhat" cua nhanh —
+  # trong luc CI chay co the da co commit khac day len.
+  DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
 
 jobs:
-  # ── Detect which paths changed (monorepo — skip backend
-  # deploy on frontend-only or infra-only pushes) ──────
-  detect-changes:
-    name: "Detect Changed Paths"
-    runs-on: ubuntu-latest
-    outputs:
-      backend: ${{ steps.filter.outputs.backend }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Filter paths
-        id: filter
-        uses: dorny/paths-filter@v3
-        with:
-          filters: |
-            backend:
-              - 'backend/**'
-
-  # ── Deploy Backend to EC2 (only when backend/** changed) ──
+  # ── Deploy Backend to EC2 (only after CI — Backend passed) ──
   deploy-backend:
     name: "Deploy Backend to EC2"
     runs-on: ubuntu-latest
-    needs: detect-changes
-    if: needs.detect-changes.outputs.backend == 'true'
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_repository.full_name == github.repository)
     environment: production
 
     steps:
@@ -104,8 +105,8 @@ jobs:
           COMMAND_ID=$(aws ssm send-command \
             --instance-ids "${{ steps.find.outputs.instance_id }}" \
             --document-name "AWS-RunShellScript" \
-            --comment "CD deploy ${{ github.sha }}" \
-            --parameters commands="[\"sudo -u ubuntu bash -lc 'set -e; cd /home/ubuntu/app; git fetch origin; git reset --hard origin/${{ github.ref_name }}; cd backend; npm install --omit=dev; (pm2 restart backend-api --update-env || pm2 start src/server.js --name backend-api); pm2 save'\"]" \
+            --comment "CD deploy ${{ env.DEPLOY_SHA }}" \
+            --parameters commands="[\"sudo -u ubuntu bash -lc 'set -e; cd /home/ubuntu/app; git fetch origin; git reset --hard ${{ env.DEPLOY_SHA }}; cd backend; npm install --omit=dev; (pm2 restart backend-api --update-env || pm2 start src/server.js --name backend-api); pm2 save'\"]" \
             --query "Command.CommandId" --output text)
 
           echo "CommandId: $COMMAND_ID"
@@ -164,6 +165,6 @@ jobs:
       - name: Deploy Summary
         run: |
           echo "## 🚀 Backend Deployed to EC2 (via SSM)" >> $GITHUB_STEP_SUMMARY
-          echo "- **Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Branch:** ${{ github.event.workflow_run.head_branch || github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit:** ${{ env.DEPLOY_SHA }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Instance:** ${{ steps.find.outputs.instance_id }}" >> $GITHUB_STEP_SUMMARY
