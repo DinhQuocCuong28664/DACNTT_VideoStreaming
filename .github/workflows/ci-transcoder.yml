@@ -161,6 +161,9 @@ jobs:
       contents: read
 
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       # Dung OIDC khi bien AWS_DEPLOY_ROLE_ARN da duoc dat (sau terraform apply
       # github-oidc.tf); chua dat thi van dung khoa tinh cu de CI khong gay giua chung.
       - name: Configure AWS credentials
@@ -178,20 +181,20 @@ jobs:
       - name: Update Batch Job Definition
         run: |
           NEW_IMAGE="${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}"
-          
-          # Check if job definition exists on AWS
-          CURRENT_JOB_DEF=$(aws batch describe-job-definitions \
+
+          # scripts/next-job-definition.py lấy revision MỚI NHẤT làm gốc (thứ tự
+          # trả về không được bảo đảm) và giữ retryStrategy + timeout từ revision
+          # gần nhất còn có chúng. Bản jq trước chép [0] và chỉ 4 trường: kiểm
+          # tra ngày 2026-09-29, revision 14 do Terraform tạo có retry 3 /
+          # timeout 7200, còn revision 15 và 16 do CI tạo mất cả hai — mà Lambda
+          # luôn nộp job vào revision mới nhất.
+          aws batch describe-job-definitions \
             --job-definition-name dacntt-dev-transcoder-job \
             --status ACTIVE \
-            --query 'jobDefinitions[0]' \
-            --output json 2>/dev/null || echo "null")
-          
-          if [ "$CURRENT_JOB_DEF" != "null" ] && [ "$CURRENT_JOB_DEF" != "" ] && [ "$CURRENT_JOB_DEF" != "None" ]; then
-            UPDATED_JSON=$(echo "$CURRENT_JOB_DEF" | \
-              jq --arg img "$NEW_IMAGE" '.containerProperties.image = $img' | \
-              jq '{jobDefinitionName: .jobDefinitionName, type: .type, containerProperties: .containerProperties, platformCapabilities: .platformCapabilities}')
-            
-            aws batch register-job-definition --cli-input-json "$UPDATED_JSON"
+            --query 'jobDefinitions' --output json > revisions.json
+
+          if python3 scripts/next-job-definition.py "$NEW_IMAGE" < revisions.json > jobdef.json; then
+            aws batch register-job-definition --cli-input-json file://jobdef.json --query 'revision'
             echo "✅ AWS Batch Job Definition updated with new image: $NEW_IMAGE"
           else
             echo "::error::AWS Batch Job Definition 'dacntt-dev-transcoder-job' chưa tồn tại trên AWS."
