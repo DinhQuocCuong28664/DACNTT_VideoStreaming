@@ -3,11 +3,23 @@ exec > /var/log/user-data.log 2>&1
 echo "Starting Backend API installation..."
 
 # ═══════════════════════════════════════════════════
-# Config — adjust if project_name/environment change
+# Config — Terraform thay các chuỗi __TEN__ bằng giá trị của từng môi trường
+# (backend-ec2.tf của infrastructure/environments/dev và .../staging), nên một
+# script phục vụ cả production lẫn staging.
 # ═══════════════════════════════════════════════════
-PROJECT_SECRET_PREFIX="dacntt-dev"   # matches "${project_name}-${environment}" in Terraform
+# "${project_name}-${environment}": tiền tố secret riêng và tên bucket.
+PROJECT_SECRET_PREFIX="__PROJECT_PREFIX__"
+# Secret dùng chung giữa các môi trường (mật khẩu Gmail, token Cloudflare):
+# staging đọc bản của production thay vì nhân bản chúng.
+SHARED_SECRET_PREFIX="__SHARED_SECRET_PREFIX__"
 AWS_REGION="ap-southeast-1"
 REPO_URL="https://github.com/DinhQuocCuong28664/DACNTT_VideoStreaming.git"
+# Nhánh hoặc tag cần chạy: production dùng master, staging dùng nhánh đang thử.
+GIT_REF="__GIT_REF__"
+FRONTEND_URL="__FRONTEND_URL__"
+CORS_ORIGINS="__CORS_ORIGINS__"
+# Bucket host frontend, cũng là nơi lưu ảnh đại diện (avatars/).
+STATIC_BUCKET_NAME="__STATIC_BUCKET_NAME__"
 # Terraform thay chuỗi này bằng var.email_user lúc dựng máy (xem
 # infrastructure/environments/dev/backend-ec2.tf), cùng biến mà Job Definition
 # của transcoder dùng, nên hai nơi gửi mail luôn cùng một tài khoản.
@@ -15,9 +27,17 @@ EMAIL_USER="__EMAIL_USER__"
 # Tương tự: Terraform thay bằng ID public key trong Key Group ký cookie
 # (module.cloudfront.signing_key_pair_id).
 CLOUDFRONT_KEY_PAIR_ID="__CLOUDFRONT_KEY_PAIR_ID__"
-CLOUDFRONT_DOMAIN="cdn.zelostech.site"
+CLOUDFRONT_DOMAIN="__CLOUDFRONT_DOMAIN__"
 COOKIE_DOMAIN=".zelostech.site"
-API_DOMAIN="api.zelostech.site"
+API_DOMAIN="__API_DOMAIN__"
+
+# Các giá trị trên là bắt buộc: còn nguyên dạng __TEN__ nghĩa là script đang bị
+# chạy tay chứ không qua Terraform, và dựng tiếp chỉ ra một máy cấu hình sai.
+# (EMAIL_USER và CLOUDFRONT_KEY_PAIR_ID được phép trống, xử lý riêng ở dưới.)
+for value in "$PROJECT_SECRET_PREFIX" "$SHARED_SECRET_PREFIX" "$GIT_REF" "$FRONTEND_URL" \
+             "$CORS_ORIGINS" "$STATIC_BUCKET_NAME" "$CLOUDFRONT_DOMAIN" "$API_DOMAIN"; do
+  case "$value" in __*__) echo "LOI: con gia tri chua duoc Terraform thay ($value), dung lai."; exit 1 ;; esac
+done
 
 # Install Node.js 24 LTS, Git, AWS CLI & Nginx
 #
@@ -79,7 +99,7 @@ npm install -g pm2
 mkdir -p /home/ubuntu/app
 cd /home/ubuntu/app
 
-git clone "$REPO_URL" .
+git clone --branch "$GIT_REF" "$REPO_URL" .
 cd backend
 
 npm install
@@ -116,7 +136,7 @@ JWT_SECRET=$(aws secretsmanager get-secret-value \
 # backend kiểm tra SMTP lúc khởi động và báo lỗi rõ trong log (xem
 # verifyEmailTransport trong backend/src/services/emailService.js).
 EMAIL_APP_PASSWORD=$(aws secretsmanager get-secret-value \
-  --secret-id "${PROJECT_SECRET_PREFIX}/email-app-password" \
+  --secret-id "${SHARED_SECRET_PREFIX}/email-app-password" \
   --region "$AWS_REGION" \
   --query SecretString --output text 2>/dev/null) || EMAIL_APP_PASSWORD=""
 # Gmail hiển thị mật khẩu ứng dụng thành bốn nhóm cách nhau bởi dấu cách
@@ -130,7 +150,7 @@ case "$EMAIL_USER" in __*__) EMAIL_USER="" ;; esac
 
 EMAIL_WARNING=""
 if [ -z "$EMAIL_USER" ] || [ -z "$EMAIL_APP_PASSWORD" ]; then
-  EMAIL_WARNING="Email chua cau hinh (thieu EMAIL_USER hoac secret ${PROJECT_SECRET_PREFIX}/email-app-password): mail dat lai mat khau se KHONG gui duoc."
+  EMAIL_WARNING="Email chua cau hinh (thieu EMAIL_USER hoac secret ${SHARED_SECRET_PREFIX}/email-app-password): mail dat lai mat khau se KHONG gui duoc."
   echo "CANH BAO: $EMAIL_WARNING"
 fi
 
@@ -161,20 +181,22 @@ fi
 # Write production .env file (values injected at boot, never hardcoded)
 cat << EOF > .env
 PORT=5000
+NODE_ENV=production
 MONGODB_URI=${MONGODB_URI}
 JWT_SECRET=${JWT_SECRET}
 JWT_EXPIRE=7d
 AWS_REGION=${AWS_REGION}
 S3_RAW_BUCKET_NAME=${PROJECT_SECRET_PREFIX}-raw-bucket
 S3_PROCESSED_BUCKET_NAME=${PROJECT_SECRET_PREFIX}-processed-bucket
-FRONTEND_URL=https://zelostech.site
-CLIENT_URL=https://zelostech.site
+S3_STATIC_BUCKET_NAME=${STATIC_BUCKET_NAME}
+FRONTEND_URL=${FRONTEND_URL}
+CLIENT_URL=${FRONTEND_URL}
 # Danh sách Origin được phép gọi API. BẮT BUỘC phải khai ở đây: giá trị mặc
 # định trong src/server.js chỉ có biến thể https://, nên nếu trang chạy tạm ở
 # http:// (lúc chưa có CloudFront/HTTPS) thì mọi request bị chặn CORS và trang
 # không tải được video — đúng lỗi đã gặp ngày 2026-08-13. Liệt kê cả hai biến
 # thể để chuyển qua lại giữa http và https không phải sửa lại máy chủ.
-CORS_ORIGINS=https://zelostech.site,https://www.zelostech.site,http://zelostech.site,http://www.zelostech.site,http://localhost:5173,http://localhost:3000
+CORS_ORIGINS=${CORS_ORIGINS}
 EMAIL_HOST=smtp.gmail.com
 EMAIL_PORT=587
 EMAIL_USER=${EMAIL_USER}
@@ -205,7 +227,7 @@ chmod 600 .env
 # nginx chạy hay cổng 80 mở ra Internet lúc xin chứng chỉ. certbot bản apt tự
 # bật certbot.timer để gia hạn; hook deploy reload nginx sau mỗi lần gia hạn.
 CLOUDFLARE_API_TOKEN=$(aws secretsmanager get-secret-value \
-  --secret-id "${PROJECT_SECRET_PREFIX}/cloudflare-api-token" \
+  --secret-id "${SHARED_SECRET_PREFIX}/cloudflare-api-token" \
   --region "$AWS_REGION" \
   --query SecretString --output text 2>/dev/null) || CLOUDFLARE_API_TOKEN=""
 
@@ -238,7 +260,7 @@ if [ -n "$CLOUDFLARE_API_TOKEN" ]; then
 fi
 
 if [ ! -f "${TLS_CERT_DIR}/fullchain.pem" ]; then
-  TLS_WARNING="Khong co chung chi TLS cho ${API_DOMAIN} (thieu secret ${PROJECT_SECRET_PREFIX}/cloudflare-api-token hoac certbot that bai): nginx chi nghe cong 80, Cloudflare o che do Full se tra 521."
+  TLS_WARNING="Khong co chung chi TLS cho ${API_DOMAIN} (thieu secret ${SHARED_SECRET_PREFIX}/cloudflare-api-token hoac certbot that bai): nginx chi nghe cong 80, Cloudflare o che do Full se tra 521."
   echo "CANH BAO: $TLS_WARNING"
 fi
 # <<< tls
@@ -249,7 +271,7 @@ fi
 cat << 'NGINXEOF' > /etc/nginx/sites-available/api
 server {
     listen 80 default_server;
-    server_name api.zelostech.site _;
+    server_name __API_DOMAIN__ _;
 
     # Video tải lên đi thẳng lên S3 bằng pre-signed URL nên không qua đây,
     # nhưng vẫn nới giới hạn phòng khi có endpoint nhận tệp trực tiếp.
@@ -273,10 +295,10 @@ cat << 'NGINXEOF' >> /etc/nginx/sites-available/api
 
 server {
     listen 443 ssl default_server;
-    server_name api.zelostech.site _;
+    server_name __API_DOMAIN__ _;
 
-    ssl_certificate     /etc/letsencrypt/live/api.zelostech.site/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/api.zelostech.site/privkey.pem;
+    ssl_certificate     /etc/letsencrypt/live/__API_DOMAIN__/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/__API_DOMAIN__/privkey.pem;
 
     client_max_body_size 50M;
 
