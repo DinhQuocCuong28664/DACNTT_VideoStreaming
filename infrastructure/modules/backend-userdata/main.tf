@@ -58,8 +58,23 @@ locals {
   script = file("${path.module}/../../../scripts/ec2-userdata.sh")
 }
 
+# EC2 giới hạn user_data ở 16 KB (16.384 byte) trước khi mã hoá base64, và
+# script — nhiều chú thích giải thích lý do từng bước — đã chạm mức đó: đo
+# ngày 2026-09-29, bản điền giá trị của production là 16.369 byte, của staging
+# 16.382 byte; thêm một dòng chú thích là EC2 từ chối. cloud-init tự giải nén
+# user_data dạng gzip (tài liệu của nó nêu đúng trường hợp nền tảng giới hạn
+# kích thước), còn khoảng 6,1 KB, nên các instance dùng output nén bên dưới qua
+# user_data_base64.
+output "rendered_base64gzip" {
+  value = base64gzip(local.rendered)
+}
+
 output "rendered" {
-  value = replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(
+  value = local.rendered
+}
+
+locals {
+  rendered = replace(replace(replace(replace(replace(replace(replace(replace(replace(replace(
     local.script,
     "__PROJECT_PREFIX__", var.project_prefix),
     "__SHARED_SECRET_PREFIX__", var.shared_secret_prefix),
