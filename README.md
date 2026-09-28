@@ -164,7 +164,7 @@ graph TD
     B -->|frontend/**| G[ci-frontend.yml]
     B -->|infrastructure/**| I[ci-infra.yml]
     B -->|PR to main| E[security-scan.yml]
-    B -->|Push to develop| H[cd-staging.yml]
+    B -->|Push to develop / staging-up.sh| H[cd-staging.yml]
 
     C --> C1[Stage 1: Jest Tests + ESLint + npm audit]
     C1 --> C2[Stage 2: Gitleaks + Trivy SCA Scan]
@@ -186,7 +186,8 @@ graph TD
     E2 --> E3[Quality Gate: chặn khi có CRITICAL]
     E3 --> E4[SAST: eslint-plugin-security]
 
-    H --> H1[terraform validate môi trường dev]
+    H --> H1[Deploy nhánh lên staging: transcoder + backend + frontend]
+    H1 --> H2[Smoke test + DAST: OWASP ZAP baseline]
     F --> F1[Deploy đúng commit đã qua CI lên EC2 qua SSM]
 ```
 
@@ -196,10 +197,31 @@ graph TD
 3. `ci-frontend.yml`: oxlint Code Quality → Build Vite → Tự động deploy lên S3 Static Hosting khi merge vào `main`/`master` (`s3 sync --delete` loại trừ `avatars/`, nơi chứa ảnh đại diện người dùng tải lên) → Invalidate cache CloudFront của frontend.
 4. `ci-infra.yml`: `terraform fmt -check` → `terraform validate` cho cả `dev` và `prod` → Trivy IaC Config Scan.
 5. `security-scan.yml`: DevSecOps Gate cho mọi Pull Request, gồm Gitleaks Secret Detection, Trivy Dependency Scan và SAST bằng `eslint-plugin-security`.
-6. `cd-staging.yml`: Khi có push vào nhánh `develop`, chạy `terraform init -backend=false` + `terraform validate` cho môi trường `dev` (chỉ kiểm tra cấu hình, không triển khai và không cần khoá AWS).
+6. `cd-staging.yml`: Deploy một nhánh lên môi trường **staging** (xem mục "Môi trường Staging" bên dưới) khi có push vào `develop` hoặc khi `scripts/staging-up.sh` kích hoạt: build image transcoder (tag SHA) và đăng ký job definition staging → deploy backend qua SSM nếu máy staging đang bật → build frontend trỏ tới API staging → smoke test → quét DAST bằng OWASP ZAP baseline (chỉ báo cáo).
 7. `cd-deploy.yml`: Chạy sau khi `CI — Backend` **thành công** trên `main`/`master` (sự kiện `workflow_run`), rồi triển khai đúng commit CI vừa kiểm lên Amazon EC2 qua **AWS Systems Manager (SSM Run Command)** — máy chủ backend không gắn key pair SSH nào và security group không mở cổng 22, nên workflow tìm instance theo tag và thực thi `git reset --hard <sha>` + `npm install` + `pm2 restart` từ xa bằng quyền IAM instance profile — rồi kiểm tra API qua tên miền công khai. Workflow này không invalidate CDN video vì nội dung HLS là bất biến.
 
 Các workflow truy cập AWS bằng **OIDC** (role tạm thời trong `infrastructure/environments/dev/github-oidc.tf`, mỗi nhóm job một role với quyền tối thiểu) khi các biến repository `AWS_ECR_PUSH_ROLE_ARN`, `AWS_DEPLOY_ROLE_ARN`, `AWS_CLOUDFRONT_ROLE_ARN` đã được đặt; khi chưa đặt thì vẫn dùng khoá tĩnh cũ.
+
+### Môi trường Staging
+
+Staging (`infrastructure/environments/staging`) là bản sao thu gọn của production để thử một nhánh trước khi merge: `https://staging.zelostech.site`, API `https://api-staging.zelostech.site`, CDN video `cdn-staging.zelostech.site`. Nó có database riêng (`vidshare-staging` trên cùng cluster Atlas), JWT secret và cặp khoá ký CloudFront riêng; dùng chung với production repo ECR, mật khẩu Gmail, token Cloudflare và script dựng máy chủ.
+
+Máy chủ backend chỉ tồn tại khi đang thử — tắt là **xoá** EC2, Elastic IP và bản ghi DNS `api-staging`:
+
+```bash
+bash scripts/staging-up.sh <nhánh>   # dựng máy (~5–10 phút), chờ API sẵn sàng, kích hoạt cd-staging.yml
+# ... thử trên https://staging.zelostech.site ...
+bash scripts/staging-down.sh         # xoá máy chủ, ngừng tính tiền
+```
+
+Quy trình phát hành: `staging-up.sh <nhánh>` → thử → merge vào `master` (`cd-deploy.yml` đưa đúng commit đó lên production sau khi CI xanh) → `staging-down.sh`.
+
+Chi phí ước tính (giá niêm yết vùng Singapore): khoảng **$0,26 cho mỗi lượt thử** 3 giờ với 5 video ngắn (EC2 t3.micro, IPv4, Fargate Spot, Rekognition), và khoảng **$1,20/tháng lúc tắt** (3 secret riêng; S3, SQS, Lambda, Batch, CloudFront không tính phí khi không có lưu lượng).
+
+Lưu ý:
+- Apply `environments/dev` trước (staging đọc OIDC provider và secret dùng chung do dev tạo).
+- Đăng nhập Google chỉ chạy trên staging sau khi thêm `https://staging.zelostech.site` vào *Authorized JavaScript origins* của OAuth client trên Google Cloud Console.
+- Let's Encrypt cấp tối đa 5 chứng chỉ trùng tên mỗi 7 ngày: bật staging quá 5 lần/tuần thì lần sau không có HTTPS cho API staging.
 
 ### Cơ chế Quality Gate hai lớp
 
