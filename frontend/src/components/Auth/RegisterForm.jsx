@@ -88,7 +88,8 @@ const RegisterForm = () => {
             value={formData.password}
             onChange={handleChange}
             required
-            minLength={6}
+            minLength={8}
+            maxLength={72}
           />
           <AuthField
             id="confirmPassword"
@@ -100,7 +101,8 @@ const RegisterForm = () => {
             onChange={handleChange}
             error={mismatch ? t('auth.passwordMismatch') : ''}
             required
-            minLength={6}
+            minLength={8}
+            maxLength={72}
           />
         </div>
         <p className="field-help">{t('auth.passwordHint')}</p>

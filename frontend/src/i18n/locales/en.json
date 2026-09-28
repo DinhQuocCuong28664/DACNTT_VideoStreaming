@@ -172,7 +172,7 @@
     "registerSubmitting": "Creating your account...",
     "registerFailed": "Sign-up failed. Please try again.",
     "usernameLabel": "Username",
-    "passwordHint": "Use 6 or more characters",
+    "passwordHint": "Use 8 or more characters",
     "confirmPasswordLabel": "Confirm password",
     "passwordMismatch": "The passwords do not match",
     "forgotTitle": "Account recovery",

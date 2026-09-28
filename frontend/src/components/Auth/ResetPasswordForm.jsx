@@ -71,7 +71,8 @@ const ResetPasswordForm = () => {
             value={formData.password}
             onChange={handleChange}
             required
-            minLength={6}
+            minLength={8}
+            maxLength={72}
             autoFocus
           />
           <AuthField
@@ -84,7 +85,8 @@ const ResetPasswordForm = () => {
             onChange={handleChange}
             error={mismatch ? t('auth.passwordMismatch') : ''}
             required
-            minLength={6}
+            minLength={8}
+            maxLength={72}
           />
           <label className="auth-check">
             <input type="checkbox" checked={showPassword} onChange={(e) => setShowPassword(e.target.checked)} />

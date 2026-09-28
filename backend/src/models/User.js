@@ -29,7 +29,18 @@ const userSchema = new mongoose.Schema(
         },
         'Password is required',
       ],
-      minlength: [6, 'Password must be at least 6 characters'],
+      // Chỉ áp dụng khi ĐẶT mật khẩu (đăng ký, đặt lại, đổi) — validation chạy
+      // trước hook băm ở dưới; tài khoản cũ có mật khẩu 6-7 ký tự vẫn đăng nhập
+      // được. 8 là mức nền của OWASP ASVS; NIST SP 800-63B-4 đòi 15 ký tự cho
+      // mật khẩu dùng làm yếu tố xác thực duy nhất.
+      minlength: [8, 'Password must be at least 8 characters'],
+      validate: {
+        // bcrypt chỉ dùng 72 byte đầu và lặng lẽ bỏ phần còn lại (OWASP
+        // Password Storage Cheat Sheet): hai mật khẩu dài chung 72 byte đầu sẽ
+        // là một. Tính theo byte UTF-8, vì chữ tiếng Việt có dấu chiếm 2-3 byte.
+        validator: (value) => Buffer.byteLength(value, 'utf8') <= 72,
+        message: 'Password cannot exceed 72 bytes',
+      },
       select: false, // Do not return password by default in queries
     },
     // ID định danh (sub claim) từ Google ID token — dùng để nhận diện tài
