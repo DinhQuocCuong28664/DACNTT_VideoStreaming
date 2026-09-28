@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from './context/useAuth';
 import { registerNavigator } from './api/axiosClient';
@@ -9,12 +9,45 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
-import UploadPage from './pages/UploadPage';
-import WatchPage from './pages/WatchPage';
-import ChannelPage from './pages/ChannelPage';
 import LandingPage from './pages/LandingPage';
-import SettingsPage from './pages/SettingsPage';
-import AdminPage from './pages/AdminPage';
+
+/**
+ * Các trang tải riêng theo route.
+ *
+ * Trước đây mọi trang được import tĩnh, nên trang xem kéo hls.js (509 kB,
+ * ~157 kB gzip) vào đồ thị module ban đầu và index.html modulepreload nó trên
+ * MỌI trang — kể cả trang chủ và trang giới thiệu, nơi không có trình phát
+ * nào. Đó là gần nửa số byte JS của lần tải đầu, tranh băng thông với chính
+ * những thứ trang đó cần để hiện ra.
+ *
+ * Trang chủ và trang giới thiệu (hai trang người ta vào đầu tiên) vẫn nạp
+ * sẵn. Các trang còn lại chỉ tải khi vào route; <Suspense> nằm trong
+ * MainLayout nên thanh điều hướng vẫn hiện trong lúc chờ.
+ */
+const loadWatchPage = () => import('./pages/WatchPage');
+const WatchPage = lazy(loadWatchPage);
+const ChannelPage = lazy(() => import('./pages/ChannelPage'));
+const UploadPage = lazy(() => import('./pages/UploadPage'));
+const SettingsPage = lazy(() => import('./pages/SettingsPage'));
+const AdminPage = lazy(() => import('./pages/AdminPage'));
+
+/**
+ * Tải trước trang xem (và hls.js) khi trình duyệt rảnh.
+ *
+ * Trên một trang chia sẻ video, bấm vào một video là bước kế tiếp gần như
+ * chắc chắn; tải lúc rảnh giữ cho lần mở video đầu tiên nhanh như trước mà
+ * không tranh băng thông với lần hiện trang đầu. Bỏ qua khi người dùng bật
+ * chế độ tiết kiệm dữ liệu.
+ */
+const prefetchWatchPageWhenIdle = () => {
+  if (navigator.connection?.saveData) return undefined;
+  if ('requestIdleCallback' in window) {
+    const id = window.requestIdleCallback(() => loadWatchPage(), { timeout: 5000 });
+    return () => window.cancelIdleCallback(id);
+  }
+  const id = window.setTimeout(loadWatchPage, 3000);
+  return () => window.clearTimeout(id);
+};
 import NotFoundPage from './pages/NotFoundPage';
 import ForbiddenPage from './pages/ForbiddenPage';
 
@@ -110,6 +143,8 @@ const NavigatorRegistrar = () => {
 
 function App() {
   const { loading } = useAuth();
+
+  useEffect(prefetchWatchPageWhenIdle, []);
 
   if (loading) {
     return (

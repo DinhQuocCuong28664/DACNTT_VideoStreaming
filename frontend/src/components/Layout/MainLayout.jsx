@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, Suspense } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { MdMenu } from 'react-icons/md';
@@ -110,7 +110,17 @@ const MainLayout = () => {
       )}
 
       <main id="main-content" className="app-main">
-        <Outlet />
+        {/* Các trang tải riêng theo route (xem App.jsx) chờ ở đây, nên thanh
+            trên và menu trái vẫn hiện trong lúc tải chunk của trang. */}
+        <Suspense
+          fallback={
+            <div className="flex-center full-screen-center">
+              <div className="spinner" />
+            </div>
+          }
+        >
+          <Outlet />
+        </Suspense>
       </main>
     </div>
   );
