@@ -1,38 +1,212 @@
 # ═══════════════════════════════════════════════════
-# CD — Staging Deployment (Triggered on develop branch)
+# CD — Deploy to Staging
+#
+# Đưa một nhánh lên môi trường staging (infrastructure/environments/staging)
+# để thử trước khi merge vào master — merge xong thì cd-deploy.yml đưa đúng
+# code đó lên production.
+#
+# Chạy khi:
+# - scripts/staging-up.sh kích hoạt nó (workflow_dispatch) sau khi dựng máy;
+# - push vào nhánh develop.
+#
+# Các bước: build + đẩy image transcoder (tag = SHA, không đụng :latest mà
+# production dùng) và đăng ký job definition của staging → deploy backend qua
+# SSM nếu máy staging đang bật → build frontend trỏ tới API staging và đồng bộ
+# lên bucket staging → kiểm tra API và frontend → quét DAST (OWASP ZAP
+# baseline, chỉ báo cáo).
+#
+# Trước đây workflow này chỉ chạy `terraform validate` và chưa từng chạy lần
+# nào (repo không có nhánh develop).
 # ═══════════════════════════════════════════════════
 
-name: CD — Deploy to Staging (Dev)
+name: CD — Deploy to Staging
 
 on:
   workflow_dispatch:
   push:
     branches: [develop]
 
+# Hai lượt deploy staging không chạy chồng lên nhau.
+concurrency:
+  group: staging
+  cancel-in-progress: false
+
 env:
   AWS_REGION: ap-southeast-1
+  ECR_REPOSITORY: dacntt-dev-transcoder # repo dùng chung với production
+  STAGING_PREFIX: dacntt-staging
+  FRONTEND_BUCKET: dacntt-staging-frontend
+  FRONTEND_DOMAIN: staging.zelostech.site
+  API_URL: https://api-staging.zelostech.site/
 
 jobs:
   deploy-staging:
-    name: "Deploy to Staging (Dev Environment)"
+    name: "Deploy to Staging"
     runs-on: ubuntu-latest
+    environment: staging
+    # id-token: write cho phép xin token OIDC đổi lấy credential AWS tạm thời
+    # (infrastructure/environments/staging/github-oidc.tf).
+    permissions:
+      id-token: write
+      contents: read
+    outputs:
+      backend_deployed: ${{ steps.backend.outputs.deployed }}
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Khong cap credential AWS: `terraform init -backend=false` va `validate`
-      # khong goi AWS (ci-infra.yml cung validate ma khong can khoa), nen dua
-      # khoa vao job nay chi mo rong pham vi lo khoa ma khong dung vao dau.
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+      # Dùng OIDC khi biến AWS_STAGING_DEPLOY_ROLE_ARN đã được đặt; chưa đặt
+      # thì dùng khoá tĩnh cũ, như các workflow production.
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          terraform_version: 1.6.0
+          role-to-assume: ${{ vars.AWS_STAGING_DEPLOY_ROLE_ARN }}
+          aws-access-key-id: ${{ !vars.AWS_STAGING_DEPLOY_ROLE_ARN && secrets.AWS_ACCESS_KEY_ID || '' }}
+          aws-secret-access-key: ${{ !vars.AWS_STAGING_DEPLOY_ROLE_ARN && secrets.AWS_SECRET_ACCESS_KEY || '' }}
+          aws-region: ${{ env.AWS_REGION }}
 
-      - name: Validate & Plan Staging Infrastructure
+      # ── Transcoder ─────────────────────────────────
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push transcoder image (tag = SHA)
+        working-directory: transcoder
         run: |
-          cd infrastructure/environments/dev
-          terraform init -backend=false
-          terraform validate
-          echo "✅ Staging environment validated successfully"
+          IMAGE="${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}"
+          docker build -t "$IMAGE" .
+          docker push "$IMAGE"
+          echo "IMAGE=$IMAGE" >> "$GITHUB_ENV"
+
+      - name: Point the staging job definition at this image
+        run: |
+          # Cùng script với ci-transcoder.yml: gốc là revision mới nhất, giữ
+          # retryStrategy + timeout mà Terraform đặt.
+          aws batch describe-job-definitions \
+            --job-definition-name "${STAGING_PREFIX}-transcoder-job" --status ACTIVE \
+            --query 'jobDefinitions' --output json > revisions.json
+          if ! python3 scripts/next-job-definition.py "$IMAGE" < revisions.json > jobdef.json; then
+            echo "::error::Chua co job definition ${STAGING_PREFIX}-transcoder-job — chay terraform apply cho infrastructure/environments/staging truoc."
+            exit 1
+          fi
+          aws batch register-job-definition --cli-input-json file://jobdef.json --query 'revision'
+
+      # ── Backend (chỉ khi máy staging đang bật) ─────
+      - name: Deploy backend via SSM
+        id: backend
+        run: |
+          INSTANCE_ID=$(aws ec2 describe-instances \
+            --filters "Name=tag:Name,Values=${STAGING_PREFIX}-backend-api" "Name=instance-state-name,Values=running" \
+            --query "Reservations[0].Instances[0].InstanceId" --output text)
+
+          if [ -z "$INSTANCE_ID" ] || [ "$INSTANCE_ID" = "None" ]; then
+            echo "::notice::Staging dang tat, bo qua backend. Bat bang: bash scripts/staging-up.sh ${{ github.ref_name }}"
+            echo "deployed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Cùng lệnh với cd-deploy.yml: chạy dưới quyền ubuntu, reset về đúng
+          # SHA của lượt này.
+          COMMAND_ID=$(aws ssm send-command \
+            --instance-ids "$INSTANCE_ID" \
+            --document-name "AWS-RunShellScript" \
+            --comment "Staging deploy ${{ github.sha }}" \
+            --parameters commands="[\"sudo -u ubuntu bash -lc 'set -e; cd /home/ubuntu/app; git fetch origin; git reset --hard ${{ github.sha }}; cd backend; npm install --omit=dev; (pm2 restart backend-api --update-env || pm2 start src/server.js --name backend-api); pm2 save'\"]" \
+            --query "Command.CommandId" --output text)
+
+          aws ssm wait command-executed --command-id "$COMMAND_ID" --instance-id "$INSTANCE_ID" || true
+          STATUS=$(aws ssm get-command-invocation --command-id "$COMMAND_ID" --instance-id "$INSTANCE_ID" --query "Status" --output text)
+          aws ssm get-command-invocation --command-id "$COMMAND_ID" --instance-id "$INSTANCE_ID" \
+            --query "StandardOutputContent" --output text | tail -20
+          if [ "$STATUS" != "Success" ]; then
+            aws ssm get-command-invocation --command-id "$COMMAND_ID" --instance-id "$INSTANCE_ID" \
+              --query "StandardErrorContent" --output text | tail -20
+            echo "::error::Deploy backend staging that bai (SSM: $STATUS)"
+            exit 1
+          fi
+          echo "deployed=true" >> "$GITHUB_OUTPUT"
+
+      # ── Frontend ───────────────────────────────────
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      # Vite không ghi đè biến môi trường đã có sẵn, nên VITE_API_URL ở đây
+      # thắng giá trị production trong frontend/.env.production.
+      - name: Build frontend for staging
+        working-directory: frontend
+        env:
+          VITE_API_URL: https://api-staging.zelostech.site/api
+        run: |
+          npm ci
+          npm run build
+
+      - name: Sync to the staging bucket (keeping avatars/)
+        run: aws s3 sync frontend/dist/ "s3://${FRONTEND_BUCKET}" --delete --exclude "avatars/*"
+
+      - name: Configure AWS credentials (account A — CloudFront)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_STAGING_CLOUDFRONT_ROLE_ARN }}
+          aws-access-key-id: ${{ !vars.AWS_STAGING_CLOUDFRONT_ROLE_ARN && secrets.AWS_ACCESS_KEY_ID_ACCOUNT_A || '' }}
+          aws-secret-access-key: ${{ !vars.AWS_STAGING_CLOUDFRONT_ROLE_ARN && secrets.AWS_SECRET_ACCESS_KEY_ACCOUNT_A || '' }}
+          aws-region: us-east-1
+
+      - name: Invalidate the staging frontend cache
+        run: |
+          DISTRIBUTION_ID=$(aws cloudfront list-distributions \
+            --query "DistributionList.Items[?contains(Aliases.Items, '${FRONTEND_DOMAIN}')].Id" --output text)
+          if [ -z "$DISTRIBUTION_ID" ] || [ "$DISTRIBUTION_ID" = "None" ]; then
+            echo "::error::Khong tim thay distribution cho ${FRONTEND_DOMAIN}"
+            exit 1
+          fi
+          aws cloudfront create-invalidation --distribution-id "$DISTRIBUTION_ID" --paths "/*" --query 'Invalidation.Id'
+
+      # ── Kiểm tra ───────────────────────────────────
+      - name: Smoke test
+        run: |
+          check() {
+            for i in $(seq 1 12); do
+              CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$1" || echo 000)
+              [ "$CODE" = "200" ] && { echo "OK $1"; return 0; }
+              echo "cho $1 (HTTP $CODE)"; sleep 10
+            done
+            echo "::error::$1 khong tra 200"; return 1
+          }
+          check "https://${FRONTEND_DOMAIN}/"
+          if [ "${{ steps.backend.outputs.deployed }}" = "true" ]; then
+            check "$API_URL"
+          fi
+
+      - name: Summary
+        run: |
+          {
+            echo "## Staging deployed"
+            echo "- **Ref:** ${{ github.ref_name }} (\`${{ github.sha }}\`)"
+            echo "- **Frontend:** https://${FRONTEND_DOMAIN}/"
+            echo "- **Backend:** ${{ steps.backend.outputs.deployed == 'true' && env.API_URL || 'staging dang tat, bo qua' }}"
+            echo "- **Transcoder image:** \`${IMAGE}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # DAST: quét thụ động (baseline) bằng OWASP ZAP trên staging vừa deploy, lấp
+  # khoảng trống "M5 — Không có DAST" trong docs/RESEARCH_REFERENCES.md. Chỉ báo
+  # cáo (fail_action: false) và không tự mở issue; báo cáo nằm ở artifact.
+  dast:
+    name: "DAST — OWASP ZAP baseline"
+    runs-on: ubuntu-latest
+    needs: deploy-staging
+    if: needs.deploy-staging.outputs.backend_deployed == 'true'
+    permissions:
+      contents: read
+    steps:
+      - name: ZAP baseline scan (report only)
+        uses: zaproxy/action-baseline@de8ad967d3548d44ef623df22cf95c3b0baf8b25 # v0.15.0
+        with:
+          target: https://staging.zelostech.site/
+          fail_action: false
+          allow_issue_writing: false
+          artifact_name: zap-baseline-staging
