@@ -57,13 +57,15 @@
 - [x] AWS Batch Fargate (`FARGATE_SPOT` tiết kiệm 70% chi phí).
 
 ### 9. CI/CD Pipeline & DevSecOps
-- [x] `ci-backend.yml`: Jest Unit Tests (144/144 pass trên 12 test suite) + ESLint (0 errors) + Gitleaks + Trivy SCA Scan.
+- [x] `ci-backend.yml`: Jest Unit Tests (220/220 pass trên 21 test suite) + ESLint (0 errors) + Gitleaks + Trivy SCA Scan.
   - Phạm vi kiểm thử: `videoService`, `s3Service`, `authService`, `cloudfrontService`, `relatedVideos` (10 tests kiểm thử phân quyền, lọc public/READY và chống existence oracle), `userVideosSort` (10 tests kiểm thử sắp xếp trang kênh và chặn giá trị sort lạ), `pagination` (10 tests kiểm thử chặn limit và page không hợp lệ), `emailConfig` (9 tests kiểm thử phát hiện cấu hình email còn chuỗi giữ chỗ và kiểm tra SMTP lúc khởi động), `forgotPassword`, middleware xác thực JWT, kiểm soát quyền riêng tư video, và kiểm tra dữ liệu đầu vào khi tải lên (mức HTTP với `supertest`).
-- [x] `ci-transcoder.yml`: Jest Unit Tests (94/94 pass trên 5 test suite — `dbHandler` idempotency, `emailService`, `framerate` 32 tests kiểm tra GOP bám theo framerate thật của nguồn, `bandwidth` 18 tests kiểm tra BANDWIDTH đo từ segment thật theo RFC 8216 §4.3.4.2, `codecs` 32 tests kiểm tra chuỗi codec đọc từ luồng đã mã hoá theo RFC 6381) + ESLint + Gitleaks + Build Docker Image + Trivy Scan + ECR Push + Update Job Definition.
-- [x] **Toàn bộ test suite tự động:** Đạt **238/238 tests PASS** trên 17 test suites toàn dự án (144 backend + 94 transcoder).
-- [x] `ci-frontend.yml`: oxlint + Build Vite + Deploy S3 Static Hosting.
+- [x] `ci-transcoder.yml`: Jest Unit Tests (140/140 pass trên 9 test suite — `dbHandler` idempotency, `renditions` (thang chất lượng theo nguồn), `thumbnail`, `s3Handler` (tải song song), `emailService`, `framerate` 32 tests kiểm tra GOP bám theo framerate thật của nguồn, `bandwidth` 18 tests kiểm tra BANDWIDTH đo từ segment thật theo RFC 8216 §4.3.4.2, `codecs` 32 tests kiểm tra chuỗi codec đọc từ luồng đã mã hoá theo RFC 6381) + ESLint + Gitleaks + Build Docker Image + Trivy Scan + ECR Push + Update Job Definition.
+- [x] **Toàn bộ test suite tự động:** Đạt **360/360 tests PASS** trên 30 test suites toàn dự án (220 backend + 140 transcoder), đo lại ngày 2026-09-29.
+- [x] `ci-frontend.yml`: oxlint + Build Vite + Deploy S3 Static Hosting (`s3 sync --delete` loại trừ `avatars/`, không còn xoá ảnh đại diện người dùng ở mỗi lần deploy).
 - [x] `security-scan.yml`: Gitleaks Secret Detection + Trivy Dependency Scan trên mọi Pull Request.
-- [x] `cd-staging.yml` & `cd-deploy.yml`: Triển khai môi trường Staging (`develop`) và Production (`main`).
+- [x] `cd-staging.yml`: `terraform validate` môi trường `dev` khi push vào `develop` (chỉ kiểm tra cấu hình, không triển khai).
+- [x] `cd-deploy.yml`: chỉ chạy sau khi `CI — Backend` thành công (`workflow_run`), triển khai đúng commit CI vừa kiểm lên EC2 qua SSM.
+- [x] **GitHub Actions → AWS bằng OIDC** (`infrastructure/environments/dev/github-oidc.tf`): ba role quyền tối thiểu thay cho khoá tĩnh; trust policy dùng *immutable subject* của repo. Chờ `terraform apply` và đặt biến repository để bật.
 - [x] **Quality Gate hai lớp:** Mỗi bước quét Trivy được tách thành lớp *Báo cáo* (`CRITICAL,HIGH` — `exit-code: 0`) và lớp *Quality Gate* (`CRITICAL` — `exit-code: 1`) thực sự chặn Pull Request. Áp dụng cho cả quét mã nguồn, quét Docker Image và quét cấu hình Terraform.
 - [x] **SAST — Phân tích tĩnh bảo mật:** Tích hợp `eslint-plugin-security` chạy thật trong `security-scan.yml` với `--max-warnings=0`, phát hiện các mẫu mã nguy hiểm (thực thi lệnh hệ thống, ReDoS, bộ sinh ngẫu nhiên không an toàn). Giải pháp này thay thế SonarQube, không cần dựng và duy trì server riêng.
 - [x] **`ci-infra.yml` — Kiểm thử hạ tầng:** `terraform fmt -check -recursive` + `terraform init -backend=false` + `terraform validate` cho cả hai môi trường `dev` và `prod`, kèm quét cấu hình sai lệch bằng Trivy IaC.
@@ -99,5 +101,12 @@
 - [x] Báo cáo LaTeX hoàn tất 76 trang, có trích dẫn đã kiểm chứng.
 - [x] **Bộ số liệu thực nghiệm đầy đủ 100%:** Đo kiểm TTFF đa vùng (6 regions), thời gian chuyển mã (100MB, 500MB, 1GB), so sánh scaling 1 vCPU vs 4 vCPU, và Stress Test đồng thời 100 video với k6 / Node.js. Sẵn sàng 100% để bảo vệ.
 
+### Rà soát và cải thiện hệ thống (2026-09-28 → 29)
+Nhánh `fix/system-review`, mỗi lỗi một commit, có test hoặc kiểm chứng kèm theo:
+- [x] **Bảo mật:** IP người dùng sau Cloudflare (rate limit không còn dùng chung IP Cloudflare); giới hạn tải lên/báo cáo theo tài khoản; chặn ảnh đại diện dạng HTML chạy trên `zelostech.site` (stored XSS) và ép giới hạn 2 GB ngay tại S3 bằng presigned POST; không công bố danh sách người Like/Dislike; security group chỉ nhận Cloudflare, đóng cổng 22; mật khẩu tối thiểu 8 ký tự, tối đa 72 byte; header bảo mật + CSP (report-only) cho frontend; `NODE_ENV=production` trên máy chủ (cookie `Secure`, ẩn lỗi 5xx); giới hạn body JSON 100 kB.
+- [x] **Độ tin cậy:** Like/Dislike cập nhật nguyên tử (hết lỗi 500 khi bấm đồng thời); bộ đối soát video kẹt `PROCESSING`/`UPLOADING`; ảnh bìa cho video ngắn hơn 5 giây; nguồn 10-bit/4:4:4 (HDR iPhone) không còn làm job thất bại; mỗi video một bộ Signed Cookie (xem nhiều video ở nhiều tab); health check trả 503 khi mất MongoDB; deploy chờ CI xanh.
+- [x] **Hiệu năng:** thang chất lượng theo nguồn, không phóng to, giữ tỉ lệ (nguồn 480p: 9,08 MB → 3,06 MB, 7,0 s → 1,4 s trên clip 12 s); tải HLS lên S3 song song; JS tải lần đầu của frontend 307,5 → 141,9 kB gzip; dọn bộ chống đếm trùng lượt xem O(1).
+- [ ] Đo lại thời gian chuyển mã (100 MB / 500 MB / 1 GB) và Stress Test sau khi deploy — số liệu ở Chương 6 được đo trước hai thay đổi về thang chất lượng và tải song song.
+
 ---
-> 📌 **Trạng thái cập nhật (2026-09-24):** Toàn bộ 15/15 mục đã hoàn thành 100%. CloudFront video CDN đã triển khai và đo kiểm đa vùng; Stress Test đồng thời 100 video đã thực thi hoàn tất với dữ liệu thực nghiệm đầy đủ; toàn bộ test suite backend (144/144) và transcoder (94/94) đều pass (tổng 238/238 tests tự động).
+> 📌 **Trạng thái cập nhật (2026-09-29):** Mã nguồn cho các mục rà soát ở trên đã xong và pass toàn bộ 360/360 test; chưa deploy. Trước đó (2026-09-24): Toàn bộ 15/15 mục đã hoàn thành 100%. CloudFront video CDN đã triển khai và đo kiểm đa vùng; Stress Test đồng thời 100 video đã thực thi hoàn tất với dữ liệu thực nghiệm đầy đủ; toàn bộ test suite backend và transcoder đều pass.
