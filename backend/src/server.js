@@ -10,6 +10,7 @@ const errorHandler = require('./middleware/errorHandler');
 const { apiLimiter } = require('./middleware/rateLimiter');
 const { verifyEmailTransport } = require('./services/emailService');
 const { startVideoReconciler } = require('./services/videoReconciler');
+const { healthCheck } = require('./controllers/healthController');
 
 // Route imports
 const authRoutes = require('./routes/authRoutes');
@@ -64,14 +65,8 @@ app.use(express.json({ limit: '10mb' }));
 app.use(morgan('dev'));
 app.use('/api', apiLimiter);
 
-// Health check
-app.get('/', (req, res) => {
-  res.json({
-    message: 'DACNTT Video Streaming API is running...',
-    version: '1.0.0',
-    timestamp: new Date().toISOString(),
-  });
-});
+// Health check (readiness, gồm cả kết nối MongoDB — xem healthController.js)
+app.get('/', healthCheck);
 
 // Mount routes
 app.use('/api/auth', authRoutes);
