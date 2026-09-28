@@ -7,6 +7,7 @@ const {
   DeleteObjectsCommand,
 } = require('@aws-sdk/client-s3');
 const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
+const { createPresignedPost } = require('@aws-sdk/s3-presigned-post');
 
 // Initialize S3 Client (AWS SDK v3)
 //
@@ -59,17 +60,63 @@ const generatePresignedUploadUrl = async (key, contentType) => {
 };
 
 /**
+ * Presigned POST: S3 tự kiểm tra các điều kiện trong policy trước khi nhận
+ * byte nào.
+ *
+ * Vì sao không dùng presigned PUT: bộ ký của SDK v3 luôn bỏ `content-type`
+ * khỏi danh sách header được ký (xem prepareRequest trong
+ * @aws-sdk/s3-request-presigner), nên URL PUT chỉ ký `host` — người tải lên tự
+ * chọn Content-Type và dung lượng tuỳ ý. Policy của POST thì ghim được cả hai:
+ * mỗi trường trong `Fields` thành một điều kiện khớp chính xác (kể cả `key`),
+ * còn `content-length-range` chặn tệp rỗng và tệp quá cỡ ngay tại S3.
+ *
+ * @returns {Promise<{url: string, fields: Record<string, string>}>}
+ *   Trình duyệt gửi multipart/form-data tới `url` với mọi trường trong
+ *   `fields`, trường `file` đặt cuối cùng.
+ */
+const createUploadPost = async ({ bucket, key, contentType, maxBytes, expiresIn = 15 * 60 }) =>
+  createPresignedPost(s3Client, {
+    Bucket: bucket,
+    Key: key,
+    Fields: { 'Content-Type': contentType },
+    Conditions: [['content-length-range', 1, maxBytes]],
+    Expires: expiresIn,
+  });
+
+/**
+ * Đuôi tệp ảnh đại diện, suy từ MIME đã kiểm tra ở validateAvatarMetadata.
+ *
+ * Trước đây đuôi lấy từ tên tệp người dùng gửi lên, nên "anh.html" cho ra
+ * key avatars/{userId}/{ts}.html. Bucket này cũng là bucket CloudFront phục vụ
+ * zelostech.site, nên một tệp HTML ở đó chạy ngay trên origin của ứng dụng.
+ */
+const AVATAR_EXTENSIONS = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+};
+
+/**
  * Sinh S3 key cho ảnh đại diện: avatars/{userId}/{timestamp}.{ext}
  * Timestamp làm phần tên file để mỗi lần đổi ảnh là một object mới — tránh
  * cache trình duyệt/CDN giữ ảnh cũ do URL không đổi khi ghi đè cùng key.
  */
-const generateAvatarKey = (userId, filename) => {
-  const ext = (filename.split('.').pop() || 'jpg').replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+const generateAvatarKey = (userId, mimeType) => {
+  const ext = AVATAR_EXTENSIONS[mimeType];
+  if (!ext) {
+    throw new Error(`Unsupported avatar type: ${mimeType}`);
+  }
   return `avatars/${userId}/${Date.now()}.${ext}`;
 };
 
+/** Khớp đúng các key do generateAvatarKey sinh ra cho một người dùng. */
+const isAvatarKeyOf = (userId, key) =>
+  typeof key === 'string' &&
+  key.startsWith(`avatars/${userId}/`) &&
+  /^\d+\.(jpg|png|webp)$/.test(key.slice(`avatars/${userId}/`.length));
+
 /**
- * Pre-signed PUT URL để tải ảnh đại diện thẳng lên bucket tĩnh công khai
+ * Presigned POST để tải ảnh đại diện thẳng lên bucket tĩnh công khai
  * (cùng bucket đang host frontend qua zelostech.site) — KHÁC với
  * S3_RAW_BUCKET_NAME của video, vì bucket video bị chặn public truy cập
  * hoàn toàn (BlockPublicAcls/RestrictPublicBuckets đều bật) theo đúng quyết
@@ -77,16 +124,13 @@ const generateAvatarKey = (userId, filename) => {
  * đại diện cần hiển thị công khai ngay lập tức, không qua transcode/CDN ký.
  * Bucket tĩnh này đã có policy public GetObject sẵn từ trước (phục vụ host
  * frontend), nên tái dùng chứ không tạo bucket/hạ tầng mới.
+ *
+ * Vì chính bucket này phục vụ ứng dụng, policy phải ghim Content-Type về đúng
+ * loại ảnh đã kiểm tra — nếu không, "ảnh đại diện" là một trang HTML chạy trên
+ * zelostech.site và đọc được JWT trong localStorage của người mở nó.
  */
-const generateAvatarUploadUrl = async (key, contentType) => {
-  const command = new PutObjectCommand({
-    Bucket: process.env.S3_STATIC_BUCKET_NAME,
-    Key: key,
-    ContentType: contentType,
-  });
-
-  return await getSignedUrl(s3Client, command, { expiresIn: 15 * 60 });
-};
+const generateAvatarUploadPost = (key, contentType, maxBytes) =>
+  createUploadPost({ bucket: process.env.S3_STATIC_BUCKET_NAME, key, contentType, maxBytes });
 
 /**
  * URL công khai để hiển thị ảnh đại diện sau khi tải lên.
@@ -168,8 +212,10 @@ const deleteDirectory = async (bucket, prefix) => {
 module.exports = {
   generateS3Key,
   generatePresignedUploadUrl,
+  createUploadPost,
   generateAvatarKey,
-  generateAvatarUploadUrl,
+  isAvatarKeyOf,
+  generateAvatarUploadPost,
   getAvatarPublicUrl,
   objectExists,
   deleteObject,

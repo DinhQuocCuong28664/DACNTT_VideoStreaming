@@ -30,16 +30,21 @@ resource "aws_s3_bucket_website_configuration" "frontend" {
   }
 }
 
-# CORS cho việc tải ảnh đại diện thẳng từ trình duyệt (Pre-signed PUT URL) —
+# CORS cho việc tải ảnh đại diện thẳng từ trình duyệt (presigned POST) —
 # bucket này vốn chỉ phục vụ GET (host static site), giờ tái dùng thêm cho
-# avatar nên cần mở PUT. Không mở "*" cho allowed_origins, giữ đúng danh sách
+# avatar nên cần mở POST. Không mở "*" cho allowed_origins, giữ đúng danh sách
 # origin đã dùng cho 2 bucket video (raw/processed) để nhất quán.
+#
+# Trước đây là PUT với pre-signed URL. URL PUT của SDK v3 không ký
+# Content-Type, nên người tải lên đặt được text/html cho "ảnh đại diện" — và
+# bucket này chính là nơi CloudFront phục vụ zelostech.site. Presigned POST
+# ghim Content-Type và dung lượng trong policy (backend/src/services/s3Service.js).
 resource "aws_s3_bucket_cors_configuration" "frontend" {
   bucket = aws_s3_bucket.frontend.id
 
   cors_rule {
     allowed_headers = ["*"]
-    allowed_methods = ["PUT"]
+    allowed_methods = ["POST"]
     allowed_origins = var.cors_allowed_origins
     expose_headers  = ["ETag"]
     max_age_seconds = 3000

@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const User = require('../models/User');
 const s3Service = require('../services/s3Service');
+const { MAX_AVATAR_SIZE_BYTES } = require('../middleware/validateRequest');
 
 /**
  * @route   GET /api/users/:id
@@ -40,20 +41,23 @@ const getPublicProfile = async (req, res, next) => {
 
 /**
  * @route   POST /api/users/avatar/presign
- * @desc    Get a pre-signed PUT URL to upload a new avatar image
+ * @desc    Get a pre-signed POST (url + fields) to upload a new avatar image
  * @access  Private
+ *
+ * S3 chỉ nhận tệp khớp đúng key, đúng Content-Type ảnh đã kiểm tra và không
+ * quá MAX_AVATAR_SIZE_BYTES (xem s3Service.createUploadPost).
  */
 const presignAvatarUpload = async (req, res, next) => {
   try {
-    const { filename, mimetype } = req.body;
+    const { mimetype } = req.body;
 
-    const key = s3Service.generateAvatarKey(req.user._id.toString(), filename);
-    const uploadUrl = await s3Service.generateAvatarUploadUrl(key, mimetype);
+    const key = s3Service.generateAvatarKey(req.user._id.toString(), mimetype);
+    const upload = await s3Service.generateAvatarUploadPost(key, mimetype, MAX_AVATAR_SIZE_BYTES);
     const publicUrl = s3Service.getAvatarPublicUrl(key);
 
     res.status(200).json({
       success: true,
-      data: { uploadUrl, key, publicUrl },
+      data: { upload, key, publicUrl },
     });
   } catch (error) {
     next(error);
@@ -71,9 +75,9 @@ const updateAvatar = async (req, res, next) => {
 
     // Chỉ chấp nhận key nằm đúng trong "thư mục" của chính người dùng đang
     // đăng nhập — chặn việc client gửi key tùy ý trỏ vào ảnh của người khác
-    // hoặc file bất kỳ khác trong bucket tĩnh dùng chung.
-    const expectedPrefix = `avatars/${req.user._id.toString()}/`;
-    if (typeof key !== 'string' || !key.startsWith(expectedPrefix)) {
+    // hoặc file bất kỳ khác trong bucket tĩnh dùng chung — và đúng dạng
+    // {timestamp}.{jpg|png|webp} mà presignAvatarUpload sinh ra.
+    if (!s3Service.isAvatarKeyOf(req.user._id.toString(), key)) {
       const error = new Error('Invalid avatar key');
       error.statusCode = 400;
       throw error;
