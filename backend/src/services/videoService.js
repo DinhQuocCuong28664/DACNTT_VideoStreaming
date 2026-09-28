@@ -231,48 +231,78 @@ const getVideosByUser = async (userId, page = 1, limit = 12, requesterId = null,
   };
 };
 
+/** Mảng của từng loại phản hồi và mảng loại trừ nó (Like bỏ Dislike và ngược lại). */
+const REACTION_FIELDS = {
+  like: ['likes', 'dislikes'],
+  dislike: ['dislikes', 'likes'],
+};
+
+/**
+ * Bấm Like hoặc Dislike: bấm lần nữa là bỏ, và hai lựa chọn loại trừ nhau.
+ *
+ * Trước đây hàm đọc video, sửa mảng trong bộ nhớ rồi gọi save(). Gán lại cả
+ * mảng làm Mongoose kiểm tra khoá phiên bản `__v` khi lưu, nên hai người bấm
+ * cùng lúc trên một video thì người lưu sau nhận VersionError — HTTP 500.
+ *
+ * Nay mỗi chiều là một lệnh cập nhật có điều kiện trên một document. MongoDB
+ * bảo đảm ghi nguyên tử ở mức document, và filter mang theo trạng thái mong
+ * đợi ("chưa bấm" hoặc "đã bấm") — đúng cách tài liệu MongoDB khuyến nghị để
+ * cập nhật đồng thời không ghi đè nhau. Lệnh chỉ đụng tới phần tử của chính
+ * người bấm, nên không bao giờ xung đột với người khác.
+ *
+ * Thử "bấm" trước; không khớp nghĩa là người này đã bấm rồi, khi đó "bỏ bấm".
+ * Cả hai cùng trượt chỉ xảy ra khi video vừa bị xoá, hoặc chính người này bấm
+ * liên tiếp và một request khác chen vào giữa — khi đó thử lại.
+ */
+const toggleReaction = async (videoId, userId, reaction) => {
+  // Giữ nguyên kiểm tra quyền như trước: không bấm được video mình không xem được.
+  await getVideoById(videoId, { _id: userId });
+
+  const [field, opposite] = REACTION_FIELDS[reaction];
+  const uid = new mongoose.Types.ObjectId(userId);
+  const options = { returnDocument: 'after', select: 'likes dislikes' };
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const added = await Video.findOneAndUpdate(
+      { _id: videoId, [field]: { $ne: uid } },
+      { $addToSet: { [field]: uid }, $pull: { [opposite]: uid } },
+      options
+    );
+    if (added) {
+      return { likesCount: added.likes.length, dislikesCount: added.dislikes.length, active: true };
+    }
+
+    const removed = await Video.findOneAndUpdate(
+      { _id: videoId, [field]: uid },
+      { $pull: { [field]: uid } },
+      options
+    );
+    if (removed) {
+      return { likesCount: removed.likes.length, dislikesCount: removed.dislikes.length, active: false };
+    }
+
+    if (!(await Video.exists({ _id: videoId }))) {
+      throw httpError(404, 'Video not found');
+    }
+  }
+
+  throw httpError(409, 'Your reaction changed while saving, please try again');
+};
+
 /**
  * Toggle Like on video (enforces visibility & READY status checks)
  */
 const toggleLike = async (videoId, userId) => {
-  const video = await getVideoById(videoId, { _id: userId });
-
-  const userObjId = new mongoose.Types.ObjectId(userId);
-
-  // Remove from dislikes if present
-  video.dislikes = video.dislikes.filter((id) => !id.equals(userObjId));
-
-  const hasLiked = video.likes.some((id) => id.equals(userObjId));
-  if (hasLiked) {
-    video.likes = video.likes.filter((id) => !id.equals(userObjId));
-  } else {
-    video.likes.push(userObjId);
-  }
-
-  await video.save();
-  return { likesCount: video.likes.length, dislikesCount: video.dislikes.length, hasLiked: !hasLiked };
+  const { active, ...counts } = await toggleReaction(videoId, userId, 'like');
+  return { ...counts, hasLiked: active };
 };
 
 /**
  * Toggle Dislike on video (enforces visibility & READY status checks)
  */
 const toggleDislike = async (videoId, userId) => {
-  const video = await getVideoById(videoId, { _id: userId });
-
-  const userObjId = new mongoose.Types.ObjectId(userId);
-
-  // Remove from likes if present
-  video.likes = video.likes.filter((id) => !id.equals(userObjId));
-
-  const hasDisliked = video.dislikes.some((id) => id.equals(userObjId));
-  if (hasDisliked) {
-    video.dislikes = video.dislikes.filter((id) => !id.equals(userObjId));
-  } else {
-    video.dislikes.push(userObjId);
-  }
-
-  await video.save();
-  return { likesCount: video.likes.length, dislikesCount: video.dislikes.length, hasDisliked: !hasDisliked };
+  const { active, ...counts } = await toggleReaction(videoId, userId, 'dislike');
+  return { ...counts, hasDisliked: active };
 };
 
 /**
