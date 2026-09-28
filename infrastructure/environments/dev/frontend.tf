@@ -138,6 +138,78 @@ resource "aws_acm_certificate_validation" "frontend" {
   ]
 }
 
+# ── Header bảo mật cho frontend ────────────────────
+#
+# Trước đây trang không gửi header bảo mật nào. Ứng dụng giữ JWT trong
+# localStorage, nên bất kỳ đoạn script lạ nào chạy được trên origin này là đọc
+# được phiên đăng nhập — đúng hệ quả của lỗ hổng "ảnh đại diện là trang HTML"
+# vừa vá ở s3Service. Các header dưới đây là lớp phòng thủ thứ hai:
+# - nosniff: trình duyệt không đoán lại kiểu nội dung, tệp khai image/png thì
+#   không bao giờ được chạy như HTML/script;
+# - DENY: không cho nhúng trang vào iframe (clickjacking);
+# - HSTS: chỉ dùng HTTPS. Không bật includeSubDomains vì chưa rà hết các tên
+#   miền con;
+# - CSP ở chế độ Report-Only: vi phạm chỉ hiện trong console, không chặn gì.
+#   Danh sách nguồn lấy từ những gì trang thực sự dùng (Google Identity
+#   Services theo tài liệu của Google, Google Fonts, API, CDN video, S3 cho tải
+#   lên và ảnh đại diện, blob: cho MSE và worker của hls.js). Khi console sạch
+#   vi phạm qua các luồng chính, đổi tên header thành Content-Security-Policy
+#   để bắt đầu chặn thật.
+locals {
+  frontend_csp = join("; ", [
+    "default-src 'self'",
+    "script-src 'self' https://accounts.google.com/gsi/client",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com/gsi/style",
+    "font-src 'self' https://fonts.gstatic.com",
+    "img-src 'self' data: blob: https://cdn.zelostech.site https://s3.ap-southeast-1.amazonaws.com https://*.googleusercontent.com",
+    "media-src 'self' blob: https://cdn.zelostech.site",
+    "connect-src 'self' https://api.zelostech.site https://cdn.zelostech.site https://s3.ap-southeast-1.amazonaws.com https://*.s3.ap-southeast-1.amazonaws.com https://accounts.google.com/gsi/",
+    "worker-src 'self' blob:",
+    "frame-src https://accounts.google.com/gsi/",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+  ])
+}
+
+resource "aws_cloudfront_response_headers_policy" "frontend_security" {
+  provider = aws.account_a
+  name     = "${var.project_name}-${var.environment}-frontend-security-headers"
+  comment  = "nosniff, DENY, HSTS; CSP report-only"
+
+  security_headers_config {
+    content_type_options {
+      override = true
+    }
+
+    frame_options {
+      frame_option = "DENY"
+      override     = true
+    }
+
+    referrer_policy {
+      referrer_policy = "strict-origin-when-cross-origin"
+      override        = true
+    }
+
+    strict_transport_security {
+      access_control_max_age_sec = 31536000
+      include_subdomains         = false
+      preload                    = false
+      override                   = true
+    }
+  }
+
+  custom_headers_config {
+    items {
+      header   = "Content-Security-Policy-Report-Only"
+      value    = local.frontend_csp
+      override = true
+    }
+  }
+}
+
 # ── CloudFront Distribution (S3 website endpoint as origin) ──
 data "aws_cloudfront_cache_policy" "caching_optimized" {
   name = "Managed-CachingOptimized"
@@ -173,12 +245,13 @@ resource "aws_cloudfront_distribution" "frontend" {
   }
 
   default_cache_behavior {
-    allowed_methods        = ["GET", "HEAD", "OPTIONS"]
-    cached_methods         = ["GET", "HEAD"]
-    target_origin_id       = "S3-frontend-website"
-    viewer_protocol_policy = "redirect-to-https"
-    compress               = true
-    cache_policy_id        = data.aws_cloudfront_cache_policy.caching_optimized.id
+    allowed_methods            = ["GET", "HEAD", "OPTIONS"]
+    cached_methods             = ["GET", "HEAD"]
+    target_origin_id           = "S3-frontend-website"
+    viewer_protocol_policy     = "redirect-to-https"
+    compress                   = true
+    cache_policy_id            = data.aws_cloudfront_cache_policy.caching_optimized.id
+    response_headers_policy_id = aws_cloudfront_response_headers_policy.frontend_security.id
   }
 
   # SPA fallback: React Router client-side routes (e.g. /watch/123)
