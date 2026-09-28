@@ -61,7 +61,11 @@ app.use(
   })
 );
 
-app.use(express.json({ limit: '10mb' }));
+// 100 kB (mặc định của body-parser) thay vì 10 MB: payload JSON hợp lệ lớn
+// nhất là mô tả video tối đa 5.000 ký tự (~15 kB kể cả chữ có dấu), còn video
+// và ảnh đi thẳng lên S3. 10 MB chỉ để một người gửi hàng trăm khối JSON khổng
+// lồ bắt máy 1 GB RAM parse (OWASP API4:2023, Unrestricted Resource Consumption).
+app.use(express.json({ limit: '100kb' }));
 app.use(morgan('dev'));
 app.use('/api', apiLimiter);
 
