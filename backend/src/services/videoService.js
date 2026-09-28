@@ -459,12 +459,19 @@ const viewDedupeCache = new Map();
 /** Khoảng thời gian một người xem chỉ được tính một lượt xem cho cùng video */
 const VIEW_DEDUPE_WINDOW_MS = 30 * 60 * 1000; // 30 phút
 
-/** Dọn các mục đã hết hạn để bộ nhớ không phình vô hạn */
+/**
+ * Dọn các mục đã hết hạn để bộ nhớ không phình vô hạn.
+ *
+ * Map duyệt theo thứ tự chèn, và registerView luôn xoá rồi chèn lại khoá khi
+ * ghi, nên các mục xếp từ cũ đến mới: gặp mục còn hạn đầu tiên là dừng. Bản
+ * trước duyệt toàn bộ Map ở MỖI lượt xem — O(số người xem trong 30 phút) trên
+ * luồng sự kiện duy nhất của Node. Từ khi req.ip là IP thật của từng người thay
+ * vì một nhúm IP Cloudflare, Map lớn hơn hẳn và chi phí đó mới thật sự lộ ra.
+ */
 const pruneViewCache = (now) => {
   for (const [key, timestamp] of viewDedupeCache) {
-    if (now - timestamp > VIEW_DEDUPE_WINDOW_MS) {
-      viewDedupeCache.delete(key);
-    }
+    if (now - timestamp <= VIEW_DEDUPE_WINDOW_MS) break;
+    viewDedupeCache.delete(key);
   }
 };
 
@@ -512,6 +519,8 @@ const registerView = async (videoId, requesterUser, clientIp) => {
     return { counted: false, views: video.views };
   }
 
+  // Xoá trước khi ghi để khoá chuyển xuống cuối Map (xem pruneViewCache).
+  viewDedupeCache.delete(cacheKey);
   viewDedupeCache.set(cacheKey, now);
 
   const updated = await Video.findByIdAndUpdate(
@@ -590,5 +599,8 @@ module.exports = {
   deleteVideo,
   registerView,
   VIEW_DEDUPE_WINDOW_MS,
+  // Xuất ra để kiểm thử việc dọn bộ nhớ chống đếm trùng
+  viewDedupeCache,
+  pruneViewCache,
 };
 
