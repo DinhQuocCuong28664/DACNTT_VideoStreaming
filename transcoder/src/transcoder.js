@@ -184,6 +184,13 @@ const buildFFmpegArgs = (inputPath, outputDir, renditions, fps = DEFAULT_FPS) =>
       '-bufsize', r.bufsize,
       '-preset', 'fast',
       '-profile:v', 'main',
+      // Ép 8-bit 4:2:0. Không có cờ này libx264 giữ định dạng màu của nguồn:
+      // nguồn 4:4:4 hay 10-bit (video HDR quay bằng iPhone) khiến nó từ chối
+      // mở encoder ("main profile doesn't support 4:4:4") và cả job thất bại.
+      // Apple HLS Authoring Spec 1.3b cũng giới hạn H.264 ở mức <= High
+      // Profile, vốn chỉ gồm 8-bit 4:2:0. Nguồn HDR phát được nhưng màu nhạt
+      // hơn vì chưa tone-map sang SDR.
+      '-pix_fmt', 'yuv420p',
       // KHÔNG ghim '-level'. Bản trước đặt cứng 3.1 cho cả ba rendition, mà
       // Level 3.1 chỉ chứa được khung 3600 macroblock: 1280x720 vừa khít
       // 3600, còn 1920x1080 là 8160 — vượt hơn gấp đôi. Mức thấp nhất chứa
