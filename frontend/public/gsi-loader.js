@@ -1,0 +1,31 @@
+/*
+ * Nạp Google Identity Services kèm đúng ngôn ngữ.
+ *
+ * GIS dựng chữ bên trong nút đăng nhập, và nó chốt ngôn ngữ ngay lúc script
+ * được nạp chứ không đọc lại tuỳ chọn `locale` truyền cho renderButton sau đó.
+ * Vì vậy ngôn ngữ phải đi kèm ngay trên URL của script. Đọc lựa chọn đã lưu
+ * của người dùng (cùng khoá mà bộ dò ngôn ngữ của i18next ghi) trước khi chèn
+ * thẻ script; nếu chưa có lựa chọn nào thì bỏ trống để Google tự suy từ trình
+ * duyệt.
+ *
+ * Để ở tệp riêng thay vì script inline trong index.html: Content-Security-Policy
+ * của frontend (infrastructure/environments/dev/frontend.tf) chỉ cho script từ
+ * chính origin, không cần 'unsafe-inline' hay hash phải cập nhật mỗi lần sửa.
+ */
+(function () {
+  var lang = null;
+  try {
+    lang = localStorage.getItem('vidshare-language');
+  } catch (e) {
+    lang = null;
+  }
+
+  var src = 'https://accounts.google.com/gsi/client';
+  if (lang === 'vi' || lang === 'en') src += '?hl=' + lang;
+
+  var s = document.createElement('script');
+  s.src = src;
+  s.async = true;
+  s.defer = true;
+  document.head.appendChild(s);
+})();
