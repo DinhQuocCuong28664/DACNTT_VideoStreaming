@@ -96,6 +96,22 @@ resource "aws_acm_certificate_validation" "staging" {
 
 # ── Header bảo mật (xem ghi chú đầy đủ ở environments/dev/frontend.tf) ──
 locals {
+  frontend_permissions_policy = join(", ", [
+    "accelerometer=()",
+    "bluetooth=()",
+    "camera=()",
+    "display-capture=()",
+    "geolocation=()",
+    "gyroscope=()",
+    "hid=()",
+    "magnetometer=()",
+    "microphone=()",
+    "midi=()",
+    "payment=()",
+    "serial=()",
+    "usb=()",
+  ])
+
   frontend_csp = join("; ", [
     "default-src 'self'",
     "script-src 'self' https://accounts.google.com/gsi/client",
@@ -116,7 +132,7 @@ locals {
 resource "aws_cloudfront_response_headers_policy" "frontend_security" {
   provider = aws.account_a
   name     = "${local.prefix}-frontend-security-headers"
-  comment  = "nosniff, DENY, HSTS; CSP report-only"
+  comment  = "nosniff, DENY, HSTS, Permissions-Policy; CSP report-only"
 
   security_headers_config {
     content_type_options {
@@ -142,6 +158,11 @@ resource "aws_cloudfront_response_headers_policy" "frontend_security" {
     items {
       header   = "Content-Security-Policy-Report-Only"
       value    = local.frontend_csp
+      override = true
+    }
+    items {
+      header   = "Permissions-Policy"
+      value    = local.frontend_permissions_policy
       override = true
     }
   }
