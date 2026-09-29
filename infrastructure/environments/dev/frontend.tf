@@ -152,9 +152,12 @@ resource "aws_acm_certificate_validation" "frontend" {
 # - CSP ở chế độ Report-Only: vi phạm chỉ hiện trong console, không chặn gì.
 #   Danh sách nguồn lấy từ những gì trang thực sự dùng (Google Identity
 #   Services theo tài liệu của Google, Google Fonts, API, CDN video, S3 cho tải
-#   lên và ảnh đại diện, blob: cho MSE và worker của hls.js). Khi console sạch
-#   vi phạm qua các luồng chính, đổi tên header thành Content-Security-Policy
-#   để bắt đầu chặn thật;
+#   lên và ảnh đại diện, blob: cho MSE và worker của hls.js, và beacon của
+#   Cloudflare Web Analytics — do Cloudflare tự chèn vào trang qua proxy chứ
+#   không phải code trong repo; beacon nạp từ static.cloudflareinsights.com và
+#   gửi số liệu về cloudflareinsights.com). Khi console sạch vi phạm qua các
+#   luồng chính, đổi tên header thành Content-Security-Policy để bắt đầu chặn
+#   thật;
 # - Permissions-Policy: tắt các API trình duyệt mà trang không dùng (camera, mic,
 #   vị trí, thanh toán, USB/Bluetooth/serial/HID, MIDI, quay màn hình, cảm biến
 #   chuyển động). Nếu có script lạ chạy được trên origin này thì cũng không xin
@@ -181,12 +184,12 @@ locals {
 
   frontend_csp = join("; ", [
     "default-src 'self'",
-    "script-src 'self' https://accounts.google.com/gsi/client",
+    "script-src 'self' https://accounts.google.com/gsi/client https://static.cloudflareinsights.com",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com/gsi/style",
     "font-src 'self' https://fonts.gstatic.com",
     "img-src 'self' data: blob: https://cdn.zelostech.site https://s3.ap-southeast-1.amazonaws.com https://*.googleusercontent.com",
     "media-src 'self' blob: https://cdn.zelostech.site",
-    "connect-src 'self' https://api.zelostech.site https://cdn.zelostech.site https://s3.ap-southeast-1.amazonaws.com https://*.s3.ap-southeast-1.amazonaws.com https://accounts.google.com/gsi/",
+    "connect-src 'self' https://api.zelostech.site https://cdn.zelostech.site https://s3.ap-southeast-1.amazonaws.com https://*.s3.ap-southeast-1.amazonaws.com https://accounts.google.com/gsi/ https://cloudflareinsights.com",
     "worker-src 'self' blob:",
     "frame-src https://accounts.google.com/gsi/",
     "object-src 'none'",
