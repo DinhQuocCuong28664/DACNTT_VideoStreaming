@@ -114,12 +114,12 @@ locals {
 
   frontend_csp = join("; ", [
     "default-src 'self'",
-    "script-src 'self' https://accounts.google.com/gsi/client",
+    "script-src 'self' https://accounts.google.com/gsi/client https://static.cloudflareinsights.com",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://accounts.google.com/gsi/style",
     "font-src 'self' https://fonts.gstatic.com",
     "img-src 'self' data: blob: https://${local.cdn_domain} https://s3.ap-southeast-1.amazonaws.com https://*.s3.ap-southeast-1.amazonaws.com https://*.googleusercontent.com",
     "media-src 'self' blob: https://${local.cdn_domain}",
-    "connect-src 'self' https://${local.api_domain} https://${local.cdn_domain} https://s3.ap-southeast-1.amazonaws.com https://*.s3.ap-southeast-1.amazonaws.com https://accounts.google.com/gsi/",
+    "connect-src 'self' https://${local.api_domain} https://${local.cdn_domain} https://s3.ap-southeast-1.amazonaws.com https://*.s3.ap-southeast-1.amazonaws.com https://accounts.google.com/gsi/ https://cloudflareinsights.com",
     "worker-src 'self' blob:",
     "frame-src https://accounts.google.com/gsi/",
     "object-src 'none'",
