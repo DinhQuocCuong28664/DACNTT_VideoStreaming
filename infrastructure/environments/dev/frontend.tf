@@ -149,15 +149,17 @@ resource "aws_acm_certificate_validation" "frontend" {
 # - DENY: không cho nhúng trang vào iframe (clickjacking);
 # - HSTS: chỉ dùng HTTPS. Không bật includeSubDomains vì chưa rà hết các tên
 #   miền con;
-# - CSP ở chế độ Report-Only: vi phạm chỉ hiện trong console, không chặn gì.
+# - CSP chặn thật (Content-Security-Policy). Trước đó chạy Report-Only để vi phạm
+#   chỉ hiện trong console; staging đã chặn thật và các luồng chính (đăng nhập
+#   Google, upload, phát video, đổi avatar, thích, bình luận, trang cá nhân)
+#   không bị chặn nhầm rồi mới bật ở đây. Nếu một luồng bị chặn, console in
+#   "Refused to ..." kèm nguồn — thêm nguồn đó vào danh sách bên dưới.
 #   Danh sách nguồn lấy từ những gì trang thực sự dùng (Google Identity
 #   Services theo tài liệu của Google, Google Fonts, API, CDN video, S3 cho tải
 #   lên và ảnh đại diện, blob: cho MSE và worker của hls.js, và beacon của
 #   Cloudflare Web Analytics — do Cloudflare tự chèn vào trang qua proxy chứ
 #   không phải code trong repo; beacon nạp từ static.cloudflareinsights.com và
-#   gửi số liệu về cloudflareinsights.com). Khi console sạch vi phạm qua các
-#   luồng chính, đổi tên header thành Content-Security-Policy để bắt đầu chặn
-#   thật;
+#   gửi số liệu về cloudflareinsights.com);
 # - Permissions-Policy: tắt các API trình duyệt mà trang không dùng (camera, mic,
 #   vị trí, thanh toán, USB/Bluetooth/serial/HID, MIDI, quay màn hình, cảm biến
 #   chuyển động). Nếu có script lạ chạy được trên origin này thì cũng không xin
@@ -202,9 +204,14 @@ locals {
 resource "aws_cloudfront_response_headers_policy" "frontend_security" {
   provider = aws.account_a
   name     = "${var.project_name}-${var.environment}-frontend-security-headers"
-  comment  = "nosniff, DENY, HSTS, Permissions-Policy; CSP report-only"
+  comment  = "nosniff, DENY, HSTS, Permissions-Policy, CSP (enforced)"
 
   security_headers_config {
+    content_security_policy {
+      content_security_policy = local.frontend_csp
+      override                = true
+    }
+
     content_type_options {
       override = true
     }
@@ -228,11 +235,6 @@ resource "aws_cloudfront_response_headers_policy" "frontend_security" {
   }
 
   custom_headers_config {
-    items {
-      header   = "Content-Security-Policy-Report-Only"
-      value    = local.frontend_csp
-      override = true
-    }
     items {
       header   = "Permissions-Policy"
       value    = local.frontend_permissions_policy
