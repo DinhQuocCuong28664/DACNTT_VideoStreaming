@@ -7,6 +7,11 @@
 # Với OIDC, mỗi job xin một token ngắn hạn do GitHub ký và AWS chỉ đổi nó lấy
 # credential tạm của role tương ứng khi claim `sub` khớp trust policy.
 #
+# Claim `environment:production` chỉ đáng tin vì environment `production` trên
+# GitHub chỉ cho nhánh master deploy (Settings → Environments → Deployment
+# branches, đặt ngày 2026-09-29). Thiếu quy tắc đó thì một workflow ở nhánh bất
+# kỳ gắn `environment: production` cũng nhận được role deploy bên dưới.
+#
 # Ba role, mỗi role đúng quyền một nhóm job cần:
 # - ecr_push:   ci-transcoder/build-scan — đẩy image, chạy trên nhánh.
 # - deploy:     các job `environment: production` (cd-deploy, deploy của
