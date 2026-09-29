@@ -129,12 +129,20 @@ locals {
   ])
 }
 
+# Khác dev: staging chặn thật (Content-Security-Policy), dev vẫn Report-Only.
+# Staging là nơi thử trước — nếu một luồng nào bị chặn nhầm thì lộ ra ở đây chứ
+# không phải trên production. Khi thử xong các luồng chính mà vẫn ổn, đổi dev
+# theo cùng cách (khối content_security_policy bên dưới).
 resource "aws_cloudfront_response_headers_policy" "frontend_security" {
   provider = aws.account_a
   name     = "${local.prefix}-frontend-security-headers"
-  comment  = "nosniff, DENY, HSTS, Permissions-Policy; CSP report-only"
+  comment  = "nosniff, DENY, HSTS, Permissions-Policy, CSP (enforced)"
 
   security_headers_config {
+    content_security_policy {
+      content_security_policy = local.frontend_csp
+      override                = true
+    }
     content_type_options {
       override = true
     }
@@ -155,11 +163,6 @@ resource "aws_cloudfront_response_headers_policy" "frontend_security" {
   }
 
   custom_headers_config {
-    items {
-      header   = "Content-Security-Policy-Report-Only"
-      value    = local.frontend_csp
-      override = true
-    }
     items {
       header   = "Permissions-Policy"
       value    = local.frontend_permissions_policy
