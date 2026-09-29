@@ -1,0 +1,9 @@
+# Gitleaks đọc tệp này từ thư mục gốc; mỗi dòng là "fingerprint" của một phát hiện
+# đã được xem xét và xác nhận là báo nhầm. Dòng bắt đầu bằng # là chú thích.
+#
+# backend/tests/s3Service.test.js đặt AWS_ACCESS_KEY_ID và AWS_SECRET_ACCESS_KEY
+# giả (chứa chữ "EXAMPLE" / "example-secret-key") để ký POST S3 ngoại tuyến trong
+# test; không phải khoá của tài khoản nào. Gitleaks quét diff của từng commit
+# nên giá trị đã nằm trong lịch sử, và sửa file bây giờ không làm nó biến mất —
+# vì vậy bỏ qua đúng một finding này thay vì viết lại lịch sử đã chia sẻ.
+8ae02f693558db310843afa74bfaa755cd04220b:backend/tests/s3Service.test.js:aws-access-token:58
