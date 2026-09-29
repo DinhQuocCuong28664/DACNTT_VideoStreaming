@@ -154,8 +154,31 @@ resource "aws_acm_certificate_validation" "frontend" {
 #   Services theo tài liệu của Google, Google Fonts, API, CDN video, S3 cho tải
 #   lên và ảnh đại diện, blob: cho MSE và worker của hls.js). Khi console sạch
 #   vi phạm qua các luồng chính, đổi tên header thành Content-Security-Policy
-#   để bắt đầu chặn thật.
+#   để bắt đầu chặn thật;
+# - Permissions-Policy: tắt các API trình duyệt mà trang không dùng (camera, mic,
+#   vị trí, thanh toán, USB/Bluetooth/serial/HID, MIDI, quay màn hình, cảm biến
+#   chuyển động). Nếu có script lạ chạy được trên origin này thì cũng không xin
+#   được các quyền đó. CloudFront không có ô riêng cho header này nên gửi qua
+#   custom header. Cố ý KHÔNG liệt kê fullscreen, picture-in-picture, autoplay và
+#   clipboard-write (trình phát video và nút chép liên kết đang dùng), cũng như
+#   identity-credentials-get (đăng nhập Google qua FedCM).
 locals {
+  frontend_permissions_policy = join(", ", [
+    "accelerometer=()",
+    "bluetooth=()",
+    "camera=()",
+    "display-capture=()",
+    "geolocation=()",
+    "gyroscope=()",
+    "hid=()",
+    "magnetometer=()",
+    "microphone=()",
+    "midi=()",
+    "payment=()",
+    "serial=()",
+    "usb=()",
+  ])
+
   frontend_csp = join("; ", [
     "default-src 'self'",
     "script-src 'self' https://accounts.google.com/gsi/client",
@@ -176,7 +199,7 @@ locals {
 resource "aws_cloudfront_response_headers_policy" "frontend_security" {
   provider = aws.account_a
   name     = "${var.project_name}-${var.environment}-frontend-security-headers"
-  comment  = "nosniff, DENY, HSTS; CSP report-only"
+  comment  = "nosniff, DENY, HSTS, Permissions-Policy; CSP report-only"
 
   security_headers_config {
     content_type_options {
@@ -205,6 +228,11 @@ resource "aws_cloudfront_response_headers_policy" "frontend_security" {
     items {
       header   = "Content-Security-Policy-Report-Only"
       value    = local.frontend_csp
+      override = true
+    }
+    items {
+      header   = "Permissions-Policy"
+      value    = local.frontend_permissions_policy
       override = true
     }
   }
