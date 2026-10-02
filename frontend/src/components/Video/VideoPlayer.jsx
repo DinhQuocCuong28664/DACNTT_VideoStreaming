@@ -318,19 +318,23 @@ const VideoPlayer = ({
     const video = videoRef.current;
     if (!video) return;
 
+    const reportViewOnce = () => {
+      if (viewReportedRef.current || !onViewThresholdRef.current) return;
+      viewReportedRef.current = true;
+      onViewThresholdRef.current();
+    };
+
     const onTimeUpdate = () => {
       setCurrentTime(video.currentTime);
 
       // Ghi nhận lượt xem sau khi người dùng đã thực sự xem đủ ngưỡng thời gian.
       // Cách này tránh việc chỉ tải trang cũng được tính là một lượt xem.
-      if (
-        !viewReportedRef.current &&
-        video.currentTime >= viewThresholdSeconds &&
-        onViewThresholdRef.current
-      ) {
-        viewReportedRef.current = true;
-        onViewThresholdRef.current();
-      }
+      //
+      // Video ngắn hơn ngưỡng thì xem hết là đủ: so với min(ngưỡng, độ dài),
+      // nếu không video 3 giây sẽ không bao giờ có lượt xem. Trước khi có
+      // metadata, duration là NaN, nên tạm dùng nguyên ngưỡng.
+      const threshold = Math.min(viewThresholdSeconds, video.duration || Infinity);
+      if (video.currentTime >= threshold) reportViewOnce();
     };
     const onLoadedMetadata = () => setDuration(video.duration || 0);
     const onDurationChange = () => setDuration(video.duration || 0);
@@ -341,7 +345,12 @@ const VideoPlayer = ({
     };
     const onPlay = () => setIsPlaying(true);
     const onPause = () => setIsPlaying(false);
-    const onEnded = () => setIsPlaying(false);
+    // timeupdate cuối cùng có thể dừng ngay trước mốc kết thúc (ví dụ 2.95 của
+    // 3 giây), nên phát hết video cũng là một cách đạt ngưỡng.
+    const onEnded = () => {
+      setIsPlaying(false);
+      reportViewOnce();
+    };
     const onVolumeChange = () => {
       setVolume(video.volume);
       setMuted(video.muted);
