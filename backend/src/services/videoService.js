@@ -526,7 +526,7 @@ const registerView = async (videoId, requesterUser, clientIp) => {
   const updated = await Video.findByIdAndUpdate(
     videoId,
     { $inc: { views: 1 } },
-    { new: true, select: 'views' }
+    { returnDocument: 'after', select: 'views' }
   );
 
   return { counted: true, views: updated.views };

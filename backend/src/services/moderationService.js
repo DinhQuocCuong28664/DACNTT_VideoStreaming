@@ -207,7 +207,7 @@ const decide = async (videoId, admin, { decision, note } = {}) => {
         'moderation.openReports': openReports,
       },
     },
-    { new: true, runValidators: true }
+    { returnDocument: 'after', runValidators: true }
   )
     .select(QUEUE_FIELDS)
     .populate('user', 'username displayName avatar email')

@@ -82,7 +82,7 @@ describe('dbHandler — ghi có điều kiện chống xử lý trùng', () => {
       expect(mockVideoModel.findOneAndUpdate).toHaveBeenCalledWith(
         { _id: videoId, status: { $ne: 'READY' } },
         { $set: { status: 'READY', hlsUrl: 'https://cdn/master.m3u8', thumbnailUrl: 'https://cdn/thumb.jpg', duration: 120 } },
-        { new: true }
+        { returnDocument: 'after' }
       );
       expect(result.updated).toBe(true);
       expect(result.video.status).toBe('READY');
@@ -159,7 +159,7 @@ describe('dbHandler — ghi có điều kiện chống xử lý trùng', () => {
       expect(mockVideoModel.findOneAndUpdate).toHaveBeenCalledWith(
         { _id: videoId, status: { $ne: 'READY' } },
         { $set: { status: 'ERROR' } },
-        { new: true }
+        { returnDocument: 'after' }
       );
       expect(result.updated).toBe(true);
       expect(result.video.status).toBe('ERROR');

@@ -115,7 +115,7 @@ const updateVideoReady = async (videoId, { hlsUrl, thumbnailUrl, duration, moder
   const video = await Video.findOneAndUpdate(
     { _id: videoId, status: { $ne: 'READY' } },
     { $set: update },
-    { new: true }
+    { returnDocument: 'after' }
   );
 
   if (!video) {
@@ -147,7 +147,7 @@ const updateVideoError = async (videoId, errorMessage) => {
   const video = await Video.findOneAndUpdate(
     { _id: videoId, status: { $ne: 'READY' } },
     { $set: { status: 'ERROR' } },
-    { new: true }
+    { returnDocument: 'after' }
   );
 
   if (!video) {
