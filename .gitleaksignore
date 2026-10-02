@@ -6,4 +6,8 @@
 # test; không phải khoá của tài khoản nào. Gitleaks quét diff của từng commit
 # nên giá trị đã nằm trong lịch sử, và sửa file bây giờ không làm nó biến mất —
 # vì vậy bỏ qua đúng một finding này thay vì viết lại lịch sử đã chia sẻ.
-8ae02f693558db310843afa74bfaa755cd04220b:backend/tests/s3Service.test.js:aws-access-token:58
+#
+# Fingerprint chứa SHA của commit. Ngày 2026-10-03 lịch sử được viết lại (chỉ sửa
+# commit message), commit 8ae02f6 thành f0353ad; nếu lịch sử lại bị viết lại thì
+# phải cập nhật SHA ở dòng dưới, không thì Gitleaks báo lại finding này.
+f0353adc6793f9dde960a6e5beec229448887042:backend/tests/s3Service.test.js:aws-access-token:58
