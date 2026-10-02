@@ -11,3 +11,12 @@
 # commit message), commit 8ae02f6 thành f0353ad; nếu lịch sử lại bị viết lại thì
 # phải cập nhật SHA ở dòng dưới, không thì Gitleaks báo lại finding này.
 f0353adc6793f9dde960a6e5beec229448887042:backend/tests/s3Service.test.js:aws-access-token:58
+
+# Commit 3cd9219 (2026-08-04) ghi nguyên tệp .env production vào
+# scripts/ec2-userdata.sh: MONGODB_URI có mật khẩu, JWT_SECRET, EMAIL_APP_PASSWORD.
+# Commit 2abecc7 đã gỡ chúng khỏi tệp, nhưng giá trị vẫn nằm trong lịch sử của repo
+# public — đây là secret thật, KHÔNG phải báo nhầm. Bỏ qua được vì cả ba đã bị thay:
+# mật khẩu MongoDB từ trước, JWT_SECRET và app password Gmail ngày 2026-10-03
+# (token ký bằng JWT_SECRET cũ giờ bị API từ chối; app password cũ đã bị thu hồi
+# trong tài khoản Google). Secret mới chỉ nằm trong AWS Secrets Manager.
+3cd9219e9d37c8e03264110d46e919dd683b6396:scripts/ec2-userdata.sh:generic-api-key:25
