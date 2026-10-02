@@ -113,14 +113,12 @@ jobs:
       - name: Build (uses frontend/.env.production for VITE_API_URL)
         run: npm run build
 
-      # Dung OIDC khi bien AWS_DEPLOY_ROLE_ARN da duoc dat (sau terraform apply
-      # github-oidc.tf); chua dat thi van dung khoa tinh cu de CI khong gay giua chung.
+      # OIDC: role tam thoi theo bien repo AWS_DEPLOY_ROLE_ARN (github-oidc.tf). Khong con
+      # khoa AWS tinh nao trong GitHub Secrets (xoa ngay 2026-10-03).
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
-          aws-access-key-id: ${{ !vars.AWS_DEPLOY_ROLE_ARN && secrets.AWS_ACCESS_KEY_ID || '' }}
-          aws-secret-access-key: ${{ !vars.AWS_DEPLOY_ROLE_ARN && secrets.AWS_SECRET_ACCESS_KEY || '' }}
           aws-region: ${{ env.AWS_REGION }}
 
       # --delete xoa moi object co tren bucket ma khong co trong dist/. Bucket
@@ -136,14 +134,12 @@ jobs:
       # co buoc nay, CloudFront tiep tuc phat ban index.html/asset da cache tu
       # truoc, du S3 da co ban moi (da gap thuc te: title page cu bi cache
       # gan 9 tieng sau khi da deploy ban moi).
-      # Dung OIDC khi bien AWS_CLOUDFRONT_ROLE_ARN da duoc dat (sau terraform apply
-      # github-oidc.tf); chua dat thi van dung khoa tinh cu de CI khong gay giua chung.
+      # OIDC: role tam thoi theo bien repo AWS_CLOUDFRONT_ROLE_ARN (github-oidc.tf). Khong con
+      # khoa AWS tinh nao trong GitHub Secrets (xoa ngay 2026-10-03).
       - name: Configure AWS credentials (account A — CloudFront)
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ vars.AWS_CLOUDFRONT_ROLE_ARN }}
-          aws-access-key-id: ${{ !vars.AWS_CLOUDFRONT_ROLE_ARN && secrets.AWS_ACCESS_KEY_ID_ACCOUNT_A || '' }}
-          aws-secret-access-key: ${{ !vars.AWS_CLOUDFRONT_ROLE_ARN && secrets.AWS_SECRET_ACCESS_KEY_ACCOUNT_A || '' }}
           aws-region: us-east-1
 
       - name: Invalidate frontend CloudFront cache

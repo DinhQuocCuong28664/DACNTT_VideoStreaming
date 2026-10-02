@@ -89,14 +89,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Dung OIDC khi bien AWS_ECR_PUSH_ROLE_ARN da duoc dat (sau terraform apply
-      # github-oidc.tf); chua dat thi van dung khoa tinh cu de CI khong gay giua chung.
+      # OIDC: role tam thoi theo bien repo AWS_ECR_PUSH_ROLE_ARN (github-oidc.tf). Khong con
+      # khoa AWS tinh nao trong GitHub Secrets (xoa ngay 2026-10-03).
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ vars.AWS_ECR_PUSH_ROLE_ARN }}
-          aws-access-key-id: ${{ !vars.AWS_ECR_PUSH_ROLE_ARN && secrets.AWS_ACCESS_KEY_ID || '' }}
-          aws-secret-access-key: ${{ !vars.AWS_ECR_PUSH_ROLE_ARN && secrets.AWS_SECRET_ACCESS_KEY || '' }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to Amazon ECR
@@ -164,14 +162,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Dung OIDC khi bien AWS_DEPLOY_ROLE_ARN da duoc dat (sau terraform apply
-      # github-oidc.tf); chua dat thi van dung khoa tinh cu de CI khong gay giua chung.
+      # OIDC: role tam thoi theo bien repo AWS_DEPLOY_ROLE_ARN (github-oidc.tf). Khong con
+      # khoa AWS tinh nao trong GitHub Secrets (xoa ngay 2026-10-03).
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
-          aws-access-key-id: ${{ !vars.AWS_DEPLOY_ROLE_ARN && secrets.AWS_ACCESS_KEY_ID || '' }}
-          aws-secret-access-key: ${{ !vars.AWS_DEPLOY_ROLE_ARN && secrets.AWS_SECRET_ACCESS_KEY || '' }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to ECR

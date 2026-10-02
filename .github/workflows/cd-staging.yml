@@ -56,14 +56,12 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Dùng OIDC khi biến AWS_STAGING_DEPLOY_ROLE_ARN đã được đặt; chưa đặt
-      # thì dùng khoá tĩnh cũ, như các workflow production.
+      # OIDC: role tạm thời theo biến repo AWS_STAGING_DEPLOY_ROLE_ARN
+      # (environments/staging/github-oidc.tf). Không còn khoá AWS tĩnh nào.
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ vars.AWS_STAGING_DEPLOY_ROLE_ARN }}
-          aws-access-key-id: ${{ !vars.AWS_STAGING_DEPLOY_ROLE_ARN && secrets.AWS_ACCESS_KEY_ID || '' }}
-          aws-secret-access-key: ${{ !vars.AWS_STAGING_DEPLOY_ROLE_ARN && secrets.AWS_SECRET_ACCESS_KEY || '' }}
           aws-region: ${{ env.AWS_REGION }}
 
       # ── Transcoder ─────────────────────────────────
@@ -152,8 +150,6 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ vars.AWS_STAGING_CLOUDFRONT_ROLE_ARN }}
-          aws-access-key-id: ${{ !vars.AWS_STAGING_CLOUDFRONT_ROLE_ARN && secrets.AWS_ACCESS_KEY_ID_ACCOUNT_A || '' }}
-          aws-secret-access-key: ${{ !vars.AWS_STAGING_CLOUDFRONT_ROLE_ARN && secrets.AWS_SECRET_ACCESS_KEY_ACCOUNT_A || '' }}
           aws-region: us-east-1
 
       - name: Invalidate the staging frontend cache
