@@ -18,10 +18,12 @@
 #               ci-transcoder và ci-frontend) — Batch, SSM, S3 frontend.
 # - cloudfront: ci-frontend/deploy, ở account A — invalidate CDN frontend.
 #
-# Sau `terraform apply`: đặt các biến repository AWS_ECR_PUSH_ROLE_ARN,
-# AWS_DEPLOY_ROLE_ARN, AWS_CLOUDFRONT_ROLE_ARN (xem output bên dưới). Workflow
-# tự chuyển sang OIDC khi biến có giá trị; sau đó xoá bốn secret khoá tĩnh và
-# vô hiệu hoá access key của IAM user cũ.
+# Các workflow lấy ARN role từ biến repository AWS_ECR_PUSH_ROLE_ARN,
+# AWS_DEPLOY_ROLE_ARN, AWS_CLOUDFRONT_ROLE_ARN (xem output bên dưới; đặt ngày
+# 2026-10-03). Bốn secret khoá tĩnh cũ đã xoá khỏi GitHub. Access key của các
+# IAM user thì KHÔNG vô hiệu hoá ở đây: đó cũng là khoá mà AWS CLI/Terraform
+# trên máy quản trị đang dùng — muốn bỏ thì xoay vòng (tạo khoá mới cho máy
+# quản trị trước, rồi mới vô hiệu hoá khoá cũ).
 # ═══════════════════════════════════════════════════
 
 locals {
