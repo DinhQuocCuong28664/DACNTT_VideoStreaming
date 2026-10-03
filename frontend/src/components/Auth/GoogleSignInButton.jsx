@@ -5,6 +5,27 @@ const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 const GIS_MAX_WIDTH = 400; // giới hạn tối đa mà Google Identity Services cho phép
 
 /**
+ * Google Identity Services chỉ được initialize() một lần cho cả trang.
+ *
+ * Gọi lại thì thư viện cảnh báo trên console và chỉ giữ cấu hình của lần gọi
+ * cuối. Trước đây mỗi lần nút mount (chuyển giữa trang đăng nhập và đăng ký,
+ * mở Cài đặt) hay đổi ngôn ngữ đều gọi lại. Giờ thư viện được khởi tạo một lần
+ * với một callback cố định, và callback đó chuyển credential tới nút đang
+ * hiển thị qua `activeHandler`.
+ */
+let gisInitialized = false;
+let activeHandler = null;
+
+const initGoogleOnce = () => {
+  if (gisInitialized) return;
+  window.google.accounts.id.initialize({
+    client_id: CLIENT_ID,
+    callback: (response) => activeHandler?.(response),
+  });
+  gisInitialized = true;
+};
+
+/**
  * Nút "Đăng nhập bằng Google" dùng Google Identity Services (script được
  * nạp trong index.html). Không tự render gì nếu chưa cấu hình Client ID —
  * tránh crash ở máy dev nào chưa tạo OAuth Client ID trên Google Cloud.
@@ -17,6 +38,7 @@ const GIS_MAX_WIDTH = 400; // giới hạn tối đa mà Google Identity Service
 const GoogleSignInButton = ({ onCredential, onError, text = 'continue_with' }) => {
   const { t, i18n } = useTranslation();
   const buttonRef = useRef(null);
+  const handlerRef = useRef(null);
 
   /**
    * Ngôn ngữ hiển thị trên nút do Google dựng, không phải do ứng dụng dựng.
@@ -31,10 +53,10 @@ const GoogleSignInButton = ({ onCredential, onError, text = 'continue_with' }) =
    */
   const locale = i18n.resolvedLanguage === 'en' ? 'en' : 'vi';
 
+  // Callback của Google được đăng ký một lần nên không được giữ onCredential /
+  // onError của lần render đầu; ref này luôn trỏ tới bản mới nhất.
   useEffect(() => {
-    if (!CLIENT_ID || !buttonRef.current) return;
-
-    const handleCredentialResponse = async (response) => {
+    handlerRef.current = async (response) => {
       try {
         await onCredential(response.credential);
       } catch (err) {
@@ -44,6 +66,12 @@ const GoogleSignInButton = ({ onCredential, onError, text = 'continue_with' }) =
         );
       }
     };
+  });
+
+  useEffect(() => {
+    if (!CLIENT_ID || !buttonRef.current) return;
+
+    const handleCredentialResponse = (response) => handlerRef.current?.(response);
 
     let cancelled = false;
     let resizeObserver;
@@ -79,10 +107,8 @@ const GoogleSignInButton = ({ onCredential, onError, text = 'continue_with' }) =
         return;
       }
 
-      window.google.accounts.id.initialize({
-        client_id: CLIENT_ID,
-        callback: handleCredentialResponse,
-      });
+      initGoogleOnce();
+      activeHandler = handleCredentialResponse;
 
       renderButton();
 
@@ -95,9 +121,9 @@ const GoogleSignInButton = ({ onCredential, onError, text = 'continue_with' }) =
     return () => {
       cancelled = true;
       resizeObserver?.disconnect();
+      if (activeHandler === handleCredentialResponse) activeHandler = null;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [locale]);
+  }, [locale, text]);
 
   if (!CLIENT_ID) return null;
 
