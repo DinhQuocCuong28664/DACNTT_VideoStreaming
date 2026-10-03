@@ -143,7 +143,27 @@ const requirePermission = (...permissions) => (req, res, next) => {
   next();
 };
 
+/**
+ * Chỉ cho tài khoản đã xác minh email đi qua. Đặt SAU `auth`.
+ *
+ * Dùng cho việc tải video lên: đó là nội dung công khai, tốn chi phí lưu trữ
+ * và chuyển mã, nên phải gắn với một địa chỉ email có người nhận thật. Xem,
+ * thích, bình luận và đổi ảnh đại diện không cần bước này. Trả kèm mã
+ * EMAIL_NOT_VERIFIED để giao diện hiện lời nhắc xác minh thay cho lỗi chung.
+ */
+const requireVerifiedEmail = (req, res, next) => {
+  if (!req.user || !req.user.hasVerifiedEmail()) {
+    return res.status(403).json({
+      success: false,
+      message: t(req, 'auth.emailNotVerified'),
+      code: 'EMAIL_NOT_VERIFIED',
+    });
+  }
+  next();
+};
+
 module.exports = auth;
 module.exports.optionalAuth = optionalAuth;
 module.exports.requireAdmin = requireAdmin;
 module.exports.requirePermission = requirePermission;
+module.exports.requireVerifiedEmail = requireVerifiedEmail;
