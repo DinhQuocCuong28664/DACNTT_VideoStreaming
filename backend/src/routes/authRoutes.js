@@ -2,9 +2,11 @@ const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
 const { validateRequest, validateEmail } = require('../middleware/validateRequest');
-const { authLimiter } = require('../middleware/rateLimiter');
+const { authLimiter, verificationEmailLimiter } = require('../middleware/rateLimiter');
 const {
   registerUser,
+  verifyEmail,
+  resendVerification,
   loginUser,
   googleAuth,
   linkGoogle,
@@ -21,6 +23,9 @@ router.post('/login', authLimiter, validateRequest(['email', 'password']), valid
 router.post('/google', authLimiter, validateRequest(['credential']), googleAuth);
 router.post('/forgot-password', authLimiter, validateRequest(['email']), validateEmail, forgotPassword);
 router.post('/reset-password/:token', authLimiter, validateRequest(['password']), resetPassword);
+// POST, không phải GET: liên kết trong thư mở trang frontend, trang đó mới gọi
+// API. Trình quét liên kết của hộp thư chỉ GET trang chứ không tự xác minh.
+router.post('/verify-email/:token', authLimiter, verifyEmail);
 // Không đặt sau `auth`: đăng xuất phải dọn được cookie kể cả khi token đã hết
 // hạn — xem ghi chú ở controller. Cũng không áp authLimiter, vì bị chặn đăng
 // xuất là để lại quyền xem còn hiệu lực trong trình duyệt.
@@ -30,5 +35,6 @@ router.post('/logout', logout);
 router.get('/me', auth, getMe);
 router.put('/change-password', auth, validateRequest(['currentPassword', 'newPassword']), changePassword);
 router.post('/link-google', auth, validateRequest(['credential']), linkGoogle);
+router.post('/resend-verification', auth, verificationEmailLimiter, resendVerification);
 
 module.exports = router;

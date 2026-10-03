@@ -6,7 +6,9 @@ const { t } = require('../config/i18n');
  */
 const errorHandler = (err, req, res, _next) => {
   let statusCode = err.statusCode || 500;
-  let message = err.message || 'Internal Server Error';
+  // Lỗi tạo bằng httpError.localized mang khoá thông điệp; dịch theo ngôn
+  // ngữ của request (err.message là bản tiếng Anh, dùng cho log).
+  let message = err.messageKey ? t(req, err.messageKey) : err.message || 'Internal Server Error';
 
   // Mongoose bad ObjectId
   if (err.name === 'CastError') {

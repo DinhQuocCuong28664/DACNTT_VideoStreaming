@@ -2,8 +2,29 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const { OAuth2Client } = require('google-auth-library');
 const User = require('../models/User');
+const httpError = require('../utils/httpError');
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
+/** Liên kết xác minh email dùng được trong 24 giờ. */
+const EMAIL_VERIFICATION_TTL_MS = 24 * 60 * 60 * 1000;
+
+const hashToken = (rawToken) => crypto.createHash('sha256').update(rawToken).digest('hex');
+
+/**
+ * Sinh token xác minh email: bản thô đi trong thư, bản băm vào cơ sở dữ liệu
+ * (cùng cách với token đặt lại mật khẩu trong models/User.js).
+ */
+const newEmailVerificationToken = () => {
+  const rawToken = crypto.randomBytes(32).toString('hex');
+  return {
+    rawToken,
+    fields: {
+      emailVerificationToken: hashToken(rawToken),
+      emailVerificationExpire: new Date(Date.now() + EMAIL_VERIFICATION_TTL_MS),
+    },
+  };
+};
 
 /**
  * Generate JWT token
@@ -16,6 +37,9 @@ const generateToken = (userId) => {
 
 /**
  * Register a new user
+ *
+ * Tài khoản mới chưa xác minh email. Trả kèm `verificationToken` (bản thô) để
+ * controller gửi thư; token chỉ được lưu ở dạng băm.
  */
 const register = async (username, email, password) => {
   // Check if user already exists
@@ -30,17 +54,72 @@ const register = async (username, email, password) => {
     throw error;
   }
 
+  const { rawToken, fields } = newEmailVerificationToken();
+
   // Create user (password is hashed via pre-save hook)
   const user = await User.create({
     username,
     email,
     password,
     displayName: username, // Default display name = username
+    emailVerified: false,
+    ...fields,
   });
 
   const token = generateToken(user._id);
 
-  return { user, token };
+  return { user, token, verificationToken: rawToken };
+};
+
+/**
+ * Xác minh email bằng token trong thư.
+ *
+ * Một lần cập nhật có điều kiện vừa tìm vừa tiêu token: hai lần bấm cùng một
+ * liên kết không thể cùng thành công. Không cần đăng nhập — người ta hay mở
+ * thư trên máy khác với máy đã đăng ký.
+ */
+const verifyEmail = async (rawToken) => {
+  if (typeof rawToken !== 'string' || !/^[a-f0-9]{64}$/.test(rawToken)) {
+    throw httpError.localized(400, 'auth.verifyLinkInvalid', 'VERIFY_LINK_INVALID');
+  }
+
+  const user = await User.findOneAndUpdate(
+    {
+      emailVerificationToken: hashToken(rawToken),
+      emailVerificationExpire: { $gt: new Date() },
+    },
+    {
+      $set: { emailVerified: true },
+      $unset: { emailVerificationToken: 1, emailVerificationExpire: 1 },
+    },
+    { returnDocument: 'after' }
+  );
+
+  if (!user) {
+    throw httpError.localized(400, 'auth.verifyLinkInvalid', 'VERIFY_LINK_INVALID');
+  }
+
+  return { user };
+};
+
+/**
+ * Cấp token xác minh mới cho người dùng đang đăng nhập (nút "Gửi lại email").
+ * Token cũ bị thay, nên chỉ thư mới nhất còn dùng được.
+ */
+const prepareVerificationEmail = async (userId) => {
+  const user = await User.findById(userId);
+  if (!user) {
+    throw httpError(404, 'User not found');
+  }
+  if (user.hasVerifiedEmail()) {
+    throw httpError.localized(400, 'auth.alreadyVerified', 'ALREADY_VERIFIED');
+  }
+
+  const { rawToken, fields } = newEmailVerificationToken();
+  user.set(fields);
+  await user.save({ validateBeforeSave: false });
+
+  return { user, verificationToken: rawToken };
 };
 
 /**
@@ -293,6 +372,9 @@ const changePassword = async (userId, currentPassword, newPassword) => {
 
 module.exports = {
   register,
+  verifyEmail,
+  prepareVerificationEmail,
+  EMAIL_VERIFICATION_TTL_MS,
   login,
   loginWithGoogle,
   linkGoogleAccount,

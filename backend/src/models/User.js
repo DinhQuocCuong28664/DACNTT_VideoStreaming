@@ -87,6 +87,31 @@ const userSchema = new mongoose.Schema(
     resetPasswordExpire: Date,
 
     /**
+     * Người dùng đã chứng minh mình nhận được thư gửi tới `email` chưa.
+     *
+     * Đăng ký chỉ kiểm tra email có đúng định dạng, nên ai cũng đăng ký được
+     * bằng địa chỉ của người khác. Tài khoản chưa xác minh vẫn xem, thích và
+     * bình luận được, nhưng không được tải video lên (middleware
+     * requireVerifiedEmail). Tài khoản có `googleId` coi như đã xác minh: Google
+     * chỉ trả googleId kèm email đã được Google xác minh (verifyGoogleIdToken),
+     * nên đọc trạng thái này qua hasVerifiedEmail() chứ không đọc thẳng trường.
+     */
+    emailVerified: {
+      type: Boolean,
+      default: false,
+    },
+    // Băm SHA-256 của token gửi trong thư, như token đặt lại mật khẩu: lộ cơ
+    // sở dữ liệu không lộ ra liên kết xác minh dùng được.
+    emailVerificationToken: {
+      type: String,
+      select: false,
+    },
+    emailVerificationExpire: {
+      type: Date,
+      select: false,
+    },
+
+    /**
      * Thoi diem mat khau duoc doi lan gan nhat.
      *
      * Middleware xac thuc so truong nay voi claim `iat` cua JWT de tu choi
@@ -155,13 +180,22 @@ userSchema.methods.generateResetToken = function () {
   return resetToken;
 };
 
+// Xem ghi chú ở trường `emailVerified`.
+userSchema.methods.hasVerifiedEmail = function () {
+  return this.emailVerified === true || Boolean(this.googleId);
+};
+
 // Remove sensitive fields when converting to JSON
 userSchema.methods.toJSON = function () {
   const user = this.toObject();
   delete user.password;
   delete user.resetPasswordToken;
   delete user.resetPasswordExpire;
+  delete user.emailVerificationToken;
+  delete user.emailVerificationExpire;
   delete user.__v;
+  // Giao diện chỉ cần biết kết quả, không cần tự suy ra từ googleId.
+  user.emailVerified = this.hasVerifiedEmail();
   return user;
 };
 

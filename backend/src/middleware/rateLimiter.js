@@ -81,6 +81,22 @@ const reportLimiter = rateLimit({
 });
 
 /**
+ * Giới hạn nút "Gửi lại email xác minh". Mỗi lần bấm là một thư thật đi ra từ
+ * hộp Gmail của dự án; không chặn thì một tài khoản có thể dùng máy chủ để
+ * dội thư vào một địa chỉ, và Google sẽ khoá hộp gửi vì spam. Tính theo tài
+ * khoản (endpoint nằm sau `auth`).
+ */
+const verificationEmailLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 giờ
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: accountOrIpKey,
+  skip: skipInTest,
+  message: (req) => ({ success: false, message: t(req, 'rate.tooManyVerificationEmails') }),
+});
+
+/**
  * Giới hạn chung cho toàn bộ API, đủ rộng để không ảnh hưởng người dùng thật.
  */
 const apiLimiter = rateLimit({
@@ -96,6 +112,7 @@ module.exports = {
   authLimiter,
   uploadLimiter,
   reportLimiter,
+  verificationEmailLimiter,
   apiLimiter,
   accountOrIpKey,
   UPLOAD_LIMIT_PER_HOUR,
