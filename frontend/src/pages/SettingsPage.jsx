@@ -7,6 +7,7 @@ import { useAuth } from '../context/useAuth';
 import { useTheme } from '../context/useTheme';
 import userApi from '../api/userApi';
 import GoogleSignInButton from '../components/Auth/GoogleSignInButton';
+import ResendVerificationButton from '../components/Auth/ResendVerificationButton';
 import { formatDate } from '../utils/format';
 import './SettingsPage.css';
 
@@ -128,6 +129,21 @@ const AccountTab = () => {
               <dd>{value}</dd>
             </div>
           ))}
+          <div>
+            <dt>{t('verify.statusLabel')}</dt>
+            <dd>
+              {user?.emailVerified ? (
+                <span className="settings-linked-status">
+                  <MdCheckCircle aria-hidden="true" /> {t('verify.statusVerified')}
+                </span>
+              ) : (
+                <>
+                  <p>{t('verify.statusUnverified')}</p>
+                  <ResendVerificationButton className="btn btn-secondary" />
+                </>
+              )}
+            </dd>
+          </div>
           <div>
             <dt>{t('settings.channelLabel')}</dt>
             <dd>

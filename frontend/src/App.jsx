@@ -10,6 +10,7 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
+import VerifyEmailPage from './pages/VerifyEmailPage';
 import LandingPage from './pages/LandingPage';
 
 /**
@@ -225,6 +226,9 @@ function App() {
             </GuestRoute>
           }
         />
+
+        {/* Không bọc GuestRoute: người đang đăng nhập cũng mở liên kết xác minh */}
+        <Route path="/verify-email/:token" element={<VerifyEmailPage />} />
 
         <Route path="/403" element={<ForbiddenPage />} />
         <Route path="/404" element={<NotFoundPage />} />
