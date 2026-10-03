@@ -179,6 +179,10 @@ const buildUniqueUsername = async (base) => {
  * nạn nhân (chưa verify), rồi khi nạn nhân đăng nhập Google thật, hệ thống tự
  * gộp 2 tài khoản khiến kẻ tấn công có sẵn mật khẩu để chiếm tài khoản đó.
  * Xem docs/LITERATURE_REVIEW.md mục "Xác thực & Account Linking".
+ *
+ * Ngoại lệ duy nhất là tài khoản local CHƯA xác minh email (claimUnverifiedAccount):
+ * chủ thật của hộp thư được nhận lại tài khoản, còn mật khẩu và mọi phiên của
+ * người đăng ký trước bị xoá — chính là chỗ CVE trên làm sai.
  */
 const verifyGoogleIdToken = async (idToken) => {
   let payload;
@@ -213,15 +217,16 @@ const loginWithGoogle = async (idToken) => {
   }
 
   // Có tài khoản local (email/password) trùng email nhưng CHƯA từng liên kết
-  // Google — không tự gộp, yêu cầu người dùng đăng nhập bằng mật khẩu trước.
+  // Google. Đã xác minh email: không tự gộp, yêu cầu đăng nhập bằng mật khẩu
+  // trước. Chưa xác minh: người đăng ký đó chưa từng chứng minh sở hữu hộp
+  // thư, còn Google vừa chứng minh — giao tài khoản cho chủ hộp thư.
   const existingLocalUser = await User.findOne({ email: payload.email });
   if (existingLocalUser) {
-    const error = new Error(
-      'An account with this email already exists. Please log in with your password to link Google sign-in from Settings.'
-    );
-    error.statusCode = 409;
-    error.code = 'EMAIL_IN_USE';
-    throw error;
+    if (!existingLocalUser.hasVerifiedEmail()) {
+      const claimed = await claimUnverifiedAccount(existingLocalUser._id, payload);
+      return { user: claimed, token: generateToken(claimed._id) };
+    }
+    throw emailInUseError();
   }
 
   // Tài khoản hoàn toàn mới, tạo qua Google.
@@ -230,11 +235,64 @@ const loginWithGoogle = async (idToken) => {
     username,
     email: payload.email,
     googleId: payload.sub,
+    emailVerified: true,
     displayName: payload.name || username,
     avatar: payload.picture || '',
   });
 
   return { user, token: generateToken(user._id) };
+};
+
+const emailInUseError = () => {
+  const error = new Error(
+    'An account with this email already exists. Please log in with your password to link Google sign-in from Settings.'
+  );
+  error.statusCode = 409;
+  error.code = 'EMAIL_IN_USE';
+  return error;
+};
+
+/**
+ * Giao một tài khoản local chưa xác minh cho người vừa đăng nhập Google bằng
+ * đúng email đó.
+ *
+ * Người đăng ký trước có thể là kẻ chiếm chỗ biết mật khẩu, nên cùng lúc:
+ * - xoá mật khẩu: tài khoản thành tài khoản Google, muốn có mật khẩu thì
+ *   dùng "Quên mật khẩu" (thư về đúng hộp thư vừa được Google xác minh);
+ * - đặt passwordChangedAt: middleware auth từ chối mọi JWT cấp trước đó;
+ * - xoá token xác minh và token đặt lại mật khẩu còn treo.
+ *
+ * Một lần cập nhật có điều kiện, không qua save(): trường password bị ẩn khi
+ * truy vấn (select: false) nên không thể dựa vào việc gán undefined trên
+ * document để xoá nó, và điều kiện chặn trường hợp tài khoản vừa được xác
+ * minh hoặc vừa liên kết Google trong lúc này.
+ */
+const claimUnverifiedAccount = async (userId, payload) => {
+  const claimed = await User.findOneAndUpdate(
+    { _id: userId, emailVerified: { $ne: true }, googleId: { $exists: false } },
+    {
+      $set: {
+        googleId: payload.sub,
+        emailVerified: true,
+        // Trừ 1 giây như hook pre-save trong models/User.js, để token cấp
+        // ngay dưới đây (iat làm tròn xuống theo giây) không bị coi là cũ.
+        passwordChangedAt: new Date(Date.now() - 1000),
+      },
+      $unset: {
+        password: 1,
+        emailVerificationToken: 1,
+        emailVerificationExpire: 1,
+        resetPasswordToken: 1,
+        resetPasswordExpire: 1,
+      },
+    },
+    { returnDocument: 'after' }
+  );
+
+  if (!claimed) {
+    throw emailInUseError();
+  }
+  return claimed;
 };
 
 /**
@@ -277,6 +335,8 @@ const linkGoogleAccount = async (userId, idToken) => {
   }
 
   currentUser.googleId = payload.sub;
+  // Google vừa xác minh đúng email của tài khoản này.
+  currentUser.emailVerified = true;
   await currentUser.save();
 
   return { user: currentUser };
@@ -334,6 +394,11 @@ const resetPassword = async (rawToken, newPassword) => {
   user.password = newPassword;
   user.resetPasswordToken = undefined;
   user.resetPasswordExpire = undefined;
+  // Liên kết đặt lại chỉ đi tới hộp thư của tài khoản, nên dùng được nó là đã
+  // chứng minh sở hữu email. Đây cũng là đường để chủ thật nhận lại một tài
+  // khoản bị người khác đăng ký trước mà không cần Google: đặt mật khẩu mới
+  // làm mọi phiên của người kia hết hiệu lực (passwordChangedAt).
+  user.emailVerified = true;
   await user.save();
 
   const token = generateToken(user._id);
