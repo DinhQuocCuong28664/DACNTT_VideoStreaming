@@ -24,6 +24,7 @@
 
 ### 5. Các chức năng chính
 - [x] **Xác thực JWT:** Đăng ký, Đăng nhập, Quên/Đổi mật khẩu (`authRoutes.js`).
+- [x] **Xác minh email khi đăng ký:** liên kết 24 giờ dùng một lần (`POST /api/auth/verify-email/:token`, gửi lại qua `POST /api/auth/resend-verification`, 5 thư/giờ/tài khoản); chưa xác minh thì không tải video lên được; Google hoặc đặt lại mật khẩu nhận lại tài khoản bị đăng ký trước bằng email người khác. Người vận hành đánh dấu thủ công bằng `node backend/scripts/verify-email.js <email>`.
 - [x] **Direct S3 Upload & Telemetry:** Pre-signed PUT URL (`POST /api/videos/initiate-upload`) tạo bản ghi DB trước tránh race condition. Giao diện tích hợp telemetry thời gian thực (tốc độ tải lên MB/s, thời gian ước tính còn lại ETA, phần trăm tiến độ, dung lượng đã truyền tải).
 - [x] **Hủy tải lên an toàn & Dọn dẹp bản ghi nháp:** Tích hợp nút Cancel Upload (`AbortController` ngắt ngay kết nối PUT S3). Hàm `discardDraftVideo()` tự động dọn dẹp bản ghi nháp `UPLOADING` trên MongoDB ở cả 3 lối thoát (Người dùng hủy, Đổi file khác, Lỗi mạng/S3 hỏng) để triệt tiêu rò rỉ bản ghi mồ côi.
 - [x] **Xem video HLS, ABR & Scrubber Hover Tooltip:** Phát `.m3u8` qua `HLS.js`, chuyển đổi linh hoạt giữa các mức 144p / 240p / 360p / 480p / 720p / 1080p. Thanh tua thời gian (timeline scrubber) trang bị tooltip trực quan bám theo con trỏ chuột, hiển thị mốc thời gian tại điểm đang trỏ kèm ảnh xem trước (ảnh bìa cố định, không phải khung hình tại vị trí tua — xem trước theo khung hình đòi hỏi sinh sprite sheet lúc chuyển mã).
