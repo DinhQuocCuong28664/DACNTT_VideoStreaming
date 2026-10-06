@@ -250,6 +250,13 @@ resource "aws_iam_role_policy" "ec2_backend_secrets" {
 #
 # DeleteObject cần cho chức năng xoá video (xoá cả tệp gốc lẫn các tệp HLS đã
 # chuyển mã); ListBucket cần để liệt kê rồi xoá theo tiền tố thư mục.
+#
+# Tải lên multipart (tệp lớn): CreateMultipartUpload, UploadPart và
+# CompleteMultipartUpload đều được cấp bởi s3:PutObject. Hai quyền riêng cần thêm,
+# chỉ trên bucket video gốc: s3:ListMultipartUploadParts để máy chủ tự liệt kê các
+# phần đã lên S3 trước khi ghép (không tin ETag do trình duyệt gửi), và
+# s3:AbortMultipartUpload để huỷ lượt tải dở khi người dùng bỏ giữa chừng. Phần đã
+# tải của một lượt chưa hoàn tất vẫn bị tính phí lưu trữ cho tới khi bị huỷ.
 resource "aws_iam_role_policy" "ec2_backend_s3" {
   name = "${var.project_name}-ec2-backend-s3-policy"
   role = aws_iam_role.ec2_backend.id
@@ -278,6 +285,14 @@ resource "aws_iam_role_policy" "ec2_backend_s3" {
           var.raw_bucket_arn,
           var.processed_bucket_arn
         ]
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:ListMultipartUploadParts",
+          "s3:AbortMultipartUpload"
+        ]
+        Resource = ["${var.raw_bucket_arn}/*"]
       }
       ], var.static_bucket_arn == "" ? [] : [
       # Ảnh đại diện: backend chỉ ký presigned POST vào avatars/, không cần
