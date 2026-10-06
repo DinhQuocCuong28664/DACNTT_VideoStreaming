@@ -100,16 +100,16 @@ const buildForceKeyFramesExpr = (segmentDuration = config.ffmpeg.segmentDuration
  * ★ Core FFmpeg HLS Transcoder
  *
  * Transcode a video file into HLS format with multiple renditions (ABR).
- * Output structure:
+ * Các mức lấy từ config.ffmpeg.renditions (144p → 1080p) rồi bị planRenditions
+ * cắt theo kích thước nguồn: không bao giờ phóng to quá nguồn.
+ * Output structure (ví dụ nguồn 1080p; nguồn nhỏ hơn có ít thư mục mức hơn):
  *   outputDir/
  *   ├── master.m3u8        (Master Playlist)
- *   ├── 360p/
+ *   ├── 144p/
  *   │   ├── playlist.m3u8  (Media Playlist)
  *   │   ├── segment_000.ts
  *   │   └── ...
- *   ├── 720p/
- *   │   ├── playlist.m3u8
- *   │   └── ...
+ *   ├── 240p/ 360p/ 480p/ 720p/   (cùng cấu trúc)
  *   ├── 1080p/
  *   │   ├── playlist.m3u8
  *   │   └── ...
