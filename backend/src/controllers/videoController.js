@@ -34,6 +34,47 @@ const initiateUpload = async (req, res, next) => {
 };
 
 /**
+ * @route   GET /api/videos/upload-config
+ * @desc    Giới hạn tải lên đang áp dụng (dung lượng tối đa, ngưỡng multipart)
+ * @access  Public
+ */
+const getUploadConfig = (req, res) => {
+  res.status(200).json({ success: true, data: videoService.getUploadConfig() });
+};
+
+/**
+ * @route   POST /api/videos/:id/multipart/parts
+ * @desc    Cấp URL PUT cho một số phần của lượt tải multipart đang dở
+ * @access  Private (chủ video)
+ */
+const getMultipartPartUrls = async (req, res, next) => {
+  try {
+    const parts = await videoService.getMultipartPartUrls(req.params.id, req.user._id, req.body.partNumbers);
+    res.status(200).json({ success: true, data: { parts } });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @route   POST /api/videos/:id/multipart/complete
+ * @desc    Ghép các phần đã tải lên và chuyển UPLOADING → PROCESSING
+ * @access  Private (chủ video)
+ */
+const completeMultipartUpload = async (req, res, next) => {
+  try {
+    const video = await videoService.completeMultipartUpload(req.params.id, req.user._id);
+    res.status(200).json({
+      success: true,
+      message: 'Upload completed — video is now being processed',
+      data: { video },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
  * @route   PATCH /api/videos/:id/confirm-upload
  * @desc    Confirm upload complete — transition UPLOADING → PROCESSING
  * @access  Private
@@ -351,6 +392,9 @@ const getRelatedVideos = async (req, res, next) => {
 module.exports = {
   initiateUpload,
   confirmUpload,
+  getUploadConfig,
+  getMultipartPartUrls,
+  completeMultipartUpload,
   getAllVideos,
   getVideoById,
   getPlaybackAuth,

@@ -4,8 +4,15 @@ const {
   DeleteObjectCommand,
   ListObjectsV2Command,
   DeleteObjectsCommand,
+  CreateMultipartUploadCommand,
+  UploadPartCommand,
+  ListPartsCommand,
+  CompleteMultipartUploadCommand,
+  AbortMultipartUploadCommand,
 } = require('@aws-sdk/client-s3');
 const { createPresignedPost } = require('@aws-sdk/s3-presigned-post');
+const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
+const { PART_URL_TTL_SECONDS } = require('../config/uploadLimits');
 
 // Initialize S3 Client (AWS SDK v3)
 //
@@ -73,6 +80,85 @@ const createUploadPost = async ({ bucket, key, contentType, maxBytes, expiresIn 
     Conditions: [['content-length-range', 1, maxBytes]],
     Expires: expiresIn,
   });
+
+// ── Tải lên theo từng phần (multipart) ────────────────────────────────────────
+//
+// Presigned POST không dùng được cho multipart, nên giới hạn dung lượng không còn
+// nằm trong một policy duy nhất. Thay vào đó mỗi URL phần được ký kèm
+// `content-length` đúng bằng dung lượng máy chủ tính cho phần đó (đã kiểm chứng:
+// có ContentLength thì SignedHeaders = content-length;host, không có thì chỉ
+// `host` và S3 nhận phần dung lượng bất kỳ). S3 từ chối phần có dung lượng khác,
+// và máy chủ chỉ cấp URL cho các số phần nằm trong tệp.
+//
+// Client riêng với requestChecksumCalculation = WHEN_REQUIRED. Mặc định của SDK
+// mới là WHEN_SUPPORTED, khiến URL ký sẵn bị chèn `x-amz-checksum-crc32=AAAAAA==`
+// (checksum của body rỗng) cùng `x-amz-sdk-checksum-algorithm=CRC32`. Đã thử với
+// S3 thật (ap-southeast-1): S3 VẪN nhận phần đi kèm giá trị đó (HTTP 200), nên đó
+// không phải lỗi đang xảy ra. Nhưng giá trị ấy sai với mọi phần có nội dung và
+// chỉ qua được vì S3 hiện không kiểm tra nó; bỏ nó đi thay vì dựa vào việc S3 bỏ
+// qua một checksum sai. Dùng chung client này cho CreateMultipartUpload để lượt
+// tải không bị gắn thuật toán checksum mà các phần ký sẵn không thể đáp ứng.
+const multipartClient = new S3Client({ ...s3ClientConfig, requestChecksumCalculation: 'WHEN_REQUIRED' });
+
+const rawBucket = () => process.env.S3_RAW_BUCKET_NAME;
+
+/** Mở một lượt tải multipart, trả về uploadId. Content-Type do máy chủ đã kiểm tra. */
+const createMultipartUpload = async ({ key, contentType }) => {
+  const result = await multipartClient.send(
+    new CreateMultipartUploadCommand({ Bucket: rawBucket(), Key: key, ContentType: contentType })
+  );
+  return result.UploadId;
+};
+
+/** URL PUT cho đúng một phần, ký kèm dung lượng chính xác của phần đó. */
+const presignUploadPart = ({ key, uploadId, partNumber, contentLength, expiresIn = PART_URL_TTL_SECONDS }) =>
+  getSignedUrl(
+    multipartClient,
+    new UploadPartCommand({
+      Bucket: rawBucket(),
+      Key: key,
+      UploadId: uploadId,
+      PartNumber: partNumber,
+      ContentLength: contentLength,
+    }),
+    { expiresIn }
+  );
+
+/**
+ * Các phần S3 thực sự đã nhận, theo thứ tự số phần. Máy chủ dùng danh sách này
+ * (ETag lấy từ S3) để ghép, không dùng gì do trình duyệt gửi.
+ *
+ * @returns {Promise<Array<{partNumber: number, etag: string, size: number}>>}
+ */
+const listParts = async ({ key, uploadId }) => {
+  const parts = [];
+  let marker;
+  do {
+    const page = await multipartClient.send(
+      new ListPartsCommand({ Bucket: rawBucket(), Key: key, UploadId: uploadId, PartNumberMarker: marker })
+    );
+    for (const p of page.Parts || []) {
+      parts.push({ partNumber: p.PartNumber, etag: p.ETag, size: p.Size });
+    }
+    marker = page.IsTruncated ? page.NextPartNumberMarker : undefined;
+  } while (marker);
+  return parts;
+};
+
+/** Ghép các phần thành một object; sự kiện ObjectCreated:CompleteMultipartUpload sinh ra từ đây. */
+const completeMultipartUpload = ({ key, uploadId, parts }) =>
+  multipartClient.send(
+    new CompleteMultipartUploadCommand({
+      Bucket: rawBucket(),
+      Key: key,
+      UploadId: uploadId,
+      MultipartUpload: { Parts: parts.map((p) => ({ PartNumber: p.partNumber, ETag: p.etag })) },
+    })
+  );
+
+/** Huỷ lượt tải và xoá các phần đã lên (các phần chưa huỷ vẫn bị tính phí lưu trữ). */
+const abortMultipartUpload = ({ key, uploadId }) =>
+  multipartClient.send(new AbortMultipartUploadCommand({ Bucket: rawBucket(), Key: key, UploadId: uploadId }));
 
 /**
  * Đuôi tệp ảnh đại diện, suy từ MIME đã kiểm tra ở validateAvatarMetadata.
@@ -204,6 +290,11 @@ module.exports = {
   generateS3Key,
   generateVideoUploadPost,
   createUploadPost,
+  createMultipartUpload,
+  presignUploadPart,
+  listParts,
+  completeMultipartUpload,
+  abortMultipartUpload,
   generateAvatarKey,
   isAvatarKeyOf,
   generateAvatarUploadPost,

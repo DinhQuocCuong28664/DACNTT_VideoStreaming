@@ -5,7 +5,8 @@ const Report = require('../models/Report');
 const s3Service = require('./s3Service');
 const { publicListingFilter } = require('../utils/moderation');
 const httpError = require('../utils/httpError');
-const { MAX_VIDEO_SIZE_BYTES } = require('../middleware/validateRequest');
+const limits = require('../config/uploadLimits');
+const { MAX_VIDEO_SIZE_BYTES } = limits;
 
 const isAdminUser = (user) => Boolean(user && user.role === 'admin');
 
@@ -20,9 +21,13 @@ const LIST_PROJECTION = '-likes -dislikes';
  * Initiate upload flow:
  * 1. Create DB record FIRST (status: UPLOADING) to get Mongo _id (videoId)
  * 2. Generate S3 key using Mongo _id: videos/{userId}/{videoId}/{filename}
- * 3. Generate a presigned POST (url + fields) for the client; S3 enforces the
- *    exact key, the validated Content-Type and the 2 GB ceiling
- * 4. Return video record + upload + s3Key
+ * 3a. Tệp nhỏ (hoặc không khai dung lượng): a presigned POST (url + fields) for
+ *     the client; S3 enforces the exact key, the validated Content-Type and the
+ *     size ceiling
+ * 3b. Tệp lớn (khai dung lượng > ngưỡng multipart): mở lượt tải multipart và trả
+ *     về kích thước phần; URL của từng phần được cấp sau, theo yêu cầu, ngay
+ *     trước khi tải phần đó (getMultipartPartUrls)
+ * 4. Return video record + upload (or multipart) + s3Key
  */
 const initiateUpload = async (userId, videoData) => {
   const video = await Video.create({
@@ -39,11 +44,148 @@ const initiateUpload = async (userId, videoData) => {
 
   const s3Key = s3Service.generateS3Key(userId, video._id.toString(), videoData.filename);
   video.rawS3Key = s3Key;
+
+  if (limits.usesMultipart(videoData.fileSize)) {
+    try {
+      video.multipartUploadId = await s3Service.createMultipartUpload({
+        key: s3Key,
+        contentType: videoData.mimeType,
+      });
+      video.multipartPartSize = limits.MULTIPART_PART_SIZE_BYTES;
+      await video.save();
+    } catch (err) {
+      // Không để lại bản nháp mà người dùng không thể tiếp tục.
+      await Video.deleteOne({ _id: video._id }).catch(() => {});
+      throw err;
+    }
+
+    return {
+      video,
+      s3Key,
+      multipart: {
+        partSize: limits.MULTIPART_PART_SIZE_BYTES,
+        partCount: limits.countParts(videoData.fileSize),
+        maxPartUrlsPerRequest: limits.MAX_PART_URLS_PER_REQUEST,
+      },
+    };
+  }
+
   await video.save();
 
-  const upload = await s3Service.generateVideoUploadPost(s3Key, videoData.mimeType, MAX_VIDEO_SIZE_BYTES);
+  // Một lệnh POST đơn lẻ không nhận quá 5 GiB, dù trần tải lên có cao hơn.
+  const postCeiling = Math.min(MAX_VIDEO_SIZE_BYTES, limits.SINGLE_UPLOAD_MAX_BYTES);
+  const upload = await s3Service.generateVideoUploadPost(s3Key, videoData.mimeType, postCeiling);
 
   return { video, upload, s3Key };
+};
+
+/** Các giới hạn tải lên đang áp dụng, để frontend không phải giữ con số riêng. */
+const getUploadConfig = () => ({
+  maxVideoSizeBytes: limits.MAX_VIDEO_SIZE_BYTES,
+  multipartThresholdBytes: limits.MULTIPART_THRESHOLD_BYTES,
+});
+
+/**
+ * Cấp URL PUT cho một số phần của lượt tải multipart đang dở, mỗi URL ký đúng
+ * dung lượng của phần đó. Chỉ chủ video, chỉ khi còn UPLOADING, chỉ cho các số
+ * phần nằm trong tệp; mỗi lần tối đa MAX_PART_URLS_PER_REQUEST phần.
+ */
+const getMultipartPartUrls = async (videoId, userId, partNumbers) => {
+  const video = await Video.findOne({ _id: videoId, user: userId }).select('+multipartUploadId');
+  if (!video) throw httpError(404, 'Video not found or not owned by user');
+  if (video.status !== 'UPLOADING' || !video.multipartUploadId) {
+    throw httpError(409, 'No multipart upload in progress for this video', 'NO_MULTIPART_UPLOAD');
+  }
+
+  const wanted = Array.isArray(partNumbers) ? partNumbers : [];
+  if (
+    wanted.length === 0 ||
+    wanted.length > limits.MAX_PART_URLS_PER_REQUEST ||
+    new Set(wanted).size !== wanted.length
+  ) {
+    throw httpError(400, `partNumbers must hold 1-${limits.MAX_PART_URLS_PER_REQUEST} distinct part numbers`);
+  }
+
+  const partSize = video.multipartPartSize || limits.MULTIPART_PART_SIZE_BYTES;
+  const sizes = wanted.map((n) => limits.partSizeOf(n, video.fileSize, partSize));
+  if (sizes.some((size) => size === null)) {
+    throw httpError(400, `Part numbers must be integers from 1 to ${limits.countParts(video.fileSize, partSize)}`);
+  }
+
+  return Promise.all(
+    wanted.map(async (partNumber, i) => ({
+      partNumber,
+      size: sizes[i],
+      url: await s3Service.presignUploadPart({
+        key: video.rawS3Key,
+        uploadId: video.multipartUploadId,
+        partNumber,
+        contentLength: sizes[i],
+      }),
+    }))
+  );
+};
+
+/**
+ * Ghép lượt tải multipart và chuyển UPLOADING → PROCESSING (gộp phần việc của
+ * confirmUpload).
+ *
+ * Máy chủ không tin gì từ trình duyệt ở bước này: nó liệt kê các phần S3 thực sự
+ * nhận được và chỉ ghép khi đủ mọi phần với đúng dung lượng đã ký. Gọi lại sau
+ * khi đã ghép xong là vô hại: video đã qua UPLOADING thì trả về nguyên trạng.
+ */
+const completeMultipartUpload = async (videoId, userId) => {
+  const video = await Video.findOne({ _id: videoId, user: userId }).select('+multipartUploadId');
+  if (!video) throw httpError(404, 'Video not found or not owned by user');
+  if (video.status !== 'UPLOADING') return video;
+  if (!video.multipartUploadId) {
+    throw httpError(409, 'No multipart upload in progress for this video', 'NO_MULTIPART_UPLOAD');
+  }
+
+  const key = video.rawS3Key;
+  const uploadId = video.multipartUploadId;
+  const partSize = video.multipartPartSize || limits.MULTIPART_PART_SIZE_BYTES;
+  const expectedCount = limits.countParts(video.fileSize, partSize);
+
+  let parts;
+  try {
+    parts = await s3Service.listParts({ key, uploadId });
+  } catch (err) {
+    // Lượt trước đã ghép xong nhưng chưa kịp ghi DB (máy chủ chết giữa chừng):
+    // S3 không còn biết uploadId nhưng object đã có.
+    if (err.name === 'NoSuchUpload' && (await s3Service.objectExists(process.env.S3_RAW_BUCKET_NAME, key))) {
+      return markUploadComplete(video);
+    }
+    throw err;
+  }
+
+  const complete =
+    parts.length === expectedCount &&
+    parts.every((p, i) => p.partNumber === i + 1 && p.size === limits.partSizeOf(i + 1, video.fileSize, partSize));
+  if (!complete) {
+    throw httpError(400, 'Upload is incomplete: some parts are missing or have the wrong size', 'UPLOAD_INCOMPLETE');
+  }
+
+  await s3Service.completeMultipartUpload({ key, uploadId, parts });
+  return markUploadComplete(video);
+};
+
+const markUploadComplete = async (video) => {
+  video.status = 'PROCESSING';
+  video.multipartUploadId = undefined;
+  video.multipartPartSize = undefined;
+  await video.save();
+  return video;
+};
+
+/** Huỷ lượt tải multipart của một video nháp, bỏ qua lỗi: dọn dẹp không được chặn việc xoá. */
+const abortMultipartQuietly = async (video) => {
+  if (!video.multipartUploadId || !video.rawS3Key) return;
+  try {
+    await s3Service.abortMultipartUpload({ key: video.rawS3Key, uploadId: video.multipartUploadId });
+  } catch (err) {
+    console.warn(`⚠️ Failed to abort multipart upload for ${video.rawS3Key}:`, err.message);
+  }
 };
 
 /**
@@ -414,12 +556,18 @@ const updateVideo = async (videoId, userId, updateData) => {
  * Delete video (remove from DB + delete both raw & processed HLS S3 objects + comments)
  */
 const deleteVideo = async (videoId, userId) => {
-  const video = await Video.findOne({ _id: videoId, user: userId });
+  const video = await Video.findOne({ _id: videoId, user: userId }).select('+multipartUploadId');
 
   if (!video) {
     const error = new Error('Video not found or not owned by user');
     error.statusCode = 404;
     throw error;
+  }
+
+  // 0. Huỷ lượt tải multipart đang dở: các phần đã lên S3 vẫn bị tính phí lưu trữ
+  //    cho tới khi bị huỷ, và DeleteObject không đụng tới chúng.
+  if (video.status === 'UPLOADING') {
+    await abortMultipartQuietly(video);
   }
 
   // 1. Delete raw video from S3 Raw Bucket
@@ -583,6 +731,9 @@ const getRelatedVideos = async (videoId, limit = 8, requesterUser = null) => {
 module.exports = {
   initiateUpload,
   confirmUpload,
+  getUploadConfig,
+  getMultipartPartUrls,
+  completeMultipartUpload,
   getVideoById,
   getPlayableVideo,
   getAllVideos,

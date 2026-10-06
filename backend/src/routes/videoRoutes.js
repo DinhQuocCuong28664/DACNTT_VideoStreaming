@@ -7,6 +7,9 @@ const { uploadLimiter, reportLimiter } = require('../middleware/rateLimiter');
 const {
   initiateUpload,
   confirmUpload,
+  getUploadConfig,
+  getMultipartPartUrls,
+  completeMultipartUpload,
   getAllVideos,
   getVideoById,
   getPlaybackAuth,
@@ -25,6 +28,8 @@ const { reportVideo } = require('../controllers/moderationController');
 
 // Public routes (with optional auth to detect owner)
 router.get('/', getAllVideos);
+// Phải đứng trước '/:id', nếu không 'upload-config' bị coi là một video ID.
+router.get('/upload-config', getUploadConfig);
 router.get('/user/:userId', optionalAuth, getUserVideos);
 router.get('/:id', optionalAuth, getVideoById);
 router.get('/:id/related', optionalAuth, getRelatedVideos);
@@ -42,6 +47,9 @@ router.post(
   initiateUpload
 );
 router.patch('/:id/confirm-upload', auth, confirmUpload);
+// Tải lên theo từng phần (tệp lớn): xin URL cho từng nhóm phần, rồi ghép.
+router.post('/:id/multipart/parts', auth, validateRequest(['partNumbers']), getMultipartPartUrls);
+router.post('/:id/multipart/complete', auth, completeMultipartUpload);
 router.post('/:id/like', auth, toggleLike);
 router.post('/:id/dislike', auth, toggleDislike);
 router.post('/:id/comments', auth, addComment);

@@ -34,6 +34,18 @@ const videoSchema = new mongoose.Schema(
     rawS3Key: {
       type: String,
     },
+
+    // Tải lên theo từng phần (multipart), chỉ có khi video đang UPLOADING và
+    // tệp lớn. `multipartUploadId` không bao giờ được trả ra ngoài (xem toJSON)
+    // và bị xoá khi lượt tải hoàn tất hoặc bị huỷ. Kích thước phần được lưu lại
+    // để đổi hằng số sau này không làm hỏng các lượt tải đang dở.
+    multipartUploadId: {
+      type: String,
+      select: false,
+    },
+    multipartPartSize: {
+      type: Number,
+    },
     hlsUrl: {
       type: String, // CloudFront URL to master.m3u8
     },
@@ -163,6 +175,7 @@ videoSchema.index({ 'moderation.openReports': -1, createdAt: -1 });
 videoSchema.methods.toJSON = function () {
   const video = this.toObject();
   delete video.__v;
+  delete video.multipartUploadId;
 
   // Chỉ trả số lượng, không trả danh sách ID người đã Like/Dislike: endpoint
   // xem video là công khai, nên trước đây bất kỳ ai cũng đọc được ai đã bấm
