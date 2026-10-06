@@ -4,6 +4,7 @@ const path = require('path');
 const {
   displaySize,
   planRenditions,
+  ladderForDuration,
   buildFFmpegArgs,
   generateMasterPlaylist,
 } = require('../src/transcoder');
@@ -88,6 +89,41 @@ describe('thang bitrate cấu hình', () => {
       expect(r.width % 2).toBe(0);
       expect(r.height % 2).toBe(0);
     }
+  });
+});
+
+describe('ladderForDuration — thang theo độ dài video', () => {
+  const names = (ladder) => ladder.map((r) => r.name);
+  const limit = config.ffmpeg.fullLadderMaxSeconds;
+
+  it('video ngắn nhận đủ sáu mức', () => {
+    expect(names(ladderForDuration(60))).toEqual(['144p', '240p', '360p', '480p', '720p', '1080p']);
+  });
+
+  it('đúng ngưỡng vẫn nhận đủ, vượt ngưỡng một giây thì chỉ còn thang cũ', () => {
+    expect(ladderForDuration(limit)).toHaveLength(6);
+    expect(names(ladderForDuration(limit + 1))).toEqual(['360p', '720p', '1080p']);
+  });
+
+  it('video nhiều giờ chỉ nhận thang cũ, với đúng các con số cũ', () => {
+    const ladder = ladderForDuration(4 * 3600);
+    expect(names(ladder)).toEqual(['360p', '720p', '1080p']);
+    expect(ladder.map((r) => r.videoBitrate)).toEqual(['400k', '1500k', '4000k']);
+  });
+
+  it('không đọc được thời lượng (0, NaN, undefined) thì chọn thang rẻ, vì không biết video có dài không', () => {
+    for (const unknown of [0, NaN, undefined, -5]) {
+      expect(names(ladderForDuration(unknown))).toEqual(['360p', '720p', '1080p']);
+    }
+  });
+
+  it('ngưỡng mặc định là 20 phút', () => {
+    expect(config.ffmpeg.fullLadderMaxSeconds).toBe(1200);
+  });
+
+  it('kết hợp với planRenditions: video dọc dài chỉ ra ba mức, không bị đệm viền', () => {
+    const plan = planRenditions({ width: 1080, height: 1920 }, ladderForDuration(3 * 3600));
+    expect(sizes(plan)).toEqual(['360x640', '720x1280', '1080x1920']);
   });
 });
 

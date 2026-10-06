@@ -64,6 +64,20 @@ const config = {
   ffmpeg: {
     segmentDuration: 6, // seconds per HLS segment
     thumbnailTime: 5,   // extract thumbnail at this second
+
+    // Video dài hơn ngưỡng này (giây), hoặc không đọc được thời lượng, chỉ nhận
+    // thang cũ 360p/720p/1080p thay vì cả sáu mức.
+    //
+    // Một job là một container, một FFmpeg, mã hoá tuần tự nên thời gian tăng
+    // tuyến tính theo độ dài: đo trên Fargate 1 vCPU, video 26,7 phút mất 5.917 s
+    // (hệ số 3,7) với thang cũ, trong khi job bị dừng ở 7.200 s
+    // (docs/results/transcode-timing.json). Ba mức thêm vào làm thời gian tăng
+    // thêm ~40% (đo cục bộ), nên với video dài chúng đẩy job qua giới hạn thay
+    // vì chỉ làm nó chậm hơn. Ngưỡng 20 phút giữ nguyên khả năng xử lý hiện có
+    // của video dài; video ngắn vẫn nhận đủ sáu mức. Bước tới sẽ chuyển mã song
+    // song theo đoạn, khi đó mức thấp quay lại cho mọi độ dài và ngưỡng này bỏ.
+    fullLadderMaxSeconds: Math.floor(positiveNumber(process.env.FULL_LADDER_MAX_SECONDS, 1200)),
+    longVideoRenditions: ['360p', '720p', '1080p'],
     // Thang chất lượng, xếp TĂNG DẦN: thứ tự này quyết định thứ tự trong
     // master.m3u8 và việc mức nào bị bỏ khi chạm trần kích thước nguồn
     // (planRenditions). Ba mức 360p/720p/1080p là thang cũ, giữ nguyên từng con
