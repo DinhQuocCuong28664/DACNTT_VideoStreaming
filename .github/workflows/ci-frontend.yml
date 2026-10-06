@@ -49,6 +49,11 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      # node:test có sẵn trong Node, không thêm dependency. Hiện phủ logic tải
+      # lên theo từng phần (src/api/multipartUpload.test.js).
+      - name: Unit tests
+        run: npm test
+
       - name: Build (mode=production, catches build-time errors)
         run: npm run build
 

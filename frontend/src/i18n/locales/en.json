@@ -71,7 +71,7 @@
   },
   "upload": {
     "dropzone": "Drag and drop a video file to upload",
-    "dropzoneHint": "MP4, MOV, AVI, MKV, WebM or MPEG, up to 2 GB",
+    "dropzoneHint": "MP4, MOV, AVI, MKV, WebM or MPEG, up to {{max}}",
     "chooseAnother": "Choose another file",
     "titleLabel": "Title (required)",
     "titlePlaceholder": "Enter the video title",

@@ -70,7 +70,7 @@
   },
   "upload": {
     "dropzone": "Kéo và thả tệp video để tải lên",
-    "dropzoneHint": "MP4, MOV, AVI, MKV, WebM hoặc MPEG, tối đa 2 GB",
+    "dropzoneHint": "MP4, MOV, AVI, MKV, WebM hoặc MPEG, tối đa {{max}}",
     "chooseAnother": "Chọn file khác",
     "titleLabel": "Tiêu đề (bắt buộc)",
     "titlePlaceholder": "Nhập tiêu đề video",
