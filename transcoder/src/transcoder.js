@@ -100,16 +100,16 @@ const buildForceKeyFramesExpr = (segmentDuration = config.ffmpeg.segmentDuration
  * ★ Core FFmpeg HLS Transcoder
  *
  * Transcode a video file into HLS format with multiple renditions (ABR).
- * Output structure:
+ * Các mức lấy từ config.ffmpeg.renditions (144p → 1080p) rồi bị planRenditions
+ * cắt theo kích thước nguồn: không bao giờ phóng to quá nguồn.
+ * Output structure (ví dụ nguồn 1080p; nguồn nhỏ hơn có ít thư mục mức hơn):
  *   outputDir/
  *   ├── master.m3u8        (Master Playlist)
- *   ├── 360p/
+ *   ├── 144p/
  *   │   ├── playlist.m3u8  (Media Playlist)
  *   │   ├── segment_000.ts
  *   │   └── ...
- *   ├── 720p/
- *   │   ├── playlist.m3u8
- *   │   └── ...
+ *   ├── 240p/ 360p/ 480p/ 720p/   (cùng cấu trúc)
  *   ├── 1080p/
  *   │   ├── playlist.m3u8
  *   │   └── ...
@@ -130,7 +130,7 @@ const transcodeToHLS = async (inputPath, outputDir) => {
 
   // Step 2: Chọn các mức theo kích thước nguồn, rồi tạo thư mục đầu ra
   const source = width && height ? { width, height } : null;
-  const renditions = planRenditions(source);
+  const renditions = planRenditions(source, ladderForDuration(duration));
   console.log(
     `📐 Source ${source ? `${width}x${height}` : 'size unknown'} → ` +
       renditions.map((r) => `${r.name}=${r.outWidth || r.width}x${r.outHeight || r.height}`).join(', ')
@@ -649,6 +649,20 @@ const displaySize = (stream) => {
 const evenDimension = (value) => Math.max(2, 2 * Math.round(value / 2));
 
 /**
+ * Thang chất lượng dùng cho một video theo độ dài của nó.
+ *
+ * Video ngắn nhận đủ thang cấu hình; video dài (hoặc không đọc được thời lượng,
+ * như WebM ghi từ trình duyệt vốn thiếu metadata này) chỉ nhận
+ * `longVideoRenditions`, giữ nguyên chi phí mã hoá như trước khi có ba mức thấp.
+ * Lý do và số đo nằm ở chú thích của `fullLadderMaxSeconds` trong config.
+ */
+const ladderForDuration = (duration, ladder = config.ffmpeg) => {
+  const { renditions, fullLadderMaxSeconds, longVideoRenditions } = ladder;
+  if (duration > 0 && duration <= fullLadderMaxSeconds) return renditions;
+  return renditions.filter((r) => longVideoRenditions.includes(r.name));
+};
+
+/**
  * Chọn các mức chất lượng theo kích thước nguồn.
  *
  * Bản trước luôn sinh đủ 360p/720p/1080p trong khung 16:9 cố định, kèm đệm
@@ -803,4 +817,5 @@ module.exports = {
   pickThumbnailTime,
   displaySize,
   planRenditions,
+  ladderForDuration,
 };

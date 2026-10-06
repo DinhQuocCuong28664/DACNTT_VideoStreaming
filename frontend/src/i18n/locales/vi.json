@@ -91,7 +91,7 @@
     "errorNoTitle": "Vui lòng điền tiêu đề video",
     "errorFailed": "Upload thất bại. Vui lòng thử lại.",
     "pageTitle": "Tải video lên",
-    "privateUntilReady": "Video được xử lý sang 360p, 720p và 1080p sau khi tải lên xong.",
+    "privateUntilReady": "Video được xử lý thành các mức chất lượng từ 144p đến 1080p (không vượt quá độ phân giải gốc) sau khi tải lên xong.",
     "selectFile": "Chọn tệp",
     "tagsLabel": "Thẻ",
     "tagsHelp": "Các thẻ cách nhau bằng dấu phẩy.",
@@ -102,7 +102,7 @@
     "readyToUpload": "Chưa có gì được tải lên cho tới khi bạn bấm Tải lên.",
     "back": "Quay lại",
     "next": "Tiếp",
-    "transferNote": "Tệp đi thẳng vào kho lưu trữ. Việc xử lý sang 360p, 720p và 1080p bắt đầu sau khi truyền xong.",
+    "transferNote": "Tệp đi thẳng vào kho lưu trữ. Việc xử lý thành các mức chất lượng từ 144p đến 1080p bắt đầu sau khi truyền xong.",
     "step": {
       "details": "Chi tiết",
       "visibility": "Chế độ hiển thị"
@@ -308,7 +308,7 @@
     "languageHelp": "Đổi ngôn ngữ của menu và nút bấm, không đổi tiêu đề video."
   },
   "landing": {
-    "heroSubtitle": "Tải lên một lần, VidShare tự chuyển mã sang 360p, 720p và 1080p rồi phát qua CDN toàn cầu.",
+    "heroSubtitle": "Tải lên một lần, VidShare tự chuyển mã thành các mức chất lượng từ 144p đến 1080p rồi phát qua CDN toàn cầu.",
     "heroExplore": "Xem danh sách video",
     "statCostLabel": "Chi phí AWS hằng tháng thấp hơn",
     "statCostDesc": "So với một máy EC2 chạy suốt ngày đêm, đã tính CloudFront ở cả hai vế. Riêng compute và lưu trữ giảm 98,87%.",
@@ -318,7 +318,7 @@
     "statCicdDesc": "11 module Terraform và 7 workflow GitHub Actions có kiểm tra DevSecOps.",
     "featuresSubtitle": "Giải pháp toàn diện từ khâu tải lên, nén video bất đồng bộ đến phân phối đa luồng bảo mật trên AWS Cloud.",
     "featureHlsTitle": "Chuyển mã HLS và ABR tự động",
-    "featureHlsDesc": "Container FFmpeg tự động phân tách video gốc thành các đoạn `.ts` (6s) và khởi tạo file `master.m3u8` nén 3 độ phân giải (360p, 720p, 1080p).",
+    "featureHlsDesc": "Container FFmpeg tự động phân tách video gốc thành các đoạn `.ts` (6s) và khởi tạo file `master.m3u8` liệt kê tối đa 6 mức (144p, 240p, 360p, 480p, 720p, 1080p), không vượt quá độ phân giải gốc.",
     "featureScaleDesc": "Khởi tạo AWS Batch Job trên Fargate SPOT giải phóng 100% tài nguyên khi không có video (Scale to 0), tối ưu hóa bài toán Idle Resource Cost.",
     "featureEventDesc": "Luồng xử lý bất đồng bộ kết nối Amazon S3 Event Notification, Amazon SQS Queue, AWS Lambda Submitter và CSDL MongoDB Atlas.",
     "featureCdnTitle": "Phân phối CloudFront CDN và OAC",
