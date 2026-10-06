@@ -757,10 +757,54 @@ const getVideoDuration = async (inputPath) => (await probeVideo(inputPath)).dura
 /**
  * Run FFmpeg process with progress logging
  */
+/** FFmpeg không thể mã hoá xong video trong ngân sách thời gian của job. */
+class EncodeTooSlowError extends Error {
+  constructor(message, projectedSeconds) {
+    super(message);
+    this.name = 'EncodeTooSlowError';
+    this.code = 'ENCODE_TOO_SLOW';
+    this.projectedSeconds = projectedSeconds;
+  }
+}
+
+/**
+ * Từ tiến độ đã đo, dự kiến FFmpeg cần bao lâu để mã hoá hết video.
+ *
+ * Tốc độ trung bình từ đầu job (vị trí video / thời gian đã chạy) cho thời gian
+ * dự kiến = độ dài video × giây-chạy-mỗi-giây-video. Không hiệu chuẩn theo số
+ * vCPU hay thang chất lượng: nó đo đúng thứ job đang làm. Hàm thuần, để kiểm
+ * thử không cần chạy FFmpeg.
+ *
+ * @returns {{enough: boolean, projectedSeconds: number|null, breach: boolean}}
+ *   `enough` false khi chưa đủ dữ liệu để kết luận (đang khởi động, hoặc không
+ *   biết độ dài video); `breach` true khi dự kiến vượt ngân sách × biên độ.
+ */
+const assessEncodeProgress = (
+  { elapsedSeconds, positionSeconds, totalDuration },
+  { maxEncodeSeconds, encodeGuard } = config.ffmpeg
+) => {
+  const { warmupSeconds, minPositionSeconds, margin } = encodeGuard;
+  if (!(totalDuration > 0) || !(positionSeconds > 0)) {
+    return { enough: false, projectedSeconds: null, breach: false };
+  }
+  if (elapsedSeconds < warmupSeconds || positionSeconds < minPositionSeconds) {
+    return { enough: false, projectedSeconds: null, breach: false };
+  }
+  const projectedSeconds = totalDuration * (elapsedSeconds / positionSeconds);
+  return { enough: true, projectedSeconds, breach: projectedSeconds > maxEncodeSeconds * margin };
+};
+
+/** "47 phút" dưới 2 giờ, "3,4 giờ" từ 2 giờ trở lên. */
+const formatSpan = (seconds) =>
+  seconds < 7200 ? `${Math.round(seconds / 60)} phút` : `${(seconds / 3600).toFixed(1).replace('.', ',')} giờ`;
+
 const runFFmpeg = (args, totalDuration) => {
   return new Promise((resolve, reject) => {
     const proc = spawn('ffmpeg', args);
     const startTime = Date.now();
+    const { maxEncodeSeconds, encodeGuard } = config.ffmpeg;
+    let breachSince = null;
+    let abortError = null;
 
     proc.stderr.on('data', (data) => {
       const line = data.toString();
@@ -772,14 +816,40 @@ const runFFmpeg = (args, totalDuration) => {
         const seconds = parseFloat(timeMatch[3]);
         const currentTime = hours * 3600 + minutes * 60 + seconds;
         const progress = totalDuration > 0 ? Math.min((currentTime / totalDuration) * 100, 100) : 0;
-        const elapsed = ((Date.now() - startTime) / 1000).toFixed(0);
+        const now = Date.now();
+        const elapsed = ((now - startTime) / 1000).toFixed(0);
         process.stdout.write(`\r   ⏳ Progress: ${progress.toFixed(1)}% | Elapsed: ${elapsed}s`);
+
+        // Rào chắn thời gian: bỏ cuộc sớm khi chắc chắn không kịp, thay vì chạy
+        // tới khi job bị dừng. Xem chú thích của `maxEncodeSeconds` trong config.
+        if (!abortError) {
+          const verdict = assessEncodeProgress({
+            elapsedSeconds: (now - startTime) / 1000,
+            positionSeconds: currentTime,
+            totalDuration,
+          });
+          if (verdict.breach) {
+            breachSince = breachSince === null ? now : breachSince;
+            if (now - breachSince >= encodeGuard.sustainSeconds * 1000) {
+              abortError = new EncodeTooSlowError(
+                `Video quá dài so với tài nguyên của job: mã hoá dự kiến mất ~${formatSpan(verdict.projectedSeconds)}, ` +
+                  `vượt ngân sách ${formatSpan(maxEncodeSeconds)} (video dài ${formatSpan(totalDuration)})`,
+                verdict.projectedSeconds
+              );
+              proc.kill('SIGKILL');
+            }
+          } else {
+            breachSince = null;
+          }
+        }
       }
     });
 
     proc.on('close', (code) => {
       process.stdout.write('\n');
-      if (code === 0) {
+      if (abortError) {
+        reject(abortError);
+      } else if (code === 0) {
         const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
         console.log(`✅ FFmpeg finished in ${totalTime}s`);
         resolve();
@@ -818,4 +888,7 @@ module.exports = {
   displaySize,
   planRenditions,
   ladderForDuration,
+  assessEncodeProgress,
+  runFFmpeg,
+  EncodeTooSlowError,
 };

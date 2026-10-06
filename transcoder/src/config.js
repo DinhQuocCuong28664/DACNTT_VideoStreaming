@@ -78,6 +78,28 @@ const config = {
     // song theo đoạn, khi đó mức thấp quay lại cho mọi độ dài và ngưỡng này bỏ.
     fullLadderMaxSeconds: Math.floor(positiveNumber(process.env.FULL_LADDER_MAX_SECONDS, 1200)),
     longVideoRenditions: ['360p', '720p', '1080p'],
+
+    // Ngân sách thời gian (giây) cho riêng bước FFmpeg của một job.
+    //
+    // Job Batch bị dừng ở attempt_duration_seconds = 7200 (modules/batch/main.tf)
+    // và hết timeout thì KHÔNG được thử lại, còn video nằm ở PROCESSING cho tới
+    // khi bộ đối soát đánh ERROR sau 6 giờ. Video quá dài vì thế treo 2 giờ rồi
+    // mới báo lỗi. Rào chắn dưới đây đo tốc độ thật của FFmpeg và bỏ cuộc sớm khi
+    // chắc chắn không kịp. 6300 = 7200 trừ 900 giây cho tải tệp nguồn, kiểm
+    // duyệt, upload và thumbnail. Đổi timeout của job thì phải đổi số này
+    // (biến môi trường MAX_ENCODE_SECONDS).
+    maxEncodeSeconds: Math.floor(positiveNumber(process.env.MAX_ENCODE_SECONDS, 6300)),
+    encodeGuard: {
+      // Tốc độ đo trong lúc khởi động và đoạn đầu thiếu đại diện: chỉ đánh giá
+      // sau chừng này giây chạy và chừng này giây video đã mã hoá.
+      warmupSeconds: 180,
+      minPositionSeconds: 60,
+      // Chỉ bỏ cuộc khi thời gian dự kiến vượt ngân sách quá 25%, và phải vượt
+      // liên tục chừng này giây: tốc độ đổi theo độ phức tạp của cảnh, còn bỏ
+      // cuộc nhầm thì mất video, đắt hơn nhiều so với việc chờ thêm.
+      margin: 1.25,
+      sustainSeconds: 30,
+    },
     // Thang chất lượng, xếp TĂNG DẦN: thứ tự này quyết định thứ tự trong
     // master.m3u8 và việc mức nào bị bỏ khi chạm trần kích thước nguồn
     // (planRenditions). Ba mức 360p/720p/1080p là thang cũ, giữ nguyên từng con
