@@ -61,7 +61,7 @@ const reconcileStuckVideos = async (now = Date.now()) => {
 
   const drafts = await Video.find(
     { status: 'UPLOADING', createdAt: { $lt: new Date(now - ABANDONED_UPLOAD_MS) } },
-    'rawS3Key'
+    'rawS3Key +multipartUploadId'
   )
     .limit(DRAFT_BATCH_SIZE)
     .lean();
@@ -91,6 +91,16 @@ const reconcileStuckVideos = async (now = Date.now()) => {
       );
       orphanedUploads += result.modifiedCount;
     } else {
+      // Lượt tải multipart bỏ dở: các phần đã lên S3 vẫn bị tính phí cho tới khi
+      // bị huỷ (luật lifecycle của bucket chỉ là lớp chốt sau 2 ngày). Huỷ lỗi
+      // thì vẫn xoá bản nháp, vì luật lifecycle sẽ dọn nốt phần còn lại.
+      if (draft.multipartUploadId && draft.rawS3Key) {
+        try {
+          await s3Service.abortMultipartUpload({ key: draft.rawS3Key, uploadId: draft.multipartUploadId });
+        } catch (err) {
+          console.warn(`⚠️  Reconciler: could not abort multipart upload for video ${draft._id}: ${err.message}`);
+        }
+      }
       const result = await Video.deleteOne({ _id: draft._id, status: 'UPLOADING' });
       deletedDrafts += result.deletedCount;
     }

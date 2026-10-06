@@ -63,6 +63,25 @@ resource "aws_s3_bucket_lifecycle_configuration" "raw" {
       days = 365 # Xóa sau 1 năm
     }
   }
+
+  # Lượt tải multipart bị bỏ dở (đóng tab, mất mạng, trình duyệt sập) để lại các
+  # phần đã lên S3 mà không hiện trong danh sách object và không có gì tự dọn,
+  # nhưng vẫn bị tính phí lưu trữ. Backend huỷ lượt tải khi người dùng bấm Huỷ và
+  # khi bộ đối soát gặp bản nháp quá hạn; luật này là lớp chốt cuối cho các
+  # trường hợp không ai kịp gọi. 2 ngày là dư cho mọi lượt tải thật: URL của từng
+  # phần chỉ sống vài phút và một lượt tải 20 GB chậm cũng xong trong ngày.
+  rule {
+    id     = "abort-incomplete-multipart-uploads"
+    status = "Enabled"
+
+    filter {
+      prefix = "videos/"
+    }
+
+    abort_incomplete_multipart_upload {
+      days_after_initiation = 2
+    }
+  }
 }
 
 # S3 Event Notification → SQS Queue (trigger transcoding)

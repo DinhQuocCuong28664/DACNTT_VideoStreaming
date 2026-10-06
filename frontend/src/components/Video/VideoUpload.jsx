@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { MdFileUpload, MdClose, MdErrorOutline, MdCheck, MdOutlineMovie } from 'react-icons/md';
@@ -7,8 +7,13 @@ import { UPLOAD_CATEGORIES } from '../../i18n/categories';
 import VisibilityPicker from './VisibilityPicker';
 import './VideoUpload.css';
 
-/** Dung lượng tối đa mỗi video: 2 GB — phải khớp với giới hạn phía máy chủ */
-const MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024 * 1024;
+/**
+ * Dung lượng tối đa mỗi video dùng tới khi tải được cấu hình từ máy chủ
+ * (GET /videos/upload-config). Máy chủ là nguồn đúng duy nhất; con số này chỉ
+ * là mức an toàn cho khoảnh khắc đầu hoặc khi gọi cấu hình thất bại, và khớp
+ * với trần mặc định của máy chủ.
+ */
+const FALLBACK_MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024 * 1024;
 const TITLE_MAX = 100;
 const DESC_MAX = 5000;
 
@@ -44,11 +49,36 @@ const VideoUpload = () => {
   const [uploadedStats, setUploadedStats] = useState({ loaded: 0, total: 0 });
   const [error, setError] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [maxFileSizeBytes, setMaxFileSizeBytes] = useState(FALLBACK_MAX_FILE_SIZE_BYTES);
+
+  // Trần tải lên do máy chủ quyết định và đổi được bằng cấu hình, nên đọc từ API
+  // thay vì giữ một con số riêng ở đây rồi để hai bên lệch nhau.
+  useEffect(() => {
+    let cancelled = false;
+    videoApi
+      .getUploadConfig()
+      .then((res) => {
+        const max = Number(res.data?.data?.maxVideoSizeBytes);
+        if (!cancelled && Number.isFinite(max) && max > 0) setMaxFileSizeBytes(max);
+      })
+      .catch(() => {
+        // Giữ mức an toàn; máy chủ vẫn kiểm tra lại ở initiate-upload.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const formatFileSize = (bytes) => {
     if (bytes >= 1073741824) return `${(bytes / 1073741824).toFixed(2)} GB`;
     if (bytes >= 1048576) return `${(bytes / 1048576).toFixed(1)} MB`;
     return `${(bytes / 1024).toFixed(0)} KB`;
+  };
+
+  /** Trần dung lượng: "2 GB", "20 GB" thay vì "2.00 GB" khi là số GB tròn. */
+  const formatLimit = (bytes) => {
+    const gb = bytes / 1073741824;
+    return Number.isInteger(gb) ? `${gb} GB` : formatFileSize(bytes);
   };
 
   const handleFileSelect = (e) => {
@@ -68,13 +98,13 @@ const VideoUpload = () => {
       return;
     }
 
-    // Ngưỡng này phải khớp với MAX_VIDEO_SIZE_BYTES ở phía máy chủ.
-    // Kiểm tra sớm tại trình duyệt giúp người dùng biết ngay, thay vì chờ tải
-    // xong hàng GB rồi mới nhận lỗi từ API.
-    if (selected.size > MAX_FILE_SIZE_BYTES) {
+    // Ngưỡng lấy từ máy chủ (xem useEffect ở trên). Kiểm tra sớm tại trình duyệt
+    // giúp người dùng biết ngay, thay vì chờ tải xong hàng GB rồi mới nhận lỗi
+    // từ API.
+    if (selected.size > maxFileSizeBytes) {
       setError(
         t('upload.errorTooLarge', {
-          max: formatFileSize(MAX_FILE_SIZE_BYTES),
+          max: formatLimit(maxFileSizeBytes),
           actual: formatFileSize(selected.size),
         })
       );
@@ -181,32 +211,35 @@ const VideoUpload = () => {
         visibility: formData.visibility,
       });
 
-      const { video, upload } = initRes.data.data;
+      const { video, upload, multipart } = initRes.data.data;
       const videoId = video._id;
       currentVideoIdRef.current = videoId;
 
-      // Step 2: Upload file directly to S3 via presigned POST with telemetry & cancellation
-      await videoApi.uploadToS3(
-        upload,
-        file,
-        ({ percent, loaded, total }) => {
-          setUploadProgress(percent);
-          setUploadedStats({ loaded, total });
+      const handleProgress = ({ percent, loaded, total }) => {
+        setUploadProgress(percent);
+        setUploadedStats({ loaded, total });
 
-          const elapsedSec = (Date.now() - uploadStartTimeRef.current) / 1000;
-          if (elapsedSec > 0.5 && loaded > 0) {
-            const bytesPerSec = loaded / elapsedSec;
-            setUploadSpeed(formatSpeed(bytesPerSec));
-            const remainingBytes = total - loaded;
-            const eta = remainingBytes / bytesPerSec;
-            setRemainingTime(formatEta(eta));
-          }
-        },
-        controller.signal
-      );
+        const elapsedSec = (Date.now() - uploadStartTimeRef.current) / 1000;
+        if (elapsedSec > 0.5 && loaded > 0) {
+          const bytesPerSec = loaded / elapsedSec;
+          setUploadSpeed(formatSpeed(bytesPerSec));
+          const remainingBytes = total - loaded;
+          const eta = remainingBytes / bytesPerSec;
+          setRemainingTime(formatEta(eta));
+        }
+      };
 
-      // Step 3: Confirm upload complete → transition status UPLOADING → PROCESSING
-      await videoApi.confirmUpload(videoId);
+      if (multipart) {
+        // Step 2+3 (tệp lớn): tải từng phần song song, có thử lại; bước ghép ở máy
+        // chủ cũng chuyển luôn UPLOADING → PROCESSING nên không gọi confirmUpload.
+        await videoApi.uploadToS3Multipart({ videoId, file, multipart }, handleProgress, controller.signal);
+      } else {
+        // Step 2: Upload file directly to S3 via presigned POST with telemetry & cancellation
+        await videoApi.uploadToS3(upload, file, handleProgress, controller.signal);
+
+        // Step 3: Confirm upload complete → transition status UPLOADING → PROCESSING
+        await videoApi.confirmUpload(videoId);
+      }
       currentVideoIdRef.current = null;
 
       // Step 4: Navigate to WatchPage
@@ -327,7 +360,7 @@ const VideoUpload = () => {
             <p className="dropzone-text">{t('upload.dropzone')}</p>
             <p className="dropzone-sub">{t('upload.privateUntilReady')}</p>
             <span className="btn btn-primary dropzone-btn">{t('upload.selectFile')}</span>
-            <p className="dropzone-hint">{t('upload.dropzoneHint')}</p>
+            <p className="dropzone-hint">{t('upload.dropzoneHint', { max: formatLimit(maxFileSizeBytes) })}</p>
             <input
               ref={fileInputRef}
               type="file"

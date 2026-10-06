@@ -1,5 +1,6 @@
 import axios from 'axios';
 import axiosClient from './axiosClient';
+import { uploadInParts } from './multipartUpload';
 
 export const videoApi = {
   initiateUpload: (uploadData) =>
@@ -7,6 +8,10 @@ export const videoApi = {
 
   confirmUpload: (videoId) =>
     axiosClient.patch(`/videos/${videoId}/confirm-upload`),
+
+  /** Giới hạn tải lên đang áp dụng: { maxVideoSizeBytes, multipartThresholdBytes } */
+  getUploadConfig: () =>
+    axiosClient.get('/videos/upload-config'),
 
   getAllVideos: (params = {}) =>
     axiosClient.get('/videos', { params }),
@@ -88,6 +93,41 @@ export const videoApi = {
       },
     });
   },
+
+  /**
+   * Tải tệp lớn lên S3 theo từng phần rồi nhờ máy chủ ghép.
+   *
+   * Dùng khi `initiate-upload` trả về `multipart` thay cho `upload`. Xong hàm này
+   * video đã sang PROCESSING (bước ghép gộp luôn việc của confirm-upload), nên
+   * không gọi `confirmUpload` nữa. Logic chia phần, song song và thử lại nằm ở
+   * `multipartUpload.js`.
+   *
+   * @param {{videoId: string, file: File, multipart: {partSize: number, partCount: number, maxPartUrlsPerRequest?: number}}} upload
+   * @param {function} onProgress - Callback ({ percent, loaded, total })
+   * @param {AbortSignal} signal - Optional abort signal for cancellation
+   */
+  uploadToS3Multipart: ({ videoId, file, multipart }, onProgress, signal) =>
+    uploadInParts({
+      file,
+      partSize: multipart.partSize,
+      partCount: multipart.partCount,
+      maxPartUrlsPerRequest: multipart.maxPartUrlsPerRequest,
+      signal,
+      onProgress,
+      getPartUrls: async (partNumbers) => {
+        const res = await axiosClient.post(`/videos/${videoId}/multipart/parts`, { partNumbers });
+        return res.data.data.parts;
+      },
+      // axios.put thường chứ không qua axiosClient: URL ký sẵn trỏ tới S3 và không
+      // được kèm Authorization của ứng dụng. Chỉ `host` và `content-length` được
+      // ký, nên không cần (và không nên) đặt thêm header nào.
+      putPart: ({ url, body, signal: partSignal, onProgress: onPartProgress }) =>
+        axios.put(url, body, {
+          signal: partSignal,
+          onUploadProgress: (progressEvent) => onPartProgress(progressEvent.loaded || 0),
+        }),
+      completeUpload: () => axiosClient.post(`/videos/${videoId}/multipart/complete`),
+    }),
 };
 
 export default videoApi;

@@ -67,8 +67,11 @@ const ALLOWED_VIDEO_MIME_TYPES = [
   'video/mpeg',
 ];
 
-/** Dung lượng tối đa mỗi tệp video: 2 GB */
-const MAX_VIDEO_SIZE_BYTES = 2 * 1024 * 1024 * 1024;
+/**
+ * Dung lượng tối đa mỗi tệp video (xem config/uploadLimits: mặc định 2 GB, nâng
+ * được bằng MAX_VIDEO_SIZE_GB). Giữ export ở đây vì các nơi khác đã import từ đây.
+ */
+const { MAX_VIDEO_SIZE_BYTES } = require('../config/uploadLimits');
 
 /**
  * Kiểm tra metadata của video trước khi cấp Pre-signed URL.

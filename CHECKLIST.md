@@ -108,5 +108,12 @@ Nhánh `fix/system-review`, mỗi lỗi một commit, có test hoặc kiểm ch�
 - [x] **Hiệu năng:** thang chất lượng theo nguồn, không phóng to, giữ tỉ lệ (nguồn 480p: 9,08 MB → 3,06 MB, 7,0 s → 1,4 s trên clip 12 s); tải HLS lên S3 song song; JS tải lần đầu của frontend 307,5 → 141,9 kB gzip; dọn bộ chống đếm trùng lượt xem O(1).
 - [ ] Đo lại thời gian chuyển mã (100 MB / 500 MB / 1 GB) và Stress Test sau khi deploy — số liệu ở Chương 6 được đo trước hai thay đổi về thang chất lượng và tải song song.
 
+### Hỗ trợ video dài (2026-10-07)
+Yêu cầu: tối thiểu 4 giờ video. Một job chuyển mã chạy tuần tự nên ở 1 vCPU chỉ xử lý được khoảng 30 phút video 1080p (hệ số 3,7, `docs/results/transcode-timing.json`); làm theo từng bước, mỗi bước một PR, đã đo trước khi merge:
+- [x] Thang chất lượng 144p-1080p; video dài hơn 20 phút giữ thang cũ 3 mức để không mất khả năng xử lý hiện có.
+- [x] Rào chắn thời gian mã hoá: dự kiến từ tiến độ thật của ffmpeg và dừng sớm khi chắc chắn không kịp, thay vì treo 2 giờ rồi nằm `PROCESSING` thêm 6 giờ.
+- [x] Tải lên multipart cho tệp lớn (> 512 MiB, phần 32 MiB): URL từng phần ký đúng dung lượng nên S3 tự từ chối phần sai kích thước; máy chủ tự `ListParts` trước khi ghép; huỷ/đối soát dọn lượt dở; luật lifecycle abort sau 2 ngày. Đã thử với S3 thật và trình duyệt thật. Trần mặc định VẪN là 2 GiB (`MAX_VIDEO_SIZE_GB`, tối đa 20) cho tới khi chuyển mã song song theo đoạn chạy được.
+- [ ] Chuyển mã song song theo đoạn (planner → Batch array job → finalizer), heartbeat cho ngưỡng 6 giờ của bộ đối soát, ổ đĩa tạm Fargate, rồi nâng `MAX_VIDEO_SIZE_GB` lên 20.
+
 ---
 > 📌 **Trạng thái cập nhật (2026-09-29):** Mã nguồn cho các mục rà soát ở trên đã xong và pass toàn bộ 360/360 test; chưa deploy. Trước đó (2026-09-24): Toàn bộ 15/15 mục đã hoàn thành 100%. CloudFront video CDN đã triển khai và đo kiểm đa vùng; Stress Test đồng thời 100 video đã thực thi hoàn tất với dữ liệu thực nghiệm đầy đủ; toàn bộ test suite backend và transcoder đều pass.

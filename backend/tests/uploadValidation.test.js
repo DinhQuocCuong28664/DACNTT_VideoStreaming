@@ -44,6 +44,20 @@ describe('Kiểm tra dữ liệu đầu vào khi khởi tạo tải lên (HTTP)'
     expect(res.body.success).toBe(true);
   });
 
+  it('trần mặc định vẫn là 2 GiB: tệp lớn hơn bị từ chối, đúng 2 GiB thì được', async () => {
+    expect(MAX_VIDEO_SIZE_BYTES).toBe(2 * 1024 * 1024 * 1024);
+
+    const over = await request(app)
+      .post('/api/videos/initiate-upload')
+      .send({ ...validPayload, fileSize: MAX_VIDEO_SIZE_BYTES + 1 });
+    expect(over.status).toBe(400);
+
+    const exact = await request(app)
+      .post('/api/videos/initiate-upload')
+      .send({ ...validPayload, fileSize: MAX_VIDEO_SIZE_BYTES });
+    expect(exact.status).toBe(201);
+  });
+
   it('nên trả về 400 khi thiếu trường bắt buộc', async () => {
     const res = await request(app)
       .post('/api/videos/initiate-upload')
