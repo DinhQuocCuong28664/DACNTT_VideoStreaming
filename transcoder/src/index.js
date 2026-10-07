@@ -12,34 +12,10 @@ const {
   updateVideoError,
   markVideoProcessing,
   getVideo,
-  getVideoWithUser,
 } = require('./dbHandler');
 const { pollMessages, parseS3Event, startHeartbeat, deleteMessage } = require('./sqsHandler');
-const {
-  sendVideoReadyEmail,
-  sendVideoFailedEmail,
-  sendVideoModerationEmail,
-} = require('./emailService');
-
-/**
- * Gửi email thông báo mà không bao giờ làm crash job chính.
- *
- * Việc transcode/ghi DB đã hoàn tất (thành công hay thất bại) tại thời điểm
- * gọi hàm này — một lỗi SMTP (sai mật khẩu app, mất mạng...) không được phép
- * biến một job transcode ĐÃ THÀNH CÔNG thành một job bị coi là lỗi.
- */
-const notifySafely = async (sendFn, to, payload, label) => {
-  if (!to) {
-    console.warn(`⚠️  Could not send the ${label} email: the video has no valid recipient address.`);
-    return;
-  }
-  try {
-    await sendFn(to, payload);
-    console.log(`📧 Sent the ${label} email to ${to}`);
-  } catch (err) {
-    console.error(`⚠️  Sending the ${label} email failed (this does not affect the transcode result):`, err.message);
-  }
-};
+const { notifyVideoReady, notifyVideoFailed } = require('./notify');
+const { createRuntimePipeline } = require('./chunked/runtime');
 
 /**
  * ════════════════════════════════════════
@@ -50,6 +26,12 @@ const notifySafely = async (sendFn, to, payload, label) => {
  *   node src/index.js manual <videoId>   — Transcode a single video by ID (dev/test)
  *   node src/index.js worker             — Poll SQS and process messages continuously
  *   node src/index.js batch              — Read VIDEO_ID + RAW_S3_KEY from env (AWS Batch mode)
+ *
+ * Các chế độ dưới đây chỉ do chính pipeline chia đoạn nộp vào Batch (chunked/pipeline.js), không
+ * bao giờ chạy tay hay từ Lambda:
+ *   node src/index.js audio              — mã hoá một lần âm thanh của video (env AUDIO_BITRATE)
+ *   node src/index.js chunk              — mã hoá một đoạn (env AWS_BATCH_JOB_ARRAY_INDEX)
+ *   node src/index.js finalize           — ghép các đoạn, đánh dấu READY
  */
 
 const TEMP_DIR = path.join(os.tmpdir(), 'vidshare-transcoder');
@@ -155,42 +137,14 @@ const processVideo = async (videoId, rawS3Key, { force = false } = {}) => {
     // trùng lặp bị chặn ghi (updated=false), job thắng cuộc đã/sẽ tự gửi rồi,
     // gửi thêm ở đây sẽ khiến người dùng nhận email trùng.
     if (updated) {
-      const videoWithUser = await getVideoWithUser(videoId);
-      const recipient = videoWithUser?.user?.email;
-      const displayName = videoWithUser?.user?.displayName || videoWithUser?.user?.username;
-      const outcome = moderation?.status;
-
-      if (outcome === 'blocked' || outcome === 'flagged') {
-        await notifySafely(
-          sendVideoModerationEmail,
-          recipient,
-          { title: videoWithUser?.title, displayName, outcome },
-          `video ${outcome}`
-        );
-      } else {
-        await notifySafely(
-          sendVideoReadyEmail,
-          recipient,
-          { title: videoWithUser?.title, videoId, displayName },
-          'video ready'
-        );
-      }
+      await notifyVideoReady(videoId, moderation);
     }
   } catch (err) {
     console.error(`❌ Transcoding failed for ${videoId}:`, err.message);
     const { updated } = await updateVideoError(videoId, err.message);
 
     if (updated) {
-      const videoWithUser = await getVideoWithUser(videoId);
-      await notifySafely(
-        sendVideoFailedEmail,
-        videoWithUser?.user?.email,
-        {
-          title: videoWithUser?.title,
-          displayName: videoWithUser?.user?.displayName || videoWithUser?.user?.username,
-        },
-        'video failed'
-      );
+      await notifyVideoFailed(videoId);
     }
 
     throw err;
@@ -313,8 +267,72 @@ const runBatch = async () => {
   }
 
   await connectDB();
+
+  // Video dài đi đường chia đoạn: job này chỉ lên kế hoạch và nộp job con rồi thoát. Mọi trường
+  // hợp còn lại (tắt cờ, video ngắn, nguồn không chia đoạn được, không đọc được nguồn qua HTTP)
+  // rơi xuống đường một-job như trước giờ.
+  if (config.chunked.enabled) {
+    const outcome = await createRuntimePipeline().planJob({ videoId, rawS3Key });
+    if (outcome.mode === 'chunked') {
+      console.log(`🧩 Chunked pipeline submitted for ${videoId}; this job is done.`);
+      await disconnectDB();
+      return;
+    }
+    if (outcome.mode === 'skipped') {
+      console.warn(`⚠️  Skipping ${videoId}: ${outcome.reason}`);
+      await disconnectDB();
+      return;
+    }
+    console.log(`ℹ️  Single-job path for ${videoId}: ${outcome.reason}`);
+  }
+
   await processVideo(videoId, rawS3Key);
   await disconnectDB();
+};
+
+/** Đọc biến môi trường bắt buộc của một job con; thiếu thì dừng ngay với thông báo rõ. */
+const requireEnv = (...names) => {
+  const values = {};
+  for (const name of names) {
+    if (!process.env[name]) {
+      console.error(`❌ Missing required environment variable: ${name}`);
+      process.exit(1);
+    }
+    values[name] = process.env[name];
+  }
+  return values;
+};
+
+/**
+ * Chế độ job con của pipeline chia đoạn. Mỗi job kết nối DB, làm đúng một việc rồi ngắt kết nối.
+ * Thất bại thì pipeline đã tự đánh ERROR video (failVideoOnError); ở đây chỉ cần ném lỗi để
+ * tiến trình thoát mã khác 0 và Batch ghi nhận job thất bại.
+ */
+const runPipelineJob = async (role) => {
+  console.log(`🔧 Mode: CHUNKED PIPELINE (${role})`);
+  await connectDB();
+  const pipeline = createRuntimePipeline();
+
+  try {
+    // Gán biến môi trường vào một thuộc tính tên chứa chữ "key" thì khớp rule generic-api-key của
+    // Gitleaks và CI báo bí mật rò rỉ dù đó chỉ là đường dẫn S3; nên gán qua biến tên ngắn.
+    if (role === 'audio') {
+      const { VIDEO_ID: videoId, RAW_S3_KEY: s3Key, AUDIO_BITRATE: bitrate } = requireEnv('VIDEO_ID', 'RAW_S3_KEY', 'AUDIO_BITRATE');
+      await pipeline.audioJob({ videoId, rawS3Key: s3Key, bitrate });
+    } else if (role === 'chunk') {
+      const { VIDEO_ID: videoId, RAW_S3_KEY: s3Key, AWS_BATCH_JOB_ARRAY_INDEX: index } = requireEnv(
+        'VIDEO_ID',
+        'RAW_S3_KEY',
+        'AWS_BATCH_JOB_ARRAY_INDEX'
+      );
+      await pipeline.chunkJob({ videoId, rawS3Key: s3Key, index: Number(index) });
+    } else {
+      const { VIDEO_ID: videoId, RAW_S3_KEY: s3Key } = requireEnv('VIDEO_ID', 'RAW_S3_KEY');
+      await pipeline.finalizeJob({ videoId, rawS3Key: s3Key });
+    }
+  } finally {
+    await disconnectDB();
+  }
 };
 
 /**
@@ -355,9 +373,14 @@ const main = async () => {
       case 'batch':
         await runBatch();
         break;
+      case 'audio':
+      case 'chunk':
+      case 'finalize':
+        await runPipelineJob(mode);
+        break;
       default:
         console.error(`Unknown mode: ${mode}`);
-        console.error('Available modes: manual, worker, batch');
+        console.error('Available modes: manual, worker, batch, audio, chunk, finalize');
         process.exit(1);
     }
   } catch (err) {

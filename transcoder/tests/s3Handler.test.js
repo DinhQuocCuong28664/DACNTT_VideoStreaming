@@ -104,3 +104,60 @@ describe('uploadDirectoryToS3', () => {
     await expect(uploadDirectoryToS3(dir, 'processed', 'videos/abc')).rejects.toThrow('AccessDenied');
   });
 });
+
+describe('các hàm S3 của pipeline chia đoạn', () => {
+  const { putJson, getJson, deleteObjects } = require('../src/s3Handler');
+
+  beforeEach(() => {
+    jest.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+  afterEach(() => jest.restoreAllMocks());
+
+  it('putJson ghi JSON với đúng Content-Type', async () => {
+    const send = jest.spyOn(S3Client.prototype, 'send').mockResolvedValue({});
+    await putJson('raw', 'work/v/plan.json', { a: 1 });
+    expect(send.mock.calls[0][0].input).toMatchObject({
+      Bucket: 'raw',
+      Key: 'work/v/plan.json',
+      Body: '{"a":1}',
+      ContentType: 'application/json',
+    });
+  });
+
+  it('getJson đọc lại đúng đối tượng đã ghi', async () => {
+    jest.spyOn(S3Client.prototype, 'send').mockResolvedValue({ Body: { transformToString: async () => '{"index":3}' } });
+    expect(await getJson('raw', 'work/v/chunks/0003.json')).toEqual({ index: 3 });
+  });
+
+  it('getJson trả null khi chưa có tệp, nhưng ném lỗi quyền hay mạng (đừng nuốt lỗi thật)', async () => {
+    jest.spyOn(S3Client.prototype, 'send').mockRejectedValueOnce(Object.assign(new Error('x'), { name: 'NoSuchKey' }));
+    expect(await getJson('raw', 'k')).toBeNull();
+
+    jest.spyOn(S3Client.prototype, 'send').mockRejectedValueOnce(Object.assign(new Error('x'), { $metadata: { httpStatusCode: 404 } }));
+    expect(await getJson('raw', 'k')).toBeNull();
+
+    jest.spyOn(S3Client.prototype, 'send').mockRejectedValueOnce(Object.assign(new Error('Access Denied'), { name: 'AccessDenied' }));
+    await expect(getJson('raw', 'k')).rejects.toThrow('Access Denied');
+  });
+
+  it('deleteObjects chia theo 1000 khoá mỗi lệnh (giới hạn của S3)', async () => {
+    const send = jest.spyOn(S3Client.prototype, 'send').mockResolvedValue({});
+    const keys = Array.from({ length: 2500 }, (_, i) => `work/v/chunks/${i}.json`);
+
+    const result = await deleteObjects('raw', keys);
+
+    expect(send.mock.calls.map(([c]) => c.input.Delete.Objects.length)).toEqual([1000, 1000, 500]);
+    expect(result).toEqual({ deleted: 2500, failed: 0 });
+  });
+
+  it('deleteObjects báo số khoá xoá lỗi nhưng không ném (tệp tạm có lifecycle dọn nốt)', async () => {
+    jest.spyOn(S3Client.prototype, 'send').mockResolvedValue({ Errors: [{ Key: 'work/v/a.json', Message: 'denied' }] });
+    expect(await deleteObjects('raw', ['work/v/a.json', 'work/v/b.json'])).toEqual({ deleted: 1, failed: 1 });
+  });
+
+  it('deleteObjects với danh sách rỗng không gọi S3', async () => {
+    const send = jest.spyOn(S3Client.prototype, 'send').mockResolvedValue({});
+    expect(await deleteObjects('raw', [])).toEqual({ deleted: 0, failed: 0 });
+    expect(send).not.toHaveBeenCalled();
+  });
+});

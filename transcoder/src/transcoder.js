@@ -914,6 +914,7 @@ module.exports = {
   probeSegmentCodecs,
   probeRenditionCodecs,
   firstSegmentPath,
+  extractThumbnail,
   pickThumbnailTime,
   displaySize,
   planRenditions,

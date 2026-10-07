@@ -190,6 +190,30 @@ const markVideoProcessing = async (videoId) => {
 };
 
 /**
+ * Nhịp tim của một job con trong pipeline chia đoạn.
+ *
+ * Khác markVideoProcessing ở hai điểm, cả hai đều cố ý:
+ *  - CHỈ ghi khi video đang PROCESSING. markVideoProcessing hồi sinh cả video ERROR, đúng cho
+ *    một job MỚI bắt đầu, nhưng sai cho job con: một đoạn thất bại hẳn đã đánh ERROR cả video,
+ *    và các đoạn còn lại không được kéo nó trở về PROCESSING rồi chạy tiếp vô ích.
+ *  - trả về `alive` để job tự dừng sớm (rẻ) khi video đã bị xoá, đã READY hoặc đã ERROR.
+ *
+ * Việc ghi cũng làm mới `updatedAt`, vốn là thứ bộ đối soát ở backend dùng để biết job còn sống
+ * (xem markVideoProcessing): pipeline chạy bao lâu cũng được miễn các job con còn ghi nhịp tim.
+ */
+const touchVideoProcessing = async (videoId) => {
+  const video = await Video.findOneAndUpdate(
+    { _id: videoId, status: 'PROCESSING' },
+    { $set: { status: 'PROCESSING' } },
+    { returnDocument: 'after' }
+  );
+  if (video) return { alive: true, status: 'PROCESSING' };
+
+  const existing = await Video.findById(videoId);
+  return { alive: false, status: existing ? existing.status : null };
+};
+
+/**
  * Get video by ID
  */
 const getVideo = async (videoId) => {
@@ -212,6 +236,7 @@ module.exports = {
   updateVideoReady,
   updateVideoError,
   markVideoProcessing,
+  touchVideoProcessing,
   getVideo,
   getVideoWithUser,
 };
