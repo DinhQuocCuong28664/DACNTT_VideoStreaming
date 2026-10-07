@@ -87,7 +87,14 @@ resource "aws_batch_job_definition" "transcoder" {
         { name = "MODERATION_REVIEW_CONFIDENCE", value = tostring(var.moderation_review_confidence) },
         { name = "MODERATION_BLOCK_CONFIDENCE", value = tostring(var.moderation_block_confidence) },
         { name = "MODERATION_FRAME_INTERVAL", value = tostring(var.moderation_frame_interval) },
-        { name = "MODERATION_MAX_FRAMES", value = tostring(var.moderation_max_frames) }
+        { name = "MODERATION_MAX_FRAMES", value = tostring(var.moderation_max_frames) },
+        # Pipeline chia đoạn (transcoder/src/chunked): job lập kế hoạch nộp job con vào đúng hàng
+        # đợi này bằng đúng job definition này (tên không kèm revision nên luôn lấy bản mới nhất,
+        # như Lambda). CI đăng ký lại revision bằng cách chép biến môi trường của revision mới
+        # nhất (scripts/next-job-definition.py), nên các biến này đi theo mọi lần deploy image.
+        { name = "CHUNKED_TRANSCODING", value = tostring(var.chunked_transcoding_enabled) },
+        { name = "BATCH_JOB_QUEUE", value = "${var.project_name}-transcode-queue" },
+        { name = "BATCH_JOB_DEFINITION", value = "${var.project_name}-transcoder-job" }
       ],
       var.email_user != "" ? [{ name = "EMAIL_USER", value = var.email_user }] : [],
       var.email_from != "" ? [{ name = "EMAIL_FROM", value = var.email_from }] : [],

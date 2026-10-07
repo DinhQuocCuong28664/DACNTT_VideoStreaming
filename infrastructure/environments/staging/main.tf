@@ -202,10 +202,13 @@ module "batch" {
   frontend_url                  = local.frontend_url
   email_app_password_secret_arn = data.aws_secretsmanager_secret.email_app_password.arn
   use_spot                      = true
-  max_vcpus                     = 4
-  job_vcpu                      = var.job_vcpu
-  job_memory                    = var.job_memory
-  tags                          = local.common_tags
+  # 8 = quota Fargate Spot của tài khoản (staging và production dùng chung quota): đủ để đo
+  # thời gian thật của pipeline chia đoạn với video 4 giờ. Staging chỉ chạy khi được bật.
+  max_vcpus                   = 8
+  chunked_transcoding_enabled = true
+  job_vcpu                    = var.job_vcpu
+  job_memory                  = var.job_memory
+  tags                        = local.common_tags
 }
 
 module "lambda" {

@@ -135,6 +135,14 @@ variable "max_vcpus" {
   default = 4
 }
 
+# Chuyển mã song song theo đoạn cho video dài (docs/CHUNKED_TRANSCODING_DESIGN.md). Tắt mặc định:
+# bật ở từng môi trường sau khi đã thử. Tắt lại bằng cách đặt false rồi apply (đăng ký lại job
+# definition); video đang chạy dở không bị ảnh hưởng vì pipeline của chúng đã nằm trong Batch.
+variable "chunked_transcoding_enabled" {
+  type    = bool
+  default = false
+}
+
 variable "job_vcpu" {
   type    = number
   default = 1

@@ -1,4 +1,5 @@
-const { S3Client, GetObjectCommand, PutObjectCommand } = require('@aws-sdk/client-s3');
+const { S3Client, GetObjectCommand, PutObjectCommand, DeleteObjectsCommand } = require('@aws-sdk/client-s3');
+const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 const fs = require('fs');
 const path = require('path');
 const { pipeline } = require('stream/promises');
@@ -53,6 +54,49 @@ const uploadFileToS3 = async (localPath, bucket, s3Key) => {
 
   await s3Client.send(command);
   return stats.size;
+};
+
+/**
+ * URL ký sẵn để ffmpeg đọc một object qua HTTP (Range request) mà không tải về.
+ *
+ * Mỗi job tự ký lại ngay khi bắt đầu (và mỗi lần thử lại): URL ký bằng thông tin xác thực
+ * tạm của task role chỉ sống tới khi thông tin đó hết hạn, dù `expiresIn` ghi dài hơn.
+ */
+const getSignedGetUrl = (bucket, key, expiresIn) =>
+  getSignedUrl(s3Client, new GetObjectCommand({ Bucket: bucket, Key: key }), { expiresIn });
+
+/** Ghi một đối tượng JSON. */
+const putJson = async (bucket, key, value) => {
+  await s3Client.send(
+    new PutObjectCommand({ Bucket: bucket, Key: key, Body: JSON.stringify(value), ContentType: 'application/json' })
+  );
+};
+
+/** Đọc một đối tượng JSON; trả về null nếu chưa có (khác với lỗi mạng hay quyền, vẫn ném lỗi). */
+const getJson = async (bucket, key) => {
+  try {
+    const response = await s3Client.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
+    return JSON.parse(await response.Body.transformToString());
+  } catch (err) {
+    if (err.name === 'NoSuchKey' || (err.$metadata && err.$metadata.httpStatusCode === 404)) return null;
+    throw err;
+  }
+};
+
+/** Xoá nhiều object, tối đa 1000 khoá mỗi lệnh (giới hạn của S3). Khoá không tồn tại không phải lỗi. */
+const deleteObjects = async (bucket, keys) => {
+  const failures = [];
+  for (let i = 0; i < keys.length; i += 1000) {
+    const batch = keys.slice(i, i + 1000);
+    const response = await s3Client.send(
+      new DeleteObjectsCommand({ Bucket: bucket, Delete: { Objects: batch.map((Key) => ({ Key })), Quiet: true } })
+    );
+    failures.push(...(response.Errors || []));
+  }
+  if (failures.length > 0) {
+    console.warn(`⚠️  Could not delete ${failures.length} object(s) from s3://${bucket}, e.g. ${failures[0].Key}: ${failures[0].Message}`);
+  }
+  return { deleted: keys.length - failures.length, failed: failures.length };
 };
 
 /**
@@ -155,12 +199,18 @@ const getContentType = (filePath) => {
     '.jpeg': 'image/jpeg',
     '.png': 'image/png',
     '.mp4': 'video/mp4',
+    '.m4a': 'audio/mp4',
+    '.json': 'application/json',
   };
   return types[ext] || 'application/octet-stream';
 };
 
 module.exports = {
   downloadFromS3,
+  getSignedGetUrl,
+  putJson,
+  getJson,
+  deleteObjects,
   uploadFileToS3,
   uploadDirectoryToS3,
   runWithConcurrency,

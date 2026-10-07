@@ -126,6 +126,51 @@ resource "aws_iam_role_policy" "transcoder_s3" {
           "s3:PutObjectAcl"
         ]
         Resource = "${var.processed_bucket_arn}/*"
+      },
+      {
+        # Tệp tạm của pipeline chia đoạn (transcoder/src/chunked): kế hoạch, âm thanh đã mã
+        # hoá một lần, kết quả từng đoạn, dưới work/<videoId>/ của bucket RAW. Bucket raw riêng
+        # tư và không có CloudFront, nên âm thanh gốc của video riêng tư không có URL công khai;
+        # event S3 -> SQS chỉ lọc tiền tố videos/ nên ghi vào work/ không kích hoạt job nào.
+        # Chỉ ghi và xoá trong work/, không đụng videos/ (nguồn do người dùng tải lên).
+        Effect = "Allow"
+        Action = [
+          "s3:PutObject",
+          "s3:DeleteObject"
+        ]
+        Resource = "${var.raw_bucket_arn}/work/*"
+      },
+      {
+        # Không có ListBucket thì S3 trả 403 (AccessDenied) thay vì 404 (NoSuchKey) cho khoá
+        # chưa tồn tại, và pipeline không phân biệt được "chưa có" với "không có quyền": lần chạy
+        # đầu tiên của mọi video dài sẽ đọc submitted.json chưa có và bị coi là lỗi quyền.
+        Effect   = "Allow"
+        Action   = "s3:ListBucket"
+        Resource = var.raw_bucket_arn
+      }
+    ]
+  })
+}
+
+# Pipeline chia đoạn: job lập kế hoạch (cũng là job Lambda đã nộp) nộp tiếp job con vào cùng
+# hàng đợi, dùng cùng job definition. Thu hẹp đúng về hai tài nguyên đó, như chính sách của Lambda
+# bên dưới; ARN dựng theo quy tắc đặt tên của module batch vì batch phụ thuộc vào module này để
+# lấy role (tham chiếu ngược sẽ thành phụ thuộc vòng), nên đổi tên bên batch thì phải sửa ở đây.
+resource "aws_iam_role_policy" "transcoder_batch_submit" {
+  name = "${var.project_name}-transcoder-batch-submit-policy"
+  role = aws_iam_role.transcoder_task.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = "batch:SubmitJob"
+        Resource = [
+          "arn:aws:batch:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:job-queue/${var.project_name}-transcode-queue",
+          "arn:aws:batch:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:job-definition/${var.project_name}-transcoder-job",
+          "arn:aws:batch:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:job-definition/${var.project_name}-transcoder-job:*"
+        ]
       }
     ]
   })

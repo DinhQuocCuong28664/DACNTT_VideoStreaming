@@ -193,3 +193,44 @@ describe('dbHandler — ghi có điều kiện chống xử lý trùng', () => {
     });
   });
 });
+
+describe('touchVideoProcessing — nhịp tim của job con', () => {
+  const { touchVideoProcessing } = require('../src/dbHandler');
+  const videoId = '6a78c10f1c4541ef615cf01d';
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('chỉ ghi khi video đang PROCESSING, và báo còn sống', async () => {
+    mockVideoModel.findOneAndUpdate.mockResolvedValue({ _id: videoId, status: 'PROCESSING' });
+
+    expect(await touchVideoProcessing(videoId)).toEqual({ alive: true, status: 'PROCESSING' });
+    expect(mockVideoModel.findOneAndUpdate).toHaveBeenCalledWith(
+      { _id: videoId, status: 'PROCESSING' },
+      { $set: { status: 'PROCESSING' } },
+      { returnDocument: 'after' }
+    );
+  });
+
+  it('KHÔNG hồi sinh video đã ERROR (khác markVideoProcessing): một đoạn hỏng thì các đoạn còn lại dừng', async () => {
+    mockVideoModel.findOneAndUpdate.mockResolvedValue(null);
+    mockVideoModel.findById.mockResolvedValue({ _id: videoId, status: 'ERROR' });
+
+    expect(await touchVideoProcessing(videoId)).toEqual({ alive: false, status: 'ERROR' });
+    // Điều kiện lọc bắt buộc là PROCESSING, không phải "khác READY".
+    expect(mockVideoModel.findOneAndUpdate.mock.calls[0][0]).toEqual({ _id: videoId, status: 'PROCESSING' });
+  });
+
+  it('video đã READY thì không còn sống để ghi', async () => {
+    mockVideoModel.findOneAndUpdate.mockResolvedValue(null);
+    mockVideoModel.findById.mockResolvedValue({ _id: videoId, status: 'READY' });
+    expect(await touchVideoProcessing(videoId)).toEqual({ alive: false, status: 'READY' });
+  });
+
+  it('video đã bị xoá thì status là null để job biết dọn tệp tạm', async () => {
+    mockVideoModel.findOneAndUpdate.mockResolvedValue(null);
+    mockVideoModel.findById.mockResolvedValue(null);
+    expect(await touchVideoProcessing(videoId)).toEqual({ alive: false, status: null });
+  });
+});
