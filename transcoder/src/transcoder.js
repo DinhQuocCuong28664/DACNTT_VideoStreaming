@@ -165,13 +165,20 @@ const transcodeToHLS = async (inputPath, outputDir) => {
  * chia đoạn (chunked/ffmpegArgs.js) để hai đường không bao giờ lệch tham số mã hoá.
  * Phần GOP/keyframe và âm thanh khác nhau giữa hai đường nên nằm ở nơi gọi.
  */
-const videoEncodeArgs = (r) => {
+const videoEncodeArgs = (r, { trimEnd, restartPts = false } = {}) => {
   // Có kích thước đã tính (planRenditions): co đúng về đó, giữ tỉ lệ nguồn,
   // không đệm viền. Không có (không đọc được kích thước nguồn): khung cố
   // định kèm đệm như trước.
-  const scaleFilter = r.outWidth
+  const scale = r.outWidth
     ? `scale=${r.outWidth}:${r.outHeight},setsar=1`
     : `scale=${r.width}:${r.height}:force_original_aspect_ratio=decrease,pad=${r.width}:${r.height}:(ow-iw)/2:(oh-ih)/2`;
+  // Hai tuỳ chọn dưới chỉ đường chia đoạn dùng (xem buildChunkArgs), đặt ở ĐẦU chuỗi lọc, trước khi co:
+  //  - `trimEnd` (giây, theo pts sau khi tua) bỏ mọi khung sau cửa sổ của đoạn, nên khung thừa không tốn công co
+  //  - `restartPts` đặt khung đầu về pts 0 bằng bộ lọc, thay vì trông chờ ffmpeg tự đưa về 0 (chế độ CFR làm vậy
+  //    nhưng chế độ đó bị bỏ, xem buildChunkArgs)
+  const scaleFilter = [trimEnd === undefined ? null : `trim=end=${trimEnd}`, restartPts ? 'setpts=PTS-STARTPTS' : null, scale]
+    .filter(Boolean)
+    .join(',');
 
   return [
     '-vf', scaleFilter,

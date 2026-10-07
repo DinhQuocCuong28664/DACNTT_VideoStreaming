@@ -63,14 +63,32 @@ describe('buildChunkArgs', () => {
     expect(windows[1]).not.toEqual(windows[0]);
   });
 
-  it('giới hạn đoạn đúng số khung bằng -frames:v ở mỗi đầu ra, trừ đoạn cuối (mở)', () => {
-    // -t ở đầu vào cắt theo gói tin nên với nguồn có B-frame vẫn lọt một khung thừa (541 thay vì 540).
+  it('cắt hình bằng bộ lọc trim theo pts ở đầu chuỗi lọc, KHÔNG dùng -frames:v', () => {
+    // -t ở đầu vào cắt theo gói tin (dts) nên nguồn có B-frame rò thêm khung. -frames:v thì trên ffmpeg 5.1 (bản
+    // trong image production) đóng mọi luồng của đầu ra và cắt dở tiếng sao chép: mất 1,3-1,6 s tiếng mỗi đoạn.
     const args = build();
-    const limits = indexesOf(args, '-frames:v').map((i) => args[i + 1]);
-    expect(limits).toEqual(renditions.map(() => String(plan.chunks[3].frames)));
+    expect(args).not.toContain('-frames:v');
 
+    const filters = indexesOf(args, '-vf').map((i) => args[i + 1]);
+    expect(filters).toHaveLength(renditions.length);
+    // setpts đặt khung đầu về 0 bằng bộ lọc thay vì trông chờ ffmpeg tự đưa về 0 (đó là việc của chế độ CFR đã bỏ).
+    for (const f of filters) expect(f.startsWith(`trim=end=${plan.chunks[3].durationSeconds.toFixed(6)},setpts=PTS-STARTPTS,scale=`)).toBe(true);
+  });
+
+  it('đoạn cuối (mở) không cắt hình: đọc tới hết tệp', () => {
     const last = build({ chunk: plan.chunks.at(-1) });
+    for (const i of indexesOf(last, '-vf')) {
+      expect(last[i + 1]).not.toContain('trim=');
+      expect(last[i + 1].startsWith('setpts=PTS-STARTPTS,scale=')).toBe(true); // vẫn đưa khung đầu về 0
+    }
     expect(last).not.toContain('-frames:v');
+  });
+
+  it('tiếng sao chép với -copypriorss 0: mỗi gói AAC thuộc đúng một đoạn, không lặp ở ranh giới', () => {
+    const args = build();
+    const copies = indexesOf(args, '-c:a');
+    expect(copies).toHaveLength(renditions.length);
+    for (const i of copies) expect(args.slice(i, i + 4)).toEqual(['-c:a', 'copy', '-copypriorss', '0']);
   });
 
   it('E3/E4: âm thanh được SAO CHÉP, không bao giờ mã hoá lại theo đoạn', () => {
@@ -99,10 +117,11 @@ describe('buildChunkArgs', () => {
     expect(args).not.toContain('0:v:0');
   });
 
-  it('cờ mã hoá hình giống hệt đường một-job (videoEncodeArgs)', () => {
+  it('cờ mã hoá hình giống hệt đường một-job (videoEncodeArgs), chỉ thêm trim ở đầu chuỗi lọc', () => {
     const args = build();
+    const trimEnd = plan.chunks[3].durationSeconds.toFixed(6);
     for (const r of renditions) {
-      const flags = videoEncodeArgs(r);
+      const flags = videoEncodeArgs(r, { trimEnd, restartPts: true });
       const at = args.findIndex((a, i) => a === '-vf' && args[i + 1] === flags[1]);
       expect(at).toBeGreaterThan(-1);
       expect(args.slice(at, at + flags.length)).toEqual(flags);
@@ -117,6 +136,15 @@ describe('buildChunkArgs', () => {
     }
     expect(plan.gopFrames).toBe(180);
     for (const i of indexesOf(args, '-sc_threshold')) expect(args[i + 1]).toBe('0');
+  });
+
+  it('không chuyển đổi CFR: -fps_mode passthrough ở mọi đầu ra và không ép -r', () => {
+    // CFR nhân đôi khung cuối khi kết thúc luồng (9001 khung thay vì 9000, ffmpeg 5.1) và chọn tốc độ từ
+    // r_frame_rate nên nguồn avg 29,991 / r 30 cho đoạn lệch 94 ms so với kế hoạch.
+    const args = build();
+    expect(args).not.toContain('-r');
+    const modes = indexesOf(args, '-fps_mode').map((i) => args[i + 1]);
+    expect(modes).toEqual(renditions.map(() => 'passthrough'));
   });
 
   it('E2: -output_ts_offset theo kế hoạch, cho mọi mức', () => {

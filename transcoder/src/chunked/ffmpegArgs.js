@@ -111,20 +111,39 @@ const buildChunkArgs = ({ videoUrl, videoStreamIndex, audio = [], renditions, ch
     if (audioInput >= 0) args.push('-map', `${audioInput + 1}:a:0`);
 
     args.push(
-      ...videoEncodeArgs(r),
+      // Cắt hình đúng số khung ở mức BỘ LỌC, theo pts: bỏ mọi khung có pts sau cửa sổ của đoạn.
+      // KHÔNG dùng `-frames:v` và KHÔNG dựa vào `-t` ở đầu vào:
+      //  - `-t` ở đầu vào cắt theo gói tin (dts); với nguồn có B-frame dts của khung kế tiếp đến sớm hơn pts
+      //    nên khung đó lọt vào cửa sổ (đoạn ra 9001 khung thay vì 9000, lặp ở ranh giới). Số khung rò rỉ bằng độ
+      //    sâu sắp xếp lại B-frame, không có cận trên chắc chắn.
+      //  - `-frames:v` giải quyết được điều đó trên ffmpeg 8.1 nhưng trên ffmpeg 5.1 (bản trong image
+      //    production: node:24-slim dựa trên Debian bookworm) nó ĐÓNG MỌI LUỒNG của đầu ra ngay khi hình đủ khung,
+      //    cắt dở luồng tiếng sao chép: đoạn mất 1,3-1,6 s tiếng ở cuối. Đo trên AWS thật, tái hiện trong image.
+      // Bộ lọc trim chỉ bỏ khung hình, không đụng luồng tiếng. Cửa sổ hình `durationSeconds` chính là điểm cắt
+      // (nửa khung biên an toàn ở cả hai phía); đoạn cuối mở nên không cắt. setpts đặt khung đầu về pts 0.
+      ...videoEncodeArgs(r, {
+        restartPts: true,
+        ...(chunk.durationSeconds === null || chunk.durationSeconds === undefined ? {} : { trimEnd: seconds(chunk.durationSeconds) }),
+      }),
+      // KHÔNG chuyển đổi sang CFR: mỗi khung đi qua giữ nguyên khoảng cách pts của nguồn. Chế độ CFR mặc định
+      //  - nhân đôi khung cuối khi kết thúc luồng nên đoạn ra 9001 khung thay vì 9000 (đo trên ffmpeg 5.1, lặp ở mọi
+      //    đoạn từ đoạn 1, chồng 33 ms ở ranh giới) dù đã trim đúng;
+      //  - chọn tốc độ từ r_frame_rate chứ không phải avg_frame_rate: nguồn khai avg 29,991 / r 30 cho ra 30 fps, đoạn
+      //    9000 khung dài 300,000 s thay vì 300,094 s theo kế hoạch, để lại khe hở 94 ms ở mỗi ranh giới.
+      // Số khung của đoạn vì thế do bộ lọc trim quyết định, không phụ thuộc bản ffmpeg.
+      '-fps_mode', 'passthrough',
       '-g', String(gopFrames),
       '-keyint_min', String(gopFrames),
       // Tắt scene detection: để encoder tự chèn keyframe theo cảnh thì các mức có thể
       // cắt lệch nhau, vi phạm RFC 8216 §6.2.4.
       '-sc_threshold', '0'
     );
-    // Giới hạn CHÍNH XÁC theo số khung ở đầu ra. `-t` ở đầu vào chỉ là biên thô: nó cắt theo
-    // gói tin (dts), mà với nguồn có B-frame dts của khung kế tiếp đến sớm hơn pts nên khung đó
-    // vẫn lọt vào cửa sổ. Đo thực tế: đoạn ra 541 khung thay vì 540, thừa đúng một khung (33 ms
-    // ở 30 fps) lặp lại ở mỗi ranh giới và làm tổng EXTINF lệch dần so với pts. Đoạn cuối
-    // (frames = null) mở nên không giới hạn.
-    if (chunk.frames) args.push('-frames:v', String(chunk.frames));
-    if (audioInput >= 0) args.push('-c:a', 'copy');
+    if (audioInput >= 0) {
+      // `-copypriorss 0`: không sao chép gói tiếng nằm trước điểm bắt đầu. Mặc định ffmpeg 5.1 sao chép cả gói
+      // chứa điểm `-ss`, nên mỗi ranh giới có đúng một gói AAC trùng (chồng 23,2 ms). Bỏ cờ này thì cửa sổ
+      // tiếng chia chính xác theo thời điểm bắt đầu của gói: mỗi gói thuộc đúng một đoạn.
+      args.push('-c:a', 'copy', '-copypriorss', '0');
+    }
 
     args.push(
       '-output_ts_offset', seconds(chunk.tsOffsetSeconds),
