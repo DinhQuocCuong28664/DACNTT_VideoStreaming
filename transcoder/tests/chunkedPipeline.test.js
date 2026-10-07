@@ -103,6 +103,9 @@ describe('createPipeline', () => {
       moderate: extra.moderate || moderate,
       notify: extra.notify || notify,
       tmpRoot: path.join(root, 'tmp'),
+      // Mặc định là lần thử CUỐI (như khi Batch đã hết lần thử): lỗi thì đánh ERROR. Các ca về thử lại
+      // truyền jobAttempt rõ ràng.
+      jobAttempt: extra.jobAttempt !== undefined ? extra.jobAttempt : realConfig.chunked.childRetryAttempts,
     });
 
   beforeEach(() => {
@@ -195,6 +198,13 @@ describe('createPipeline', () => {
         expect(finalize.command[2]).toBe('finalize');
         expect(finalize.dependsOn).toEqual(['job-3']); // chờ array job, tức mọi đoạn
         expect(outcome.jobs).toEqual({ audio: ['job-1', 'job-2'], chunks: 'job-3', finalize: 'job-4' });
+      });
+
+      it('mọi job con được thử lại vô điều kiện (Spot bị thu hồi không được giết cả video)', async () => {
+        await build().planJob({ videoId: VIDEO_ID, rawS3Key: RAW_KEY });
+        expect(submit.specs).toHaveLength(4);
+        for (const spec of submit.specs) expect(spec.retryAttempts).toBe(realConfig.chunked.childRetryAttempts);
+        expect(realConfig.chunked.childRetryAttempts).toBeGreaterThanOrEqual(2);
       });
 
       it('mọi job con mang đúng VIDEO_ID và RAW_S3_KEY', async () => {
@@ -348,9 +358,48 @@ describe('createPipeline', () => {
       expect(db.state.status).toBe('PROCESSING');
     });
 
+    it('lỗi ở lần thử đầu của Batch KHÔNG đánh ERROR: Batch sẽ thử lại, lỗi tạm thời không giết cả video', async () => {
+      await planned();
+      const pipeline = build({ runFfmpeg: fakeFfmpeg({ fail: () => true }), jobAttempt: 1 });
+
+      await expect(pipeline.chunkJob({ videoId: VIDEO_ID, rawS3Key: RAW_KEY, index: 1 })).rejects.toThrow(/403/);
+
+      expect(db.state.status).toBe('PROCESSING');
+      expect(notify.sent.failed).toEqual([]);
+    });
+
+    it('lần thử đầu hỏng rồi lần thử sau thành công: video về đích bình thường', async () => {
+      await planned();
+      const first = build({ runFfmpeg: fakeFfmpeg({ fail: () => true }), jobAttempt: 1 });
+      await expect(first.chunkJob({ videoId: VIDEO_ID, rawS3Key: RAW_KEY, index: 1 })).rejects.toThrow();
+
+      const second = build({ runFfmpeg: fakeFfmpeg(), jobAttempt: 2 });
+      expect(await second.chunkJob({ videoId: VIDEO_ID, rawS3Key: RAW_KEY, index: 1 })).toEqual({ skipped: false, segments: 3 });
+      expect(db.state.status).toBe('PROCESSING');
+    });
+
+    it('lần thử CUỐI hỏng thì đánh ERROR, báo chủ video, và các đoạn khác dừng sớm', async () => {
+      await planned();
+      const last = realConfig.chunked.childRetryAttempts;
+      const pipeline = build({ runFfmpeg: fakeFfmpeg({ fail: () => true }), jobAttempt: last });
+
+      await expect(pipeline.chunkJob({ videoId: VIDEO_ID, rawS3Key: RAW_KEY, index: 1 })).rejects.toThrow(/403/);
+
+      expect(db.state.status).toBe('ERROR');
+      expect(notify.sent.failed).toHaveLength(1);
+    });
+
+    it('planner không được thử lại vô điều kiện nên đánh ERROR ngay dù đang ở lần thử đầu', async () => {
+      const failing = async () => {
+        throw new Error('boom');
+      };
+      await expect(build({ submit: failing, jobAttempt: 1 }).planJob({ videoId: VIDEO_ID, rawS3Key: RAW_KEY })).rejects.toThrow('boom');
+      expect(db.state.status).toBe('ERROR');
+    });
+
     it('hết số lần thử thì đánh ERROR một lần, báo chủ video một lần, và ném lỗi', async () => {
       await planned();
-      const pipeline = build({ runFfmpeg: fakeFfmpeg({ fail: () => true }) });
+      const pipeline = build({ runFfmpeg: fakeFfmpeg({ fail: () => true }), jobAttempt: realConfig.chunked.childRetryAttempts });
 
       await expect(pipeline.chunkJob({ videoId: VIDEO_ID, rawS3Key: RAW_KEY, index: 1 })).rejects.toThrow(/403/);
       expect(db.state.status).toBe('ERROR');

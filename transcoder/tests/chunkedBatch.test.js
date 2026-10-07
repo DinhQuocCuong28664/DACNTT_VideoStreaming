@@ -52,6 +52,13 @@ describe('buildSubmitInput', () => {
     expect(input).not.toHaveProperty('timeout');
   });
 
+  it('ghi đè chiến lược thử lại: thử lại vô điều kiện, không dựa vào lý do trạng thái', () => {
+    const input = buildSubmitInput({ ...base, retryAttempts: 3 });
+    expect(input.retryStrategy).toEqual({ attempts: 3 });
+    expect(input.retryStrategy).not.toHaveProperty('evaluateOnExit');
+    expect(buildSubmitInput(base)).not.toHaveProperty('retryStrategy');
+  });
+
   it('ghi đè timeout theo job', () => {
     expect(buildSubmitInput({ ...base, timeoutSeconds: 21600 }).timeout).toEqual({ attemptDurationSeconds: 21600 });
   });

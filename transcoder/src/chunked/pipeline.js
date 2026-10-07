@@ -37,12 +37,15 @@ const { withAttempts } = require('./run');
  * @param {object} deps.notify        - { videoReady(videoId, moderation), videoFailed(videoId) }
  * @param {object} [deps.config]
  * @param {string} [deps.tmpRoot]
+ * @param {number} [deps.jobAttempt] - lần thử hiện tại của job Batch (1 = lần đầu); mặc định đọc từ
+ *   AWS_BATCH_JOB_ATTEMPT mà Batch đặt trong container
  */
 const createPipeline = (deps) => {
   const { io, db, submit, probe, runFfmpeg, moderate, notify } = deps;
   const config = deps.config || defaultConfig;
   const cfg = config.chunked;
   const tmpRoot = deps.tmpRoot || path.join(os.tmpdir(), 'vidshare-transcoder');
+  const jobAttempt = deps.jobAttempt !== undefined ? deps.jobAttempt : Number(process.env.AWS_BATCH_JOB_ATTEMPT) || 1;
 
   const planKey = (videoId) => io.workKey(videoId, 'plan.json');
   const submittedKey = (videoId) => io.workKey(videoId, 'submitted.json');
@@ -69,17 +72,27 @@ const createPipeline = (deps) => {
    * Job con thất bại hẳn phải tự đánh ERROR vì job ghép phụ thuộc vào nó sẽ KHÔNG chạy (Batch
    * bỏ qua job phụ thuộc vào job thất bại), nên sẽ không còn ai làm việc đó. Chỉ lỗi trong code
    * mới tới được đây; Spot bị thu hồi giết cả tiến trình nên Batch thử lại, không đánh ERROR.
+   *
+   * `retried` dành cho job con mà Batch còn thử lại (childRetryAttempts): chỉ đánh ERROR ở lần thử
+   * CUỐI. Đánh ngay ở lần đầu thì một lỗi tạm thời (DB chập chờn...) giết cả video sau hàng giờ chạy
+   * và các lần thử lại trở nên vô nghĩa. Planner không bị thử lại vô điều kiện nên đánh ERROR ngay.
    */
-  const failVideoOnError = async (videoId, label, fn) => {
+  const failVideoOnError = async (videoId, label, fn, { retried = false } = {}) => {
     try {
       return await fn();
     } catch (err) {
+      if (retried && jobAttempt < cfg.childRetryAttempts) {
+        console.error(`❌ ${label} failed for ${videoId} (lần ${jobAttempt}/${cfg.childRetryAttempts}, Batch sẽ thử lại):`, err.message);
+        throw err;
+      }
       console.error(`❌ ${label} failed for ${videoId}:`, err.message);
       const { updated } = await db.updateVideoError(videoId, `${label}: ${String(err.message).split('\n')[0]}`);
       if (updated) await notify.videoFailed(videoId);
       throw err;
     }
   };
+
+  const failChild = (videoId, label, fn) => failVideoOnError(videoId, label, fn, { retried: true });
 
   /** Job con chỉ làm việc khi video còn đang xử lý; xoá hoặc đã xong hoặc đã lỗi thì dừng sớm. */
   const requireAlive = async (videoId, role) => {
@@ -178,6 +191,7 @@ const createPipeline = (deps) => {
             command: ['node', 'src/index.js', 'audio'],
             environment: { ...environment, AUDIO_BITRATE: track.bitrate },
             timeoutSeconds: cfg.longJobTimeoutSeconds,
+            retryAttempts: cfg.childRetryAttempts,
           })
         );
       }
@@ -187,6 +201,7 @@ const createPipeline = (deps) => {
         environment,
         arraySize: plan.chunks.length,
         dependsOn: audioJobIds,
+        retryAttempts: cfg.childRetryAttempts,
       });
       const finalizeJobId = await submit({
         name: `finalize-${videoId}`,
@@ -194,6 +209,7 @@ const createPipeline = (deps) => {
         environment,
         dependsOn: [chunkJobId],
         timeoutSeconds: cfg.longJobTimeoutSeconds,
+        retryAttempts: cfg.childRetryAttempts,
       });
 
       const jobs = { audio: audioJobIds, chunks: chunkJobId, finalize: finalizeJobId };
@@ -214,7 +230,7 @@ const createPipeline = (deps) => {
   const audioJob = async ({ videoId, rawS3Key, bitrate }) => {
     if (!(await requireAlive(videoId, 'audio')).alive) return { skipped: true };
 
-    return failVideoOnError(videoId, `audio ${bitrate}`, async () => {
+    return failChild(videoId, `audio ${bitrate}`, async () => {
       const document = await loadPlan(videoId);
       const track = document.audio.find((a) => a.bitrate === bitrate);
       if (!track) throw new Error(`Kế hoạch không có bitrate âm thanh ${bitrate}`);
@@ -250,7 +266,7 @@ const createPipeline = (deps) => {
   const chunkJob = async ({ videoId, rawS3Key, index }) => {
     if (!(await requireAlive(videoId, `chunk ${index}`)).alive) return { skipped: true };
 
-    return failVideoOnError(videoId, `chunk ${index}`, async () => {
+    return failChild(videoId, `chunk ${index}`, async () => {
       const document = await loadPlan(videoId);
       const { plan, renditions } = document;
       const chunk = plan.chunks[index];
@@ -333,7 +349,7 @@ const createPipeline = (deps) => {
       return { skipped: true };
     }
 
-    return failVideoOnError(videoId, 'finalize', async () => {
+    return failChild(videoId, 'finalize', async () => {
       const startedAt = Date.now();
       const document = await loadPlan(videoId);
       const { plan, renditions } = document;

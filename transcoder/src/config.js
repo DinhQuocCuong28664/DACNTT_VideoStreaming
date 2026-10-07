@@ -86,6 +86,13 @@ const config = {
     // Số lần chạy ffmpeg cho một đoạn trong CÙNG job: URL ký sẵn hết hạn hay S3 chập chờn giữa
     // chừng làm một lần chạy hỏng, mà chạy lại đoạn là vô hại (ghi đè cùng khoá).
     ffmpegAttempts: Math.floor(positiveNumber(process.env.CHUNK_FFMPEG_ATTEMPTS, 2)),
+    // Số lần Batch chạy một job con trước khi coi là thất bại, và thử lại VÔ ĐIỀU KIỆN. Chiến lược
+    // của job definition chỉ thử lại khi lý do trạng thái khớp "Host EC2*" hay "Task failed to start*",
+    // mà tài liệu AWS chỉ nêu mẫu đó cho Spot trên EC2, không cho Fargate Spot: không muốn đặt cược một
+    // video 4 giờ vào một chuỗi chưa kiểm chứng. Thử lại vô điều kiện vẫn rẻ vì job con tự dừng sớm: lỗi
+    // do mã đã đánh video ERROR ở lần đầu nên các lần sau thấy video không còn PROCESSING và thoát ngay;
+    // còn tiến trình bị giết (Spot thu hồi, hết bộ nhớ) không kịp đánh ERROR nên lần sau làm tiếp.
+    childRetryAttempts: Math.floor(positiveNumber(process.env.CHUNK_JOB_ATTEMPTS, 3)),
     // Timeout cho job âm thanh và job ghép (giây): chạy lâu hơn job đoạn nhiều lần ở video rất dài.
     longJobTimeoutSeconds: 6 * 3600,
   },

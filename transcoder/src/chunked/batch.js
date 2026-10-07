@@ -29,8 +29,20 @@ const safeJobName = (name) => String(name).replace(/[^A-Za-z0-9_-]/g, '-').slice
  * @param {string[]} [spec.dependsOn] - jobId; với array job cha thì chờ TẤT CẢ phần tử con
  * @param {number} [spec.arraySize]
  * @param {number} [spec.timeoutSeconds]
+ * @param {number} [spec.retryAttempts] - ghi đè chiến lược thử lại của job definition: thử lại VÔ ĐIỀU KIỆN
+ *   (xem chú thích của `childRetryAttempts` trong config)
  */
-const buildSubmitInput = ({ jobQueue, jobDefinition, name, command, environment = {}, dependsOn = [], arraySize, timeoutSeconds }) => {
+const buildSubmitInput = ({
+  jobQueue,
+  jobDefinition,
+  name,
+  command,
+  environment = {},
+  dependsOn = [],
+  arraySize,
+  timeoutSeconds,
+  retryAttempts,
+}) => {
   if (!jobQueue || !jobDefinition) {
     throw new Error('Thiếu hàng đợi hoặc job definition Batch (BATCH_JOB_QUEUE / BATCH_JOB_DEFINITION)');
   }
@@ -56,6 +68,7 @@ const buildSubmitInput = ({ jobQueue, jobDefinition, name, command, environment 
   if (dependsOn.length > 0) input.dependsOn = dependsOn.map((jobId) => ({ jobId }));
   if (arraySize !== undefined) input.arrayProperties = { size: arraySize };
   if (timeoutSeconds) input.timeout = { attemptDurationSeconds: timeoutSeconds };
+  if (retryAttempts) input.retryStrategy = { attempts: retryAttempts };
   return input;
 };
 
