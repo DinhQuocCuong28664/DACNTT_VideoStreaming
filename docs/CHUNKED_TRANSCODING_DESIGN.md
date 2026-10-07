@@ -1,6 +1,7 @@
 # Thiết kế: chuyển mã song song theo đoạn cho video dài
 
-> Trạng thái: **đề xuất, chờ duyệt**. Chưa có dòng code nào của pipeline này được viết.
+> Trạng thái: **đã duyệt và đã triển khai** (PR #8), đang thử trên staging; chưa bật ở production. Các điều chỉnh
+> sau khi đo bằng ffmpeg thật nằm ở **mục 10 và ghi đè** những chỗ mâu thuẫn ở các mục 2-5 phía trên.
 > Yêu cầu: xử lý được video **tối thiểu 4 giờ** (có thể dài hơn), tệp tới 20 GB.
 
 ## 1. Vấn đề
@@ -191,3 +192,124 @@ Không cần: đổi Lambda, nâng ổ đĩa tạm (E5), đổi frontend (master
 3. Hai bitrate âm thanh cho video dài (64k và 128k) thay vì năm mức.
 4. Cho phép tạm lùi về đường một-job khi gặp nguồn đặc biệt (mục 7) thay vì từ chối.
 5. Thứ tự làm: `chunkPlan` thuần + test → chế độ chunk cục bộ → Terraform + staging → bật cho production và nâng trần lên 20 GB.
+
+## 10. Điều chỉnh sau khi triển khai và đo
+
+Bản thiết kế ở trên dựa trên các phép đo E1-E5 với lệnh ffmpeg đơn giản. Khi chạy **mã thật** qua
+`transcoder/scripts/verify-chunked.js` (kiểm lệnh ffmpeg) và `verify-pipeline.js` (chạy cả pipeline cục bộ với S3/Mongo/Batch giả)
+trên 9 nguồn, một số điều khác dự kiến. Mục này ghi đè các mục trước.
+
+### 10.1 Khác biệt về kiến trúc
+
+| Thiết kế ban đầu | Đã làm | Lý do |
+|---|---|---|
+| 3 job definition (audio, chunk, finalize) | **Một** job definition, job con chỉ khác `command` qua `containerOverrides` | CI chỉ đăng ký lại một job definition mỗi lần có image mới; ba cái dễ lệch phiên bản |
+| Tệp tạm ở `work/<id>/` của bucket **processed** | Ở bucket **raw** | CloudFront phục vụ cả bucket processed: âm thanh gốc của video riêng tư sẽ có URL công khai. Bucket raw riêng tư, và event S3 chỉ lọc `videos/` nên ghi vào `work/` không kích hoạt job |
+| Reconciler đổi ngưỡng sang "2 giờ không nhịp tim" | **Giữ nguyên** 6 giờ | `updatedAt` vốn là mốc ghi gần nhất; job con ghi nhịp tim (`touchVideoProcessing`) nên pipeline chạy bao lâu cũng được miễn còn job con ghi |
+| `-start_number` theo đoạn | Tên segment chứa số đoạn: `segment_c0042_000.ts`, đánh số lại từ 0 | Tên của các đoạn không bao giờ trùng nhau dù một đoạn ra nhiều hay ít segment hơn kế hoạch, nên không đoạn nào ghi đè nhầm đoạn khác |
+| Retry theo `retry_strategy` của job definition | Job con tự khai `retryStrategy` 3 lần **vô điều kiện** | Job definition chỉ thử lại với `Host EC2*` / `Task failed to start*`, mẫu AWS chỉ nêu cho Spot trên EC2, không cho Fargate Spot |
+
+### 10.2 Khác biệt về mã hoá (E1-E4 được tinh chỉnh)
+
+- **E1 — GOP làm tròn LÊN, không dùng `-force_key_frames` theo giây.** Đường một-job (GOP làm tròn xuống + `force_key_frames`) ở
+  29,97 fps sinh một segment ngắn 5,973 s sau mỗi ~5,5 segment, vì keyframe ép rơi vào khung `ceil(6k × fps)` lệch dần so với bội của GOP.
+  Ở đoạn 50 GOP điều đó để lại một segment cụt cuối mỗi đoạn. Đường chia đoạn dùng `-g G -keyint_min G -sc_threshold 0` với
+  `G = ceil(6 × fps)` (phân số chính xác, ví dụ 180 ở 30000/1001): GOP quy ra giây >= 6 nên mỗi GOP đúng một segment.
+- **E2 — quy tắc pts duy nhất.** Mọi thứ ở vị trí T trong tệp nguồn có pts đầu ra = T + hằng số chung. ffmpeg (chế độ CFR) đưa khung
+  đầu của mỗi đoạn về timestamp 0 nên nửa khung lùi ở `-ss` biến mất với **hình** nhưng còn với **tiếng** (tiếng được sao chép nguyên
+  timestamp). Vì vậy: hình `-ss` lùi nửa khung (biên an toàn cho `-ss`), `-output_ts_offset = T_f + base` cho MỌI đoạn kể cả đoạn 0 (bù
+  nửa khung ở đoạn 0 làm nó chồng 16,7 ms lên đoạn 1), tiếng `-ss` ĐÚNG bằng `T_f`. Đã đo: bù sai làm hình/tiếng lệch 16,7 ms.
+- **E3 — cắt hình bằng bộ lọc `trim` theo pts, KHÔNG dùng `-frames:v`, và KHÔNG chuyển đổi CFR.** Ba lần sửa liên tiếp, mỗi lần do một phép đo:
+  1. `-t` ở đầu vào cắt theo gói tin (dts); với nguồn có B-frame dts của khung kế tiếp đến sớm hơn pts nên khung đó lọt vào cửa sổ: đoạn ra
+     9001 khung thay vì 9000, lặp ở mỗi ranh giới và cộng dồn ~1,6 s lệch giữa EXTINF và pts sau 48 đoạn. Số khung rò bằng độ sâu sắp xếp lại
+     B-frame, không có cận trên.
+  2. `-frames:v` giải quyết được trên ffmpeg 8.1 nhưng **trên ffmpeg 5.1 nó đóng mọi luồng của đầu ra ngay khi hình đủ khung**, cắt dở luồng
+     tiếng sao chép: trên AWS thật mỗi đoạn mất 1,3 s tiếng ở cuối (4 khe hở ở video 25 phút), hình hoàn hảo. Cục bộ không thấy vì máy phát triển
+     chạy 8.1 trong khi image production chạy 5.1 (xem 10.6).
+  3. Chế độ CFR mặc định nhân đôi khung cuối khi kết thúc luồng trên 5.1 (đoạn ra 9001 khung dù đã trim đúng, chồng 33 ms ở ranh giới) và chọn tốc độ
+     từ `r_frame_rate` chứ không phải `avg_frame_rate`: nguồn khai avg 29,991 / r 30 cho đoạn ngắn hơn kế hoạch 94 ms.
+
+  Cách làm hiện tại: `trim=end=<cửa sổ hình>,setpts=PTS-STARTPTS,scale…` ở đầu chuỗi lọc (chỉ bỏ khung hình, không đụng tiếng; `setpts` đặt khung đầu
+  về 0 thay vì trông chờ CFR làm việc đó) cùng `-fps_mode passthrough`. Số khung của đoạn do bộ lọc quyết định, không do phiên bản ffmpeg: 9000 khung mỗi
+  đoạn trên cả 5.1.9 và 8.1.2. Đoạn cuối mở nên không cắt.
+- **E4 — tiếng không còn khung AAC trùng.** Cửa sổ tiếng bắt đầu đúng tại khung đầu, độ dài là hiệu của hai mốc đã làm tròn micro-giây (hai cửa sổ
+  liền nhau khớp tuyệt đối), và `-copypriorss 0` để ffmpeg 5.1 không sao chép gói AAC nằm vắt qua điểm bắt đầu (mặc định làm mỗi ranh giới có một gói trùng
+  chồng 23,2 ms). Khi đó mỗi gói AAC thuộc đúng một đoạn: số mẫu giải mã **bằng đúng** mã hoá một lần (3.088.384 mẫu ở cả hai) và tín hiệu sin 440 Hz
+  liền pha qua mọi ranh giới. Không còn khung trùng để lo ở mục 7, nên phương án B (âm thanh thành rendition riêng) không cần nữa. Đã kiểm trên Chrome
+  thật bằng hls.js (mục 10.4).
+- **Ngưỡng kiểm tra tính nhất quán tính theo số khung hình** (cảnh báo từ nửa khung, lỗi từ 3 khung), không theo giây: ngưỡng 50 ms cũ nhỏ hơn
+  một khung ở 30 fps nên để lọt đúng lỗi 541 khung ở trên.
+
+### 10.3 Điều kiện lùi về đường một-job
+
+Planner không bao giờ ném lỗi ở giai đoạn quyết định; mọi trường hợp sau rơi xuống đường một-job như trước giờ: tắt cờ `CHUNKED_TRANSCODING`, không biết
+thời lượng, video không vượt 20 phút, không đọc được nguồn qua HTTP, nguồn VFR (`avg_frame_rate` lệch `r_frame_rate` quá 1%), framerate ngoài 10-120,
+hình và tiếng bắt đầu lệch nhau quá 0,25 s, chia ra chưa tới 2 đoạn.
+
+### 10.4 Kết quả đo
+
+**Cục bộ, ffmpeg 8.1** (so với một lần mã hoá liền; 29,97 / 30 / 25 / 23,976 fps, B-frame nặng, `start_time` hình 66 ms, không tiếng, video dọc, MKV):
+số segment, độ dài từng segment (trừ cái cuối), tổng thời lượng và hình ở ranh giới khớp; nguồn nháy-bíp 130 s cho độ lệch hình-tiếng **trùng từng phần tử**
+qua 10 ranh giới.
+
+**Trên Chrome thật, hls.js** (đầu ra của `verify-pipeline.js`, nguồn nháy-bíp 130 s, 11 đoạn): nạp toàn bộ qua MSE, 0 lỗi; SourceBuffer **tiếng** `[0 – 130,032]` và
+**hình** `[0,023 – 130,02]` đều là một dải liền (nếu ranh giới có khe hở, chồng lấn hay khung trùng thì dải sẽ vỡ hoặc hls.js báo lỗi); 30 lần tua sát
+10 ranh giới (−0,25 s, +0,01 s, +0,4 s) đều giải mã được hình. Cùng kết quả với nguồn 720p 70 s có đủ 5 mức. Chạy ở chế độ nạp bộ đệm chứ không phát,
+vì Chrome chặn `play()` của video không tiếng ở tab ẩn; thứ cần kiểm là timestamp liên tục như MSE nhìn thấy, và nó đo đúng điều đó. Qua HTTP Range cục bộ: `ffprobe` đọc 2,44 MiB trong 1 request cho tệp 587 MiB; job âm thanh đọc 100% tệp; job đoạn chỉ đọc phần của nó
+(đoạn chiếm 24% video đọc 26% dung lượng); mọi cờ `-reconnect*`/`-rw_timeout` được ffmpeg chấp nhận.
+
+**Trên Fargate Spot 1 vCPU (staging)**, 6 mức từ nguồn 1080p 4 Mbps: đoạn 5 phút mã hoá với **hệ số 4,47** giây chạy mỗi giây video (67,3 s video / 301 s),
+khoảng 22 phút mỗi đoạn, trong khoảng 3,7-5,2 đã ước ở mục 4. Kết quả đo video dài hơn ở mục 10.5.
+
+### 10.5 Thử nghiệm trên AWS
+
+Chạy bằng `transcoder/scripts/staging-chunked-test.js` trên staging, đi đúng đường production: tải lên bucket raw → S3 event → SQS → Lambda → Batch.
+
+**Video 25 phút (đợt khói, 2026-10-07).** Chạy xuyên suốt Lambda → planner → 2 job âm thanh → 5 đoạn song song → job ghép, quyền IAM đủ. Phát hiện lỗi duy nhất của cả
+đợt: mỗi ranh giới mất 1,3 s tiếng (xem 10.2 E3 và 10.6), nên bản này **không** được dùng để kết luận; bản sửa được kiểm lại bằng image ở 10.6 rồi bằng video 4 giờ dưới đây.
+
+**Video 4 giờ (2026-10-07/08).** Nguồn 1080p 30 fps CFR, 432.000 khung, 6,92 GiB (hình lặp từ một clip thật 4 Mbps, tiếng sin 128k), tải lên bằng `aws s3 cp` (multipart
+tự động) trong 2 phút 3 giây. Image: ffmpeg 8.1.2 tĩnh, quota Fargate Spot 8 vCPU.
+
+| Bước | Thời gian |
+|---|---|
+| Planner (Lambda → job lập kế hoạch → nộp 4 job) | 0,4 phút |
+| Âm thanh 64k / 128k (song song) | 3,6 / **10,2 phút** (các đoạn phải chờ job chậm hơn) |
+| 48 đoạn, 8 chạy cùng lúc, 6 lượt | **2,84 giờ**; mỗi đoạn 19,3 / 23,9 / 26,2 / 36,6 phút (nhỏ nhất / trung vị / trung bình / lớn nhất) |
+| Job ghép (48 kết quả, 6 playlist, thumbnail, kiểm duyệt, READY) | 1,9 phút |
+| **Từ lúc tải lên xong tới READY** | **3 giờ 5 phút** |
+
+20,9 vCPU-giờ cho các đoạn. Hệ số trung bình **5,24** giây chạy mỗi giây video ở 1 vCPU, trong khi các đoạn đầu chạy ở ~4,05: Fargate Spot không đồng đều giữa các host (một đoạn
+5 phút mất từ 19 tới 37 phút). Ước tính ở mục 4 (1,9-2,6 giờ ở 8 vCPU) quá lạc quan khoảng 18% ở cận trên; ước tính hợp lý cho video 4 giờ là **~3 giờ ở 8 vCPU**,
+~2 giờ ở 12 vCPU, ~1,5 giờ ở 16 vCPU (hai số sau chưa đo). Không đoạn nào lỗi hay phải thử lại.
+
+Kiểm tra kết quả (`staging-chunked-test.js verify`):
+- 6 mức, mỗi mức **2.400 segment**, đủ trên S3, tổng **đúng 14.400,000 s**, segment dài nhất 6,000 s; master có BANDWIDTH đo từ segment thật và CODECS đọc từ luồng.
+- Rendition 144p tải về phân tích gói tin: **0 khe hở/chồng lấn ở hình, 0 khe hở ở tiếng, 0 chồng lấn bất thường, qua cả 47 ranh giới đoạn**.
+- Tệp tạm `work/` đã được dọn.
+- **Chrome thật + hls.js**: nạp playlist 14.400 s (2.400 fragment), tua tới sát từng ranh giới trong 47 ranh giới, đợi nạp quanh đó: không lỗi hls.js, SourceBuffer hình và
+  tiếng đều là một dải liền ở cả 47 chỗ.
+
+### 10.6 Phiên bản ffmpeg của production
+
+Toàn bộ phép đo ban đầu chạy trên ffmpeg 8.1 của máy phát triển. Image production dựa trên `node:24-slim` (Debian bookworm) và cài ffmpeg bằng apt:
+**5.1.9**. Hai bản khác nhau đúng ở các điểm chia đoạn cần chính xác (ffmpeg 7 viết lại bộ điều phối luồng), và phát hiện này chỉ có được nhờ khe hở
+1,3 s tiếng trên AWS thật mà cục bộ không tái hiện. Cách tìm ra: dựng chính image bằng Docker rồi chạy kịch bản tái hiện bên trong; tái hiện được
+(1,6 s) và loại trừ từng giả thuyết (HTTP so với tệp, độ dài đoạn) cho tới khi chỉ còn `-frames:v`.
+
+Đã làm:
+- Mã chia đoạn đúng trên **cả hai** phiên bản (10.2) và được kiểm trên cả hai: ma trận 9 nguồn cùng cả pipeline cục bộ đều đạt 14/14 trong image 5.1.9
+  lẫn image 8.1.2.
+- Image production chạy ffmpeg **8.1.2 tĩnh** từ `mwader/static-ffmpeg`, ghim theo digest của image đa kiến trúc (tag có thể bị đẩy lại, digest thì không),
+  cùng bản 8.1.2 mà pipeline được phát triển. Thay đổi cách mã hoá của MỌI video, kể cả video ngắn: đã kiểm TLS, DNS và đọc Range với URL ký sẵn S3
+  thật, libx264, aac, hls; image nhỏ đi từ 1,09 GB xuống 834 MB. Đánh đổi: Trivy (quét thư viện) không nhìn thấy các thư viện codec bên trong binary tĩnh.
+- `transcoder/scripts/verify-in-image.sh` dựng hai nguồn thử bằng lavfi **bên trong** một image rồi chạy `verify-chunked.js` và `verify-pipeline.js`. Một
+  job CI mới chạy nó trên image dựng từ PR, và bước đẩy lên ECR phải chờ nó, nên đổi image gốc hay phiên bản ffmpeg làm hỏng ranh giới đoạn sẽ bị bắt trước khi lên.
+- Nâng cấp ffmpeg về sau = đổi cả tag lẫn digest trong Dockerfile rồi để CI chạy lại kiểm tra trên.
+
+### 10.7 Độ tin cậy của job con
+
+- **Thử lại vô điều kiện.** Job definition chỉ thử lại khi lý do trạng thái khớp `Host EC2*` / `Task failed to start*`, mẫu mà tài liệu AWS chỉ nêu cho Spot trên
+  EC2. Mỗi job con khai `retryStrategy` 3 lần không điều kiện khi nộp (đã xác nhận trên AWS: `attempts 3, evaluateOnExit []`). An toàn vì tiến trình bị giết (Spot
+  thu hồi, hết bộ nhớ) không kịp đánh ERROR nên lần sau làm tiếp, còn lỗi do mã thì lần sau thấy video không còn PROCESSING và thoát trong vài giây.
+- **Chỉ đánh ERROR ở lần thử cuối** (`AWS_BATCH_JOB_ATTEMPT`), để lỗi tạm thời không giết video mà Batch sắp thử lại. Planner không bị thử lại vô điều kiện nên đánh ERROR ngay.
