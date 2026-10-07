@@ -82,6 +82,26 @@ resource "aws_s3_bucket_lifecycle_configuration" "raw" {
       days_after_initiation = 2
     }
   }
+
+  # Tệp tạm của pipeline chia đoạn (work/<videoId>/: kế hoạch, âm thanh đã mã hoá, kết quả từng
+  # đoạn). Job ghép tự xoá khi xong; luật này dọn những gì còn sót khi pipeline chết giữa chừng
+  # hoặc video bị xoá. 7 ngày là dư cho một video dài chạy lại, mà tệp tạm không nên nằm lâu hơn.
+  rule {
+    id     = "expire-chunked-pipeline-work-files"
+    status = "Enabled"
+
+    filter {
+      prefix = "work/"
+    }
+
+    expiration {
+      days = 7
+    }
+
+    abort_incomplete_multipart_upload {
+      days_after_initiation = 2
+    }
+  }
 }
 
 # S3 Event Notification → SQS Queue (trigger transcoding)

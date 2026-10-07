@@ -177,6 +177,10 @@ module "batch" {
   # để compute environment không tự giới hạn thấp hơn khả năng thật khi chạy
   # stress test nhiều job đồng thời.
   max_vcpus = 8
+  # Chuyển mã song song theo đoạn cho video dài. TẮT cho tới khi đã thử trên staging với video
+  # 4 giờ: bật là mọi video dài hơn 20 phút đi đường mới (nguồn không chia đoạn được thì vẫn lùi
+  # về đường một-job). Bật bằng cách đổi thành true rồi apply; xem docs/CHUNKED_TRANSCODING_DESIGN.md.
+  chunked_transcoding_enabled = false
   # Mặc định 1 vCPU / 2 GB (giá trị gốc của hệ thống). Thí nghiệm so sánh
   # hiệu năng đổi sang 4 vCPU / 8 GB bằng cách truyền biến lúc chạy:
   #   terraform apply -var="job_vcpu=4" -var="job_memory=8192"
