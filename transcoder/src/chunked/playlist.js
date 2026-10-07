@@ -73,7 +73,7 @@ const sumSeconds = (segments) => segments.reduce((total, s) => total + s.duratio
 
 /**
  * Lệch thời lượng giữa kế hoạch và thực tế của một đoạn, tính theo SỐ KHUNG HÌNH: cảnh báo từ
- * nửa khung, coi là lỗi từ 3 khung. Mã hoá cắt đoạn đúng số khung (`-frames:v`) nên lệch chỉ
+ * nửa khung, coi là lỗi từ 3 khung. Mã hoá cắt đoạn đúng số khung (bộ lọc trim theo pts) nên lệch chỉ
  * có thể đến từ làm tròn micro-giây; một khung thừa mỗi đoạn (từng xảy ra, xem buildChunkArgs)
  * phải lộ ra chứ không được lọt qua ngưỡng tính bằng giây.
  */

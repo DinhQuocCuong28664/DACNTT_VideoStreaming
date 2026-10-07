@@ -73,7 +73,7 @@ const audioWindow = (chunk) => windowArgs(chunk.audioSeekSeconds, chunk.audioDur
  * Mã hoá MỘT đoạn của mọi mức trong một tiến trình ffmpeg.
  *
  * - Hình: đọc qua HTTP trong cửa sổ của đoạn (lùi nửa khung, xem buildChunkPlan), cắt đúng
-  số khung bằng `-frames:v`.
+  theo pts bằng bộ lọc `trim`.
  * - Âm thanh: KHÔNG mã hoá lại (E3: mỗi encoder AAC mới chèn khung khởi động và rớt ~23 ms
  *   tại ranh giới) mà sao chép (`-c:a copy`) dải khung của đoạn từ tệp âm thanh đã mã hoá
  *   một lần. Mỗi ranh giới còn đúng một khung AAC trùng lặp giống hệt (E4).

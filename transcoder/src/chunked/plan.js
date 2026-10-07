@@ -86,16 +86,17 @@ const toFixedSeconds = (value) => Math.round(value * 1e6) / 1e6;
  *
  *   hình     `-ss` = T_f − nửa khung, `-t` kéo tới nửa khung trước khung đầu đoạn kế. Nửa
  *            khung là biên an toàn: `-ss` giữ khung có pts >= vị trí, nên trúng khung đầu
- *            và không dính khung trước dù timestamp lệch vài ms. ffmpeg (chế độ CFR) đặt
- *            khung đầu ra ĐÚNG timestamp 0 nên nửa khung đó biến mất khỏi đầu ra, và:
+ *            và không dính khung trước dù timestamp lệch vài ms. Bộ lọc `setpts=PTS-STARTPTS`
+ *            (xem buildChunkArgs) đặt khung đầu ra ĐÚNG pts 0 nên nửa khung đó biến mất khỏi
+ *            đầu ra, và:
  *   offset   `-output_ts_offset` = T_f + tsOffsetBase. Đo thực tế (scripts/verify-chunked.js)
  *            chỉ ra rằng bù nửa khung ở đây làm đoạn 0 chồng lên đoạn 1 16,7 ms.
  *   tiếng    `-ss` = ĐÚNG T_f, không lùi nửa khung: tiếng được sao chép nguyên timestamp nên
- *            không có bước "đưa về 0" như hình, và pts = T − T_f + offset = T + tsOffsetBase,
+ *            không đi qua bộ lọc setpts như hình, và pts = T − T_f + offset = T + tsOffsetBase,
  *            cùng hằng số với hình. Lùi nửa khung sẽ làm tiếng trễ 16,7 ms so với hình.
  *
  * `-ss` không bao giờ âm: đoạn 0 có `seek` hình bị chặn ở 0, vẫn đúng vì khung đầu của nó
- * (T_f = videoStartOffset, thường ~0) cũng được đưa về timestamp 0.
+ * (T_f = videoStartOffset, thường ~0) cũng được setpts đưa về pts 0.
  *
  * @param {object} p
  * @param {number} p.frameCount - số khung hình (ước lượng) của luồng hình

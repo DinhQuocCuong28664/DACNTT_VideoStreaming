@@ -105,7 +105,7 @@ describe('buildChunkPlan', () => {
   });
 
   it('E2: mọi thứ ở vị trí T trong tệp có pts đầu ra = T + MỘT hằng số chung, ở mọi đoạn kể cả đoạn 0', () => {
-    // ffmpeg (CFR) đặt khung đầu của đoạn ĐÚNG timestamp 0, nên pts đầu ra của khung n bằng
+    // setpts=PTS-STARTPTS đặt khung đầu của đoạn ĐÚNG pts 0, nên pts đầu ra của khung n bằng
     // tsOffset + (n − startFrame)/fps. Khung nằm ở T_n = videoStartOffset + n/fps, vậy hằng số
     // pts − T_n = tsOffset − (videoStartOffset + startFrame/fps) phải bằng nhau ở mọi đoạn: lệch
     // nhau là khe hở hoặc chồng lấn ở ranh giới (đo thực tế: bù nửa khung ở đoạn 0 gây chồng 16,7 ms).
@@ -181,7 +181,7 @@ describe('buildChunkPlan', () => {
   it('đoạn 0 không bao giờ có -ss âm và dùng cùng công thức offset với mọi đoạn', () => {
     const p = plan({ videoStartOffset: 0 });
     expect(p.chunks[0].seekSeconds).toBe(0);
-    // Không bù nửa khung: khung đầu của đoạn 0 cũng được ffmpeg đưa về timestamp 0, và bù thêm
+    // Không bù nửa khung: khung đầu của đoạn 0 cũng được setpts đưa về pts 0, và bù thêm
     // làm đoạn 0 chồng 16,7 ms lên đoạn 1 (đo bằng scripts/verify-chunked.js).
     expect(p.chunks[0].tsOffsetSeconds).toBe(1);
     expect(p.chunks[1].tsOffsetSeconds).toBeCloseTo(300 + 1, 5);
