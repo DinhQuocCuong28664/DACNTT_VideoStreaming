@@ -161,6 +161,37 @@ const transcodeToHLS = async (inputPath, outputDir) => {
 };
 
 /**
+ * Cờ mã hoá HÌNH của một mức, dùng chung cho đường một-job (buildFFmpegArgs) và đường
+ * chia đoạn (chunked/ffmpegArgs.js) để hai đường không bao giờ lệch tham số mã hoá.
+ * Phần GOP/keyframe và âm thanh khác nhau giữa hai đường nên nằm ở nơi gọi.
+ */
+const videoEncodeArgs = (r) => {
+  // Có kích thước đã tính (planRenditions): co đúng về đó, giữ tỉ lệ nguồn,
+  // không đệm viền. Không có (không đọc được kích thước nguồn): khung cố
+  // định kèm đệm như trước.
+  const scaleFilter = r.outWidth
+    ? `scale=${r.outWidth}:${r.outHeight},setsar=1`
+    : `scale=${r.width}:${r.height}:force_original_aspect_ratio=decrease,pad=${r.width}:${r.height}:(ow-iw)/2:(oh-ih)/2`;
+
+  return [
+    '-vf', scaleFilter,
+    '-c:v', 'libx264',
+    '-b:v', r.videoBitrate,
+    '-maxrate', r.maxrate,
+    '-bufsize', r.bufsize,
+    '-preset', 'fast',
+    '-profile:v', 'main',
+    // Ép 8-bit 4:2:0. Không có cờ này libx264 giữ định dạng màu của nguồn:
+    // nguồn 4:4:4 hay 10-bit (video HDR quay bằng iPhone) khiến nó từ chối
+    // mở encoder ("main profile doesn't support 4:4:4") và cả job thất bại.
+    // Apple HLS Authoring Spec 1.3b cũng giới hạn H.264 ở mức <= High
+    // Profile, vốn chỉ gồm 8-bit 4:2:0. Nguồn HDR phát được nhưng màu nhạt
+    // hơn vì chưa tone-map sang SDR.
+    '-pix_fmt', 'yuv420p',
+  ];
+};
+
+/**
  * Build FFmpeg arguments for multi-rendition HLS output
  * Single-pass encoding with one input read → multiple outputs
  */
@@ -180,29 +211,9 @@ const buildFFmpegArgs = (inputPath, outputDir, renditions, fps = DEFAULT_FPS) =>
     const playlistPath = path.join(outputDir, r.name, 'playlist.m3u8');
     const segmentPath = path.join(outputDir, r.name, 'segment_%03d.ts');
 
-    // Có kích thước đã tính (planRenditions): co đúng về đó, giữ tỉ lệ nguồn,
-    // không đệm viền. Không có (không đọc được kích thước nguồn): khung cố
-    // định kèm đệm như trước.
-    const scaleFilter = r.outWidth
-      ? `scale=${r.outWidth}:${r.outHeight},setsar=1`
-      : `scale=${r.width}:${r.height}:force_original_aspect_ratio=decrease,pad=${r.width}:${r.height}:(ow-iw)/2:(oh-ih)/2`;
-
     args.push(
       // Video settings
-      '-vf', scaleFilter,
-      '-c:v', 'libx264',
-      '-b:v', r.videoBitrate,
-      '-maxrate', r.maxrate,
-      '-bufsize', r.bufsize,
-      '-preset', 'fast',
-      '-profile:v', 'main',
-      // Ép 8-bit 4:2:0. Không có cờ này libx264 giữ định dạng màu của nguồn:
-      // nguồn 4:4:4 hay 10-bit (video HDR quay bằng iPhone) khiến nó từ chối
-      // mở encoder ("main profile doesn't support 4:4:4") và cả job thất bại.
-      // Apple HLS Authoring Spec 1.3b cũng giới hạn H.264 ở mức <= High
-      // Profile, vốn chỉ gồm 8-bit 4:2:0. Nguồn HDR phát được nhưng màu nhạt
-      // hơn vì chưa tone-map sang SDR.
-      '-pix_fmt', 'yuv420p',
+      ...videoEncodeArgs(r),
       // KHÔNG ghim '-level'. Bản trước đặt cứng 3.1 cho cả ba rendition, mà
       // Level 3.1 chỉ chứa được khung 3600 macroblock: 1280x720 vừa khít
       // 3600, còn 1920x1080 là 8160 — vượt hơn gấp đôi. Mức thấp nhất chứa
@@ -519,11 +530,39 @@ const probeRenditionCodecs = async (outputDir, renditions) => {
  * chuẩn hẳn (RFC bắt buộc mọi EXT-X-STREAM-INF phải mang thuộc tính này).
  */
 const generateMasterPlaylist = (outputDir, renditions, codecsByRendition = {}) => {
+  const statsByRendition = {};
+  for (const r of renditions) {
+    statsByRendition[r.name] = measureVariantBitrates(path.join(outputDir, r.name));
+  }
+
+  const { content, measured } = buildMasterPlaylist(renditions, statsByRendition, codecsByRendition);
+
+  const masterPath = path.join(outputDir, 'master.m3u8');
+  fs.writeFileSync(masterPath, content);
+
+  console.log(`📋 Generated master.m3u8 with ${renditions.length} renditions`);
+  for (const m of measured) {
+    if (!m.stats) continue;
+    console.log(
+      `   ${m.name.padEnd(6)} BANDWIDTH=${m.bandwidth} bit/s ` +
+        `(đỉnh thật; TB ${m.stats.average}, cấu hình ${m.declared}, ${m.stats.segments} segment)` +
+        `${m.codecs ? ` CODECS="${m.codecs}"` : ' — không có CODECS'}`
+    );
+  }
+};
+
+/**
+ * Dựng NỘI DUNG master.m3u8 từ số đo đã có (`{peak, average, segments}` mỗi mức),
+ * không đọc đĩa. Tách khỏi generateMasterPlaylist để đường chia đoạn dùng lại: ở đó
+ * segment nằm rải rác trên S3 nên số đo do từng đoạn tính rồi gộp lại. Lý do phải đo
+ * thay vì lấy từ config nằm ở chú thích của generateMasterPlaylist.
+ */
+const buildMasterPlaylist = (renditions, statsByRendition = {}, codecsByRendition = {}) => {
   let content = '#EXTM3U\n#EXT-X-VERSION:3\n\n';
   const measured = [];
 
   for (const r of renditions) {
-    const stats = measureVariantBitrates(path.join(outputDir, r.name));
+    const stats = statsByRendition[r.name] || null;
     const declared = parseInt(r.videoBitrate) * 1000 + parseInt(r.audioBitrate) * 1000;
     const bandwidth = stats ? stats.peak : declared;
 
@@ -546,18 +585,7 @@ const generateMasterPlaylist = (outputDir, renditions, codecsByRendition = {}) =
     content += `${r.name}/playlist.m3u8\n\n`;
   }
 
-  const masterPath = path.join(outputDir, 'master.m3u8');
-  fs.writeFileSync(masterPath, content);
-
-  console.log(`📋 Generated master.m3u8 with ${renditions.length} renditions`);
-  for (const m of measured) {
-    if (!m.stats) continue;
-    console.log(
-      `   ${m.name.padEnd(6)} BANDWIDTH=${m.bandwidth} bit/s ` +
-        `(đỉnh thật; TB ${m.stats.average}, cấu hình ${m.declared}, ${m.stats.segments} segment)` +
-        `${m.codecs ? ` CODECS="${m.codecs}"` : ' — không có CODECS'}`
-    );
-  }
+  return { content, measured };
 };
 
 /**
@@ -874,10 +902,12 @@ module.exports = {
   computeGopSize,
   buildForceKeyFramesExpr,
   buildFFmpegArgs,
+  videoEncodeArgs,
   DEFAULT_FPS,
   parseMediaPlaylist,
   measureVariantBitrates,
   generateMasterPlaylist,
+  buildMasterPlaylist,
   extractHexBytes,
   parseAvcCodec,
   parseAacCodec,
