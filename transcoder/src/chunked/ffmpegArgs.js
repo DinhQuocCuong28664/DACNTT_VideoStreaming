@@ -57,16 +57,23 @@ const buildAudioArgs = ({ inputUrl, streamIndex, bitrate, outputPath }) => [
   outputPath,
 ];
 
-/** Cửa sổ đọc của một đoạn: `-ss` và `-t` đặt TRƯỚC `-i` để tua ở đầu vào, không giải mã từ đầu tệp. */
-const windowArgs = (chunk) => [
-  ...(chunk.seekSeconds > 0 ? ['-ss', seconds(chunk.seekSeconds)] : []),
-  ...(chunk.durationSeconds === null || chunk.durationSeconds === undefined ? [] : ['-t', seconds(chunk.durationSeconds)]),
+/**
+ * Cửa sổ đọc của một đoạn: `-ss` và `-t` đặt TRƯỚC `-i` để tua ở đầu vào, không giải mã từ
+ * đầu tệp. Hình và tiếng có cửa sổ KHÁC nhau nửa khung có chủ đích (xem buildChunkPlan).
+ */
+const windowArgs = (seek, duration) => [
+  ...(seek > 0 ? ['-ss', seconds(seek)] : []),
+  ...(duration === null || duration === undefined ? [] : ['-t', seconds(duration)]),
 ];
+
+const videoWindow = (chunk) => windowArgs(chunk.seekSeconds, chunk.durationSeconds);
+const audioWindow = (chunk) => windowArgs(chunk.audioSeekSeconds, chunk.audioDurationSeconds);
 
 /**
  * Mã hoá MỘT đoạn của mọi mức trong một tiến trình ffmpeg.
  *
- * - Hình: đọc qua HTTP đúng cửa sổ của đoạn.
+ * - Hình: đọc qua HTTP trong cửa sổ của đoạn (lùi nửa khung, xem buildChunkPlan), cắt đúng
+  số khung bằng `-frames:v`.
  * - Âm thanh: KHÔNG mã hoá lại (E3: mỗi encoder AAC mới chèn khung khởi động và rớt ~23 ms
  *   tại ranh giới) mà sao chép (`-c:a copy`) dải khung của đoạn từ tệp âm thanh đã mã hoá
  *   một lần. Mỗi ranh giới còn đúng một khung AAC trùng lặp giống hệt (E4).
@@ -91,9 +98,9 @@ const windowArgs = (chunk) => [
 const buildChunkArgs = ({ videoUrl, videoStreamIndex, audio = [], renditions, chunk, gopFrames, segmentSeconds, outputDir }) => {
   const args = ['-hide_banner', '-loglevel', 'warning', '-stats', '-y'];
 
-  args.push(...httpInputOptions(videoUrl), ...windowArgs(chunk), '-i', videoUrl);
+  args.push(...httpInputOptions(videoUrl), ...videoWindow(chunk), '-i', videoUrl);
   for (const track of audio) {
-    args.push(...httpInputOptions(track.url), ...windowArgs(chunk), '-i', track.url);
+    args.push(...httpInputOptions(track.url), ...audioWindow(chunk), '-i', track.url);
   }
 
   for (const r of renditions) {
@@ -111,6 +118,12 @@ const buildChunkArgs = ({ videoUrl, videoStreamIndex, audio = [], renditions, ch
       // cắt lệch nhau, vi phạm RFC 8216 §6.2.4.
       '-sc_threshold', '0'
     );
+    // Giới hạn CHÍNH XÁC theo số khung ở đầu ra. `-t` ở đầu vào chỉ là biên thô: nó cắt theo
+    // gói tin (dts), mà với nguồn có B-frame dts của khung kế tiếp đến sớm hơn pts nên khung đó
+    // vẫn lọt vào cửa sổ. Đo thực tế: đoạn ra 541 khung thay vì 540, thừa đúng một khung (33 ms
+    // ở 30 fps) lặp lại ở mỗi ranh giới và làm tổng EXTINF lệch dần so với pts. Đoạn cuối
+    // (frames = null) mở nên không giới hạn.
+    if (chunk.frames) args.push('-frames:v', String(chunk.frames));
     if (audioInput >= 0) args.push('-c:a', 'copy');
 
     args.push(

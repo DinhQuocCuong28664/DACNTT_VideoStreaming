@@ -69,7 +69,7 @@ const frameSeconds = (fps) => fps.den / fps.num;
 const gopFramesFor = (fps, segmentSeconds) =>
   Math.max(1, Math.floor((segmentSeconds * fps.num + fps.den - 1) / fps.den));
 
-const toFixedSeconds = (value) => Number(value.toFixed(6));
+const toFixedSeconds = (value) => Math.round(value * 1e6) / 1e6;
 
 /**
  * Chia `frameCount` khung hình thành các đoạn.
@@ -79,17 +79,23 @@ const toFixedSeconds = (value) => Number(value.toFixed(6));
  * mất hay thừa hình. Phần dư ngắn hơn một GOP được gộp vào đoạn liền trước thay vì
  * thành một đoạn riêng chỉ vài khung (và có thể rỗng nếu ước lượng cao hơn thật).
  *
- * Bộ ba (seek, duration, tsOffset) của mỗi đoạn:
+ * Quy tắc duy nhất giữ cho mọi đoạn thẳng hàng: MỌI THỨ nằm ở vị trí T trong tệp nguồn
+ * có pts đầu ra = T + tsOffsetBase (+ 1,4 s độ trễ cố định của muxer, E2). Khung n nằm ở
+ * `T_n = videoStartOffset + n/fps` (không phải `n/fps`: luồng hình có thể bắt đầu muộn
+ * hơn tệp). Gọi T_f là vị trí khung đầu của đoạn:
  *
- *   seek     = vị trí `-ss` TRƯỚC `-i`, lùi nửa khung so với khung đầu của đoạn. Nửa
- *              khung là biên an toàn: `-ss` giữ khung có pts >= vị trí, nên đúng
- *              khung đầu và không dính khung trước dù timestamp lệch vài ms; tính
- *              theo `videoStartOffset` (start_time của luồng hình so với tệp) vì
- *              khung n nằm ở `videoStartOffset + n/fps` chứ không phải `n/fps`.
- *   duration = `-t`, cửa sổ đọc tới nửa khung trước khung đầu của đoạn kế.
- *   tsOffset = `-output_ts_offset`, đặt sao cho pts đầu ra = vị trí trong tệp + hằng
- *              số chung mọi đoạn. Đoạn 0 có `seek` bị chặn ở 0 (không có `-ss` âm)
- *              nên bù phần chênh vào offset, để đoạn 0 vẫn thẳng hàng với các đoạn sau.
+ *   hình     `-ss` = T_f − nửa khung, `-t` kéo tới nửa khung trước khung đầu đoạn kế. Nửa
+ *            khung là biên an toàn: `-ss` giữ khung có pts >= vị trí, nên trúng khung đầu
+ *            và không dính khung trước dù timestamp lệch vài ms. ffmpeg (chế độ CFR) đặt
+ *            khung đầu ra ĐÚNG timestamp 0 nên nửa khung đó biến mất khỏi đầu ra, và:
+ *   offset   `-output_ts_offset` = T_f + tsOffsetBase. Đo thực tế (scripts/verify-chunked.js)
+ *            chỉ ra rằng bù nửa khung ở đây làm đoạn 0 chồng lên đoạn 1 16,7 ms.
+ *   tiếng    `-ss` = ĐÚNG T_f, không lùi nửa khung: tiếng được sao chép nguyên timestamp nên
+ *            không có bước "đưa về 0" như hình, và pts = T − T_f + offset = T + tsOffsetBase,
+ *            cùng hằng số với hình. Lùi nửa khung sẽ làm tiếng trễ 16,7 ms so với hình.
+ *
+ * `-ss` không bao giờ âm: đoạn 0 có `seek` hình bị chặn ở 0, vẫn đúng vì khung đầu của nó
+ * (T_f = videoStartOffset, thường ~0) cũng được đưa về timestamp 0.
  *
  * @param {object} p
  * @param {number} p.frameCount - số khung hình (ước lượng) của luồng hình
@@ -126,20 +132,32 @@ const buildChunkPlan = ({
   for (let index = 0; index < count; index += 1) {
     const isLast = index === count - 1;
     const startFrame = index * chunkFrames;
-    const windowStart = videoStartOffset + (startFrame - 0.5) * d;
-    const seek = Math.max(0, windowStart);
+    const firstFrameAt = videoStartOffset + startFrame * d;
+    const videoWindowStart = firstFrameAt - 0.5 * d;
+    const videoSeek = Math.max(0, videoWindowStart);
 
     chunks.push({
       index,
       startFrame,
       frames: isLast ? null : chunkFrames,
-      seekSeconds: toFixedSeconds(seek),
-      durationSeconds: isLast ? null : toFixedSeconds(windowStart + chunkFrames * d - seek),
-      tsOffsetSeconds: toFixedSeconds(startFrame * d + tsOffsetBase + (seek - windowStart)),
+      // Hình
+      seekSeconds: toFixedSeconds(videoSeek),
+      durationSeconds: isLast ? null : toFixedSeconds(videoWindowStart + chunkFrames * d - videoSeek),
+      // Tiếng: cửa sổ bắt đầu đúng tại khung đầu. Độ dài điền ở dưới.
+      audioSeekSeconds: toFixedSeconds(firstFrameAt),
+      audioDurationSeconds: null,
+      tsOffsetSeconds: toFixedSeconds(firstFrameAt + tsOffsetBase),
       // Đoạn cuối không biết trước số segment (đọc tới hết tệp): null.
       expectedSegments: isLast ? null : gopsPerChunk,
       expectedSeconds: isLast ? null : toFixedSeconds(chunkFrames * d),
     });
+  }
+
+  // Cửa sổ tiếng của đoạn k kết thúc ĐÚNG chỗ cửa sổ đoạn k+1 bắt đầu: độ dài là hiệu của hai
+  // mốc đã làm tròn, không làm tròn riêng. Làm tròn riêng có thể lệch 1 µs; ffmpeg chọn gói
+  // AAC theo pts so với `-ss` và `-ss + -t`, nên một gói nằm trong 1 µs đó sẽ bị lặp hoặc mất.
+  for (let k = 0; k < chunks.length - 1; k += 1) {
+    chunks[k].audioDurationSeconds = toFixedSeconds(chunks[k + 1].audioSeekSeconds - chunks[k].audioSeekSeconds);
   }
 
   return {

@@ -71,9 +71,14 @@ const renditionStats = (segments) => {
 
 const sumSeconds = (segments) => segments.reduce((total, s) => total + s.duration, 0);
 
-/** Lệch thời lượng (giây) giữa kế hoạch và thực tế của một đoạn: cảnh báo / coi là lỗi. */
-const WARN_DRIFT_SECONDS = 0.05;
-const FAIL_DRIFT_SECONDS = 0.25;
+/**
+ * Lệch thời lượng giữa kế hoạch và thực tế của một đoạn, tính theo SỐ KHUNG HÌNH: cảnh báo từ
+ * nửa khung, coi là lỗi từ 3 khung. Mã hoá cắt đoạn đúng số khung (`-frames:v`) nên lệch chỉ
+ * có thể đến từ làm tròn micro-giây; một khung thừa mỗi đoạn (từng xảy ra, xem buildChunkArgs)
+ * phải lộ ra chứ không được lọt qua ngưỡng tính bằng giây.
+ */
+const WARN_DRIFT_FRAMES = 0.5;
+const FAIL_DRIFT_FRAMES = 3;
 
 /**
  * Kiểm tra tính nhất quán của các đoạn trước khi công bố playlist.
@@ -83,7 +88,7 @@ const FAIL_DRIFT_SECONDS = 0.25;
  *
  *  - đoạn thiếu hoặc không có segment (trừ đoạn cuối, có thể rỗng nếu ước lượng khung hình cao)
  *  - các mức của cùng một đoạn không cùng số segment/độ dài: ranh giới ABR lệch (RFC 8216 §6.2.4)
- *  - thời lượng đoạn lệch kế hoạch: pts đoạn sau được đặt theo kế hoạch, nên lệch ở đây là
+ *  - thời lượng đoạn lệch kế hoạch (> nửa khung cảnh báo, > 3 khung lỗi): pts đoạn sau được đặt theo kế hoạch, nên lệch ở đây là
  *    khe hở hoặc chồng lấn thật ở ranh giới
  *
  * @returns {{errors: string[], warnings: string[]}}
@@ -91,6 +96,7 @@ const FAIL_DRIFT_SECONDS = 0.25;
 const validateChunkResults = ({ plan, results, renditionNames }) => {
   const errors = [];
   const warnings = [];
+  const frame = plan.fps.den / plan.fps.num;
 
   plan.chunks.forEach((chunk, k) => {
     const result = results[k];
@@ -123,9 +129,9 @@ const validateChunkResults = ({ plan, results, renditionNames }) => {
 
     const actual = sumSeconds(reference.segments);
     const drift = Math.abs(actual - chunk.expectedSeconds);
-    if (drift > FAIL_DRIFT_SECONDS) {
+    if (drift > FAIL_DRIFT_FRAMES * frame) {
       errors.push(`đoạn ${k}: dài ${actual.toFixed(3)} s, kế hoạch ${chunk.expectedSeconds} s (lệch ${drift.toFixed(3)} s)`);
-    } else if (drift > WARN_DRIFT_SECONDS) {
+    } else if (drift > WARN_DRIFT_FRAMES * frame) {
       warnings.push(`đoạn ${k}: lệch ${drift.toFixed(3)} s so với kế hoạch`);
     }
     if (reference.segments.length !== chunk.expectedSegments) {
@@ -143,6 +149,6 @@ module.exports = {
   renditionStats,
   validateChunkResults,
   sumSeconds,
-  WARN_DRIFT_SECONDS,
-  FAIL_DRIFT_SECONDS,
+  WARN_DRIFT_FRAMES,
+  FAIL_DRIFT_FRAMES,
 };

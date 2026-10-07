@@ -104,10 +104,12 @@ describe('buildChunkPlan', () => {
     }
   });
 
-  it('E2: mọi đoạn (kể cả đoạn 0) có pts đầu ra = vị trí khung + MỘT hằng số chung', () => {
-    // pts đầu ra của khung đầu đoạn = start_time hình + startFrame/fps − seek + tsOffset.
-    // Hằng số đó phải bằng nhau ở mọi đoạn, mọi framerate, mọi start_time của luồng hình;
-    // lệch nhau là khe hở hoặc chồng lấn ở ranh giới đoạn.
+  it('E2: mọi thứ ở vị trí T trong tệp có pts đầu ra = T + MỘT hằng số chung, ở mọi đoạn kể cả đoạn 0', () => {
+    // ffmpeg (CFR) đặt khung đầu của đoạn ĐÚNG timestamp 0, nên pts đầu ra của khung n bằng
+    // tsOffset + (n − startFrame)/fps. Khung nằm ở T_n = videoStartOffset + n/fps, vậy hằng số
+    // pts − T_n = tsOffset − (videoStartOffset + startFrame/fps) phải bằng nhau ở mọi đoạn: lệch
+    // nhau là khe hở hoặc chồng lấn ở ranh giới (đo thực tế: bù nửa khung ở đoạn 0 gây chồng 16,7 ms).
+    // Tiếng: pts = T − audioSeek + tsOffset, và audioSeek chính là T_f, nên cùng hằng số.
     for (const [, text] of FPS_CASES) {
       for (const videoStartOffset of [0, 0.0667, 0.5, 2]) {
         const fps = parseRational(text);
@@ -115,14 +117,15 @@ describe('buildChunkPlan', () => {
         const p = buildChunkPlan({ frameCount: 90000, fps, gopsPerChunk: 5, videoStartOffset, tsOffsetBase: 1 });
 
         for (const c of p.chunks) {
-          const firstPts = videoStartOffset + c.startFrame * d - c.seekSeconds + c.tsOffsetSeconds;
-          expect(firstPts - c.startFrame * d).toBeCloseTo(1 + 0.5 * d, 4);
+          const firstFrameAt = videoStartOffset + c.startFrame * d;
+          expect(c.tsOffsetSeconds - firstFrameAt).toBeCloseTo(1, 5);
+          expect(c.tsOffsetSeconds - c.audioSeekSeconds).toBeCloseTo(1, 5);
         }
       }
     }
   });
 
-  it('cửa sổ đọc của đoạn k kết thúc đúng chỗ đoạn k+1 bắt đầu (không khe hở, không chồng lấn)', () => {
+  it('cửa sổ đọc hình của đoạn k kết thúc đúng chỗ đoạn k+1 bắt đầu (không khe hở, không chồng lấn)', () => {
     for (const [, text] of FPS_CASES) {
       for (const videoStartOffset of [0, 0.0667, 1.25]) {
         const p = buildChunkPlan({ frameCount: 90000, fps: parseRational(text), gopsPerChunk: 5, videoStartOffset });
@@ -134,6 +137,38 @@ describe('buildChunkPlan', () => {
     }
   });
 
+  it('cửa sổ tiếng khớp tuyệt đối theo micro-giây: không gói AAC nào bị lặp hay mất ở ranh giới', () => {
+    // ffmpeg chọn gói theo pts so với -ss và -ss + -t; chỉ lệch 1 µs là một gói sát ranh giới rơi
+    // vào cả hai đoạn hoặc không đoạn nào. Độ dài vì thế phải là hiệu của hai mốc đã làm tròn.
+    const us = (x) => Math.round(x * 1e6);
+    // Lỗi 1 µs chỉ lộ ra khi độ dài đoạn quy ra giây có phần thập phân lặp vô hạn, nên thử nhiều
+    // độ dài đoạn và nhiều start_time chứ không chỉ cấu hình mặc định.
+    // Các framerate khai bằng phân số "xấu" (một số container ghi 2997/100 thay vì 30000/1001) cho
+    // độ dài GOP không chính xác theo µs: 180/29,97 = 6,006006... Đó mới là chỗ làm tròn riêng sai.
+    const awkward = ['2997/100', '23976/1000', '5994/100', '1000000/33333'];
+    for (const text of [...FPS_CASES.map(([, t]) => t), ...awkward]) {
+      for (const gopsPerChunk of [1, 3, 7, 11, 50]) {
+        for (const videoStartOffset of [0, 0.0667, 1.2345678]) {
+          const p = buildChunkPlan({ frameCount: 60000, fps: parseRational(text), gopsPerChunk, videoStartOffset });
+          for (let k = 0; k < p.chunks.length - 1; k += 1) {
+            expect(us(p.chunks[k].audioSeekSeconds) + us(p.chunks[k].audioDurationSeconds)).toBe(us(p.chunks[k + 1].audioSeekSeconds));
+          }
+          expect(p.chunks.at(-1).audioDurationSeconds).toBeNull();
+        }
+      }
+    }
+  });
+
+  it('tiếng bắt đầu ĐÚNG tại khung đầu, không lùi nửa khung như hình (lùi sẽ làm tiếng trễ 16,7 ms)', () => {
+    const fps = parseRational('30000/1001');
+    const d = frameSeconds(fps);
+    const p = buildChunkPlan({ frameCount: 100000, fps, gopsPerChunk: 10, videoStartOffset: 0.0667 });
+    const c = p.chunks[3];
+    const firstFrameAt = 0.0667 + c.startFrame * d;
+    expect(c.audioSeekSeconds).toBeCloseTo(firstFrameAt, 5);
+    expect(firstFrameAt - c.seekSeconds).toBeCloseTo(d / 2, 4);
+  });
+
   it('seek lùi nửa khung so với khung đầu để -ss không dính khung trước và không bỏ khung đầu', () => {
     const fps = parseRational('30000/1001');
     const d = frameSeconds(fps);
@@ -143,20 +178,18 @@ describe('buildChunkPlan', () => {
     expect(firstFrameTime - c.seekSeconds).toBeCloseTo(d / 2, 4);
   });
 
-  it('đoạn 0 không bao giờ có -ss âm; phần chênh được bù vào offset', () => {
+  it('đoạn 0 không bao giờ có -ss âm và dùng cùng công thức offset với mọi đoạn', () => {
     const p = plan({ videoStartOffset: 0 });
     expect(p.chunks[0].seekSeconds).toBe(0);
-    // Không có phần bù thì đoạn 0 lệch 0,5 khung so với các đoạn còn lại.
-    expect(p.chunks[0].tsOffsetSeconds).toBeCloseTo(1 + 0.5 / 30, 5);
+    // Không bù nửa khung: khung đầu của đoạn 0 cũng được ffmpeg đưa về timestamp 0, và bù thêm
+    // làm đoạn 0 chồng 16,7 ms lên đoạn 1 (đo bằng scripts/verify-chunked.js).
+    expect(p.chunks[0].tsOffsetSeconds).toBe(1);
     expect(p.chunks[1].tsOffsetSeconds).toBeCloseTo(300 + 1, 5);
   });
 
   it('khoảng cách offset giữa hai đoạn liền nhau bằng đúng độ dài đoạn', () => {
     const p = buildChunkPlan({ frameCount: 100000, fps: parseRational('30000/1001'), gopsPerChunk: 50 });
-    // Từ đoạn 1 trở đi `-ss` không bị chặn nên offset cách đều đúng một đoạn. Đoạn 0 là
-    // ngoại lệ có chủ đích (kém nửa khung vì phần bù ở trên); tính đúng của nó đã được
-    // kiểm bằng bất biến E2.
-    for (let k = 2; k < p.chunks.length; k += 1) {
+    for (let k = 1; k < p.chunks.length; k += 1) {
       expect(p.chunks[k].tsOffsetSeconds - p.chunks[k - 1].tsOffsetSeconds).toBeCloseTo(p.chunkSeconds, 4);
     }
     // 9000 khung ở 30000/1001 = 300,3 s chính xác, không phải 300.

@@ -46,7 +46,7 @@ describe('buildChunkArgs', () => {
     expect(after(args, '-t')).toBe(plan.chunks[3].durationSeconds.toFixed(6));
   });
 
-  it('mỗi tệp âm thanh được mở với CÙNG cửa sổ, để hình và tiếng của đoạn khớp nhau', () => {
+  it('mỗi tệp âm thanh được mở với cửa sổ TIẾNG (bắt đầu đúng khung đầu), khác cửa sổ hình nửa khung', () => {
     const args = build();
     const inputs = indexesOf(args, '-i');
     expect(inputs).toHaveLength(3);
@@ -55,8 +55,22 @@ describe('buildChunkArgs', () => {
       const slice = args.slice(from, at);
       return [after(slice, '-ss'), after(slice, '-t')];
     });
-    expect(windows[1]).toEqual(windows[0]);
-    expect(windows[2]).toEqual(windows[0]);
+    const c = plan.chunks[3];
+    expect(windows[0]).toEqual([c.seekSeconds.toFixed(6), c.durationSeconds.toFixed(6)]);
+    const audioWindow = [c.audioSeekSeconds.toFixed(6), c.audioDurationSeconds.toFixed(6)];
+    expect(windows[1]).toEqual(audioWindow);
+    expect(windows[2]).toEqual(audioWindow);
+    expect(windows[1]).not.toEqual(windows[0]);
+  });
+
+  it('giới hạn đoạn đúng số khung bằng -frames:v ở mỗi đầu ra, trừ đoạn cuối (mở)', () => {
+    // -t ở đầu vào cắt theo gói tin nên với nguồn có B-frame vẫn lọt một khung thừa (541 thay vì 540).
+    const args = build();
+    const limits = indexesOf(args, '-frames:v').map((i) => args[i + 1]);
+    expect(limits).toEqual(renditions.map(() => String(plan.chunks[3].frames)));
+
+    const last = build({ chunk: plan.chunks.at(-1) });
+    expect(last).not.toContain('-frames:v');
   });
 
   it('E3/E4: âm thanh được SAO CHÉP, không bao giờ mã hoá lại theo đoạn', () => {
@@ -119,7 +133,7 @@ describe('buildChunkArgs', () => {
     for (const i of indexesOf(args, '-start_number')) expect(args[i + 1]).toBe('0');
   });
 
-  it('đoạn 0 không có -ss (không tua), đoạn cuối không có -t (đọc tới hết tệp)', () => {
+  it('đoạn 0 không có -ss ở đầu vào hình, đoạn cuối không có -t (đọc tới hết tệp)', () => {
     const first = build({ chunk: plan.chunks[0] });
     expect(first.slice(0, first.indexOf('-i'))).not.toContain('-ss');
     expect(first).toContain('-t');

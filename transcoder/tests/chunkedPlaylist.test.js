@@ -138,13 +138,29 @@ describe('validateChunkResults', () => {
     expect(errors[0]).toMatch(/đoạn 1: dài 300.000 s, kế hoạch 300.3 s/);
   });
 
-  it('lệch nhỏ (0,05-0,25 s) chỉ cảnh báo', () => {
+  it('một khung thừa mỗi đoạn (33 ms ở 29,97 fps) phải lộ ra, không lọt qua ngưỡng tính bằng giây', () => {
+    // Chính lỗi đã gặp: -t ở đầu vào cho 541 khung thay vì 540. 33 ms vẫn nhỏ hơn mọi ngưỡng
+    // "50 ms" kiểu cũ, nhưng ở 48 đoạn nó cộng dồn thành 1,6 s lệch giữa EXTINF và pts.
     const results = goodResults();
-    const segments = goodSegments(1, 50, 6.006 - 0.004); // lệch 0,2 s
+    const segments = [...goodSegments(1, 50), seg('segment_c0001_050.ts', 1001 / 30000)];
     results[1] = { index: 1, renditions: { '360p': { segments }, '720p': { segments } } };
     const verdict = validateChunkResults({ plan, results, renditionNames: names });
     expect(verdict.errors).toEqual([]);
-    expect(verdict.warnings[0]).toMatch(/đoạn 1: lệch/);
+    expect(verdict.warnings).toEqual(expect.arrayContaining([expect.stringMatching(/đoạn 1: lệch 0\.033/)]));
+  });
+
+  it('lệch dưới nửa khung (làm tròn micro-giây) không cảnh báo', () => {
+    const results = goodResults();
+    const segments = goodSegments(1, 50, 6.006 + 0.000002);
+    results[1] = { index: 1, renditions: { '360p': { segments }, '720p': { segments } } };
+    expect(validateChunkResults({ plan, results, renditionNames: names })).toEqual({ errors: [], warnings: [] });
+  });
+
+  it('lệch từ 3 khung trở lên là lỗi', () => {
+    const results = goodResults();
+    const segments = [...goodSegments(1, 50), seg('segment_c0001_050.ts', (4 * 1001) / 30000)]; // 4 khung thừa
+    results[1] = { index: 1, renditions: { '360p': { segments }, '720p': { segments } } };
+    expect(validateChunkResults({ plan, results, renditionNames: names }).errors[0]).toMatch(/đoạn 1: dài/);
   });
 
   it('không kiểm thời lượng của đoạn cuối: nó mở nên độ dài tuỳ nguồn', () => {
