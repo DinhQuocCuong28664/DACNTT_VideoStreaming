@@ -47,7 +47,7 @@ const main = async () => {
     }
 
     const email = first.trim().toLowerCase();
-    const user = await User.findOneAndUpdate({ email }, { $set: { role: second } }, { new: true });
+    const user = await User.findOneAndUpdate({ email }, { $set: { role: second } }, { returnDocument: 'after' });
 
     if (!user) {
       console.error(`Không tìm thấy tài khoản với email ${email}`);
