@@ -27,7 +27,35 @@ resource "aws_batch_job_queue" "transcode" {
   # Ten nay duoc chinh sach IAM cua Lambda job submitter dung de dung ARN
   # (modules/iam/main.tf). Doi ten o day ma khong sua ben do se lam Lambda mat
   # quyen nop job.
-  name     = "${var.project_name}-transcode-queue"
+  name  = "${var.project_name}-transcode-queue"
+  state = "ENABLED"
+  # Cao hơn hàng đợi "bulk" bên dưới: khi hai hàng đợi dùng chung một compute environment, Batch
+  # xếp job của hàng đợi có priority lớn hơn trước (tài liệu CreateJobQueue, tham số priority).
+  # Đây là hàng đợi của video mới tới, job lập kế hoạch, âm thanh và job ghép.
+  priority = 10
+
+  compute_environment_order {
+    order               = 1
+    compute_environment = aws_batch_compute_environment.fargate.arn
+  }
+
+  tags = merge(var.tags, {
+    Name = "${var.project_name}-transcode-job-queue"
+  })
+}
+
+# ── Job Queue ưu tiên thấp cho các đoạn của video dài ─
+#
+# Vấn đề: một video 4 giờ nộp 48 job đoạn cùng lúc. Với MỘT hàng đợi FIFO, 48 job đó đứng trước
+# mọi video nộp sau, và hạn mức 8 vCPU nghĩa là video ngắn của người khác chờ khoảng 3 giờ.
+#
+# Cách xử lý: job đoạn (array job) vào hàng đợi này, priority thấp hơn, CÙNG compute environment.
+# Mỗi khi một job kết thúc và nhả vCPU, Batch xét hàng đợi priority cao trước, nên video ngắn mới
+# tới được nhận chỗ trống đó trước các đoạn còn lại. Batch không ngắt job đang chạy, nên video
+# ngắn vẫn phải chờ tối đa một đoạn chạy xong (khoảng 20 phút), thay vì chờ cả video dài.
+# Tên được chính sách IAM của job lập kế hoạch dùng để dựng ARN (modules/iam/main.tf).
+resource "aws_batch_job_queue" "bulk" {
+  name     = "${var.project_name}-transcode-bulk-queue"
   state    = "ENABLED"
   priority = 1
 
@@ -37,7 +65,7 @@ resource "aws_batch_job_queue" "transcode" {
   }
 
   tags = merge(var.tags, {
-    Name = "${var.project_name}-transcode-job-queue"
+    Name = "${var.project_name}-transcode-bulk-job-queue"
   })
 }
 
@@ -94,6 +122,8 @@ resource "aws_batch_job_definition" "transcoder" {
         # nhất (scripts/next-job-definition.py), nên các biến này đi theo mọi lần deploy image.
         { name = "CHUNKED_TRANSCODING", value = tostring(var.chunked_transcoding_enabled) },
         { name = "BATCH_JOB_QUEUE", value = "${var.project_name}-transcode-queue" },
+        # Hàng đợi ưu tiên thấp cho array job các đoạn; thiếu biến này thì mọi job con vào hàng đợi trên.
+        { name = "BATCH_BULK_JOB_QUEUE", value = "${var.project_name}-transcode-bulk-queue" },
         { name = "BATCH_JOB_DEFINITION", value = "${var.project_name}-transcoder-job" }
       ],
       var.email_user != "" ? [{ name = "EMAIL_USER", value = var.email_user }] : [],
