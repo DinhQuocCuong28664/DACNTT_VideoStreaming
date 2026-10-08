@@ -200,6 +200,15 @@ describe('createPipeline', () => {
         expect(outcome.jobs).toEqual({ audio: ['job-1', 'job-2'], chunks: 'job-3', finalize: 'job-4' });
       });
 
+      it('chỉ mảng đoạn vào hàng đợi ưu tiên thấp; âm thanh và ghép ở hàng đợi chính', async () => {
+        // Đoạn là phần việc dài và song song được nên không được chặn video mới tới. Job ghép phải lấy
+        // được chỗ ngay khi đoạn cuối xong, nên nó không được xếp sau đoạn của video khác.
+        await build().planJob({ videoId: VIDEO_ID, rawS3Key: RAW_KEY });
+        const [a64, a128, chunks, finalize] = submit.specs;
+        expect(chunks.bulk).toBe(true);
+        for (const spec of [a64, a128, finalize]) expect(spec.bulk).toBeFalsy();
+      });
+
       it('mọi job con được thử lại vô điều kiện (Spot bị thu hồi không được giết cả video)', async () => {
         await build().planJob({ videoId: VIDEO_ID, rawS3Key: RAW_KEY });
         expect(submit.specs).toHaveLength(4);

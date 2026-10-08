@@ -117,7 +117,8 @@ Yêu cầu: tối thiểu 4 giờ video. Một job chuyển mã chạy tuần t�
   - Bài học: ffmpeg trong image production là 5.1 (apt, Debian bookworm) chứ không phải 8.1 như máy phát triển, và hai bản khác nhau đúng ở các điểm chia đoạn cần chính xác. Image nay dùng ffmpeg 8.1.2 tĩnh ghim theo digest; `transcoder/scripts/verify-in-image.sh` chạy trong CI trên image dựng từ PR.
 - [x] Bật cho production (2026-10-08): `chunked_transcoding_enabled = true` ở dev, `MAX_VIDEO_SIZE_GB=20` trên backend, image transcoder dùng ffmpeg 8.1.2.
 - [ ] Chưa thử: tải thật một video lớn hơn 512 MiB qua giao diện production với tài khoản đăng nhập (backend EC2 đang tắt; bật bằng `scripts/start-backend.sh`). Staging đã chạy 4 giờ bằng script, nhưng chưa đi qua đường tải lên của trình duyệt trên production.
-- [ ] Hạn mức Fargate Spot vẫn 8 vCPU dùng chung staging và production (ticket còn mở): video 4 giờ chiếm hết 8 vCPU khoảng 3 giờ và các video khác phải xếp hàng. Khi hạn mức được nâng thì tăng `max_vcpus` ở dev và staging.
+- [x] Hàng đợi ưu tiên thấp cho các đoạn của video dài (`docs/CHUNKED_TRANSCODING_DESIGN.md` mục 10.8): đo trên staging, video mới chờ 87 giây thay vì phải chờ hết 24 phần tử array (371 giây); Batch không ngắt job đang chạy nên chờ tối đa một đoạn.
+- [ ] Hạn mức Fargate Spot vẫn 8 vCPU dùng chung staging và production (ticket còn mở): video 4 giờ chiếm hết 8 vCPU khoảng 3 giờ (video khác chỉ phải chờ tối đa một đoạn nhờ hàng đợi ưu tiên thấp, nhưng không nhanh hơn). Khi hạn mức được nâng thì tăng `max_vcpus` ở dev và staging.
 
 ---
 > 📌 **Trạng thái cập nhật (2026-09-29):** Mã nguồn cho các mục rà soát ở trên đã xong và pass toàn bộ 360/360 test; chưa deploy. Trước đó (2026-09-24): Toàn bộ 15/15 mục đã hoàn thành 100%. CloudFront video CDN đã triển khai và đo kiểm đa vùng; Stress Test đồng thời 100 video đã thực thi hoàn tất với dữ liệu thực nghiệm đầy đủ; toàn bộ test suite backend và transcoder đều pass.
