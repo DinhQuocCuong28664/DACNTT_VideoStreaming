@@ -28,6 +28,8 @@ Thumbs.db
 **/.terraform/
 *.tfstate
 *.tfstate.backup
+# Tệp kế hoạch của `terraform plan -out` chứa cả giá trị nhạy cảm (chuỗi kết nối, token).
+*.tfplan
 *.tfvars
 !*.tfvars.example
 infrastructure/modules/lambda/dist/
