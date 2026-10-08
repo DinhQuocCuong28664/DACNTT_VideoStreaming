@@ -152,8 +152,8 @@ resource "aws_iam_role_policy" "transcoder_s3" {
   })
 }
 
-# Pipeline chia đoạn: job lập kế hoạch (cũng là job Lambda đã nộp) nộp tiếp job con vào cùng
-# hàng đợi, dùng cùng job definition. Thu hẹp đúng về hai tài nguyên đó, như chính sách của Lambda
+# Pipeline chia đoạn: job lập kế hoạch (cũng là job Lambda đã nộp) nộp tiếp job con vào hàng đợi
+# chính và hàng đợi "bulk" (các đoạn), dùng cùng job definition. Thu hẹp đúng về các tài nguyên đó, như chính sách của Lambda
 # bên dưới; ARN dựng theo quy tắc đặt tên của module batch vì batch phụ thuộc vào module này để
 # lấy role (tham chiếu ngược sẽ thành phụ thuộc vòng), nên đổi tên bên batch thì phải sửa ở đây.
 resource "aws_iam_role_policy" "transcoder_batch_submit" {
@@ -168,6 +168,7 @@ resource "aws_iam_role_policy" "transcoder_batch_submit" {
         Action = "batch:SubmitJob"
         Resource = [
           "arn:aws:batch:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:job-queue/${var.project_name}-transcode-queue",
+          "arn:aws:batch:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:job-queue/${var.project_name}-transcode-bulk-queue",
           "arn:aws:batch:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:job-definition/${var.project_name}-transcoder-job",
           "arn:aws:batch:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:job-definition/${var.project_name}-transcoder-job:*"
         ]

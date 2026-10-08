@@ -30,7 +30,8 @@ const PREFIX = flag('prefix', 'dacntt-staging');
 const REGION = flag('region', 'ap-southeast-1');
 const RAW_BUCKET = `${PREFIX}-raw-bucket`;
 const PROCESSED_BUCKET = `${PREFIX}-processed-bucket`;
-const QUEUE = `${PREFIX}-transcode-queue`;
+// Job đoạn nằm ở hàng đợi ưu tiên thấp, các job còn lại ở hàng đợi chính.
+const QUEUES = [`${PREFIX}-transcode-queue`, `${PREFIX}-transcode-bulk-queue`];
 
 const aws = (...cliArgs) => {
   const r = spawnSync('aws', [...cliArgs, '--region', REGION], { encoding: 'utf-8', maxBuffer: 1 << 28 });
@@ -82,9 +83,11 @@ const JOB_STATUSES = ['SUBMITTED', 'PENDING', 'RUNNABLE', 'STARTING', 'RUNNING',
 /** Gom job Batch của một video theo vai trò và trạng thái. */
 const batchSummary = (videoId) => {
   const rows = [];
-  for (const status of JOB_STATUSES) {
-    const jobs = awsJson('batch', 'list-jobs', '--job-queue', QUEUE, '--job-status', status, '--query', 'jobSummaryList[].{id:jobId,name:jobName,array:arrayProperties}');
-    for (const j of jobs) if (j.name.includes(videoId)) rows.push({ ...j, status });
+  for (const queue of QUEUES) {
+    for (const status of JOB_STATUSES) {
+      const jobs = awsJson('batch', 'list-jobs', '--job-queue', queue, '--job-status', status, '--query', 'jobSummaryList[].{id:jobId,name:jobName,array:arrayProperties}');
+      for (const j of jobs) if (j.name.includes(videoId)) rows.push({ ...j, status });
+    }
   }
   const role = (name) => name.replace(`-${videoId}`, '').replace(/^transcode$/, 'planner').replace(/^transcode-.*/, 'planner');
   const summary = {};

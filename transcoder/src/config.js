@@ -83,6 +83,10 @@ const config = {
     // nếu không khai tường minh.
     jobQueue: process.env.BATCH_JOB_QUEUE || process.env.AWS_BATCH_JQ_NAME || '',
     jobDefinition: process.env.BATCH_JOB_DEFINITION || '',
+    // Hàng đợi ưu tiên thấp cho array job các đoạn, cùng compute environment với hàng đợi chính. Nhờ nó
+    // một video 4 giờ (48 đoạn) không đứng trước mọi video ngắn nộp sau. Để trống thì các đoạn vào hàng
+    // đợi chính như trước: an toàn khi hạ tầng chưa có hàng đợi này hoặc job definition cũ chưa có biến.
+    bulkJobQueue: process.env.BATCH_BULK_JOB_QUEUE || '',
     // Số lần chạy ffmpeg cho một đoạn trong CÙNG job: URL ký sẵn hết hạn hay S3 chập chờn giữa
     // chừng làm một lần chạy hỏng, mà chạy lại đoạn là vô hại (ghi đè cùng khoá).
     ffmpegAttempts: Math.floor(positiveNumber(process.env.CHUNK_FFMPEG_ATTEMPTS, 2)),

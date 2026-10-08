@@ -202,6 +202,10 @@ const createPipeline = (deps) => {
         arraySize: plan.chunks.length,
         dependsOn: audioJobIds,
         retryAttempts: cfg.childRetryAttempts,
+        // Các đoạn là phần việc dài nhất và song song được: vào hàng đợi ưu tiên thấp để video ngắn mới
+        // tới không phải chờ hết cả video dài. Âm thanh và job ghép ở hàng đợi chính: ngắn, và job ghép
+        // phải lấy được chỗ ngay khi đoạn cuối xong thay vì xếp sau các đoạn của video khác.
+        bulk: true,
       });
       const finalizeJobId = await submit({
         name: `finalize-${videoId}`,

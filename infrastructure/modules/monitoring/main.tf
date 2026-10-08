@@ -93,7 +93,7 @@ resource "aws_cloudwatch_event_rule" "batch_job_failed" {
     "detail-type" = ["Batch Job State Change"]
     detail = {
       status   = ["FAILED"]
-      jobQueue = [var.batch_job_queue_arn]
+      jobQueue = compact([var.batch_job_queue_arn, var.batch_bulk_job_queue_arn])
     }
   })
 

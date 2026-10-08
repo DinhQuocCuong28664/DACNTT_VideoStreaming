@@ -313,3 +313,31 @@ Toàn bộ phép đo ban đầu chạy trên ffmpeg 8.1 của máy phát triển
   EC2. Mỗi job con khai `retryStrategy` 3 lần không điều kiện khi nộp (đã xác nhận trên AWS: `attempts 3, evaluateOnExit []`). An toàn vì tiến trình bị giết (Spot
   thu hồi, hết bộ nhớ) không kịp đánh ERROR nên lần sau làm tiếp, còn lỗi do mã thì lần sau thấy video không còn PROCESSING và thoát trong vài giây.
 - **Chỉ đánh ERROR ở lần thử cuối** (`AWS_BATCH_JOB_ATTEMPT`), để lỗi tạm thời không giết video mà Batch sắp thử lại. Planner không bị thử lại vô điều kiện nên đánh ERROR ngay.
+
+### 10.8 Hàng đợi ưu tiên thấp cho các đoạn
+
+**Vấn đề đo được.** Hạn mức Fargate Spot là 8 vCPU dùng chung. Một video 4 giờ nộp 48 job đoạn cùng lúc và chiếm cả 8 vCPU khoảng 3 giờ. Với một hàng đợi FIFO,
+48 job đó đứng trước mọi video nộp sau, nên video 5 phút của người khác chờ cỡ 3 giờ mới được bắt đầu.
+
+**Cách xử lý.** Thêm hàng đợi `<prefix>-transcode-bulk-queue` (priority 1) dùng CHUNG compute environment với hàng đợi chính (nay priority 10). Chỉ array job các đoạn
+vào hàng đợi bulk (`bulk: true` trong `pipeline.js`); video mới tới, job lập kế hoạch, hai job âm thanh và job ghép ở lại hàng đợi chính. Mỗi khi một job kết thúc
+và nhả vCPU, Batch xét hàng đợi priority cao trước (tài liệu `CreateJobQueue`: hàng đợi có priority lớn hơn được ưu tiên khi cùng compute environment), nên chỗ trống
+đó thuộc về video ngắn đang chờ trước các đoạn còn lại. Job ghép ở hàng đợi chính vì nó phải lấy được chỗ ngay khi đoạn cuối xong, không xếp sau đoạn của video khác.
+
+**Đo trên staging** (`transcoder/scripts/staging-queue-priority-test.js`, job `sleep` 90 giây, array 24 phần tử vào hàng bulk, hạn mức 8 vCPU đã đầy rồi mới nộp job thăm dò):
+
+| Job thăm dò | Chờ sau khi nộp | Số phần tử array đã bắt đầu trước nó |
+|---|---|---|
+| Hàng đợi chính (priority 10) | **87 giây** | 8 / 24 (chỉ đợt đang chạy) |
+| Hàng đợi bulk (đối chứng) | 371 giây | 24 / 24 (phải chờ hết) |
+
+- Job ở hàng đợi chính nhảy lên trước 16 phần tử còn chờ, nhưng vẫn phải chờ đợt đang chạy xong (87 giây, xấp xỉ một job 90 giây): **Batch không ngắt job đang chạy**.
+  Với video thật, thời gian chờ tối đa của video mới là một đoạn, khoảng 20 phút, thay vì cả video dài.
+- Job ở hàng đợi chính phụ thuộc array job ở hàng bulk bắt đầu 20 giây SAU khi phần tử cuối kết thúc, nên dependency chạy được xuyên hàng đợi và job ghép
+  vẫn chờ đủ mọi đoạn.
+
+**Tương thích.** Biến `BATCH_BULK_JOB_QUEUE` để trống thì mọi job con vào hàng đợi chính như trước, nên hạ tầng và image có thể lên theo thứ tự nào cũng được. Job lập kế hoạch
+cần thêm quyền `batch:SubmitJob` trên hàng đợi bulk (module iam), và bộ lọc cảnh báo job FAILED (module monitoring) phải gồm cả hàng đợi này, nếu không đoạn hỏng sẽ không có cảnh báo.
+
+**Giới hạn.** Chỉ chia lại thứ tự, không thêm vCPU: tổng thời gian của video 4 giờ không đổi khi chỉ có nó. Hai video dài nộp cùng lúc vẫn xử lý lần lượt (FIFO trong hàng bulk).
+Nâng hạn mức Fargate Spot mới làm cả hai nhanh hơn.

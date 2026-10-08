@@ -107,6 +107,52 @@ describe('createBatchSubmitter', () => {
     expect(sent[0]).toMatchObject({ jobName: base.name, jobQueue: base.jobQueue, arrayProperties: { size: 4 } });
   });
 
+  describe('hàng đợi ưu tiên thấp', () => {
+    const bulkJobQueue = 'dacntt-dev-transcode-bulk-queue';
+    const recorder = () => {
+      const sent = [];
+      return {
+        sent,
+        client: {
+          send: async (command) => {
+            sent.push(command.input);
+            return { jobId: `job-${sent.length}` };
+          },
+        },
+      };
+    };
+
+    it('job đánh dấu bulk vào hàng đợi ưu tiên thấp, job thường vào hàng đợi chính', async () => {
+      const { sent, client } = recorder();
+      const submit = createBatchSubmitter({ jobQueue: base.jobQueue, bulkJobQueue, jobDefinition: base.jobDefinition, client });
+
+      await submit({ name: 'chunks', command: base.command, arraySize: 4, bulk: true });
+      await submit({ name: 'audio', command: ['node', 'src/index.js', 'audio'] });
+      await submit({ name: 'finalize', command: ['node', 'src/index.js', 'finalize'], bulk: false });
+
+      expect(sent.map((s) => s.jobQueue)).toEqual([bulkJobQueue, base.jobQueue, base.jobQueue]);
+    });
+
+    it('chưa cấu hình hàng đợi bulk thì mọi job vào hàng đợi chính (hạ tầng hoặc job definition cũ)', async () => {
+      const { sent, client } = recorder();
+      const submit = createBatchSubmitter({ jobQueue: base.jobQueue, bulkJobQueue: '', jobDefinition: base.jobDefinition, client });
+
+      await submit({ name: 'chunks', command: base.command, arraySize: 4, bulk: true });
+
+      expect(sent[0].jobQueue).toBe(base.jobQueue);
+    });
+
+    it('cờ bulk chỉ để chọn hàng đợi, không lọt vào yêu cầu SubmitJob', async () => {
+      const { sent, client } = recorder();
+      const submit = createBatchSubmitter({ jobQueue: base.jobQueue, bulkJobQueue, jobDefinition: base.jobDefinition, client });
+
+      await submit({ name: 'chunks', command: base.command, arraySize: 4, bulk: true });
+
+      expect(sent[0]).not.toHaveProperty('bulk');
+      expect(sent[0]).toMatchObject({ arrayProperties: { size: 4 }, jobDefinition: base.jobDefinition });
+    });
+  });
+
   it('lỗi từ Batch được ném nguyên vẹn để planner đánh ERROR', async () => {
     const client = { send: async () => Promise.reject(new Error('AccessDeniedException')) };
     const submit = createBatchSubmitter({ jobQueue: base.jobQueue, jobDefinition: base.jobDefinition, client });

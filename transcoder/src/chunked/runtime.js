@@ -26,6 +26,7 @@ const createRuntimePipeline = () =>
     db,
     submit: createBatchSubmitter({
       jobQueue: config.chunked.jobQueue,
+      bulkJobQueue: config.chunked.bulkJobQueue,
       jobDefinition: config.chunked.jobDefinition,
       region: config.awsRegion,
     }),

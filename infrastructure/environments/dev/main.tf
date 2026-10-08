@@ -89,9 +89,11 @@ module "monitoring" {
   dlq_queue_name       = "${var.project_name}-${var.environment}-transcode-dlq"
   transcode_queue_name = "${var.project_name}-${var.environment}-transcode-queue"
   batch_job_queue_arn  = module.batch.job_queue_arn
-  health_check_url     = "https://api.zelostech.site/"
-  backend_instance_id  = aws_instance.backend_api.id
-  tags                 = local.common_tags
+  # Job đoạn của video dài nằm ở hàng đợi riêng; không đưa vào thì job đoạn hỏng không có cảnh báo.
+  batch_bulk_job_queue_arn = module.batch.bulk_job_queue_arn
+  health_check_url         = "https://api.zelostech.site/"
+  backend_instance_id      = aws_instance.backend_api.id
+  tags                     = local.common_tags
 }
 
 # ── 9. CloudFront CDN ─────────────────────────────

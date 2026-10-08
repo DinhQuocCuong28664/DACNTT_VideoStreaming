@@ -30,6 +30,12 @@ variable "batch_job_queue_arn" {
   default     = ""
 }
 
+variable "batch_bulk_job_queue_arn" {
+  description = "ARN hàng đợi ưu tiên thấp chứa job các đoạn của video dài. Job đoạn thất bại nằm ở đây chứ không ở hàng đợi chính, nên phải đưa vào cùng bộ lọc cảnh báo. Để rỗng nếu không có."
+  type        = string
+  default     = ""
+}
+
 variable "tags" {
   type    = map(string)
   default = {}

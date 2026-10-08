@@ -31,6 +31,8 @@ const safeJobName = (name) => String(name).replace(/[^A-Za-z0-9_-]/g, '-').slice
  * @param {number} [spec.timeoutSeconds]
  * @param {number} [spec.retryAttempts] - ghi đè chiến lược thử lại của job definition: thử lại VÔ ĐIỀU KIỆN
  *   (xem chú thích của `childRetryAttempts` trong config)
+ *
+ * Việc chọn hàng đợi (`spec.bulk`) do `createBatchSubmitter` làm; hàm này nhận `jobQueue` đã chọn.
  */
 const buildSubmitInput = ({
   jobQueue,
@@ -75,11 +77,14 @@ const buildSubmitInput = ({
 /**
  * Bộ nộp job dùng thông tin xác thực mặc định của task role (hoặc khoá cục bộ khi chạy thử).
  * Trả về hàm `submit(spec) → jobId`.
+ *
+ * `spec.bulk = true` đưa job vào `bulkJobQueue` (ưu tiên thấp, cùng compute environment) để việc dài
+ * không chặn video mới tới. Không cấu hình `bulkJobQueue` thì vào `jobQueue` như mọi job khác.
  */
-const createBatchSubmitter = ({ jobQueue, jobDefinition, region, client } = {}) => {
+const createBatchSubmitter = ({ jobQueue, bulkJobQueue, jobDefinition, region, client } = {}) => {
   const batchClient = client || new BatchClient({ region });
-  return async (spec) => {
-    const input = buildSubmitInput({ jobQueue, jobDefinition, ...spec });
+  return async ({ bulk, ...spec }) => {
+    const input = buildSubmitInput({ jobQueue: (bulk && bulkJobQueue) || jobQueue, jobDefinition, ...spec });
     const response = await batchClient.send(new SubmitJobCommand(input));
     return response.jobId;
   };
