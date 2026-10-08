@@ -336,6 +336,9 @@ và nhả vCPU, Batch xét hàng đợi priority cao trước (tài liệu `Crea
 - Job ở hàng đợi chính phụ thuộc array job ở hàng bulk bắt đầu 20 giây SAU khi phần tử cuối kết thúc, nên dependency chạy được xuyên hàng đợi và job ghép
   vẫn chờ đủ mọi đoạn.
 
+**Chạy thật sau khi lên image mới.** Video 25 phút (1080p, 2,75 GiB) trên staging: hai job âm thanh và job ghép ở hàng đợi chính, mảng 5 đoạn ở hàng bulk; `READY` sau 34 phút 30 giây
+(tính cả 4 phút 22 giây tải lên), 250 segment ở cả 6 mức, tổng 1500,000 giây, không khe hở hay chồng lấn hình hoặc tiếng ở các ranh giới đoạn.
+
 **Tương thích.** Biến `BATCH_BULK_JOB_QUEUE` để trống thì mọi job con vào hàng đợi chính như trước, nên hạ tầng và image có thể lên theo thứ tự nào cũng được. Job lập kế hoạch
 cần thêm quyền `batch:SubmitJob` trên hàng đợi bulk (module iam), và bộ lọc cảnh báo job FAILED (module monitoring) phải gồm cả hàng đợi này, nếu không đoạn hỏng sẽ không có cảnh báo.
 
