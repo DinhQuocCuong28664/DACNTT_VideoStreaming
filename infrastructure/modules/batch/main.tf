@@ -124,7 +124,11 @@ resource "aws_batch_job_definition" "transcoder" {
         { name = "BATCH_JOB_QUEUE", value = "${var.project_name}-transcode-queue" },
         # Hàng đợi ưu tiên thấp cho array job các đoạn; thiếu biến này thì mọi job con vào hàng đợi trên.
         { name = "BATCH_BULK_JOB_QUEUE", value = "${var.project_name}-transcode-bulk-queue" },
-        { name = "BATCH_JOB_DEFINITION", value = "${var.project_name}-transcoder-job" }
+        { name = "BATCH_JOB_DEFINITION", value = "${var.project_name}-transcoder-job" },
+        # Số đoạn chạy được cùng lúc = quota vCPU của môi trường chia vCPU mỗi job. Planner chia video thành
+        # khoảng 3 đoạn cho mỗi chỗ (nhưng không dưới 10 GOP mỗi đoạn) để không còn cảnh 5 đoạn lớn chỉ dùng 5
+        # trong 8 vCPU và cả video chờ đoạn chậm nhất. 0 thì tắt (transcoder/src/config.js).
+        { name = "CHUNK_TARGET_PARALLELISM", value = tostring(floor(var.max_vcpus / var.job_vcpu)) }
       ],
       var.email_user != "" ? [{ name = "EMAIL_USER", value = var.email_user }] : [],
       var.email_from != "" ? [{ name = "EMAIL_FROM", value = var.email_from }] : [],
