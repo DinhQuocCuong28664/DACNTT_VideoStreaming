@@ -153,6 +153,19 @@ variable "job_memory" {
   default = 2048
 }
 
+# Cỡ task RIÊNG cho job chunk (pipeline chia đoạn); các job còn lại (planner, âm thanh, ghép, đường một-job)
+# giữ job_vcpu/job_memory. Mặc định bằng cỡ job nên không đổi hành vi; đặt 4 / 8192 để chunk chạy trên task
+# 4 vCPU. Cặp phải nằm trong bảng Fargate (bộ nhớ từ 2 GiB tới 8 GiB mỗi vCPU, 4 vCPU tối đa 30720 MiB).
+variable "chunk_vcpu" {
+  type    = number
+  default = 1
+}
+
+variable "chunk_memory" {
+  type    = number
+  default = 2048
+}
+
 variable "tags" {
   type    = map(string)
   default = {}

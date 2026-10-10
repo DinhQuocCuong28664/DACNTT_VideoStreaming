@@ -200,6 +200,26 @@ describe('createPipeline', () => {
         expect(outcome.jobs).toEqual({ audio: ['job-1', 'job-2'], chunks: 'job-3', finalize: 'job-4' });
       });
 
+      it('cỡ task lớn chỉ áp cho mảng chunk; planner, âm thanh và ghép giữ cỡ của job definition', async () => {
+        const config = makeConfig({ chunked: { chunkVcpu: 4, chunkMemoryMiB: 8192 } });
+        await build({ config }).planJob({ videoId: VIDEO_ID, rawS3Key: RAW_KEY });
+        const [a64, a128, chunks, finalize] = submit.specs;
+        expect(chunks.vcpu).toBe(4);
+        expect(chunks.memoryMiB).toBe(8192);
+        for (const spec of [a64, a128, finalize]) {
+          expect(spec.vcpu).toBeUndefined();
+          expect(spec.memoryMiB).toBeUndefined();
+        }
+      });
+
+      it('không cấu hình cỡ task thì không job nào mang vcpu hay memoryMiB', async () => {
+        await build().planJob({ videoId: VIDEO_ID, rawS3Key: RAW_KEY });
+        for (const spec of submit.specs) {
+          expect(spec).not.toHaveProperty('vcpu');
+          expect(spec).not.toHaveProperty('memoryMiB');
+        }
+      });
+
       it('chia đoạn theo công suất: video 25 phút với 8 chỗ ra 23 đoạn nhỏ thay vì 5 đoạn 5 phút', async () => {
         probeResult = summarizeProbe(probeJson({ seconds: 1500 }));
         const config = makeConfig({ chunked: { targetParallelism: 8 } });

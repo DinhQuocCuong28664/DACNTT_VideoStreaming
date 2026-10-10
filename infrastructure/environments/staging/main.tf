@@ -208,6 +208,8 @@ module "batch" {
   chunked_transcoding_enabled = true
   job_vcpu                    = var.job_vcpu
   job_memory                  = var.job_memory
+  chunk_vcpu                  = var.chunk_vcpu
+  chunk_memory                = var.chunk_memory
   tags                        = local.common_tags
 }
 

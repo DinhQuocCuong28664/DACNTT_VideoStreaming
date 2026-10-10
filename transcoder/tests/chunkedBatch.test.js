@@ -1,4 +1,5 @@
 const { buildSubmitInput, createBatchSubmitter, safeJobName, MAX_DEPENDENCIES } = require('../src/chunked/batch');
+const { isValidFargateSize } = require('../src/chunked/fargateSize');
 const { runFfmpegProcess, withAttempts, STDERR_TAIL_CHARS } = require('../src/chunked/run');
 const { EventEmitter } = require('events');
 
@@ -81,6 +82,43 @@ describe('buildSubmitInput', () => {
     }
     expect(() => buildSubmitInput({ ...base, arraySize: 2 })).not.toThrow();
     expect(() => buildSubmitInput({ ...base, arraySize: 10000 })).not.toThrow();
+  });
+
+  describe('cỡ task riêng cho job', () => {
+    it('ghi đè vCPU và bộ nhớ qua containerOverrides.resourceRequirements (giá trị là chuỗi)', () => {
+      const input = buildSubmitInput({ ...base, arraySize: 23, vcpu: 4, memoryMiB: 8192 });
+      expect(input.containerOverrides.resourceRequirements).toEqual([
+        { type: 'VCPU', value: '4' },
+        { type: 'MEMORY', value: '8192' },
+      ]);
+      expect(input.containerOverrides.command).toEqual(base.command);
+    });
+
+    it('không thêm resourceRequirements khi không yêu cầu: job dùng cỡ của job definition', () => {
+      expect(buildSubmitInput(base).containerOverrides).not.toHaveProperty('resourceRequirements');
+    });
+
+    it('vCPU và bộ nhớ phải đi cùng nhau', () => {
+      expect(() => buildSubmitInput({ ...base, vcpu: 4 })).toThrow(/đi cùng nhau/);
+      expect(() => buildSubmitInput({ ...base, memoryMiB: 8192 })).toThrow(/đi cùng nhau/);
+    });
+
+    it('từ chối cặp không có trong bảng Fargate thay vì để SubmitJob thất bại muộn', () => {
+      expect(() => buildSubmitInput({ ...base, vcpu: 4, memoryMiB: 2048 })).toThrow(/không hợp lệ/);
+      expect(() => buildSubmitInput({ ...base, vcpu: 3, memoryMiB: 8192 })).toThrow(/không hợp lệ/);
+    });
+
+    it('bảng Fargate: các cặp biên hợp lệ, ngoài biên không', () => {
+      expect(isValidFargateSize(1, 2048)).toBe(true);
+      expect(isValidFargateSize(1, 8192)).toBe(true);
+      expect(isValidFargateSize(1, 1024)).toBe(false);
+      expect(isValidFargateSize(4, 8192)).toBe(true);
+      expect(isValidFargateSize(4, 30720)).toBe(true);
+      expect(isValidFargateSize(4, 30721)).toBe(false);
+      expect(isValidFargateSize(16, 32768)).toBe(true);
+      expect(isValidFargateSize(0.25, 512)).toBe(true);
+      expect(isValidFargateSize(2, 4096.5)).toBe(false);
+    });
   });
 
   it('một job phụ thuộc tối đa 20 job khác', () => {

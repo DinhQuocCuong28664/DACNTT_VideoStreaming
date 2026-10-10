@@ -214,6 +214,9 @@ const createPipeline = (deps) => {
         // tới không phải chờ hết cả video dài. Âm thanh và job ghép ở hàng đợi chính: ngắn, và job ghép
         // phải lấy được chỗ ngay khi đoạn cuối xong thay vì xếp sau các đoạn của video khác.
         bulk: true,
+        // Chỉ chunk dùng task lớn hơn (nếu cấu hình): đây là phần nặng CPU; planner, âm thanh và ghép giữ
+        // cỡ nhỏ của job definition vì chúng ngắn hoặc chạy một luồng.
+        ...(cfg.chunkVcpu > 0 ? { vcpu: cfg.chunkVcpu, memoryMiB: cfg.chunkMemoryMiB } : {}),
       });
       const finalizeJobId = await submit({
         name: `finalize-${videoId}`,
