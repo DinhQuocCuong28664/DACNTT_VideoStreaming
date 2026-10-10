@@ -72,6 +72,28 @@ const gopFramesFor = (fps, segmentSeconds) =>
 const toFixedSeconds = (value) => Math.round(value * 1e6) / 1e6;
 
 /**
+ * Số GOP mỗi đoạn, chọn theo công suất song song thực có thay vì một con số cố định.
+ *
+ * Vì sao: với đoạn dài cố định 5 phút, video 25 phút chỉ ra 5 đoạn nên chỉ dùng 5 trong 8 vCPU, và
+ * thời gian cả video bằng đoạn CHẬM NHẤT. Đo trên production, 5 đoạn cùng khối lượng chạy 18,2 /
+ * 18,4 / 21,1 / 28,3 / 32,6 phút (Fargate Spot lệch tới 1,8 lần giữa các máy), tức 89% thời gian
+ * nằm ở đoạn chậm nhất. Nhiều đoạn nhỏ hơn số chỗ chạy thì máy nhanh nhận thêm việc khi xong sớm
+ * (xếp lịch động) và đoạn chậm nhất chỉ còn là một phần nhỏ của tổng việc.
+ *
+ * `targetChunks` = số đoạn mong muốn (thường là số chỗ chạy x vài đoạn mỗi chỗ). Kết quả bị chặn
+ * giữa `minGops` (mỗi đoạn tốn chừng 30-40 giây khởi động container và mở nguồn nên không đáng
+ * nhỏ hơn) và `maxGops` (hành vi cũ: 50 GOP, ~5 phút; video đủ dài vẫn ra các đoạn 5 phút).
+ * `targetChunks` < 2 nghĩa là tắt: trả `maxGops`.
+ */
+const chooseGopsPerChunk = ({ frameCount, fps, segmentSeconds = 6, maxGops = 50, minGops = 10, targetChunks = 0 }) => {
+  const ceiling = Math.max(1, Math.floor(maxGops));
+  if (!(targetChunks >= 2) || !fps || !(frameCount > 0)) return ceiling;
+  const floor = Math.min(ceiling, Math.max(1, Math.floor(minGops)));
+  const totalGops = Math.max(1, Math.floor(frameCount / gopFramesFor(fps, segmentSeconds)));
+  return Math.min(ceiling, Math.max(floor, Math.ceil(totalGops / Math.floor(targetChunks))));
+};
+
+/**
  * Chia `frameCount` khung hình thành các đoạn.
  *
  * Mỗi đoạn (trừ đoạn cuối) dài đúng `gopsPerChunk` GOP. Đoạn cuối mở: không có
@@ -214,6 +236,7 @@ module.exports = {
   parseRational,
   frameSeconds,
   gopFramesFor,
+  chooseGopsPerChunk,
   buildChunkPlan,
   estimateFrameCount,
   audioBitrateFor,

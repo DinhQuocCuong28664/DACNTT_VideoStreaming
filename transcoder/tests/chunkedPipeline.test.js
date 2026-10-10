@@ -200,6 +200,31 @@ describe('createPipeline', () => {
         expect(outcome.jobs).toEqual({ audio: ['job-1', 'job-2'], chunks: 'job-3', finalize: 'job-4' });
       });
 
+      it('chia đoạn theo công suất: video 25 phút với 8 chỗ ra 23 đoạn nhỏ thay vì 5 đoạn 5 phút', async () => {
+        probeResult = summarizeProbe(probeJson({ seconds: 1500 }));
+        const config = makeConfig({ chunked: { targetParallelism: 8 } });
+        const outcome = await build({ config }).planJob({ videoId: VIDEO_ID, rawS3Key: RAW_KEY });
+
+        expect(outcome.mode).toBe('chunked');
+        const chunks = submit.specs.find((s) => s.command[2] === 'chunk');
+        expect(chunks.arraySize).toBe(23);
+        const document = await io.getWorkJson(io.workKey(VIDEO_ID, 'plan.json'));
+        expect(document.plan.gopsPerChunk).toBe(11);
+      });
+
+      it('chưa đặt công suất (targetParallelism = 0) thì giữ đoạn 5 phút như trước', async () => {
+        probeResult = summarizeProbe(probeJson({ seconds: 1500 }));
+        const outcome = await build().planJob({ videoId: VIDEO_ID, rawS3Key: RAW_KEY });
+        expect(outcome.mode).toBe('chunked');
+        expect(submit.specs.find((s) => s.command[2] === 'chunk').arraySize).toBe(5);
+      });
+
+      it('video 4 giờ không đổi khi bật chia theo công suất: vẫn 48 đoạn', async () => {
+        const config = makeConfig({ chunked: { targetParallelism: 8 } });
+        await build({ config }).planJob({ videoId: VIDEO_ID, rawS3Key: RAW_KEY });
+        expect(submit.specs.find((s) => s.command[2] === 'chunk').arraySize).toBe(48);
+      });
+
       it('chỉ mảng đoạn vào hàng đợi ưu tiên thấp; âm thanh và ghép ở hàng đợi chính', async () => {
         // Đoạn là phần việc dài và song song được nên không được chặn video mới tới. Job ghép phải lấy
         // được chỗ ngay khi đoạn cuối xong, nên nó không được xếp sau đoạn của video khác.
