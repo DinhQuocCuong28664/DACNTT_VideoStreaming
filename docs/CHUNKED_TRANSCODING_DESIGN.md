@@ -344,3 +344,34 @@ cần thêm quyền `batch:SubmitJob` trên hàng đợi bulk (module iam), và 
 
 **Giới hạn.** Chỉ chia lại thứ tự, không thêm vCPU: tổng thời gian của video 4 giờ không đổi khi chỉ có nó. Hai video dài nộp cùng lúc vẫn xử lý lần lượt (FIFO trong hàng bulk).
 Nâng hạn mức Fargate Spot mới làm cả hai nhanh hơn.
+
+### 10.9 Chia đoạn theo công suất song song
+
+**Số đo nền (production, 2026-10-09, video 25 phút 1080p, hạn mức 8 vCPU).** Từ lúc upload xong đến `READY` mất 36 phút 16 giây:
+
+| Giai đoạn | Thời gian |
+|---|---|
+| Planner (khởi động Fargate 23 giây + thăm dò) | 50 giây |
+| Hai job âm thanh (đoạn phải chờ) | 75 giây |
+| 5 đoạn song song | 32,6 phút (89%) |
+| Job ghép | 70 giây |
+
+Hai điều cần sửa: (1) chỉ có 5 đoạn nên chỉ dùng 5 trong 8 vCPU; (2) năm đoạn CÙNG khối lượng chạy 18,2 / 18,4 / 21,1 / 28,3 / 32,6 phút,
+lệch 1,8 lần vì Fargate Spot không đồng đều giữa các máy, và cả video phải chờ đoạn chậm nhất. Tổng việc là 7.117 vCPU-giây; chia đều cho
+8 chỗ thì khoảng 15 phút.
+
+**Cách xử lý.** Planner không còn dùng cố định 50 GOP (5 phút) mà chọn `gopsPerChunk` để ra khoảng `targetParallelism x chunksPerSlot` đoạn
+(`chooseGopsPerChunk` trong `src/chunked/plan.js`):
+
+    gopsPerChunk = clamp( ceil(tổngGOP / (chỗ chạy x 3)), tối thiểu 10, tối đa 50 )
+
+- Tối đa 50 giữ hành vi cũ cho video dài: video 4 giờ vẫn ra 48 đoạn 5 phút. Tối thiểu 10 GOP (khoảng 1 phút): mỗi đoạn tốn chừng
+  30-40 giây khởi động container và mở nguồn nên không đáng nhỏ hơn.
+- Video 25 phút với 8 chỗ ra 23 đoạn khoảng 66 giây thay vì 5 đoạn 5 phút. Máy nhanh xong sớm thì nhận thêm đoạn, nên đoạn chậm nhất chỉ còn
+  là một phần nhỏ của tổng việc (xếp lịch động).
+- Số chỗ chạy lấy từ `CHUNK_TARGET_PARALLELISM`, Terraform đặt bằng `max_vcpus / job_vcpu` (`modules/batch`). Chưa đặt (0) thì tắt và mọi
+  video dùng 50 GOP như trước, nên đổi mã và đổi hạ tầng không cần đi cùng lúc.
+- Không ra ít đoạn hơn hành vi cũ ở mọi thời lượng (có test), và không đổi gì ở ranh giới đoạn: các bất biến E1/E2 đã kiểm với 1, 3, 7, 11 và 50 GOP.
+
+Việc chưa làm: hạ ngưỡng `CHUNK_THRESHOLD_SECONDS` (1200 giây). Video dưới 20 phút vẫn đi một job 1 vCPU: 5 phút video mất khoảng 22 phút;
+chia đoạn chỉ tốn cố định khoảng 3,3 phút (planner, âm thanh, ghép). Nên đo rồi mới đổi vì đó là đường mà phần lớn video ngắn đang đi.
