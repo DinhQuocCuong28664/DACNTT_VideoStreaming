@@ -131,6 +131,8 @@ resource "aws_batch_job_definition" "transcoder" {
         # Số chỗ chạy là quota vCPU chia cỡ task CỦA CHUNK (không phải job_vcpu): task lớn thì ít chỗ hơn.
         { name = "CHUNK_TARGET_PARALLELISM", value = tostring(max(1, floor(var.max_vcpus / var.chunk_vcpu))) },
         # Cỡ task riêng cho job chunk, được planner ghi đè khi nộp job (transcoder/src/chunked/batch.js).
+        # Ngưỡng thời lượng (giây) để một video đi đường chia đoạn thay vì một job (transcoder/src/config.js).
+        { name = "CHUNK_THRESHOLD_SECONDS", value = tostring(var.chunk_threshold_seconds) },
         { name = "CHUNK_JOB_VCPU", value = tostring(var.chunk_vcpu) },
         { name = "CHUNK_JOB_MEMORY", value = tostring(var.chunk_memory) }
       ],

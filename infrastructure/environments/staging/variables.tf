@@ -51,6 +51,13 @@ variable "job_vcpu" {
   default = 1
 }
 
+# Video dài hơn ngưỡng này (giây) đi đường chia đoạn. Xem modules/batch/variables.tf.
+variable "chunk_threshold_seconds" {
+  description = "Ngưỡng thời lượng (giây) để chuyển mã chia đoạn; video ngắn hơn đi một job"
+  type        = number
+  default     = 1200
+}
+
 # Cỡ task riêng cho job chunk (các job khác vẫn dùng job_vcpu/job_memory). Xem modules/batch/variables.tf.
 variable "chunk_vcpu" {
   description = "Số vCPU của mỗi job chunk (Fargate: 0.25/0.5/1/2/4/8/16). 4 nhanh hơn 14% và ít vCPU-giây hơn 7% so với 1 (đo 2026-10-10)."
