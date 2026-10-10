@@ -1,9 +1,23 @@
 require('dotenv').config();
 
+const { isValidFargateSize } = require('./chunked/fargateSize');
+
 /** Đọc số dương từ biến môi trường, sai hoặc thiếu thì dùng giá trị mặc định. */
 const positiveNumber = (value, fallback) => {
   const n = Number(value);
   return Number.isFinite(n) && n > 0 ? n : fallback;
+};
+
+/** Cặp vCPU/bộ nhớ của job chunk từ biến môi trường; không đặt hoặc sai thì {0, 0} (dùng cỡ job definition). */
+const resolveChunkTaskSize = (vcpuText, memoryText) => {
+  const chunkVcpu = Number(vcpuText);
+  const chunkMemoryMiB = Number(memoryText);
+  if (!vcpuText && !memoryText) return { chunkVcpu: 0, chunkMemoryMiB: 0 };
+  if (!isValidFargateSize(chunkVcpu, chunkMemoryMiB)) {
+    console.warn(`⚠️  CHUNK_JOB_VCPU=${vcpuText} / CHUNK_JOB_MEMORY=${memoryText} không phải cặp Fargate hợp lệ; dùng cỡ của job definition.`);
+    return { chunkVcpu: 0, chunkMemoryMiB: 0 };
+  }
+  return { chunkVcpu, chunkMemoryMiB };
 };
 
 const config = {
@@ -77,6 +91,11 @@ const config = {
     // không để đoạn nhỏ hơn `minGopsPerChunk` GOP hay lớn hơn `gopsPerChunk`. 0 = tắt: mọi video dùng
     // `gopsPerChunk` như trước.
     targetParallelism: Math.floor(Math.max(0, Number(process.env.CHUNK_TARGET_PARALLELISM) || 0)),
+    // Kích thước task cho riêng các job chunk (ghi đè job definition). 0 = dùng cỡ của job definition.
+    // Chunk là phần nặng CPU và song song được; planner, âm thanh và job ghép giữ cỡ nhỏ. Đo cũ: task
+    // 4 vCPU chạy nhanh 5,5 lần task 1 vCPU, tức hiệu quả hơn trên mỗi vCPU vì 1 vCPU phải chạy giải mã
+    // và 6 bộ mã hoá tranh nhau. Cặp không hợp lệ bị bỏ qua (cảnh báo) thay vì làm mọi video dài hỏng.
+    ...resolveChunkTaskSize(process.env.CHUNK_JOB_VCPU, process.env.CHUNK_JOB_MEMORY),
     chunksPerSlot: Math.floor(positiveNumber(process.env.CHUNKS_PER_SLOT, 3)),
     minGopsPerChunk: Math.floor(positiveNumber(process.env.CHUNK_MIN_GOPS, 10)),
     // Hằng số chung của -output_ts_offset (giây), phải >= 0,1 (E2 trong tài liệu thiết kế).

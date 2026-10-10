@@ -1,4 +1,5 @@
 const { BatchClient, SubmitJobCommand } = require('@aws-sdk/client-batch');
+const { isValidFargateSize } = require('./fargateSize');
 
 /**
  * Nộp job con của pipeline chia đoạn vào AWS Batch.
@@ -31,6 +32,8 @@ const safeJobName = (name) => String(name).replace(/[^A-Za-z0-9_-]/g, '-').slice
  * @param {number} [spec.timeoutSeconds]
  * @param {number} [spec.retryAttempts] - ghi đè chiến lược thử lại của job definition: thử lại VÔ ĐIỀU KIỆN
  *   (xem chú thích của `childRetryAttempts` trong config)
+ * @param {number} [spec.vcpu] - ghi đè vCPU của job definition cho riêng job này (cùng với `memoryMiB`)
+ * @param {number} [spec.memoryMiB] - ghi đè bộ nhớ (MiB); phải là cặp hợp lệ với `vcpu` theo bảng Fargate
  *
  * Việc chọn hàng đợi (`spec.bulk`) do `createBatchSubmitter` làm; hàm này nhận `jobQueue` đã chọn.
  */
@@ -44,6 +47,8 @@ const buildSubmitInput = ({
   arraySize,
   timeoutSeconds,
   retryAttempts,
+  vcpu,
+  memoryMiB,
 }) => {
   if (!jobQueue || !jobDefinition) {
     throw new Error('Thiếu hàng đợi hoặc job definition Batch (BATCH_JOB_QUEUE / BATCH_JOB_DEFINITION)');
@@ -57,6 +62,12 @@ const buildSubmitInput = ({
   if (dependsOn.length > MAX_DEPENDENCIES) {
     throw new Error(`Một job chỉ phụ thuộc tối đa ${MAX_DEPENDENCIES} job khác, nhận ${dependsOn.length}`);
   }
+  if ((vcpu === undefined) !== (memoryMiB === undefined)) {
+    throw new Error('vcpu và memoryMiB phải đi cùng nhau: Fargate chỉ nhận các cặp vCPU/bộ nhớ cố định');
+  }
+  if (vcpu !== undefined && !isValidFargateSize(vcpu, memoryMiB)) {
+    throw new Error(`Cặp ${vcpu} vCPU / ${memoryMiB} MiB không hợp lệ với Fargate`);
+  }
 
   const input = {
     jobName: safeJobName(name),
@@ -67,6 +78,12 @@ const buildSubmitInput = ({
       environment: Object.entries(environment).map(([key, value]) => ({ name: key, value: String(value) })),
     },
   };
+  if (vcpu !== undefined) {
+    input.containerOverrides.resourceRequirements = [
+      { type: 'VCPU', value: String(vcpu) },
+      { type: 'MEMORY', value: String(memoryMiB) },
+    ];
+  }
   if (dependsOn.length > 0) input.dependsOn = dependsOn.map((jobId) => ({ jobId }));
   if (arraySize !== undefined) input.arrayProperties = { size: arraySize };
   if (timeoutSeconds) input.timeout = { attemptDurationSeconds: timeoutSeconds };
