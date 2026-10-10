@@ -193,7 +193,10 @@ module "batch" {
   # Fargate Spot theo thời gian, thay vì đo dồn từng cấu hình thành hai khối.
   job_vcpu   = var.job_vcpu
   job_memory = var.job_memory
-  tags       = local.common_tags
+  # Task riêng cho job chunk (xem modules/batch/variables.tf).
+  chunk_vcpu   = var.chunk_vcpu
+  chunk_memory = var.chunk_memory
+  tags         = local.common_tags
 }
 
 # ── 11. Lambda Job Submitter ──────────────────────

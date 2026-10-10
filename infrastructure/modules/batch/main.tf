@@ -128,7 +128,11 @@ resource "aws_batch_job_definition" "transcoder" {
         # Số đoạn chạy được cùng lúc = quota vCPU của môi trường chia vCPU mỗi job. Planner chia video thành
         # khoảng 3 đoạn cho mỗi chỗ (nhưng không dưới 10 GOP mỗi đoạn) để không còn cảnh 5 đoạn lớn chỉ dùng 5
         # trong 8 vCPU và cả video chờ đoạn chậm nhất. 0 thì tắt (transcoder/src/config.js).
-        { name = "CHUNK_TARGET_PARALLELISM", value = tostring(floor(var.max_vcpus / var.job_vcpu)) }
+        # Số chỗ chạy là quota vCPU chia cỡ task CỦA CHUNK (không phải job_vcpu): task lớn thì ít chỗ hơn.
+        { name = "CHUNK_TARGET_PARALLELISM", value = tostring(max(1, floor(var.max_vcpus / var.chunk_vcpu))) },
+        # Cỡ task riêng cho job chunk, được planner ghi đè khi nộp job (transcoder/src/chunked/batch.js).
+        { name = "CHUNK_JOB_VCPU", value = tostring(var.chunk_vcpu) },
+        { name = "CHUNK_JOB_MEMORY", value = tostring(var.chunk_memory) }
       ],
       var.email_user != "" ? [{ name = "EMAIL_USER", value = var.email_user }] : [],
       var.email_from != "" ? [{ name = "EMAIL_FROM", value = var.email_from }] : [],
@@ -203,6 +207,18 @@ resource "aws_batch_job_definition" "transcoder" {
   # thực sự đã hỏng.
   timeout {
     attempt_duration_seconds = 7200
+  }
+
+  lifecycle {
+    # Cặp vCPU/bộ nhớ sai làm SubmitJob thất bại với MỌI video dài ở thời điểm chạy; bắt ở bước plan.
+    precondition {
+      condition = (
+        contains([0.25, 0.5, 1, 2, 4, 8, 16], var.chunk_vcpu) &&
+        var.chunk_memory >= var.chunk_vcpu * 2048 &&
+        var.chunk_memory <= var.chunk_vcpu * 8192
+      )
+      error_message = "chunk_vcpu phải là 0.25/0.5/1/2/4/8/16 và chunk_memory (MiB) nằm trong [2048, 8192] mỗi vCPU theo bảng Fargate."
+    }
   }
 
   tags = merge(var.tags, {
