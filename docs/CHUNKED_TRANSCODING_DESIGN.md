@@ -388,3 +388,29 @@ chậm nhất trong đợt cuối (7,6 phút) quyết định lúc kết thúc. 
 
 Việc chưa làm: hạ ngưỡng `CHUNK_THRESHOLD_SECONDS` (1200 giây). Video dưới 20 phút vẫn đi một job 1 vCPU: 5 phút video mất khoảng 22 phút;
 chia đoạn chỉ tốn cố định khoảng 3,3 phút (planner, âm thanh, ghép). Nên đo rồi mới đổi vì đó là đường mà phần lớn video ngắn đang đi.
+
+### 10.10 Task 4 vCPU cho job chunk
+
+Chunk chạy trên task lớn hơn planner, âm thanh và ghép: `CHUNK_JOB_VCPU` / `CHUNK_JOB_MEMORY` (Terraform `chunk_vcpu` / `chunk_memory`) được planner
+ghi đè qua `containerOverrides.resourceRequirements` khi nộp mảng chunk. Số chỗ chạy là `max_vcpus / chunk_vcpu` (8 vCPU: 2 task 4 vCPU), nên
+`CHUNK_TARGET_PARALLELISM` đi theo `chunk_vcpu` chứ không theo `job_vcpu`. Cặp vCPU/bộ nhớ sai bị bỏ qua kèm cảnh báo khi nạp cấu hình
+(`src/chunked/fargateSize.js`) và bị Terraform từ chối ở bước plan, vì lỗi SubmitJob ở planner xảy ra sau khi video đã `PROCESSING` và sẽ làm
+mọi video dài thành `ERROR`.
+
+**Đo trên staging, cùng video 25 phút, hạn mức 8 vCPU:**
+
+| | 23 chunk, task 1 vCPU | 6 chunk, task 4 vCPU |
+|---|---|---|
+| Chunk trung vị | 302 giây cho 66 giây video (4,6 giây/giây) | 256 giây cho 252 giây video (1,0 giây/giây) |
+| Tổng task-giây x vCPU | khoảng 7.270 vCPU-giây | khoảng 6.790 vCPU-giây (ít hơn 7%) |
+| Pha chunk | 19,2 phút | 16,8 phút |
+| Từ tạo job đến READY | 23 phút 37 giây | **20 phút 23 giây** (nhanh hơn 14%) |
+| Kiểm tra HLS | 250 segment mỗi mức, 0 khe hở | 250 segment mỗi mức, 0 khe hở |
+
+**Điều chỉnh ước tính trước đó:** số đo cũ của đường một-job (1 GB: 5.917 giây ở 1 vCPU, 1.080 giây ở 4 vCPU, tức 5,5 lần cho 4 lần tài nguyên)
+quá lạc quan với pipeline chunk. Ở đây 4 vCPU nhanh hơn 1 vCPU khoảng 4,7 lần, tức hiệu quả trên mỗi vCPU hơn khoảng 17%, không phải 37%.
+Với video 4 giờ nên kỳ vọng khoảng 1,15 lần nhanh hơn (khoảng 2 giờ 40 phút), không phải 1,9 giờ.
+
+Phần còn lại là đuôi: chỉ 2 chỗ chạy và 6 chunk (3 đợt), nên đoạn chậm nhất của đợt cuối (439 giây so với trung vị 256 giây, Fargate Spot lệch 1,7 lần)
+quyết định lúc kết thúc; tổng việc chia đều cho 2 chỗ chỉ là 14,2 phút. Làm chunk nhỏ hơn không giúp: chi phí khởi động mỗi chunk (khoảng 25 giây)
+cộng lại cân bằng với phần đuôi giảm được. Task 2 vCPU (4 chỗ) có thể cân bằng tốt hơn; chưa đo.
