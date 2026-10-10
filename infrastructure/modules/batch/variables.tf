@@ -156,6 +156,13 @@ variable "job_memory" {
 # Cỡ task RIÊNG cho job chunk (pipeline chia đoạn); các job còn lại (planner, âm thanh, ghép, đường một-job)
 # giữ job_vcpu/job_memory. Mặc định bằng cỡ job nên không đổi hành vi; đặt 4 / 8192 để chunk chạy trên task
 # 4 vCPU. Cặp phải nằm trong bảng Fargate (bộ nhớ từ 2 GiB tới 8 GiB mỗi vCPU, 4 vCPU tối đa 30720 MiB).
+# Video dài hơn ngưỡng này (giây) đi đường chia đoạn; ngắn hơn đi đường một job. Mặc định 1200 giống mặc định của mã
+# (transcoder/src/config.js), nên không đổi hành vi. Hạ xuống để thử video ngắn qua đường chia đoạn.
+variable "chunk_threshold_seconds" {
+  type    = number
+  default = 1200
+}
+
 variable "chunk_vcpu" {
   type    = number
   default = 1

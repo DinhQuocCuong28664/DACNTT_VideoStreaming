@@ -194,9 +194,10 @@ module "batch" {
   job_vcpu   = var.job_vcpu
   job_memory = var.job_memory
   # Task riêng cho job chunk (xem modules/batch/variables.tf).
-  chunk_vcpu   = var.chunk_vcpu
-  chunk_memory = var.chunk_memory
-  tags         = local.common_tags
+  chunk_vcpu              = var.chunk_vcpu
+  chunk_threshold_seconds = var.chunk_threshold_seconds
+  chunk_memory            = var.chunk_memory
+  tags                    = local.common_tags
 }
 
 # ── 11. Lambda Job Submitter ──────────────────────

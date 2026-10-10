@@ -209,6 +209,7 @@ module "batch" {
   job_vcpu                    = var.job_vcpu
   job_memory                  = var.job_memory
   chunk_vcpu                  = var.chunk_vcpu
+  chunk_threshold_seconds     = var.chunk_threshold_seconds
   chunk_memory                = var.chunk_memory
   tags                        = local.common_tags
 }
