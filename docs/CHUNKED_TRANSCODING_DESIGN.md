@@ -414,3 +414,38 @@ Với video 4 giờ nên kỳ vọng khoảng 1,15 lần nhanh hơn (khoảng 2 
 Phần còn lại là đuôi: chỉ 2 chỗ chạy và 6 chunk (3 đợt), nên đoạn chậm nhất của đợt cuối (439 giây so với trung vị 256 giây, Fargate Spot lệch 1,7 lần)
 quyết định lúc kết thúc; tổng việc chia đều cho 2 chỗ chỉ là 14,2 phút. Làm chunk nhỏ hơn không giúp: chi phí khởi động mỗi chunk (khoảng 25 giây)
 cộng lại cân bằng với phần đuôi giảm được. Task 2 vCPU (4 chỗ) có thể cân bằng tốt hơn; chưa đo.
+
+### 10.11 Hai lượt đo tiếp theo: task 2 vCPU và nhiều video cùng lúc
+
+Cùng video 25 phút (1080p, 2,75 GiB), staging, hạn mức Fargate Spot 8 vCPU.
+
+**Task 2 vCPU thay vì 4 vCPU** (`chunk_vcpu=2`, `chunk_memory=4096`, 4 chỗ chạy, 12 chunk 21 GOP):
+
+| | 4 vCPU (6 chunk) | 2 vCPU (12 chunk) |
+|---|---|---|
+| Chunk trung vị | 256 giây cho 252 giây video | 280 giây cho 126 giây video |
+| Chunk chậm nhất | 439 giây | 380 giây |
+| Tổng vCPU-giây | 6.792 | 6.816 |
+| Pha chunk | 16,8 phút | 16,3 phút |
+| Từ tạo job đến ghép xong | 20,4 phút | **20,1 phút** |
+
+Kết luận: cùng thời gian và cùng chi phí. Nhiều chỗ hơn không thu hẹp được phần đuôi vì việc chia vẫn theo từng đợt và một máy chậm của đợt cuối
+quyết định lúc xong. Hiệu quả trên mỗi vCPU so với 1 vCPU: 2 vCPU hơn khoảng 7%, 4 vCPU hơn khoảng 17%. Giữ 4 vCPU (ít job hơn, ít khởi động hơn).
+
+**Bốn video 25 phút cùng upload** (tải lên cùng lúc mất 16 phút 55 giây mỗi video vì chung đường truyền; sau đó 4 video vào hàng đợi gần như cùng giây):
+
+| Video | Hàng đợi (thứ tự nộp) | Chunk | READY (phút từ lúc job đầu tiên được tạo) |
+|---|---|---|---|
+| 1 | 1 | 2,8 đến 19,7 | 21,0 |
+| 2 | 2 | 18,4 đến 37,1 | 38,7 |
+| 4 | 3 | 35,5 đến 58,5 | 62,9 |
+| 3 | 4 | 52,2 đến 71,9 | 73,3 |
+
+- **Thứ tự là FIFO theo thời điểm nộp**: video nộp sớm hơn xong sớm hơn. Trung bình 49 phút chờ, rẻ hơn chia đều (cả bốn xong lúc 73 phút).
+- **Thông lượng: 4 video (100 phút video) trong 73,3 phút = 1,36 lần thời gian thực**, so với 1,23 lần khi chạy từng video một (25 / 20,4). Tốt hơn 10% vì
+  phần cố định (planner, âm thanh, ghép) của video sau chạy chồng lên chunk của video trước.
+- **Hạn mức vẫn là điểm nghẽn:** người thứ tư chờ 73 phút. Công suất tỉ lệ thuận với vCPU (16 vCPU sẽ giảm gần một nửa).
+- **Job ghép phải chờ chỗ:** video 4 có chunk xong ở phút 58,5 nhưng job ghép chỉ bắt đầu ở phút 62,1 vì cả 8 vCPU đang do task chunk 4 vCPU của video 3
+  giữ; job ghép (1 vCPU) phải đợi một task chunk xong. Hàng đợi chính ưu tiên cao hơn nhưng không ngắt job đang chạy. Cách xử lý đáng thử:
+  môi trường Fargate On-Demand nhỏ (khoảng 2 vCPU) chỉ gắn vào hàng đợi chính, để planner, âm thanh và ghép không bao giờ chờ sau task chunk.
+- HLS kiểm tra ở video 1 và 3: 250 segment mỗi mức, 0 khe hở hay chồng lấn hình/tiếng.
