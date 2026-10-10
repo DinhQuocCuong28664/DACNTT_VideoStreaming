@@ -53,9 +53,9 @@ variable "job_vcpu" {
 
 # Video dài hơn ngưỡng này (giây) đi đường chia đoạn. Xem modules/batch/variables.tf.
 variable "chunk_threshold_seconds" {
-  description = "Ngưỡng thời lượng (giây) để chuyển mã chia đoạn; video ngắn hơn đi một job"
+  description = "Ngưỡng thời lượng (giây) để chuyển mã chia đoạn; video ngắn hơn đi một job. 300 theo đo ngày 2026-10-11 (docs/CHUNKED_TRANSCODING_DESIGN.md mục 10.12): video 5 phút từ 26,7 xuống 11,9 phút."
   type        = number
-  default     = 1200
+  default     = 300
 }
 
 # Cỡ task riêng cho job chunk (các job khác vẫn dùng job_vcpu/job_memory). Xem modules/batch/variables.tf.
