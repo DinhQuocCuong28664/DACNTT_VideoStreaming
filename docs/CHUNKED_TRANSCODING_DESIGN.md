@@ -373,5 +373,18 @@ lệch 1,8 lần vì Fargate Spot không đồng đều giữa các máy, và c�
   video dùng 50 GOP như trước, nên đổi mã và đổi hạ tầng không cần đi cùng lúc.
 - Không ra ít đoạn hơn hành vi cũ ở mọi thời lượng (có test), và không đổi gì ở ranh giới đoạn: các bất biến E1/E2 đã kiểm với 1, 3, 7, 11 và 50 GOP.
 
+**Kết quả đo trên staging (2026-10-10, cùng video 25 phút, hạn mức 8 vCPU, `CHUNK_TARGET_PARALLELISM=8`):**
+
+| | Nền (production, 5 đoạn) | Chia theo công suất (staging, 23 đoạn) |
+|---|---|---|
+| Pha chunk | 32,6 phút | **19,2 phút** |
+| Chunk nhanh nhất / trung vị / chậm nhất | 18,2 / 21,1 / 32,6 phút | 2,1 / 5,0 / 7,6 phút |
+| Từ upload xong đến READY | 36 phút 16 giây | **23 phút 37 giây** (nhanh 1,5 lần) |
+| Kiểm tra HLS | | 250 segment mỗi mức, 0 khe hở hay chồng lấn hình/tiếng |
+
+Pha chunk dài hơn lý tưởng (khoảng 15 phút = tổng việc chia 8) vì đợt chạy cuối chưa đầy 8 chỗ: 23 đoạn chia 8 chỗ ra khoảng 3 đợt, và đoạn
+chậm nhất trong đợt cuối (7,6 phút) quyết định lúc kết thúc. Tăng `CHUNKS_PER_SLOT` sẽ thu hẹp phần đuôi này nhưng tăng chi phí khởi động
+(khoảng 25 giây mỗi đoạn); mức 3 là cân bằng hợp lý, chưa cần chỉnh. Phần cố định (planner, âm thanh, ghép) mất khoảng 4,4 phút.
+
 Việc chưa làm: hạ ngưỡng `CHUNK_THRESHOLD_SECONDS` (1200 giây). Video dưới 20 phút vẫn đi một job 1 vCPU: 5 phút video mất khoảng 22 phút;
 chia đoạn chỉ tốn cố định khoảng 3,3 phút (planner, âm thanh, ghép). Nên đo rồi mới đổi vì đó là đường mà phần lớn video ngắn đang đi.
