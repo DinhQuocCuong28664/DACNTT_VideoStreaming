@@ -449,3 +449,29 @@ quyết định lúc xong. Hiệu quả trên mỗi vCPU so với 1 vCPU: 2 vCPU
   giữ; job ghép (1 vCPU) phải đợi một task chunk xong. Hàng đợi chính ưu tiên cao hơn nhưng không ngắt job đang chạy. Cách xử lý đáng thử:
   môi trường Fargate On-Demand nhỏ (khoảng 2 vCPU) chỉ gắn vào hàng đợi chính, để planner, âm thanh và ghép không bao giờ chờ sau task chunk.
 - HLS kiểm tra ở video 1 và 3: 250 segment mỗi mức, 0 khe hở hay chồng lấn hình/tiếng.
+
+### 10.12 Hạ ngưỡng chia đoạn: video 5 đến 15 phút
+
+Mọi video dài hơn `CHUNK_THRESHOLD_SECONDS` (mặc định 1200 giây) đi đường chia đoạn; ngắn hơn thì đi một job 1 vCPU. Để biết ngưỡng có nên thấp hơn,
+ba video 1080p 30 fps (5, 10, 15 phút) được nộp cùng lúc lên staging với ngưỡng 60 giây (hạn mức 8 vCPU, task chunk 4 vCPU), rồi video 5 phút được
+chạy lại một mình với ngưỡng 1200 giây để có số của đường một-job.
+
+| Video | Đường một-job (đo) | Đường chia đoạn (đo, 3 video tranh hạn mức) | Số chunk | Nhanh hơn |
+|---|---|---|---|---|
+| 5 phút | **26,7 phút** (job chạy 25,8 phút) | 11,9 phút | 5 | 2,2 lần |
+| 10 phút | khoảng 53 phút (suy ra, 5,3 giây mỗi giây video) | 27,2 phút | 6 | khoảng 2 lần |
+| 15 phút | khoảng 80 phút (suy ra) | 17,4 phút | 6 | khoảng 4,6 lần |
+
+- **Đường một-job chạy chậm hơn thời gian thực 5,3 lần ở 1 vCPU**, nhất quán với số đo cũ (3,7 đến 5,9 lần tuỳ độ phân giải), nên 10 và 15 phút suy ra
+  bằng tỉ lệ này; chưa đo trực tiếp.
+- **Số của đường chia đoạn bị phóng đại về phía chậm.** Ba video chạy cùng lúc, nên job ghép của video 5 phút chờ 3,8 phút để có chỗ và video 10 phút
+  xếp sau video 15 phút (mảng chunk của nó được tạo muộn hơn 9 giây). Chạy một mình thì nhanh hơn: 5 phút video có phần cố định (planner, âm thanh, ghép)
+  khoảng 4,4 phút và pha chunk khoảng 5,6 phút.
+- **Chi phí và thông lượng đổi chiều.** Đường chia đoạn tốn nhiều vCPU-giây hơn trên mỗi giây video ở video ngắn: khoảng 6,7 vCPU-giây so với 5,2 của
+  một-job (ước tính từ chunk trung vị 86 giây và phần cố định), tức khoảng 30% hơn; ở video 25 phút còn 4,5 vCPU-giây mỗi giây video, thấp hơn một-job.
+  Khi hàng đợi đầy, đường một-job cho thông lượng tốt hơn (8 video song song), đường chia đoạn cho độ trễ tốt hơn.
+- Hình và tiếng liền mạch ở cả bốn video (đủ segment ở 6 mức, 0 khe hở hay chồng lấn).
+
+**Đề xuất:** hạ `chunk_threshold_seconds` của production từ 1200 xuống **300 giây (5 phút)**. Video 5 phút trở lên có độ trễ giảm từ hai lần tới hơn
+bốn lần; video dưới 5 phút giữ đường một-job (phần cố định khoảng 4,4 phút chiếm quá nửa thời gian nên chia đoạn không có lợi). Nếu thông lượng quan
+trọng hơn độ trễ (nhiều người nộp video 5 đến 10 phút cùng lúc) thì giữ 600 giây. Chưa áp dụng cho production.
