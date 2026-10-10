@@ -72,6 +72,13 @@ const config = {
     // Số GOP (= số segment 6 giây) mỗi đoạn. 50 → ~5 phút. Đoạn ngắn thì chạy lại rẻ khi Spot
     // bị thu hồi và chia việc đều hơn, nhưng mỗi đoạn tốn chừng 30-40 giây khởi động container.
     gopsPerChunk: Math.floor(positiveNumber(process.env.CHUNK_GOPS, 50)),
+    // Chia đoạn theo công suất: `targetParallelism` là số đoạn chạy được cùng lúc (quota vCPU chia số
+    // vCPU mỗi đoạn; Terraform đặt biến này). Planner nhắm tới `chunksPerSlot` đoạn cho mỗi chỗ, nhưng
+    // không để đoạn nhỏ hơn `minGopsPerChunk` GOP hay lớn hơn `gopsPerChunk`. 0 = tắt: mọi video dùng
+    // `gopsPerChunk` như trước.
+    targetParallelism: Math.floor(Math.max(0, Number(process.env.CHUNK_TARGET_PARALLELISM) || 0)),
+    chunksPerSlot: Math.floor(positiveNumber(process.env.CHUNKS_PER_SLOT, 3)),
+    minGopsPerChunk: Math.floor(positiveNumber(process.env.CHUNK_MIN_GOPS, 10)),
     // Hằng số chung của -output_ts_offset (giây), phải >= 0,1 (E2 trong tài liệu thiết kế).
     tsOffsetBase: 1,
     // Tệp tạm của pipeline nằm ở bucket RAW (riêng tư, không có CloudFront), tiền tố này.

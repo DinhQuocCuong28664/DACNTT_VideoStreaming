@@ -4,7 +4,7 @@ const path = require('path');
 const defaultConfig = require('../config');
 const { planRenditions, probeSegmentCodecs, firstSegmentPath, extractThumbnail, buildMasterPlaylist } = require('../transcoder');
 const { runWithConcurrency } = require('../s3Handler');
-const { buildChunkPlan, audioBitratesFor } = require('./plan');
+const { buildChunkPlan, chooseGopsPerChunk, audioBitratesFor } = require('./plan');
 const { buildAudioArgs, buildChunkArgs, chunkLabel } = require('./ffmpegArgs');
 const { evaluateEligibility, planningInputs } = require('./probe');
 const {
@@ -144,10 +144,18 @@ const createPipeline = (deps) => {
     }
 
     const inputs = planningInputs(summary);
+    const gopsPerChunk = chooseGopsPerChunk({
+      frameCount: inputs.frameCount,
+      fps: inputs.fps,
+      segmentSeconds: config.ffmpeg.segmentDuration,
+      maxGops: cfg.gopsPerChunk,
+      minGops: cfg.minGopsPerChunk,
+      targetChunks: cfg.targetParallelism * cfg.chunksPerSlot,
+    });
     const plan = buildChunkPlan({
       ...inputs,
       segmentSeconds: config.ffmpeg.segmentDuration,
-      gopsPerChunk: cfg.gopsPerChunk,
+      gopsPerChunk,
       tsOffsetBase: cfg.tsOffsetBase,
     });
     if (plan.chunks.length < 2) {

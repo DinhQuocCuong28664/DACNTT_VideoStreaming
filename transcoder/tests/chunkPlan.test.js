@@ -1,6 +1,7 @@
 const {
   parseRational,
   gopFramesFor,
+  chooseGopsPerChunk,
   buildChunkPlan,
   estimateFrameCount,
   audioBitrateFor,
@@ -225,6 +226,72 @@ describe('buildChunkPlan', () => {
     const p = buildChunkPlan({ frameCount: 48 * 3600 * 30, fps: parseRational('30/1') });
     expect(p.chunks).toHaveLength(576);
     expect(p.chunks.length).toBeLessThanOrEqual(10000);
+  });
+});
+
+describe('chooseGopsPerChunk', () => {
+  const fps = parseRational('30000/1001'); // GOP = 180 khung = 6,006 s
+  const framesFor = (seconds) => Math.round((seconds * 30000) / 1001);
+  const choose = (seconds, over = {}) =>
+    chooseGopsPerChunk({ frameCount: framesFor(seconds), fps, maxGops: 50, minGops: 10, targetChunks: 24, ...over });
+  const chunksFor = (seconds, over = {}) =>
+    buildChunkPlan({ frameCount: framesFor(seconds), fps, gopsPerChunk: choose(seconds, over) }).chunks.length;
+
+  it('tắt (targetChunks < 2) thì giữ nguyên số GOP tối đa như trước', () => {
+    for (const targetChunks of [0, 1, undefined, NaN]) {
+      expect(choose(1500, { targetChunks })).toBe(50);
+    }
+  });
+
+  it('video 25 phút với 8 chỗ x 3 đoạn: đoạn ~1 phút thay vì 5 đoạn 5 phút', () => {
+    expect(choose(1500)).toBe(11);
+    expect(chunksFor(1500)).toBe(23);
+  });
+
+  it('video 4 giờ giữ đúng đoạn 5 phút (50 GOP, 48 đoạn): đã đủ nhiều đoạn, không cần nhỏ hơn', () => {
+    expect(choose(14400)).toBe(50);
+    expect(chunksFor(14400)).toBe(48);
+  });
+
+  it('không bao giờ nhỏ hơn mức tối thiểu: video 3 phút ra đoạn 10 GOP, không phải 1 GOP', () => {
+    expect(choose(180)).toBe(10);
+    expect(chunksFor(180)).toBe(3);
+  });
+
+  it('video quá ngắn để chia (chưa tới 2 đoạn tối thiểu) vẫn ra 1 đoạn, để planner lùi về một-job', () => {
+    expect(chunksFor(50)).toBe(1);
+  });
+
+  it('mức tối thiểu lớn hơn tối đa thì tối đa thắng, không ra đoạn dài hơn hành vi cũ', () => {
+    expect(choose(1500, { minGops: 80, maxGops: 50 })).toBe(50);
+  });
+
+  it('không bao giờ ra ít đoạn hơn hành vi cũ và không vượt số đoạn mong muốn, ở mọi thời lượng', () => {
+    for (let minutes = 2; minutes <= 360; minutes += 7) {
+      const seconds = minutes * 60;
+      const old = buildChunkPlan({ frameCount: framesFor(seconds), fps, gopsPerChunk: 50 }).chunks.length;
+      const now = chunksFor(seconds);
+      expect(now).toBeGreaterThanOrEqual(old);
+      expect(now).toBeLessThanOrEqual(Math.max(old, 24));
+    }
+  });
+
+  it('mọi đoạn trừ đoạn cuối đều đủ số GOP đã chọn và nằm trong [min, max]', () => {
+    for (const seconds of [150, 600, 1500, 5400, 14400]) {
+      const gops = choose(seconds);
+      expect(gops).toBeGreaterThanOrEqual(10);
+      expect(gops).toBeLessThanOrEqual(50);
+      const plan = buildChunkPlan({ frameCount: framesFor(seconds), fps, gopsPerChunk: gops });
+      for (const chunk of plan.chunks.slice(0, -1)) expect(chunk.expectedSegments).toBe(gops);
+    }
+  });
+
+  it('chấp nhận tốc độ khung lẻ (23,976 và 59,94 fps) và dữ liệu thiếu', () => {
+    const odd = parseRational('24000/1001');
+    const gops = chooseGopsPerChunk({ frameCount: Math.round((1500 * 24000) / 1001), fps: odd, targetChunks: 24 });
+    expect(gops).toBeGreaterThanOrEqual(10);
+    expect(chooseGopsPerChunk({ frameCount: 0, fps, targetChunks: 24 })).toBe(50);
+    expect(chooseGopsPerChunk({ frameCount: 1000, fps: null, targetChunks: 24 })).toBe(50);
   });
 });
 
