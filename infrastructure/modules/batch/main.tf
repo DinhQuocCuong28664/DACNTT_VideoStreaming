@@ -22,6 +22,41 @@ resource "aws_batch_compute_environment" "fargate" {
   })
 }
 
+# ── Compute Environment Fargate On-Demand (tuỳ chọn) ─
+#
+# Đường tràn khi môi trường Spot ở trên đã đầy `max_vcpus`: cả hai hàng đợi liệt kê môi trường này ở
+# thứ tự 2, nên job chỉ rơi xuống đây sau khi Spot hết chỗ. Vẫn là Fargate (Serverless Container),
+# không phải EC2. Mặc định 0 (không tạo gì): bật ở môi trường đo bằng `ondemand_max_vcpus`.
+# Fargate On-Demand và Fargate Spot có quota riêng nên cộng được; hai môi trường cùng tài khoản
+# (dev và staging) dùng chung từng quota.
+resource "aws_batch_compute_environment" "fargate_ondemand" {
+  count = var.ondemand_max_vcpus > 0 ? 1 : 0
+
+  compute_environment_name = "${var.project_name}-fargate-od-ce"
+  type                     = "MANAGED"
+  state                    = "ENABLED"
+  service_role             = var.batch_service_role_arn
+
+  compute_resources {
+    type      = "FARGATE"
+    max_vcpus = var.ondemand_max_vcpus
+
+    subnets            = var.subnet_ids
+    security_group_ids = [var.security_group_id]
+  }
+
+  lifecycle {
+    precondition {
+      condition     = var.use_spot
+      error_message = "ondemand_max_vcpus > 0 chỉ có nghĩa khi môi trường chính là Spot (use_spot = true); nếu không thì hai môi trường cùng là On-Demand."
+    }
+  }
+
+  tags = merge(var.tags, {
+    Name = "${var.project_name}-fargate-od-ce"
+  })
+}
+
 # ── Job Queue ─────────────────────────────────────
 resource "aws_batch_job_queue" "transcode" {
   # Ten nay duoc chinh sach IAM cua Lambda job submitter dung de dung ARN
@@ -37,6 +72,14 @@ resource "aws_batch_job_queue" "transcode" {
   compute_environment_order {
     order               = 1
     compute_environment = aws_batch_compute_environment.fargate.arn
+  }
+
+  dynamic "compute_environment_order" {
+    for_each = aws_batch_compute_environment.fargate_ondemand
+    content {
+      order               = 2
+      compute_environment = compute_environment_order.value.arn
+    }
   }
 
   tags = merge(var.tags, {
@@ -62,6 +105,14 @@ resource "aws_batch_job_queue" "bulk" {
   compute_environment_order {
     order               = 1
     compute_environment = aws_batch_compute_environment.fargate.arn
+  }
+
+  dynamic "compute_environment_order" {
+    for_each = aws_batch_compute_environment.fargate_ondemand
+    content {
+      order               = 2
+      compute_environment = compute_environment_order.value.arn
+    }
   }
 
   tags = merge(var.tags, {
@@ -129,7 +180,8 @@ resource "aws_batch_job_definition" "transcoder" {
         # khoảng 3 đoạn cho mỗi chỗ (nhưng không dưới 10 GOP mỗi đoạn) để không còn cảnh 5 đoạn lớn chỉ dùng 5
         # trong 8 vCPU và cả video chờ đoạn chậm nhất. 0 thì tắt (transcoder/src/config.js).
         # Số chỗ chạy là quota vCPU chia cỡ task CỦA CHUNK (không phải job_vcpu): task lớn thì ít chỗ hơn.
-        { name = "CHUNK_TARGET_PARALLELISM", value = tostring(max(1, floor(var.max_vcpus / var.chunk_vcpu))) },
+        # Quota là tổng của môi trường Spot và (nếu có) môi trường On-Demand tràn, vì Batch dồn job sang môi trường thứ hai khi môi trường đầu đầy.
+        { name = "CHUNK_TARGET_PARALLELISM", value = tostring(max(1, floor((var.max_vcpus + var.ondemand_max_vcpus) / var.chunk_vcpu))) },
         # Cỡ task riêng cho job chunk, được planner ghi đè khi nộp job (transcoder/src/chunked/batch.js).
         # Ngưỡng thời lượng (giây) để một video đi đường chia đoạn thay vì một job (transcoder/src/config.js).
         { name = "CHUNK_THRESHOLD_SECONDS", value = tostring(var.chunk_threshold_seconds) },
