@@ -13,6 +13,7 @@ const {
 } = require('../controllers/moderationController');
 const { listAppeals, resolveAppeal } = require('../controllers/appealController');
 const { createSample, listSamples, labelSample } = require('../controllers/auditController');
+const { listUsers, changeRole, listRoleChanges } = require('../controllers/userAdminController');
 
 // Mọi route quản trị: phải đăng nhập, rồi từng route kiểm tra QUYỀN riêng (utils/roles.js).
 // Không còn một cổng "admin" chung: operator và auditor vào đúng phần của mình.
@@ -32,6 +33,9 @@ router.patch('/appeals/:id', requirePermission('moderation:appeals'), validateRe
 router.post('/audit/sample', requirePermission('moderation:sample'), createSample);
 router.get('/audit', requirePermission('moderation:audit'), listSamples);
 router.patch('/audit/:id', requirePermission('moderation:audit'), validateRequest(['result']), labelSample);
+router.get('/users', requirePermission('users:manage'), listUsers);
+router.patch('/users/:id/role', requirePermission('users:manage'), validateRequest(['role']), changeRole);
+router.get('/role-changes', requirePermission('events:read'), listRoleChanges);
 router.get('/metrics', requirePermission('metrics:read'), getModerationMetrics);
 router.get('/events', requirePermission('events:read'), getModerationEvents);
 
