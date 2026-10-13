@@ -82,3 +82,17 @@ node scripts/node-load-test.js 50 100
 - Băng thông đường truyền của máy thực hiện phép đo, vì yếu tố này ảnh hưởng trực tiếp tới thời gian tải lên S3.
 
 Không nêu các thông số trên sẽ khiến kết quả mất giá trị đối chứng, bởi cùng một hệ thống có thể cho số liệu chênh lệch nhiều lần khi thay đổi cấu hình vCPU hoặc vị trí đo.
+
+## Sổ đo chuyển mã chia đoạn và bảng cho báo cáo
+
+Các lượt đo của đường chuyển mã chia đoạn (từ 2026-10-07) nằm trong `docs/results/runs/*.json`, mỗi bản ghi theo một khuôn cố định: tài khoản,
+môi trường, `max_vcpus` từng loại môi trường tính toán, cấu hình đoạn, video, thời gian từng bước, vCPU-giây, kết quả kiểm tra HLS, nguồn và
+mức chắc chắn (`measured`, `derived`, `estimated`). Lượt đo mới ghi thêm một tệp vào thư mục này; không sửa tay số trong báo cáo.
+
+```bash
+PYTHONUTF8=1 python scripts/results/build-report-tables.py          # sinh report/generated/*.tex và INDEX.md
+PYTHONUTF8=1 python scripts/results/build-report-tables.py --check  # báo lỗi nếu bảng đã sinh cũ so với dữ liệu
+```
+
+`INDEX.md` liệt kê bảng nào của báo cáo lấy số từ lượt đo nào. Các tệp trong `report/generated/` chỉ chứa phần `tabularx`; chương báo cáo
+bọc quanh bằng `table`, đặt `\caption` phía trên và `\label`, rồi `\input` tệp.
