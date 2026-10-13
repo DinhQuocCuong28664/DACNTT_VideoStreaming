@@ -71,6 +71,14 @@ variable "chunk_memory" {
   default     = 8192
 }
 
+# Môi trường Fargate On-Demand tràn, chỉ bật khi đo (docs/CHUNKED_TRANSCODING_DESIGN.md). Quota Fargate
+# On-Demand riêng với Spot, và staging dùng chung quota với production nên phải đảm bảo production nghỉ.
+variable "ondemand_max_vcpus" {
+  description = "max_vcpus của môi trường Fargate On-Demand đứng sau môi trường Spot; 0 = không tạo"
+  type        = number
+  default     = 0
+}
+
 variable "job_memory" {
   type    = number
   default = 2048

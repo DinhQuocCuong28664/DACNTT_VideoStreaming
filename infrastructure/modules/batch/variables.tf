@@ -135,6 +135,18 @@ variable "max_vcpus" {
   default = 4
 }
 
+# Trần vCPU của môi trường Fargate On-Demand tràn (xem main.tf). 0 = không tạo môi trường này, hành vi như trước.
+variable "ondemand_max_vcpus" {
+  type        = number
+  default     = 0
+  description = "max_vcpus của môi trường Fargate On-Demand đứng sau môi trường Spot; 0 để tắt"
+
+  validation {
+    condition     = var.ondemand_max_vcpus >= 0
+    error_message = "ondemand_max_vcpus phải >= 0."
+  }
+}
+
 # Chuyển mã song song theo đoạn cho video dài (docs/CHUNKED_TRANSCODING_DESIGN.md). Tắt mặc định:
 # bật ở từng môi trường sau khi đã thử. Tắt lại bằng cách đặt false rồi apply (đăng ký lại job
 # definition); video đang chạy dở không bị ảnh hưởng vì pipeline của chúng đã nằm trong Batch.
