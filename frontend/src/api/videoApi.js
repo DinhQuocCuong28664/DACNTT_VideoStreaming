@@ -66,6 +66,12 @@ export const videoApi = {
   reportVideo: (id, reason, details = '') =>
     axiosClient.post(`/videos/${id}/report`, { reason, details }),
 
+  /** Chủ video khiếu nại một video bị gỡ (một lần cho mỗi quyết định). */
+  createAppeal: (id, message) => axiosClient.post(`/videos/${id}/appeal`, { message }),
+
+  /** Khiếu nại gần nhất của chính chủ video, hoặc null. */
+  getOwnAppeal: (id) => axiosClient.get(`/videos/${id}/appeal`),
+
   /**
    * Upload file directly to S3 using a presigned POST
    *

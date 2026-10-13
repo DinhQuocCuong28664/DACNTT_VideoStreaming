@@ -1,21 +1,42 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
-const { requireAdmin } = require('../middleware/auth');
+const { requirePermission } = require('../middleware/auth');
 const { validateRequest } = require('../middleware/validateRequest');
 const {
   getModerationStats,
   getModerationQueue,
   getVideoReports,
+  getModerationMetrics,
+  getModerationEvents,
   decideVideo,
 } = require('../controllers/moderationController');
+const { listAppeals, resolveAppeal } = require('../controllers/appealController');
+const { createSample, listSamples, labelSample } = require('../controllers/auditController');
+const { listUsers, changeRole, listRoleChanges } = require('../controllers/userAdminController');
 
-// Mọi route quản trị: phải đăng nhập VÀ có vai trò admin.
-router.use(auth, requireAdmin);
+// Mọi route quản trị: phải đăng nhập, rồi từng route kiểm tra QUYỀN riêng (utils/roles.js).
+// Không còn một cổng "admin" chung: operator và auditor vào đúng phần của mình.
+router.use(auth);
 
-router.get('/stats', getModerationStats);
-router.get('/videos', getModerationQueue);
-router.get('/videos/:id/reports', getVideoReports);
-router.patch('/videos/:id/moderation', validateRequest(['decision']), decideVideo);
+router.get('/stats', requirePermission('moderation:review', 'metrics:read'), getModerationStats);
+router.get('/videos', requirePermission('moderation:review'), getModerationQueue);
+router.get('/videos/:id/reports', requirePermission('moderation:review'), getVideoReports);
+router.patch(
+  '/videos/:id/moderation',
+  requirePermission('moderation:review'),
+  validateRequest(['decision', 'reasonCode']),
+  decideVideo
+);
+router.get('/appeals', requirePermission('moderation:appeals'), listAppeals);
+router.patch('/appeals/:id', requirePermission('moderation:appeals'), validateRequest(['decision']), resolveAppeal);
+router.post('/audit/sample', requirePermission('moderation:sample'), createSample);
+router.get('/audit', requirePermission('moderation:audit'), listSamples);
+router.patch('/audit/:id', requirePermission('moderation:audit'), validateRequest(['result']), labelSample);
+router.get('/users', requirePermission('users:manage'), listUsers);
+router.patch('/users/:id/role', requirePermission('users:manage'), validateRequest(['role']), changeRole);
+router.get('/role-changes', requirePermission('events:read'), listRoleChanges);
+router.get('/metrics', requirePermission('metrics:read'), getModerationMetrics);
+router.get('/events', requirePermission('events:read'), getModerationEvents);
 
 module.exports = router;

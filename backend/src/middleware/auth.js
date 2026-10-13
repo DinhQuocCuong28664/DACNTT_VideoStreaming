@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const { t } = require('../config/i18n');
+const { can } = require('../utils/roles');
 
 /**
  * Token co duoc cap TRUOC lan doi mat khau gan nhat khong?
@@ -123,6 +124,26 @@ const requireAdmin = (req, res, next) => {
   next();
 };
 
+/**
+ * Chỉ cho người có QUYỀN `permission` (xem utils/roles.js) đi qua. Đặt SAU `auth`.
+ *
+ * Như `requireAdmin`, vai trò đọc từ bản ghi User vừa nạp: thu hồi quyền có hiệu lực
+ * ngay ở request kế tiếp. Dùng hàm này thay `requireAdmin` cho mọi route của đội
+ * ngũ vận hành để operator và auditor vào được đúng phần của mình.
+ */
+const requirePermission = (...permissions) => (req, res, next) => {
+  // Nhiều quyền nghĩa là "có một trong số đó": dùng cho trang tổng quan mà cả người rà soát lẫn
+  // người xem số liệu đều vào được.
+  if (!permissions.some((permission) => can(req.user, permission))) {
+    return res.status(403).json({
+      success: false,
+      message: t(req, 'admin.forbidden'),
+    });
+  }
+  next();
+};
+
 module.exports = auth;
 module.exports.optionalAuth = optionalAuth;
 module.exports.requireAdmin = requireAdmin;
+module.exports.requirePermission = requirePermission;

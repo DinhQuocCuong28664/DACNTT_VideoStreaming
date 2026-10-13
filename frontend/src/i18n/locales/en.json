@@ -436,6 +436,132 @@
     "approvedToast": "Kept \"{{title}}\"",
     "decideFailed": "Couldn't save the decision: {{message}}",
     "loadMore": "Load more",
-    "restoredToast": "Restored \"{{title}}\""
+    "restoredToast": "Restored \"{{title}}\"",
+    "tab": {
+      "review": "To review",
+      "blocked": "Removed",
+      "appeals": "Appeals",
+      "audit": "Spot check",
+      "metrics": "Accuracy",
+      "events": "Decision log",
+      "users": "Team"
+    },
+    "signedInAs": "Signed in as {{role}}",
+    "roles": {
+      "user": "User",
+      "operator": "Operator",
+      "auditor": "Auditor",
+      "admin": "Admin"
+    },
+    "reasonLabel": "Reason",
+    "reasonPlaceholder": "Choose a reason",
+    "reasonRequired": "Choose a reason before confirming.",
+    "decisionReasons": {
+      "model_error": "The automatic check was wrong",
+      "fiction_or_game": "Fiction, animation or game footage",
+      "news_or_education": "News, education or medical context",
+      "acceptable_context": "Acceptable in context",
+      "appeal_upheld": "The uploader's appeal is justified",
+      "report_unfounded": "The report is unfounded",
+      "missed_by_model": "The automatic check missed it",
+      "report_upheld": "The report is justified",
+      "audit_failed": "Failed the spot check",
+      "policy_violation": "Breaks the guidelines",
+      "other": "Other"
+    },
+    "outcomes": {
+      "false_positive": "Wrongly removed (false positive)",
+      "flag_noise": "Needless flag",
+      "false_negative": "Missed violation (false negative)",
+      "true_positive": "Correctly removed or flagged",
+      "true_negative": "Correctly approved",
+      "unclassified": "Machine verdict unknown"
+    },
+    "appeals": {
+      "empty": "No appeals are waiting",
+      "from": "Appeal from {{name}}",
+      "blockedByStaff": "Removed by a person",
+      "noteLabel": "Reply to the uploader (optional)",
+      "uphold": "Restore video",
+      "reject": "Keep removed",
+      "upheldToast": "Restored \"{{title}}\"",
+      "rejectedToast": "Appeal rejected for \"{{title}}\""
+    },
+    "audit": {
+      "intro": "A random sample of videos the automatic check approved. Mark each one pass or fail; the share that fails estimates how much the automatic check misses.",
+      "size": "Videos to draw",
+      "draw": "Draw a new sample",
+      "drawnToast": "Drew {{count}} videos",
+      "empty": "Nothing waiting to be checked",
+      "pass": "Pass",
+      "fail": "Fail: remove video",
+      "noteLabel": "Note (optional)",
+      "passedToast": "\"{{title}}\" passed",
+      "failedToast": "\"{{title}}\" failed and was removed"
+    },
+    "metrics": {
+      "intro": "How well the automatic check performs, measured against what people decided. Every rate comes with its 95% interval and the number of videos behind it; small samples say little.",
+      "falsePositiveRate": "Wrongly removed",
+      "flagPrecision": "Flags that were right",
+      "falseNegativeRate": "Missed (estimated)",
+      "knownMisses": "Known misses",
+      "knownMissesHint": "Approved by the machine, removed by a person. Not a rate: unseen violations are not counted.",
+      "interval": "95% interval {{low}}–{{high}}% from {{n}} videos",
+      "coverage": "{{value}} reviewed",
+      "auditCounts": "{{failed}} of {{labelled}} checked failed; {{pending}} waiting",
+      "none": "Not enough data yet",
+      "byLabel": "Removals by top detected label",
+      "byReason": "Decisions by outcome and reason",
+      "label": "Label",
+      "reviewed": "Reviewed",
+      "falsePositive": "Wrongly removed",
+      "rate": "Rate",
+      "unreviewed": "Not reviewed",
+      "count": "Count"
+    },
+    "events": {
+      "view": {
+        "decisions": "Decisions",
+        "roles": "Role changes"
+      },
+      "outcome": "Outcome",
+      "allOutcomes": "All outcomes",
+      "empty": "Nothing recorded yet",
+      "when": "When",
+      "video": "Video",
+      "actor": "By",
+      "machine": "Automatic check",
+      "decision": "Decision",
+      "action": {
+        "approve": "Kept",
+        "block": "Removed",
+        "restore": "Restored"
+      }
+    },
+    "users": {
+      "search": "Search by name or email",
+      "searchButton": "Search",
+      "filterRole": "Filter by role",
+      "allRoles": "All roles",
+      "empty": "No users found",
+      "user": "User",
+      "email": "Email",
+      "role": "Role",
+      "change": "Change",
+      "changedToast": "{{name}} is now {{role}}"
+    }
+  },
+  "appeal": {
+    "start": "Appeal this removal",
+    "label": "Why should this video be restored?",
+    "placeholder": "Explain what the video shows and why it follows the guidelines.",
+    "send": "Send appeal",
+    "alreadyFiled": "This decision has already been appealed. You can appeal again if it changes.",
+    "reply": "Moderator reply: {{note}}",
+    "status": {
+      "open": "Your appeal was sent and is waiting for a moderator.",
+      "upheld": "Your appeal was accepted and the video was restored.",
+      "rejected": "Your appeal was reviewed and the removal stands."
+    }
   }
 }

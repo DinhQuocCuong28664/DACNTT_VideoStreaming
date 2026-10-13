@@ -19,6 +19,7 @@ import {
   MdOutlineAdminPanelSettings,
 } from 'react-icons/md';
 import { useAuth } from '../../context/useAuth';
+import { isStaff } from '../../utils/roles';
 import { useTheme } from '../../context/useTheme';
 import Avatar from '../Common/Avatar';
 import Logo from './Logo';
@@ -226,7 +227,7 @@ const Navbar = ({ onMenuClick }) => {
                     <MdOutlineSettings />
                     <span>{t('nav.settings')}</span>
                   </Link>
-                  {user?.role === 'admin' && (
+                  {isStaff(user) && (
                     <Link to="/admin" className="dropdown-item" onClick={() => setMenuOpen(false)}>
                       <MdOutlineAdminPanelSettings />
                       <span>{t('nav.admin')}</span>

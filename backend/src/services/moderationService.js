@@ -1,11 +1,18 @@
 const mongoose = require('mongoose');
 const Video = require('../models/Video');
 const Report = require('../models/Report');
+const ModerationEvent = require('../models/ModerationEvent');
+const AuditSample = require('../models/AuditSample');
 const videoService = require('./videoService');
 const httpError = require('../utils/httpError');
+const { can } = require('../utils/roles');
+const { wilsonInterval } = require('../utils/stats');
 const {
   REPORT_REASONS,
   MODERATION_DECISIONS,
+  DECISION_REASONS,
+  OUTCOMES,
+  classifyOutcome,
   MAX_REPORT_DETAILS,
   MAX_MODERATION_NOTE,
 } = require('../utils/moderation');
@@ -93,6 +100,13 @@ const QUEUE_TABS = {
 
 const QUEUE_FIELDS = 'title description thumbnailUrl duration status visibility views category user createdAt moderation';
 
+/**
+ * Trường của chủ video trả về cho người vận hành. Email chỉ cho người có quyền `pii:email`
+ * (admin): operator rà soát được mà không cần biết địa chỉ liên hệ của chủ video, nên một tài
+ * khoản operator bị lộ không kéo theo danh sách email.
+ */
+const ownerFields = (includeEmail) => (includeEmail ? 'username displayName avatar email' : 'username displayName avatar');
+
 /** Đếm báo cáo mở theo lý do cho các video trên một trang của hàng rà soát. */
 const countOpenReportsByReason = async (videoIds) => {
   if (videoIds.length === 0) return new Map();
@@ -111,14 +125,14 @@ const countOpenReportsByReason = async (videoIds) => {
   return byVideo;
 };
 
-const listQueue = async (tab = 'review', page = 1, limit = 20) => {
+const listQueue = async (tab = 'review', page = 1, limit = 20, { includeEmail = false } = {}) => {
   const spec = Object.prototype.hasOwnProperty.call(QUEUE_TABS, tab) ? QUEUE_TABS[tab] : QUEUE_TABS.review;
   const skip = (page - 1) * limit;
 
   const [videos, total] = await Promise.all([
     Video.find(spec.filter)
       .select(QUEUE_FIELDS)
-      .populate('user', 'username displayName avatar email')
+      .populate('user', ownerFields(includeEmail))
       .populate('moderation.reviewedBy', 'username displayName')
       .sort(spec.sort)
       .skip(skip)
@@ -159,25 +173,44 @@ const listReports = async (videoId) => {
 };
 
 /**
- * Quản trị viên ra quyết định cho một video.
+ * Người vận hành ra quyết định cho một video.
  *
  * - `approve`: giữ lại / khôi phục video; báo cáo mở chuyển sang `dismissed`.
  * - `block`: gỡ video; báo cáo mở chuyển sang `actioned`.
  *
- * Quyết định của con người ghi đè kết quả tự động, và `source` chuyển sang
- * `admin` để biết ai là người quyết định cuối cùng.
+ * Quyết định của con người ghi đè kết quả tự động, và `source` chuyển sang `admin` để biết ai là
+ * người quyết định cuối cùng. Vì ghi đè làm mất kết luận của máy, lần đầu tiên một video được
+ * người xét thì kết luận của máy được chụp vào `moderation.autoStatus` TRƯỚC khi ghi đè; không
+ * có nó thì không bao giờ đếm được false positive hay false negative.
+ *
+ * Mã lý do là bắt buộc (DECISION_REASONS) và mỗi quyết định ghi một bản ghi vào nhật ký
+ * ModerationEvent, kèm phân loại so với kết luận của máy.
+ *
+ * Quyết định do admin đưa ra chỉ admin đổi được: operator không lật được người có thẩm quyền cao hơn.
  */
-const decide = async (videoId, admin, { decision, note } = {}) => {
+const decide = async (videoId, actor, { decision, note, reasonCode } = {}) => {
   assertValidId(videoId);
   if (!MODERATION_DECISIONS.includes(decision)) {
     throw httpError(400, `Decision must be one of: ${MODERATION_DECISIONS.join(', ')}`);
   }
+  if (!DECISION_REASONS[decision].includes(reasonCode)) {
+    throw httpError(400, `Reason code must be one of: ${DECISION_REASONS[decision].join(', ')}`);
+  }
   const text = cleanText(note, MAX_MODERATION_NOTE, 'Moderation note');
 
-  const exists = await Video.exists({ _id: videoId });
-  if (!exists) {
+  const video = await Video.findById(videoId).select('moderation').lean();
+  if (!video) {
     throw httpError(404, 'Video not found');
   }
+
+  const current = video.moderation || {};
+  if (current.source === 'admin' && current.reviewedByRole === 'admin' && actor.role !== 'admin') {
+    throw httpError(403, 'Only an admin can change a decision made by an admin');
+  }
+
+  // Máy đã nói gì? Đã chụp rồi thì giữ nguyên. Chưa chụp: nếu trạng thái hiện tại vẫn là của máy
+  // thì chính nó; nếu là của người (quyết định từ trước khi có tính năng này) thì không biết.
+  const autoStatus = current.autoStatus || (current.source === 'admin' ? null : current.status || null);
 
   const now = new Date();
   await Report.updateMany(
@@ -185,7 +218,7 @@ const decide = async (videoId, admin, { decision, note } = {}) => {
     {
       $set: {
         status: decision === 'approve' ? 'dismissed' : 'actioned',
-        resolvedBy: admin._id,
+        resolvedBy: actor._id,
         resolvedAt: now,
       },
     }
@@ -195,25 +228,190 @@ const decide = async (videoId, admin, { decision, note } = {}) => {
   // phải được tính, không thì video đó rơi khỏi hàng rà soát.
   const openReports = await Report.countDocuments({ video: videoId, status: 'open' });
 
-  return Video.findByIdAndUpdate(
+  const toStatus = decision === 'approve' ? 'approved' : 'blocked';
+  const set = {
+    'moderation.status': toStatus,
+    'moderation.source': 'admin',
+    'moderation.reviewedBy': actor._id,
+    'moderation.reviewedByRole': actor.role,
+    'moderation.reviewedAt': now,
+    'moderation.note': text,
+    'moderation.reasonCode': reasonCode,
+    'moderation.openReports': openReports,
+  };
+  if (!current.autoStatus && autoStatus) {
+    set['moderation.autoStatus'] = autoStatus;
+  }
+
+  const updated = await Video.findByIdAndUpdate(
     videoId,
-    {
-      $set: {
-        'moderation.status': decision === 'approve' ? 'approved' : 'blocked',
-        'moderation.source': 'admin',
-        'moderation.reviewedBy': admin._id,
-        'moderation.reviewedAt': now,
-        'moderation.note': text,
-        'moderation.openReports': openReports,
-      },
-    },
+    { $set: set },
     { returnDocument: 'after', runValidators: true }
   )
     .select(QUEUE_FIELDS)
-    .populate('user', 'username displayName avatar email')
+    .populate('user', ownerFields(can(actor, 'pii:email')))
     .populate('moderation.reviewedBy', 'username displayName')
     .lean();
+
+  // Nhật ký ghi SAU khi quyết định đã áp dụng. Nếu ghi nhật ký lỗi thì quyết định vẫn đứng (rút lại
+  // một quyết định gỡ video vì nhật ký lỗi còn tệ hơn), lỗi được log để người vận hành biết có một
+  // quyết định thiếu bản ghi; số liệu FP/FN suy từ chính Video nên không bị lệch theo.
+  try {
+    await ModerationEvent.create({
+      video: videoId,
+      actor: actor._id,
+      actorRole: actor.role,
+      decision,
+      action: decision === 'block' ? 'block' : current.status === 'blocked' ? 'restore' : 'approve',
+      fromStatus: current.status || 'none',
+      toStatus,
+      autoStatus: autoStatus || undefined,
+      outcome: classifyOutcome(autoStatus, decision),
+      reasonCode,
+      note: text,
+      labels: (current.labels || []).slice(0, 5).map(({ name, confidence, action }) => ({ name, confidence, action })),
+    });
+  } catch (err) {
+    console.error(`ModerationEvent not recorded for video ${videoId}:`, err.message);
+  }
+
+  return updated;
 };
+
+/**
+ * Nhật ký quyết định, mới nhất trước. Dành cho auditor và admin.
+ * @param {{ outcome?: string }} filters
+ */
+const listEvents = async (page = 1, limit = 20, { outcome } = {}) => {
+  const filter = {};
+  if (outcome) {
+    if (!OUTCOMES.includes(outcome)) {
+      throw httpError(400, `Outcome must be one of: ${OUTCOMES.join(', ')}`);
+    }
+    filter.outcome = outcome;
+  }
+
+  const [events, total] = await Promise.all([
+    ModerationEvent.find(filter)
+      .populate('actor', 'username displayName')
+      .populate('video', 'title thumbnailUrl')
+      .sort({ createdAt: -1, _id: -1 })
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .lean(),
+    ModerationEvent.countDocuments(filter),
+  ]);
+
+  return { events, pagination: { page, limit, total, pages: Math.ceil(total / limit) } };
+};
+
+/**
+ * Chỉ số chất lượng của kiểm duyệt tự động, suy từ chính các video và nhật ký quyết định.
+ *
+ * Cách đọc, và vì sao từng con số được tính như vậy:
+ *
+ * - `autoBlocked`: máy gỡ. `falsePositive` là số đã được người khôi phục, `truePositive` là số người
+ *   giữ nguyên. Tỉ lệ FP chỉ tính trên phần ĐÃ được xét (`reviewed`); `coverage` cho biết phần đã
+ *   xét trên tổng, vì nếu chỉ ít video bị gỡ được xét lại thì tỉ lệ này lệch theo cách ai khiếu nại.
+ * - `autoFlagged`: máy chỉ đánh dấu chờ rà soát. `precision` là phần cờ hoá ra đúng.
+ * - `missed`: máy duyệt nhưng người gỡ. Đây là các false negative ĐÃ BIẾT, không phải tỉ lệ FN:
+ *   vi phạm chưa ai thấy thì không đếm được. Tỉ lệ FN thật chỉ ước lượng được từ mẫu ngẫu nhiên
+ *   (xem kiểm tra mẫu), vì báo cáo của người xem lệch theo video nổi tiếng.
+ * - `byLabel`: tỉ lệ gỡ nhầm theo nhãn hàng đầu của máy, để biết nên chỉnh ngưỡng của nhãn nào.
+ *
+ * Mọi tỉ lệ có khoảng tin cậy Wilson 95% và mẫu số.
+ */
+const getMetrics = async () => {
+  const rows = await Video.aggregate([
+    { $match: { 'moderation.status': { $exists: true } } },
+    {
+      $project: {
+        // Kết luận của máy: đã chụp, hoặc chính trạng thái hiện tại nếu người chưa xét.
+        auto: {
+          $ifNull: [
+            '$moderation.autoStatus',
+            { $cond: [{ $eq: ['$moderation.source', 'auto'] }, '$moderation.status', null] },
+          ],
+        },
+        final: '$moderation.status',
+        human: { $eq: ['$moderation.source', 'admin'] },
+        label: { $arrayElemAt: ['$moderation.labels.name', 0] },
+      },
+    },
+    { $group: { _id: { auto: '$auto', final: '$final', human: '$human', label: '$label' }, count: { $sum: 1 } } },
+  ]);
+
+  const sum = (predicate) => rows.filter((r) => predicate(r._id)).reduce((total, r) => total + r.count, 0);
+
+  const blockedReviewed = sum((k) => k.auto === 'blocked' && k.human);
+  const falsePositive = sum((k) => k.auto === 'blocked' && k.human && k.final === 'approved');
+  const blockedUnreviewed = sum((k) => k.auto === 'blocked' && !k.human);
+  const flaggedReviewed = sum((k) => k.auto === 'flagged' && k.human);
+  const flagConfirmed = sum((k) => k.auto === 'flagged' && k.human && k.final === 'blocked');
+  const flaggedUnreviewed = sum((k) => k.auto === 'flagged' && !k.human);
+
+  const labelNames = [...new Set(rows.filter((r) => r._id.auto === 'blocked' && r._id.label).map((r) => r._id.label))];
+  const byLabel = labelNames
+    .map((label) => {
+      const reviewed = sum((k) => k.auto === 'blocked' && k.human && k.label === label);
+      const fp = sum((k) => k.auto === 'blocked' && k.human && k.final === 'approved' && k.label === label);
+      return {
+        label,
+        reviewed,
+        falsePositive: fp,
+        unreviewed: sum((k) => k.auto === 'blocked' && !k.human && k.label === label),
+        falsePositiveRate: wilsonInterval(fp, reviewed),
+      };
+    })
+    .sort((a, b) => b.reviewed - a.reviewed);
+
+  const [auditPending, auditPass, auditFail] = await Promise.all([
+    AuditSample.countDocuments({ status: 'pending' }),
+    AuditSample.countDocuments({ status: 'pass' }),
+    AuditSample.countDocuments({ status: 'fail' }),
+  ]);
+
+  const reasonRows = await ModerationEvent.aggregate([
+    { $group: { _id: { outcome: '$outcome', reasonCode: '$reasonCode' }, count: { $sum: 1 } } },
+    { $sort: { count: -1 } },
+  ]);
+
+  return {
+    autoBlocked: {
+      reviewed: blockedReviewed,
+      falsePositive,
+      truePositive: blockedReviewed - falsePositive,
+      unreviewed: blockedUnreviewed,
+      coverage: wilsonCoverage(blockedReviewed, blockedReviewed + blockedUnreviewed),
+      falsePositiveRate: wilsonInterval(falsePositive, blockedReviewed),
+    },
+    autoFlagged: {
+      reviewed: flaggedReviewed,
+      confirmed: flagConfirmed,
+      noise: flaggedReviewed - flagConfirmed,
+      unreviewed: flaggedUnreviewed,
+      coverage: wilsonCoverage(flaggedReviewed, flaggedReviewed + flaggedUnreviewed),
+      precision: wilsonInterval(flagConfirmed, flaggedReviewed),
+    },
+    missed: {
+      falseNegative: sum((k) => k.auto === 'approved' && k.human && k.final === 'blocked'),
+    },
+    // Tỉ lệ false negative ƯỚC LƯỢNG từ mẫu ngẫu nhiên đã gán nhãn (xem auditService).
+    audit: {
+      sampled: auditPending + auditPass + auditFail,
+      pending: auditPending,
+      labelled: auditPass + auditFail,
+      failed: auditFail,
+      falseNegativeRate: wilsonInterval(auditFail, auditPass + auditFail),
+    },
+    unclassifiedDecisions: sum((k) => !k.auto && k.human),
+    byLabel,
+    byReason: reasonRows.map((r) => ({ outcome: r._id.outcome, reasonCode: r._id.reasonCode, count: r.count })),
+  };
+};
+
+/** Phần đã xét trên tổng, làm tròn 4 chữ số; null khi chưa có gì. */
+const wilsonCoverage = (reviewed, total) => (total > 0 ? Math.round((reviewed / total) * 10000) / 10000 : null);
 
 module.exports = {
   createReport,
@@ -221,5 +419,7 @@ module.exports = {
   getStats,
   listReports,
   decide,
+  listEvents,
+  getMetrics,
   QUEUE_TABS,
 };

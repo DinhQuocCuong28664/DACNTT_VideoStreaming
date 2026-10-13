@@ -10,17 +10,18 @@
  * thay đổi có hiệu lực ngay, không cần người dùng đăng nhập lại.
  *
  * CÁCH DÙNG
- *   node backend/scripts/set-role.js <email> admin    # cấp quyền
- *   node backend/scripts/set-role.js <email> user     # thu hồi
- *   node backend/scripts/set-role.js --list           # liệt kê quản trị viên
+ *   node backend/scripts/set-role.js <email> admin      # toàn quyền
+ *   node backend/scripts/set-role.js <email> operator   # rà soát, xử lý khiếu nại, kiểm tra mẫu
+ *   node backend/scripts/set-role.js <email> auditor    # chỉ đọc số liệu và nhật ký
+ *   node backend/scripts/set-role.js <email> user       # thu hồi
+ *   node backend/scripts/set-role.js --list             # liệt kê đội ngũ vận hành
  */
 
 require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') });
 
 const mongoose = require('mongoose');
 const User = require('../src/models/User');
-
-const ROLES = ['user', 'admin'];
+const { ROLES } = require('../src/utils/roles');
 
 const main = async () => {
   const [first, second] = process.argv.slice(2);
@@ -31,7 +32,7 @@ const main = async () => {
   }
 
   if (first !== '--list' && (!first || !ROLES.includes(second))) {
-    console.error('Cách dùng: node backend/scripts/set-role.js <email> <admin|user>');
+    console.error(`Cách dùng: node backend/scripts/set-role.js <email> <${ROLES.join('|')}>`);
     console.error('           node backend/scripts/set-role.js --list');
     process.exit(1);
   }
@@ -40,9 +41,9 @@ const main = async () => {
 
   try {
     if (first === '--list') {
-      const admins = await User.find({ role: 'admin' }).select('email username createdAt').lean();
-      if (admins.length === 0) console.log('Chưa có quản trị viên nào.');
-      for (const a of admins) console.log(`- ${a.email} (@${a.username})`);
+      const staff = await User.find({ role: { $ne: 'user' } }).select('email username role createdAt').lean();
+      if (staff.length === 0) console.log('Chưa có ai trong đội ngũ vận hành.');
+      for (const a of staff) console.log(`- ${a.role.padEnd(8)} ${a.email} (@${a.username})`);
       return;
     }
 

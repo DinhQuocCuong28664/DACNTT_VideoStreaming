@@ -126,6 +126,14 @@ const videoSchema = new mongoose.Schema(
       modelVersion: String,
       error: String,
       checkedAt: Date,
+      /**
+       * Kết luận của MÁY, chụp lại ngay trước lần người xét đầu tiên ghi đè `status`.
+       * Thiếu nó thì sau quyết định của người không còn biết máy đã nói gì, nên không đếm
+       * được false positive hay false negative. Chỉ ghi một lần, không bao giờ đổi.
+       */
+      autoStatus: { type: String, enum: MODERATION_STATUSES },
+      reasonCode: String,
+      reviewedByRole: String,
       reviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
       reviewedAt: Date,
       note: {
