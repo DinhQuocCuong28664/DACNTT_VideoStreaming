@@ -74,21 +74,29 @@ def table_scaling_25min(runs):
         if r["path"] == "chunked" and r["video"]["label"] == "25min-1080p"
         and r["concurrency"] == 1 and "end_to_end" in r["timings_s"]
     ]
-    picked.sort(key=lambda r: (r["date"], r["chunk"]["vcpu"]))
+    def capacity(r):
+        c = r.get("capacity") or {}
+        return int(c.get("spot_max_vcpus") or 0) + int(c.get("ondemand_max_vcpus") or 0)
+
+    # Cùng cấu hình đoạn nhưng khác công suất (S2: 8 so với 16 vCPU) phải đọc được ở hai dòng riêng.
+    picked.sort(key=lambda r: (capacity(r), r["date"], r["chunk"]["vcpu"], r["id"]))
     rows = []
     for r in picked:
         chunk = r["chunk"]
         phase = r["timings_s"].get("chunks")
         vs = r.get("vcpu_seconds")
+        total = capacity(r)
+        slots = chunk.get("slots") or (total // chunk["vcpu"] if total and chunk.get("vcpu") else None)
         rows.append([
             f"{chunk['count']} $\\times$ {chunk['vcpu']} vCPU ({esc(env_name(r))})",
-            str(chunk["slots"]),
+            str(total) if total else "n/a",
+            str(slots) if slots else "n/a",
             minutes(phase) if phase else "n/a",
             minutes(r["timings_s"]["end_to_end"]),
             f"{vs:,}".replace(",", "\\,") if vs else "n/a",
         ])
-    header = ["CONFIGURATION", "SLOTS", "CHUNK PHASE (MIN)", "END TO READY (MIN)", "VCPU-SECONDS"]
-    return table("X r r r r", header, rows), picked
+    header = ["CONFIGURATION", "CAPACITY (VCPU)", "SLOTS", "CHUNK PHASE (MIN)", "END TO READY (MIN)", "VCPU-SECONDS"]
+    return table("X r r r r r", header, rows), picked
 
 
 def table_concurrency(runs):

@@ -37,6 +37,10 @@ const REGION = flag('region', 'ap-southeast-1');
 const STAGE = flag('stage', 'S1');
 const PLAN = flag('plan', '');
 const BUDGET_VCPU_SECONDS = Number(flag('budget-vcpu-hours', 13)) * 3600;
+// Công suất đang đặt ở staging, để ghi đúng vào bản ghi (S2 so 8 vCPU với 16 vCPU): quota Fargate Spot
+// của môi trường và quota Fargate On-Demand đứng sau nó (0 khi chưa có môi trường On-Demand).
+const SPOT_VCPUS = Number(flag('spot-vcpus', 8));
+const ONDEMAND_VCPUS = Number(flag('ondemand-vcpus', 0));
 const RAW_BUCKET = `${PREFIX}-raw-bucket`;
 const PROCESSED_BUCKET = `${PREFIX}-processed-bucket`;
 const QUEUES = [`${PREFIX}-transcode-queue`, `${PREFIX}-transcode-bulk-queue`];
@@ -169,7 +173,7 @@ const buildRecord = ({ label, rep, file, video, uploadSeconds, uploadedAt, ready
     region: REGION,
     environment: PREFIX.replace('dacntt-', ''),
     path: chunked ? 'chunked' : 'single',
-    capacity: { spot_max_vcpus: 8, ondemand_max_vcpus: 0 },
+    capacity: { spot_max_vcpus: SPOT_VCPUS, ondemand_max_vcpus: ONDEMAND_VCPUS },
     chunk: chunkInfo,
     video: {
       label,
@@ -280,7 +284,7 @@ const main = async () => {
   const flush = () => {
     if (!has('write')) return;
     fs.mkdirSync(path.dirname(out), { recursive: true });
-    fs.writeFileSync(out, `${JSON.stringify({ schema: 1, title: `${STAGE}: thời gian chuyển mã theo dung lượng (staging, Fargate Spot 8 vCPU)`, runs: records }, null, 2)}\n`, 'utf-8');
+    fs.writeFileSync(out, `${JSON.stringify({ schema: 1, title: `${STAGE}: thời gian chuyển mã (staging, Fargate Spot ${SPOT_VCPUS} vCPU${ONDEMAND_VCPUS ? ` + On-Demand ${ONDEMAND_VCPUS} vCPU` : ''})`, runs: records }, null, 2)}\n`, 'utf-8');
   };
 
   if (!has('no-enable')) {

@@ -34,5 +34,13 @@ Chạy lại: `PYTHONUTF8=1 python scripts/results/build-report-tables.py`.
 | `2026-10-10-staging-25min-x4-video4` | 2026-10-10 | staging | chunked | 25min-1080p | 4 | 62.9 | derived | `docs/CHUNKED_TRANSCODING_DESIGN.md#10.11` |
 | `2026-10-10-staging-5min-chunked` | 2026-10-10 | staging | chunked | 5min-1080p30 | 3 | 11.9 | derived | `docs/CHUNKED_TRANSCODING_DESIGN.md#10.12` |
 | `2026-10-10-staging-5min-single` | 2026-10-10 | staging | single | 5min-1080p30 | 1 | 26.7 | derived | `docs/CHUNKED_TRANSCODING_DESIGN.md#10.12` |
+| `2026-10-13-staging-s0-spillover` | 2026-10-13 | staging | probe | sleep-240s-array-16 | 1 | - | measured | `scripts/bench/s0-spillover.js` |
+| `2026-10-13-staging-s1-100mb-r1` | 2026-10-13 | staging | single | 100MB | 1 | 6.5 | measured | `transcoder/scripts/staging-measure-set.js (S1)` |
+| `2026-10-13-staging-s1-100mb-r2` | 2026-10-13 | staging | single | 100MB | 1 | 12.0 | measured | `transcoder/scripts/staging-measure-set.js (S1)` |
+| `2026-10-13-staging-s1-100mb-r3` | 2026-10-13 | staging | single | 100MB | 1 | 10.4 | measured | `transcoder/scripts/staging-measure-set.js (S1)` |
+| `2026-10-13-staging-s1-1gb-r1` | 2026-10-13 | staging | chunked | 1GB | 1 | 20.4 | measured | `transcoder/scripts/staging-measure-set.js (S1)` |
+| `2026-10-13-staging-s1-1gb-r2` | 2026-10-13 | staging | chunked | 1GB | 1 | 20.9 | measured | `transcoder/scripts/staging-measure-set.js (S1)` |
+| `2026-10-13-staging-s1-500mb-r1` | 2026-10-13 | staging | chunked | 500MB | 1 | 10.7 | measured | `transcoder/scripts/staging-measure-set.js (S1)` |
+| `2026-10-13-staging-s1-500mb-r2` | 2026-10-13 | staging | chunked | 500MB | 1 | 10.3 | measured | `transcoder/scripts/staging-measure-set.js (S1)` |
 
 Mức chắc chắn: `measured` đo trực tiếp, `derived` tính từ số đo (ví dụ đổi phút ra giây), `estimated` suy ra bằng tỉ lệ và chưa đo; bản ghi `estimated` phải được ghi rõ là ước tính khi đưa vào báo cáo.
