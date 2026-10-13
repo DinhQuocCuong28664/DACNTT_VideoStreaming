@@ -402,6 +402,122 @@
   }
 }
 
+/* ── Khiếu nại, kiểm tra mẫu, số liệu, nhật ký, người dùng ── */
+
+.admin-role-chip {
+  margin-top: var(--space-sm);
+  display: inline-block;
+  padding: 2px var(--space-sm);
+  border-radius: var(--radius-full);
+  background: var(--bg-tertiary);
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+}
+
+.admin-intro {
+  margin-bottom: var(--space-md);
+  max-width: 72ch;
+}
+
+.admin-subtabs {
+  gap: var(--space-md);
+}
+
+.admin-subtabs .admin-tab {
+  height: 40px;
+}
+
+.admin-section-title {
+  margin: var(--space-xl) 0 var(--space-sm);
+  font-size: var(--font-size-lg);
+  font-weight: 500;
+}
+
+.admin-quote {
+  margin: var(--space-sm) 0;
+  padding: var(--space-sm) var(--space-md);
+  border-left: 3px solid var(--border-color);
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.admin-inline-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm) var(--space-md);
+  margin-bottom: var(--space-md);
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+
+.admin-inline-form input,
+.admin-inline-form select {
+  height: 36px;
+  padding: 0 var(--space-sm);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: var(--font-size-sm);
+}
+
+.admin-inline-form input[type='number'] {
+  width: 84px;
+}
+
+.admin-inline-form input[type='search'] {
+  min-width: 240px;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+}
+
+.admin-table th,
+.admin-table td {
+  padding: var(--space-sm) var(--space-md) var(--space-sm) 0;
+  border-bottom: 1px solid var(--border-color);
+  text-align: left;
+  vertical-align: top;
+}
+
+.admin-table th {
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.admin-table select {
+  height: 32px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: var(--font-size-sm);
+}
+
+.admin-metrics .admin-stats {
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+@media (max-width: 599px) {
+  .admin-table {
+    display: block;
+    overflow-x: auto;
+  }
+
+  .admin-inline-form input[type='search'] {
+    min-width: 0;
+    width: 100%;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .admin-thumb img {
     transition: none;

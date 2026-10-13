@@ -432,6 +432,132 @@
     "approvedToast": "Đã giữ lại video \"{{title}}\"",
     "decideFailed": "Không lưu được quyết định: {{message}}",
     "loadMore": "Tải thêm",
-    "restoredToast": "Đã khôi phục video \"{{title}}\""
+    "restoredToast": "Đã khôi phục video \"{{title}}\"",
+    "tab": {
+      "review": "Cần rà soát",
+      "blocked": "Đã gỡ",
+      "appeals": "Khiếu nại",
+      "audit": "Kiểm tra mẫu",
+      "metrics": "Độ chính xác",
+      "events": "Nhật ký quyết định",
+      "users": "Đội ngũ"
+    },
+    "signedInAs": "Đang đăng nhập với vai trò {{role}}",
+    "roles": {
+      "user": "Người dùng",
+      "operator": "Người vận hành",
+      "auditor": "Người giám sát",
+      "admin": "Quản trị viên"
+    },
+    "reasonLabel": "Lý do",
+    "reasonPlaceholder": "Chọn một lý do",
+    "reasonRequired": "Hãy chọn lý do trước khi xác nhận.",
+    "decisionReasons": {
+      "model_error": "Kiểm tra tự động đã nhận nhầm",
+      "fiction_or_game": "Hình ảnh hư cấu, hoạt hình hoặc trò chơi",
+      "news_or_education": "Bối cảnh tin tức, giáo dục hoặc y khoa",
+      "acceptable_context": "Chấp nhận được theo bối cảnh",
+      "appeal_upheld": "Khiếu nại của chủ video là đúng",
+      "report_unfounded": "Báo cáo không có cơ sở",
+      "missed_by_model": "Kiểm tra tự động đã bỏ lọt",
+      "report_upheld": "Báo cáo là đúng",
+      "audit_failed": "Không đạt khi kiểm tra mẫu",
+      "policy_violation": "Vi phạm nguyên tắc cộng đồng",
+      "other": "Lý do khác"
+    },
+    "outcomes": {
+      "false_positive": "Gỡ nhầm (false positive)",
+      "flag_noise": "Đánh dấu không cần thiết",
+      "false_negative": "Bỏ lọt vi phạm (false negative)",
+      "true_positive": "Gỡ hoặc đánh dấu đúng",
+      "true_negative": "Duyệt đúng",
+      "unclassified": "Không rõ kết luận của máy"
+    },
+    "appeals": {
+      "empty": "Không có khiếu nại nào đang chờ",
+      "from": "Khiếu nại của {{name}}",
+      "blockedByStaff": "Do người vận hành gỡ",
+      "noteLabel": "Phản hồi cho chủ video (không bắt buộc)",
+      "uphold": "Khôi phục video",
+      "reject": "Giữ nguyên việc gỡ",
+      "upheldToast": "Đã khôi phục \"{{title}}\"",
+      "rejectedToast": "Đã bác khiếu nại của \"{{title}}\""
+    },
+    "audit": {
+      "intro": "Một mẫu ngẫu nhiên các video mà kiểm tra tự động đã duyệt. Đánh dấu từng video là đạt hoặc không đạt; tỉ lệ không đạt cho biết kiểm tra tự động bỏ lọt bao nhiêu.",
+      "size": "Số video cần lấy",
+      "draw": "Lấy mẫu mới",
+      "drawnToast": "Đã lấy {{count}} video",
+      "empty": "Không có video nào đang chờ kiểm tra",
+      "pass": "Đạt",
+      "fail": "Không đạt: gỡ video",
+      "noteLabel": "Ghi chú (không bắt buộc)",
+      "passedToast": "\"{{title}}\" đạt",
+      "failedToast": "\"{{title}}\" không đạt và đã bị gỡ"
+    },
+    "metrics": {
+      "intro": "Kiểm tra tự động làm tốt đến đâu, so với quyết định của con người. Mọi tỉ lệ đi kèm khoảng tin cậy 95% và số video làm cơ sở; mẫu nhỏ nói rất ít.",
+      "falsePositiveRate": "Gỡ nhầm",
+      "flagPrecision": "Đánh dấu đúng",
+      "falseNegativeRate": "Bỏ lọt (ước lượng)",
+      "knownMisses": "Số bỏ lọt đã biết",
+      "knownMissesHint": "Máy duyệt, người gỡ. Không phải tỉ lệ: vi phạm chưa ai thấy thì không được đếm.",
+      "interval": "Khoảng tin cậy 95%: {{low}}–{{high}}% từ {{n}} video",
+      "coverage": "đã xét {{value}}",
+      "auditCounts": "{{failed}}/{{labelled}} video đã kiểm tra không đạt; {{pending}} đang chờ",
+      "none": "Chưa đủ dữ liệu",
+      "byLabel": "Số lần gỡ theo nhãn hàng đầu của máy",
+      "byReason": "Quyết định theo kết quả và lý do",
+      "label": "Nhãn",
+      "reviewed": "Đã xét",
+      "falsePositive": "Gỡ nhầm",
+      "rate": "Tỉ lệ",
+      "unreviewed": "Chưa xét",
+      "count": "Số lượng"
+    },
+    "events": {
+      "view": {
+        "decisions": "Quyết định",
+        "roles": "Đổi vai trò"
+      },
+      "outcome": "Kết quả",
+      "allOutcomes": "Tất cả kết quả",
+      "empty": "Chưa có ghi nhận nào",
+      "when": "Khi nào",
+      "video": "Video",
+      "actor": "Người thực hiện",
+      "machine": "Kiểm tra tự động",
+      "decision": "Quyết định",
+      "action": {
+        "approve": "Giữ lại",
+        "block": "Đã gỡ",
+        "restore": "Khôi phục"
+      }
+    },
+    "users": {
+      "search": "Tìm theo tên hoặc email",
+      "searchButton": "Tìm",
+      "filterRole": "Lọc theo vai trò",
+      "allRoles": "Mọi vai trò",
+      "empty": "Không tìm thấy người dùng nào",
+      "user": "Người dùng",
+      "email": "Email",
+      "role": "Vai trò",
+      "change": "Thay đổi",
+      "changedToast": "{{name}} giờ là {{role}}"
+    }
+  },
+  "appeal": {
+    "start": "Khiếu nại việc gỡ video",
+    "label": "Vì sao video này nên được khôi phục?",
+    "placeholder": "Mô tả video có gì và vì sao nó tuân thủ nguyên tắc cộng đồng.",
+    "send": "Gửi khiếu nại",
+    "alreadyFiled": "Quyết định này đã được khiếu nại. Bạn có thể khiếu nại lại khi có quyết định mới.",
+    "reply": "Phản hồi của người vận hành: {{note}}",
+    "status": {
+      "open": "Khiếu nại của bạn đã được gửi và đang chờ người vận hành xem xét.",
+      "upheld": "Khiếu nại của bạn được chấp nhận và video đã được khôi phục.",
+      "rejected": "Khiếu nại của bạn đã được xem xét và việc gỡ video được giữ nguyên."
+    }
   }
 }

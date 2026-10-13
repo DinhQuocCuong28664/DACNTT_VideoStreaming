@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
@@ -6,8 +6,6 @@ import {
   MdErrorOutline,
   MdOutlineOpenInNew,
   MdOutlinedFlag,
-  MdOutlineVisibility,
-  MdOutlineVisibilityOff,
   MdOutlineVerifiedUser,
   MdBlock,
   MdRestore,
@@ -18,46 +16,37 @@ import {
 import Modal from '../components/Common/Modal';
 import useToast from '../components/Common/Toast';
 import { LoadMoreFooter } from '../components/Video/VideoListParts';
+import GuardedThumb from '../components/Admin/GuardedThumb';
+import AppealsPanel from '../components/Admin/AppealsPanel';
+import AuditPanel from '../components/Admin/AuditPanel';
+import MetricsPanel from '../components/Admin/MetricsPanel';
+import EventsPanel from '../components/Admin/EventsPanel';
+import UsersPanel from '../components/Admin/UsersPanel';
 import adminApi from '../api/adminApi';
+import { useAuth } from '../context/useAuth';
 import useInfiniteList from '../hooks/useInfiniteList';
 import { formatDuration, timeAgo } from '../utils/format';
+import { can, DECISION_REASONS } from '../utils/roles';
 import './AdminPage.css';
 
 const PAGE_SIZE = 20;
-const TABS = ['review', 'blocked'];
-
-const nameOf = (user) => user?.displayName || user?.username || '?';
 
 /**
- * Ảnh bìa làm mờ và chuyển xám cho tới khi người rà soát chủ động bấm xem.
- *
- * Karunakaran & Ramakrishnan (HCOMP 2019) đo được rằng làm mờ và chuyển xám
- * giảm rõ tác động cảm xúc lên người kiểm duyệt mà không làm giảm độ chính xác
- * khi họ ra quyết định. Hàng rà soát này, theo đúng định nghĩa, tập trung những
- * hình ảnh dễ gây sốc nhất của cả nền tảng.
+ * Các tab của trang vận hành, mỗi tab gắn một QUYỀN (khớp backend/src/utils/roles.js). Người dùng chỉ
+ * thấy tab mình có quyền: operator thấy hàng chờ, khiếu nại và kiểm tra mẫu; auditor thấy số liệu và
+ * nhật ký; admin thấy tất cả. Đây là lớp giao diện, máy chủ vẫn kiểm tra quyền từng request.
  */
-const GuardedThumb = ({ src, duration }) => {
-  const { t } = useTranslation();
-  const [revealed, setRevealed] = useState(false);
+const TABS = [
+  { key: 'review', permission: 'moderation:review', queue: true },
+  { key: 'blocked', permission: 'moderation:review', queue: true },
+  { key: 'appeals', permission: 'moderation:appeals' },
+  { key: 'audit', permission: 'moderation:audit' },
+  { key: 'metrics', permission: 'metrics:read' },
+  { key: 'events', permission: 'events:read' },
+  { key: 'users', permission: 'users:manage' },
+];
 
-  return (
-    <div className={`admin-thumb${revealed ? ' is-revealed' : ''}`} title={revealed ? undefined : t('admin.blurHint')}>
-      {src ? <img src={src} alt="" loading="lazy" /> : <div className="admin-thumb-empty" />}
-      {duration > 0 && <span className="admin-thumb-duration tabular-nums">{formatDuration(duration)}</span>}
-      {src && (
-        <button
-          type="button"
-          className="admin-thumb-toggle"
-          onClick={() => setRevealed((v) => !v)}
-          aria-pressed={revealed}
-        >
-          {revealed ? <MdOutlineVisibilityOff aria-hidden="true" /> : <MdOutlineVisibility aria-hidden="true" />}
-          <span>{revealed ? t('admin.conceal') : t('admin.reveal')}</span>
-        </button>
-      )}
-    </div>
-  );
-};
+const nameOf = (user) => user?.displayName || user?.username || '?';
 
 /** Danh sách báo cáo của một video, chỉ nạp khi người rà soát mở ra. */
 const ReportList = ({ videoId }) => {
@@ -97,10 +86,14 @@ const ReportList = ({ videoId }) => {
   );
 };
 
-/** Xác nhận quyết định, kèm ghi chú gửi tới chủ video. */
+/**
+ * Xác nhận quyết định: mã lý do bắt buộc (đây là dữ liệu để đo gỡ nhầm và bỏ lọt, nên không để trống),
+ * kèm ghi chú gửi tới chủ video.
+ */
 const DecisionDialog = ({ video, decision, onClose, onDone }) => {
   const { t } = useTranslation();
   const [note, setNote] = useState(video.moderation?.note || '');
+  const [reasonCode, setReasonCode] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -114,13 +107,17 @@ const DecisionDialog = ({ video, decision, onClose, onDone }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!reasonCode) {
+      setError(t('admin.reasonRequired'));
+      return;
+    }
     setSaving(true);
     setError('');
     try {
-      await adminApi.decide(video._id, decision, note.trim());
+      await adminApi.decide(video._id, decision, reasonCode, note.trim());
       onDone(video, decision);
     } catch (err) {
-      setError(err.response?.data?.message || err.message);
+      setError(t('admin.decideFailed', { message: err.response?.data?.message || err.message }));
       setSaving(false);
     }
   };
@@ -139,9 +136,20 @@ const DecisionDialog = ({ video, decision, onClose, onDone }) => {
           <p className="admin-muted">{isBlock ? t('admin.confirmBlockBody') : t('admin.confirmApproveBody')}</p>
           {error && (
             <p className="field-error" role="alert">
-              <MdErrorOutline aria-hidden="true" /> {t('admin.decideFailed', { message: error })}
+              <MdErrorOutline aria-hidden="true" /> {error}
             </p>
           )}
+          <label className="studio-field">
+            <span className="studio-field-label">
+              <span>{t('admin.reasonLabel')}</span>
+            </span>
+            <select value={reasonCode} onChange={(e) => setReasonCode(e.target.value)} disabled={saving} required>
+              <option value="">{t('admin.reasonPlaceholder')}</option>
+              {DECISION_REASONS[decision].map((code) => (
+                <option key={code} value={code}>{t(`admin.decisionReasons.${code}`)}</option>
+              ))}
+            </select>
+          </label>
           <label className="studio-field">
             <span className="studio-field-label">
               <span>{t('admin.noteLabel')}</span>
@@ -154,7 +162,7 @@ const DecisionDialog = ({ video, decision, onClose, onDone }) => {
           <button type="button" className="btn btn-plain" onClick={onClose} disabled={saving}>
             {t('common.cancel')}
           </button>
-          <button type="submit" className={`btn ${isBlock ? 'admin-btn-danger' : 'btn-primary'}`} disabled={saving}>
+          <button type="submit" className={`btn ${isBlock ? 'admin-btn-danger' : 'btn-primary'}`} disabled={saving || !reasonCode}>
             {saving && <span className="spinner spinner-sm" aria-hidden="true" />}
             <span>{saving ? t('admin.saving') : t('admin.confirm')}</span>
           </button>
@@ -272,28 +280,11 @@ const QueueItem = ({ video, onDecide }) => {
   );
 };
 
-/**
- * Trang kiểm duyệt nội dung dành cho đội ngũ vận hành.
- *
- * Hai tab: "Cần rà soát" (video hệ thống đánh dấu hoặc bị báo cáo, nhiều báo
- * cáo nhất lên đầu) và "Đã gỡ" (để khôi phục khi có khiếu nại). Mỗi quyết định
- * đi kèm một ghi chú mà chủ video đọc được trên trang xem video của họ.
- */
-const AdminPage = () => {
+/** Hàng chờ rà soát hoặc tab "Đã gỡ": danh sách video với nút duyệt hoặc gỡ. */
+const QueuePanel = ({ tab, onDecided }) => {
   const { t } = useTranslation();
-  const [tab, setTab] = useState('review');
-  const [stats, setStats] = useState(null);
   const [pending, setPending] = useState(null);
   const [toast, showToast] = useToast();
-
-  const loadStats = useCallback(() => {
-    adminApi
-      .getStats()
-      .then((res) => setStats(res.data.data))
-      .catch((err) => console.error('Failed to load moderation stats:', err));
-  }, []);
-
-  useEffect(loadStats, [loadStats]);
 
   const fetchPage = useCallback(
     async (page) => {
@@ -319,14 +310,8 @@ const AdminPage = () => {
           ? 'admin.restoredToast'
           : 'admin.approvedToast';
     showToast(t(toastKey, { title: video.title }));
-    loadStats();
+    onDecided();
   };
-
-  const statTiles = [
-    { key: 'review', label: t('admin.statReview'), value: stats?.review },
-    { key: 'openReports', label: t('admin.statOpenReports'), value: stats?.openReports },
-    { key: 'blocked', label: t('admin.statBlocked'), value: stats?.blocked, sub: stats && `${t('admin.statAutoBlocked')}: ${stats.autoBlocked}` },
-  ];
 
   let body;
   if (list.status === 'loading') {
@@ -367,40 +352,8 @@ const AdminPage = () => {
   }
 
   return (
-    <div className="admin-page">
-      <header className="admin-head">
-        <h1 className="admin-title">{t('admin.title')}</h1>
-        <p className="admin-subtitle">{t('admin.subtitle')}</p>
-      </header>
-
-      <div className="admin-stats">
-        {statTiles.map((s) => (
-          <div key={s.key} className="admin-stat">
-            <p className="admin-stat-label">{s.label}</p>
-            <p className="admin-stat-value tabular-nums">{s.value ?? '–'}</p>
-            {s.sub && <p className="admin-stat-sub">{s.sub}</p>}
-          </div>
-        ))}
-      </div>
-
-      <div className="admin-tabs" role="tablist">
-        {TABS.map((key) => (
-          <button
-            key={key}
-            type="button"
-            role="tab"
-            className="admin-tab"
-            aria-selected={tab === key}
-            onClick={() => setTab(key)}
-          >
-            {key === 'review' ? t('admin.tabReview') : t('admin.tabBlocked')}
-            {stats && <span className="admin-tab-count tabular-nums">{stats[key]}</span>}
-          </button>
-        ))}
-      </div>
-
-      <section role="tabpanel">{body}</section>
-
+    <>
+      {body}
       {pending && (
         <DecisionDialog
           video={pending.video}
@@ -410,6 +363,93 @@ const AdminPage = () => {
         />
       )}
       {toast}
+    </>
+  );
+};
+
+/**
+ * Trang vận hành kiểm duyệt nội dung.
+ *
+ * Tab nào hiện ra do quyền của vai trò (xem TABS). Hàng chờ và "Đã gỡ" cho người rà soát; khiếu nại của
+ * chủ video và kiểm tra mẫu cho người rà soát; số liệu gỡ nhầm/bỏ lọt và nhật ký cho auditor; vai trò
+ * người dùng cho admin. Mỗi quyết định kèm một mã lý do (dữ liệu để đo) và một ghi chú chủ video đọc được.
+ */
+const AdminPage = () => {
+  const { t } = useTranslation();
+  const { user } = useAuth();
+
+  const visibleTabs = useMemo(() => TABS.filter((tab) => can(user, tab.permission)), [user]);
+  const [tab, setTab] = useState(() => visibleTabs[0]?.key || 'review');
+  const [stats, setStats] = useState(null);
+
+  const showStats = can(user, 'moderation:review') || can(user, 'metrics:read');
+
+  const loadStats = useCallback(() => {
+    if (!showStats) return;
+    adminApi
+      .getStats()
+      .then((res) => setStats(res.data.data))
+      .catch((err) => console.error('Failed to load moderation stats:', err));
+  }, [showStats]);
+
+  useEffect(loadStats, [loadStats]);
+
+  const statTiles = [
+    { key: 'review', label: t('admin.statReview'), value: stats?.review },
+    { key: 'openReports', label: t('admin.statOpenReports'), value: stats?.openReports },
+    { key: 'blocked', label: t('admin.statBlocked'), value: stats?.blocked, sub: stats && `${t('admin.statAutoBlocked')}: ${stats.autoBlocked}` },
+  ];
+
+  const active = TABS.find((candidate) => candidate.key === tab);
+  const activeVisible = active && can(user, active.permission);
+
+  let panel = null;
+  if (activeVisible) {
+    if (active.queue) panel = <QueuePanel key={tab} tab={tab} onDecided={loadStats} />;
+    else if (tab === 'appeals') panel = <AppealsPanel onChanged={loadStats} />;
+    else if (tab === 'audit') panel = <AuditPanel onChanged={loadStats} />;
+    else if (tab === 'metrics') panel = <MetricsPanel />;
+    else if (tab === 'events') panel = <EventsPanel />;
+    else if (tab === 'users') panel = <UsersPanel />;
+  }
+
+  return (
+    <div className="admin-page">
+      <header className="admin-head">
+        <h1 className="admin-title">{t('admin.title')}</h1>
+        <p className="admin-subtitle">{t('admin.subtitle')}</p>
+        <p className="admin-role-chip">{t('admin.signedInAs', { role: t(`admin.roles.${user?.role}`) })}</p>
+      </header>
+
+      {showStats && (
+        <div className="admin-stats">
+          {statTiles.map((s) => (
+            <div key={s.key} className="admin-stat">
+              <p className="admin-stat-label">{s.label}</p>
+              <p className="admin-stat-value tabular-nums">{s.value ?? '–'}</p>
+              {s.sub && <p className="admin-stat-sub">{s.sub}</p>}
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="admin-tabs" role="tablist">
+        {visibleTabs.map(({ key }) => (
+          <button
+            key={key}
+            type="button"
+            role="tab"
+            className="admin-tab"
+            aria-selected={tab === key}
+            onClick={() => setTab(key)}
+          >
+            {t(`admin.tab.${key}`)}
+            {stats && (key === 'review' || key === 'blocked') && <span className="admin-tab-count tabular-nums">{stats[key]}</span>}
+          </button>
+        ))}
+      </div>
+
+      <section role="tabpanel">{panel}</section>
     </div>
   );
 };
