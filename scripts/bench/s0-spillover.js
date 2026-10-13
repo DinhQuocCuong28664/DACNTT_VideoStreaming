@@ -15,6 +15,8 @@
  *
  * Không tải video, không gọi Rekognition: dưới 2 vCPU-giờ, vài cent.
  *
+ * Tự bật rồi tự tắt hàng đợi và môi trường Batch (batch-switch.js); `--no-enable` / `--keep-on` để giữ nguyên.
+ *
  * Dùng:
  *   node scripts/bench/s0-spillover.js [--prefix dacntt-staging] [--children 16] [--sleep 240] [--spot-vcpus 8] [--write]
  *   node scripts/bench/s0-spillover.js --dry-run
@@ -25,6 +27,7 @@
 const { spawnSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+const batchSwitch = require('./batch-switch');
 
 const args = process.argv.slice(2);
 const flag = (name, fallback) => {
@@ -117,6 +120,8 @@ const main = async () => {
     return;
   }
 
+  const reuse = flag('analyse', null);
+  if (!reuse && !has('no-enable')) await batchSwitch.setState(PREFIX, REGION, 'ENABLED', { log: console.log });
   const clusters = clusterByEnvironment();
   // --analyse <arrayJobId>: dựng lại kết quả của một array job đã chạy xong, không nộp job mới.
   const reuseId = flag('analyse', null);
@@ -193,6 +198,11 @@ const main = async () => {
         aws('batch', 'terminate-job', '--job-id', arrayId, '--reason', 'S0 finished');
       } catch (error) {
         console.warn(`Không huỷ được ${arrayId}: ${error.message}`);
+      }
+      if (!has('keep-on')) {
+        await batchSwitch.setState(PREFIX, REGION, 'DISABLED', { log: console.log }).catch((error) => {
+          console.error(`CẢNH BÁO: không tắt được Batch (${error.message}).`);
+        });
       }
     }
   }
