@@ -17,8 +17,8 @@
  * vượt trần hay bị ngắt bằng Ctrl+C) TẮT chúng lại để không job nào lọt vào sau đó (xem
  * scripts/bench/batch-switch.js). `--no-enable` không bật ở đầu; `--keep-on` không tắt ở cuối.
  *
- * Mốc thời gian: thời lượng "từ tải lên xong đến READY" tính từ LastModified của đối tượng S3 đến
- * `updatedAt` của video ở trạng thái READY; các bước con lấy từ startedAt/stoppedAt của job Batch.
+ * Mốc thời gian: thời lượng "từ tải lên xong đến READY" tính từ lúc `aws s3 cp` trả về đến `updatedAt` của
+ * video ở trạng thái READY; các bước con lấy từ startedAt/stoppedAt của job Batch.
  */
 const { spawnSync } = require('child_process');
 const fs = require('fs');
@@ -192,7 +192,7 @@ const buildRecord = ({ label, rep, file, video, uploadSeconds, uploadedAt, ready
     result: { final_status: video.status, hls_verified: verify === true },
     provenance: 'measured',
     source: `transcoder/scripts/staging-measure-set.js (${STAGE})`,
-    notes: `Lượt ${rep} của ${label}; tệp ${path.basename(file)}. Mốc tải lên xong lấy từ LastModified của đối tượng S3, READY lấy từ updatedAt của video.`,
+    notes: `Lượt ${rep} của ${label}; tệp ${path.basename(file)}. Mốc tải lên xong là lúc aws s3 cp trả về, READY lấy từ updatedAt của video.`,
   };
 };
 
@@ -235,8 +235,10 @@ const oneRun = async (mongoose, { file, label, rep, verify }) => {
   const up = spawnSync('aws', ['s3', 'cp', file, `s3://${RAW_BUCKET}/${key}`, '--region', REGION, '--only-show-errors'], { stdio: 'inherit' });
   if (up.status !== 0) throw new Error('Tải lên thất bại');
   const uploadSeconds = Math.round((Date.now() - t0) / 1000);
-  const head = awsJson('s3api', 'head-object', '--bucket', RAW_BUCKET, '--key', key);
-  const uploadedAt = new Date(head.LastModified).getTime();
+  // Mốc "tải lên xong" là lúc `aws s3 cp` trả về. KHÔNG dùng LastModified của đối tượng S3: với tệp tải
+  // bằng multipart, LastModified là lúc BẮT ĐẦU lượt tải, nên thời gian tải lên (gần 5 phút với 2,8 GiB)
+  // bị cộng vào thời gian xử lý. S1 và S2a đã bị lỗi này (xem notes của các bản ghi đó).
+  const uploadedAt = t0 + uploadSeconds * 1000;
   console.log(`  đã tải lên sau ${fmt(uploadSeconds)}; chờ READY...`);
 
   let video = null;
