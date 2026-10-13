@@ -68,6 +68,20 @@ const getVideoReports = async (req, res, next) => {
 };
 
 /**
+ * @route   GET /api/admin/metrics
+ * @desc    Chỉ số FP/FN của kiểm duyệt tự động, kèm khoảng tin cậy và mẫu số
+ * @access  Auditor, Admin
+ */
+const getModerationMetrics = async (req, res, next) => {
+  try {
+    const metrics = await moderationService.getMetrics();
+    res.status(200).json({ success: true, data: metrics });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
  * @route   GET /api/admin/events
  * @query   outcome? = false_positive | flag_noise | false_negative | true_positive | true_negative | unclassified, page, limit
  * @access  Auditor, Admin
@@ -102,6 +116,7 @@ module.exports = {
   getModerationStats,
   getModerationQueue,
   getVideoReports,
+  getModerationMetrics,
   getModerationEvents,
   decideVideo,
 };

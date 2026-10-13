@@ -7,6 +7,7 @@ const {
   getModerationStats,
   getModerationQueue,
   getVideoReports,
+  getModerationMetrics,
   getModerationEvents,
   decideVideo,
 } = require('../controllers/moderationController');
@@ -24,6 +25,7 @@ router.patch(
   validateRequest(['decision', 'reasonCode']),
   decideVideo
 );
+router.get('/metrics', requirePermission('metrics:read'), getModerationMetrics);
 router.get('/events', requirePermission('events:read'), getModerationEvents);
 
 module.exports = router;

@@ -5,6 +5,7 @@ const ModerationEvent = require('../models/ModerationEvent');
 const videoService = require('./videoService');
 const httpError = require('../utils/httpError');
 const { can } = require('../utils/roles');
+const { wilsonInterval } = require('../utils/stats');
 const {
   REPORT_REASONS,
   MODERATION_DECISIONS,
@@ -303,6 +304,100 @@ const listEvents = async (page = 1, limit = 20, { outcome } = {}) => {
   return { events, pagination: { page, limit, total, pages: Math.ceil(total / limit) } };
 };
 
+/**
+ * Chỉ số chất lượng của kiểm duyệt tự động, suy từ chính các video và nhật ký quyết định.
+ *
+ * Cách đọc, và vì sao từng con số được tính như vậy:
+ *
+ * - `autoBlocked`: máy gỡ. `falsePositive` là số đã được người khôi phục, `truePositive` là số người
+ *   giữ nguyên. Tỉ lệ FP chỉ tính trên phần ĐÃ được xét (`reviewed`); `coverage` cho biết phần đã
+ *   xét trên tổng, vì nếu chỉ ít video bị gỡ được xét lại thì tỉ lệ này lệch theo cách ai khiếu nại.
+ * - `autoFlagged`: máy chỉ đánh dấu chờ rà soát. `precision` là phần cờ hoá ra đúng.
+ * - `missed`: máy duyệt nhưng người gỡ. Đây là các false negative ĐÃ BIẾT, không phải tỉ lệ FN:
+ *   vi phạm chưa ai thấy thì không đếm được. Tỉ lệ FN thật chỉ ước lượng được từ mẫu ngẫu nhiên
+ *   (xem kiểm tra mẫu), vì báo cáo của người xem lệch theo video nổi tiếng.
+ * - `byLabel`: tỉ lệ gỡ nhầm theo nhãn hàng đầu của máy, để biết nên chỉnh ngưỡng của nhãn nào.
+ *
+ * Mọi tỉ lệ có khoảng tin cậy Wilson 95% và mẫu số.
+ */
+const getMetrics = async () => {
+  const rows = await Video.aggregate([
+    { $match: { 'moderation.status': { $exists: true } } },
+    {
+      $project: {
+        // Kết luận của máy: đã chụp, hoặc chính trạng thái hiện tại nếu người chưa xét.
+        auto: {
+          $ifNull: [
+            '$moderation.autoStatus',
+            { $cond: [{ $eq: ['$moderation.source', 'auto'] }, '$moderation.status', null] },
+          ],
+        },
+        final: '$moderation.status',
+        human: { $eq: ['$moderation.source', 'admin'] },
+        label: { $arrayElemAt: ['$moderation.labels.name', 0] },
+      },
+    },
+    { $group: { _id: { auto: '$auto', final: '$final', human: '$human', label: '$label' }, count: { $sum: 1 } } },
+  ]);
+
+  const sum = (predicate) => rows.filter((r) => predicate(r._id)).reduce((total, r) => total + r.count, 0);
+
+  const blockedReviewed = sum((k) => k.auto === 'blocked' && k.human);
+  const falsePositive = sum((k) => k.auto === 'blocked' && k.human && k.final === 'approved');
+  const blockedUnreviewed = sum((k) => k.auto === 'blocked' && !k.human);
+  const flaggedReviewed = sum((k) => k.auto === 'flagged' && k.human);
+  const flagConfirmed = sum((k) => k.auto === 'flagged' && k.human && k.final === 'blocked');
+  const flaggedUnreviewed = sum((k) => k.auto === 'flagged' && !k.human);
+
+  const labelNames = [...new Set(rows.filter((r) => r._id.auto === 'blocked' && r._id.label).map((r) => r._id.label))];
+  const byLabel = labelNames
+    .map((label) => {
+      const reviewed = sum((k) => k.auto === 'blocked' && k.human && k.label === label);
+      const fp = sum((k) => k.auto === 'blocked' && k.human && k.final === 'approved' && k.label === label);
+      return {
+        label,
+        reviewed,
+        falsePositive: fp,
+        unreviewed: sum((k) => k.auto === 'blocked' && !k.human && k.label === label),
+        falsePositiveRate: wilsonInterval(fp, reviewed),
+      };
+    })
+    .sort((a, b) => b.reviewed - a.reviewed);
+
+  const reasonRows = await ModerationEvent.aggregate([
+    { $group: { _id: { outcome: '$outcome', reasonCode: '$reasonCode' }, count: { $sum: 1 } } },
+    { $sort: { count: -1 } },
+  ]);
+
+  return {
+    autoBlocked: {
+      reviewed: blockedReviewed,
+      falsePositive,
+      truePositive: blockedReviewed - falsePositive,
+      unreviewed: blockedUnreviewed,
+      coverage: wilsonCoverage(blockedReviewed, blockedReviewed + blockedUnreviewed),
+      falsePositiveRate: wilsonInterval(falsePositive, blockedReviewed),
+    },
+    autoFlagged: {
+      reviewed: flaggedReviewed,
+      confirmed: flagConfirmed,
+      noise: flaggedReviewed - flagConfirmed,
+      unreviewed: flaggedUnreviewed,
+      coverage: wilsonCoverage(flaggedReviewed, flaggedReviewed + flaggedUnreviewed),
+      precision: wilsonInterval(flagConfirmed, flaggedReviewed),
+    },
+    missed: {
+      falseNegative: sum((k) => k.auto === 'approved' && k.human && k.final === 'blocked'),
+    },
+    unclassifiedDecisions: sum((k) => !k.auto && k.human),
+    byLabel,
+    byReason: reasonRows.map((r) => ({ outcome: r._id.outcome, reasonCode: r._id.reasonCode, count: r.count })),
+  };
+};
+
+/** Phần đã xét trên tổng, làm tròn 4 chữ số; null khi chưa có gì. */
+const wilsonCoverage = (reviewed, total) => (total > 0 ? Math.round((reviewed / total) * 10000) / 10000 : null);
+
 module.exports = {
   createReport,
   listQueue,
@@ -310,5 +405,6 @@ module.exports = {
   listReports,
   decide,
   listEvents,
+  getMetrics,
   QUEUE_TABS,
 };
