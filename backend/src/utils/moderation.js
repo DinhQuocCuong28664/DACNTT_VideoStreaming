@@ -29,6 +29,57 @@ const REPORT_REASONS = [
 
 const MODERATION_DECISIONS = ['approve', 'block'];
 
+/**
+ * Mã lý do bắt buộc cho mỗi quyết định của người vận hành.
+ *
+ * Danh sách ngắn và đóng, vì mã này là dữ liệu để đo: ghi chú tự do không đếm được, còn
+ * "bao nhiêu lần gỡ nhầm là do hoạt hình" thì đếm được và chỉ ra nên chỉnh ngưỡng nào của
+ * kiểm duyệt tự động. Cùng lý do Crawford & Gillespie (2016) ở REPORT_REASONS: càng nhiều mục
+ * chồng lấn, người chọn càng tuỳ tiện.
+ */
+const DECISION_REASONS = {
+  approve: [
+    'model_error', // máy nhận nhầm: hình ảnh không vi phạm
+    'fiction_or_game', // bạo lực trong game, phim hoạt hình
+    'news_or_education', // bối cảnh tin tức, giáo dục, y khoa
+    'acceptable_context', // có hình ảnh nhạy cảm nhưng bối cảnh chấp nhận được
+    'appeal_upheld', // chủ video khiếu nại và đúng
+    'report_unfounded', // báo cáo của người xem không có cơ sở
+    'other',
+  ],
+  block: [
+    'missed_by_model', // máy duyệt qua nhưng có vi phạm
+    'report_upheld', // báo cáo của người xem đúng
+    'audit_failed', // phát hiện qua kiểm tra mẫu
+    'policy_violation', // vi phạm nhưng không thuộc nhãn nào của máy
+    'other',
+  ],
+};
+
+/**
+ * Kết quả của một quyết định so với kết luận của máy (`autoStatus`).
+ *
+ * - `false_positive`: máy gỡ, người khôi phục.
+ * - `flag_noise`: máy chỉ đánh dấu chờ rà soát, người duyệt (cờ vô ích, chưa tới mức gỡ nhầm).
+ * - `false_negative`: máy duyệt, người gỡ.
+ * - `true_positive`: máy gỡ hoặc đánh dấu, người giữ nguyên quyết định gỡ.
+ * - `true_negative`: máy duyệt, người cũng duyệt (báo cáo bị bác, kiểm tra mẫu đạt).
+ * - `unclassified`: không biết máy đã kết luận gì (video trước khi có kiểm duyệt, hoặc quyết
+ *   định của admin từ trước khi hệ thống ghi lại kết luận của máy): không tính vào tỉ lệ nào.
+ */
+const OUTCOMES = ['false_positive', 'flag_noise', 'false_negative', 'true_positive', 'true_negative', 'unclassified'];
+
+const classifyOutcome = (autoStatus, decision) => {
+  if (!autoStatus) return 'unclassified';
+  if (decision === 'approve') {
+    if (autoStatus === 'blocked') return 'false_positive';
+    if (autoStatus === 'flagged') return 'flag_noise';
+    return 'true_negative';
+  }
+  if (autoStatus === 'approved') return 'false_negative';
+  return 'true_positive';
+};
+
 const MAX_REPORT_DETAILS = 500;
 const MAX_MODERATION_NOTE = 500;
 
@@ -48,6 +99,9 @@ module.exports = {
   HIDDEN_MODERATION_STATUSES,
   REPORT_REASONS,
   MODERATION_DECISIONS,
+  DECISION_REASONS,
+  OUTCOMES,
+  classifyOutcome,
   MAX_REPORT_DETAILS,
   MAX_MODERATION_NOTE,
   publicListingFilter,

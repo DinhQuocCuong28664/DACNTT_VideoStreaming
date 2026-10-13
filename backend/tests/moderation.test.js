@@ -4,10 +4,12 @@ const moderationService = require('../src/services/moderationService');
 const { requireAdmin } = require('../src/middleware/auth');
 const Video = require('../src/models/Video');
 const Report = require('../src/models/Report');
+const ModerationEvent = require('../src/models/ModerationEvent');
 
 jest.mock('../src/models/Video');
 jest.mock('../src/models/Comment');
 jest.mock('../src/models/Report');
+jest.mock('../src/models/ModerationEvent');
 jest.mock('../src/models/User');
 jest.mock('../src/services/s3Service');
 
@@ -245,22 +247,43 @@ describe('Kiểm duyệt nội dung', () => {
       Video.findByIdAndUpdate.mockReturnValue(chain);
     };
 
+    // Video hiện tại mà decide() đọc trước khi ghi: chỉ phần `moderation`.
+    const mockCurrent = (moderation) => {
+      Video.findById.mockReturnValue({
+        select: jest.fn().mockReturnValue({ lean: jest.fn().mockResolvedValue(moderation === null ? null : { moderation }) }),
+      });
+    };
+
     beforeEach(() => {
-      Video.exists.mockResolvedValue({ _id: videoId });
+      mockCurrent({ status: 'flagged', source: 'auto' });
       Report.updateMany.mockResolvedValue({});
       Report.countDocuments.mockResolvedValue(0);
+      ModerationEvent.create.mockResolvedValue({});
       mockUpdateChain({ _id: videoId });
     });
 
     it('từ chối quyết định không hợp lệ', async () => {
       await expect(
-        moderationService.decide(videoId, admin, { decision: 'delete' })
+        moderationService.decide(videoId, admin, { decision: 'delete', reasonCode: 'other' })
       ).rejects.toMatchObject({ statusCode: 400 });
       expect(Video.findByIdAndUpdate).not.toHaveBeenCalled();
     });
 
+    it('bắt buộc mã lý do, và mã phải thuộc đúng loại quyết định', async () => {
+      await expect(moderationService.decide(videoId, admin, { decision: 'block' })).rejects.toMatchObject({ statusCode: 400 });
+      // `model_error` là lý do của duyệt, không phải của gỡ.
+      await expect(
+        moderationService.decide(videoId, admin, { decision: 'block', reasonCode: 'model_error' })
+      ).rejects.toMatchObject({ statusCode: 400 });
+      await expect(
+        moderationService.decide(videoId, admin, { decision: 'approve', reasonCode: 'missed_by_model' })
+      ).rejects.toMatchObject({ statusCode: 400 });
+      expect(Video.findByIdAndUpdate).not.toHaveBeenCalled();
+      expect(ModerationEvent.create).not.toHaveBeenCalled();
+    });
+
     it('gỡ video: báo cáo mở chuyển sang actioned, ghi lại ai quyết định', async () => {
-      await moderationService.decide(videoId, admin, { decision: 'block', note: 'Bạo lực thật' });
+      await moderationService.decide(videoId, admin, { decision: 'block', reasonCode: 'policy_violation', note: 'Bạo lực thật' });
 
       expect(Report.updateMany).toHaveBeenCalledWith(
         { video: videoId, status: 'open' },
@@ -277,7 +300,7 @@ describe('Kiểm duyệt nội dung', () => {
     });
 
     it('giữ lại video: báo cáo mở chuyển sang dismissed', async () => {
-      await moderationService.decide(videoId, admin, { decision: 'approve' });
+      await moderationService.decide(videoId, admin, { decision: 'approve', reasonCode: 'report_unfounded' });
 
       expect(Report.updateMany).toHaveBeenCalledWith(
         { video: videoId, status: 'open' },
@@ -290,17 +313,152 @@ describe('Kiểm duyệt nội dung', () => {
       // Một báo cáo đến giữa hai lệnh ghi vẫn phải giữ video trong hàng rà soát.
       Report.countDocuments.mockResolvedValue(1);
 
-      await moderationService.decide(videoId, admin, { decision: 'approve' });
+      await moderationService.decide(videoId, admin, { decision: 'approve', reasonCode: 'report_unfounded' });
 
       expect(Video.findByIdAndUpdate.mock.calls[0][1].$set['moderation.openReports']).toBe(1);
     });
 
     it('trả 404 khi video không tồn tại', async () => {
-      Video.exists.mockResolvedValue(null);
+      mockCurrent(null);
 
       await expect(
-        moderationService.decide(videoId, admin, { decision: 'block' })
+        moderationService.decide(videoId, admin, { decision: 'block', reasonCode: 'policy_violation' })
       ).rejects.toMatchObject({ statusCode: 404 });
+    });
+
+    describe('kết luận của máy và nhật ký', () => {
+      const operator = { _id: new mongoose.Types.ObjectId(), role: 'operator' };
+
+      it('chụp kết luận của máy vào autoStatus trước khi ghi đè', async () => {
+        mockCurrent({ status: 'blocked', source: 'auto', labels: [{ name: 'Explicit Nudity', confidence: 97, action: 'block' }] });
+
+        await moderationService.decide(videoId, admin, { decision: 'approve', reasonCode: 'model_error' });
+
+        const { $set } = Video.findByIdAndUpdate.mock.calls[0][1];
+        expect($set['moderation.autoStatus']).toBe('blocked');
+        expect($set['moderation.status']).toBe('approved');
+        expect($set['moderation.source']).toBe('admin');
+        expect($set['moderation.reviewedByRole']).toBe('admin');
+        expect($set['moderation.reasonCode']).toBe('model_error');
+      });
+
+      it('đã chụp rồi thì không chụp lại: quyết định thứ hai không làm mất kết luận gốc của máy', async () => {
+        mockCurrent({ status: 'approved', source: 'admin', autoStatus: 'blocked', reviewedByRole: 'operator' });
+
+        await moderationService.decide(videoId, admin, { decision: 'block', reasonCode: 'policy_violation' });
+
+        const { $set } = Video.findByIdAndUpdate.mock.calls[0][1];
+        expect($set).not.toHaveProperty('moderation.autoStatus');
+        expect(ModerationEvent.create.mock.calls[0][0].autoStatus).toBe('blocked');
+      });
+
+      it('quyết định của admin từ trước khi có tính năng này: không biết máy nói gì, không bịa', async () => {
+        mockCurrent({ status: 'blocked', source: 'admin', reviewedByRole: 'operator' });
+
+        await moderationService.decide(videoId, admin, { decision: 'approve', reasonCode: 'appeal_upheld' });
+
+        const { $set } = Video.findByIdAndUpdate.mock.calls[0][1];
+        expect($set).not.toHaveProperty('moderation.autoStatus');
+        expect(ModerationEvent.create.mock.calls[0][0].outcome).toBe('unclassified');
+      });
+
+      it.each([
+        ['blocked', 'approve', 'model_error', 'false_positive'],
+        ['flagged', 'approve', 'report_unfounded', 'flag_noise'],
+        ['approved', 'block', 'report_upheld', 'false_negative'],
+        ['blocked', 'block', 'policy_violation', 'true_positive'],
+        ['flagged', 'block', 'policy_violation', 'true_positive'],
+        ['approved', 'approve', 'report_unfounded', 'true_negative'],
+      ])('máy %s, người %s -> %s', async (autoStatus, decision, reasonCode, outcome) => {
+        mockCurrent({ status: autoStatus, source: 'auto' });
+
+        await moderationService.decide(videoId, admin, { decision, reasonCode });
+
+        expect(ModerationEvent.create).toHaveBeenCalledWith(
+          expect.objectContaining({ video: videoId, actor: adminId, autoStatus, outcome, reasonCode, decision })
+        );
+      });
+
+      it('ghi action restore khi duyệt một video đang bị gỡ', async () => {
+        mockCurrent({ status: 'blocked', source: 'auto' });
+
+        await moderationService.decide(videoId, admin, { decision: 'approve', reasonCode: 'model_error' });
+
+        expect(ModerationEvent.create.mock.calls[0][0]).toMatchObject({ action: 'restore', fromStatus: 'blocked', toStatus: 'approved' });
+      });
+
+      it('lỗi ghi nhật ký không làm mất quyết định đã áp dụng', async () => {
+        const spy = jest.spyOn(console, 'error').mockImplementation(() => {});
+        ModerationEvent.create.mockRejectedValue(new Error('db down'));
+
+        await expect(
+          moderationService.decide(videoId, admin, { decision: 'block', reasonCode: 'policy_violation' })
+        ).resolves.toBeDefined();
+        expect(Video.findByIdAndUpdate).toHaveBeenCalled();
+        spy.mockRestore();
+      });
+
+      it('operator không đổi được quyết định mà admin đã đưa ra', async () => {
+        mockCurrent({ status: 'blocked', source: 'admin', reviewedByRole: 'admin', autoStatus: 'approved' });
+
+        await expect(
+          moderationService.decide(videoId, operator, { decision: 'approve', reasonCode: 'model_error' })
+        ).rejects.toMatchObject({ statusCode: 403 });
+        expect(Video.findByIdAndUpdate).not.toHaveBeenCalled();
+      });
+
+      it('operator đổi được quyết định của operator khác, admin đổi được mọi quyết định', async () => {
+        mockCurrent({ status: 'blocked', source: 'admin', reviewedByRole: 'operator', autoStatus: 'flagged' });
+        await expect(
+          moderationService.decide(videoId, operator, { decision: 'approve', reasonCode: 'model_error' })
+        ).resolves.toBeDefined();
+
+        mockCurrent({ status: 'blocked', source: 'admin', reviewedByRole: 'admin', autoStatus: 'flagged' });
+        await expect(
+          moderationService.decide(videoId, admin, { decision: 'approve', reasonCode: 'model_error' })
+        ).resolves.toBeDefined();
+      });
+
+      it('chỉ admin nhận email chủ video trong kết quả; operator thì không', async () => {
+        const populate = jest.fn().mockReturnThis();
+        Video.findByIdAndUpdate.mockReturnValue({
+          select: jest.fn().mockReturnThis(),
+          populate,
+          lean: jest.fn().mockResolvedValue({ _id: videoId }),
+        });
+
+        await moderationService.decide(videoId, admin, { decision: 'approve', reasonCode: 'model_error' });
+        expect(populate).toHaveBeenCalledWith('user', 'username displayName avatar email');
+
+        populate.mockClear();
+        await moderationService.decide(videoId, operator, { decision: 'approve', reasonCode: 'model_error' });
+        expect(populate).toHaveBeenCalledWith('user', 'username displayName avatar');
+      });
+    });
+  });
+
+  describe('listEvents', () => {
+    const chain = (rows) => ({
+      populate: jest.fn().mockReturnThis(),
+      sort: jest.fn().mockReturnThis(),
+      skip: jest.fn().mockReturnThis(),
+      limit: jest.fn().mockReturnThis(),
+      lean: jest.fn().mockResolvedValue(rows),
+    });
+
+    it('lọc theo outcome hợp lệ và phân trang', async () => {
+      ModerationEvent.find.mockReturnValue(chain([{ outcome: 'false_positive' }]));
+      ModerationEvent.countDocuments.mockResolvedValue(41);
+
+      const result = await moderationService.listEvents(2, 20, { outcome: 'false_positive' });
+
+      expect(ModerationEvent.find).toHaveBeenCalledWith({ outcome: 'false_positive' });
+      expect(result.pagination).toEqual({ page: 2, limit: 20, total: 41, pages: 3 });
+    });
+
+    it('từ chối outcome lạ thay vì đưa thẳng vào truy vấn', async () => {
+      await expect(moderationService.listEvents(1, 20, { outcome: { $ne: null } })).rejects.toMatchObject({ statusCode: 400 });
+      expect(ModerationEvent.find).not.toHaveBeenCalled();
     });
   });
 

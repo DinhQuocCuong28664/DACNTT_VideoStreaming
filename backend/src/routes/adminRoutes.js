@@ -7,6 +7,7 @@ const {
   getModerationStats,
   getModerationQueue,
   getVideoReports,
+  getModerationEvents,
   decideVideo,
 } = require('../controllers/moderationController');
 
@@ -17,6 +18,12 @@ router.use(auth);
 router.get('/stats', requirePermission('moderation:review', 'metrics:read'), getModerationStats);
 router.get('/videos', requirePermission('moderation:review'), getModerationQueue);
 router.get('/videos/:id/reports', requirePermission('moderation:review'), getVideoReports);
-router.patch('/videos/:id/moderation', requirePermission('moderation:review'), validateRequest(['decision']), decideVideo);
+router.patch(
+  '/videos/:id/moderation',
+  requirePermission('moderation:review'),
+  validateRequest(['decision', 'reasonCode']),
+  decideVideo
+);
+router.get('/events', requirePermission('events:read'), getModerationEvents);
 
 module.exports = router;

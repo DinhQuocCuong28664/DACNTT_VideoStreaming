@@ -1,5 +1,6 @@
 const moderationService = require('../services/moderationService');
 const { parsePaging } = require('../utils/pagination');
+const { can } = require('../utils/roles');
 const { t } = require('../config/i18n');
 
 /**
@@ -45,7 +46,8 @@ const getModerationQueue = async (req, res, next) => {
   try {
     const { page, limit } = parsePaging(req.query, 20);
     const tab = typeof req.query.tab === 'string' ? req.query.tab : 'review';
-    const result = await moderationService.listQueue(tab, page, limit);
+    // Email chủ video chỉ cho người có quyền pii:email (admin), không cho operator.
+    const result = await moderationService.listQueue(tab, page, limit, { includeEmail: can(req.user, 'pii:email') });
     res.status(200).json({ success: true, data: result });
   } catch (error) {
     next(error);
@@ -66,9 +68,25 @@ const getVideoReports = async (req, res, next) => {
 };
 
 /**
+ * @route   GET /api/admin/events
+ * @query   outcome? = false_positive | flag_noise | false_negative | true_positive | true_negative | unclassified, page, limit
+ * @access  Auditor, Admin
+ */
+const getModerationEvents = async (req, res, next) => {
+  try {
+    const { page, limit } = parsePaging(req.query, 20);
+    const outcome = typeof req.query.outcome === 'string' ? req.query.outcome : undefined;
+    const result = await moderationService.listEvents(page, limit, { outcome });
+    res.status(200).json({ success: true, data: result });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
  * @route   PATCH /api/admin/videos/:id/moderation
- * @body    { decision: 'approve' | 'block', note?: string }
- * @access  Admin
+ * @body    { decision: 'approve' | 'block', reasonCode: string, note?: string }
+ * @access  Operator, Admin
  */
 const decideVideo = async (req, res, next) => {
   try {
@@ -84,5 +102,6 @@ module.exports = {
   getModerationStats,
   getModerationQueue,
   getVideoReports,
+  getModerationEvents,
   decideVideo,
 };
