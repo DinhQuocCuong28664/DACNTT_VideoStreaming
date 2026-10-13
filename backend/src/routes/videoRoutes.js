@@ -25,6 +25,7 @@ const {
   deleteVideo,
 } = require('../controllers/videoController');
 const { reportVideo } = require('../controllers/moderationController');
+const { createAppeal, getOwnAppeal } = require('../controllers/appealController');
 
 // Public routes (with optional auth to detect owner)
 router.get('/', getAllVideos);
@@ -55,6 +56,9 @@ router.post('/:id/dislike', auth, toggleDislike);
 router.post('/:id/comments', auth, addComment);
 router.delete('/comments/:commentId', auth, deleteComment);
 router.post('/:id/report', auth, reportLimiter, validateRequest(['reason']), reportVideo);
+// Khiếu nại của chủ video với video bị gỡ; dùng chung giới hạn tốc độ với báo cáo.
+router.post('/:id/appeal', auth, reportLimiter, validateRequest(['message']), createAppeal);
+router.get('/:id/appeal', auth, getOwnAppeal);
 router.put('/:id', auth, updateVideo);
 router.delete('/:id', auth, deleteVideo);
 

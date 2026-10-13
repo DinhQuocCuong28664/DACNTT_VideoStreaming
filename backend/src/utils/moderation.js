@@ -82,6 +82,8 @@ const classifyOutcome = (autoStatus, decision) => {
 
 const MAX_REPORT_DETAILS = 500;
 const MAX_MODERATION_NOTE = 500;
+const MAX_APPEAL_MESSAGE = 500;
+const MAX_APPEAL_RESOLUTION = 500;
 
 /**
  * Điều kiện để một video xuất hiện trong danh sách công khai (trang chủ, trang
@@ -104,5 +106,7 @@ module.exports = {
   classifyOutcome,
   MAX_REPORT_DETAILS,
   MAX_MODERATION_NOTE,
+  MAX_APPEAL_MESSAGE,
+  MAX_APPEAL_RESOLUTION,
   publicListingFilter,
 };

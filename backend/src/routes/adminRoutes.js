@@ -11,6 +11,7 @@ const {
   getModerationEvents,
   decideVideo,
 } = require('../controllers/moderationController');
+const { listAppeals, resolveAppeal } = require('../controllers/appealController');
 
 // Mọi route quản trị: phải đăng nhập, rồi từng route kiểm tra QUYỀN riêng (utils/roles.js).
 // Không còn một cổng "admin" chung: operator và auditor vào đúng phần của mình.
@@ -25,6 +26,8 @@ router.patch(
   validateRequest(['decision', 'reasonCode']),
   decideVideo
 );
+router.get('/appeals', requirePermission('moderation:appeals'), listAppeals);
+router.patch('/appeals/:id', requirePermission('moderation:appeals'), validateRequest(['decision']), resolveAppeal);
 router.get('/metrics', requirePermission('metrics:read'), getModerationMetrics);
 router.get('/events', requirePermission('events:read'), getModerationEvents);
 
