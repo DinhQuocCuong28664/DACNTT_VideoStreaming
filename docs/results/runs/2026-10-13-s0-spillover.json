@@ -1,0 +1,51 @@
+{
+  "schema": 1,
+  "title": "S0: kiểm tra Batch tràn từ Fargate Spot sang Fargate On-Demand",
+  "runs": [
+    {
+      "id": "2026-10-13-staging-s0-spillover",
+      "date": "2026-10-13",
+      "account": "B",
+      "region": "ap-southeast-1",
+      "environment": "staging",
+      "path": "probe",
+      "capacity": {
+        "spot_max_vcpus": 8,
+        "ondemand_max_vcpus": 8
+      },
+      "chunk": null,
+      "video": {
+        "label": "sleep-240s-array-16",
+        "duration_s": null,
+        "size_gib": null,
+        "resolution": null,
+        "fps": null
+      },
+      "concurrency": 1,
+      "measured_from": "array_job_created",
+      "timings_s": {
+        "first_child_start": 22,
+        "last_child_start": 38,
+        "peak_at": 38
+      },
+      "result": {
+        "final_status": null,
+        "hls_verified": false,
+        "children": 16,
+        "peak_concurrent": 16,
+        "per_environment": {
+          "dacntt-staging-fargate-ce": 8,
+          "dacntt-staging-fargate-od-ce": 8
+        },
+        "per_environment_at_peak": {
+          "dacntt-staging-fargate-ce": 8,
+          "dacntt-staging-fargate-od-ce": 8
+        },
+        "spillover": true
+      },
+      "provenance": "measured",
+      "source": "scripts/bench/s0-spillover.js",
+      "notes": "Job sleep 1 vCPU mỗi phần tử; quota Spot 8 nên phần vượt 8 chỉ chạy được nếu Batch tràn sang môi trường On-Demand. Mốc thời gian lấy từ startedAt/stoppedAt của từng job."
+    }
+  ]
+}
