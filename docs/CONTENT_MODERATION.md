@@ -94,10 +94,38 @@ Chi tiết nhãn, độ tin cậy và số báo cáo **chỉ trả về cho qu�
 - Tab **Cần rà soát**: video bị hệ thống đánh dấu hoặc có báo cáo mở, video nhiều báo cáo nhất lên đầu. Tab **Đã gỡ**: để khôi phục khi có khiếu nại.
 - Mỗi video hiển thị nguồn đánh dấu, số báo cáo theo lý do, nhãn Rekognition kèm độ tin cậy và mốc thời gian (để tua tới đúng đoạn), cảnh báo nếu kiểm duyệt tự động chưa trọn vẹn, và danh sách báo cáo khi mở ra.
 - **Ảnh bìa mặc định được làm mờ và chuyển xám**, bấm mới hiện. Karunakaran & Ramakrishnan (HCOMP 2019) đo được rằng can thiệp đơn giản này giảm rõ tác động cảm xúc lên người kiểm duyệt mà không làm giảm chất lượng quyết định. Hàng rà soát, theo đúng định nghĩa, gom những hình ảnh dễ gây sốc nhất của cả nền tảng.
-- Mỗi quyết định (Giữ lại / Gỡ video / Khôi phục) đi qua hộp thoại xác nhận có ô ghi chú. Chủ video đọc được ghi chú này trên trang xem video của họ. Báo cáo mở chuyển sang `dismissed` (khi giữ lại) hoặc `actioned` (khi gỡ).
-- Quyền admin **không cấp được qua API nào**. Vai trò được đọc lại từ database ở mỗi request, nên thu hồi quyền có hiệu lực ngay lập tức.
+- Mỗi quyết định (Giữ lại / Gỡ video / Khôi phục) đi qua hộp thoại xác nhận có **mã lý do bắt buộc** (danh sách đóng theo từng loại quyết định) và ô ghi chú. Chủ video đọc được ghi chú này trên trang xem video của họ. Báo cáo mở chuyển sang `dismissed` (khi giữ lại) hoặc `actioned` (khi gỡ).
+- Vai trò được đọc lại từ database ở mỗi request, nên thu hồi quyền có hiệu lực ngay lập tức. Chỉ hai đường ghi vai trò: script `set-role.js` (để khởi tạo admin đầu tiên) và endpoint của admin.
 
-API: `GET /api/admin/stats`, `GET /api/admin/videos?tab=review|blocked`, `GET /api/admin/videos/:id/reports`, `PATCH /api/admin/videos/:id/moderation` với `{ decision: 'approve'|'block', note? }`.
+API: `GET /api/admin/stats`, `GET /api/admin/videos?tab=review|blocked`, `GET /api/admin/videos/:id/reports`, `PATCH /api/admin/videos/:id/moderation` với `{ decision: 'approve'|'block', reasonCode, note? }`.
+
+### 6.1. Ba vai trò và bảng quyền
+
+Kiểm tra theo **quyền** (`backend/src/utils/roles.js`), không theo tên vai trò; máy chủ chặn 403 từng request, giao diện chỉ ẩn tab cho gọn.
+
+| Quyền | admin | operator | auditor | user |
+|---|---|---|---|---|
+| Rà soát hàng chờ, giữ lại hoặc gỡ (kèm mã lý do) | có | có | không | không |
+| Xử lý khiếu nại, gán nhãn kiểm tra mẫu | có | có | không | không |
+| Xem số liệu FP/FN và nhật ký | có | không | có (chỉ đọc) | không |
+| Thấy email chủ video | có | không | không | không |
+| Đổi vai trò, lấy mẫu kiểm tra, đổi quyết định của admin | có | không | không | không |
+| Gửi khiếu nại cho video của mình | | | | có |
+
+Tách auditor khỏi operator để người xem số liệu không phải là người ra quyết định: việc giám sát không phụ thuộc vào người bị giám sát. Endpoint đổi vai trò (`PATCH /api/admin/users/:id/role`) không cho admin đổi vai trò của chính mình, không hạ admin cuối cùng, và mỗi lần đổi ghi vào nhật ký `RoleChange`.
+
+### 6.2. Đo false positive và false negative
+
+Trước đây quyết định của người ghi đè `moderation.status`, nên không còn biết máy đã nói gì và không đếm được máy sai bao nhiêu. Nay:
+
+- **Chụp kết luận của máy** vào `moderation.autoStatus` đúng một lần, ngay trước lần người xét đầu tiên. Quyết định của admin từ trước khi có tính năng này không có `autoStatus` và được tính là `unclassified` (không vào tỉ lệ nào).
+- **Nhật ký `ModerationEvent`** chỉ thêm, không sửa: ai quyết định, vai trò, trạng thái trước và sau, kết luận của máy, mã lý do, nhãn tại lúc quyết định.
+- **Phân loại** mỗi quyết định so với kết luận của máy: `false_positive` (máy gỡ, người khôi phục), `flag_noise` (máy chỉ đánh dấu, người duyệt), `false_negative` (máy duyệt, người gỡ), `true_positive`, `true_negative`, `unclassified`.
+- **Khiếu nại** (`POST /api/videos/:id/appeal`): chủ video khiếu nại một video bị gỡ, một lần cho mỗi quyết định; người không phải chủ nhận 404 để không dò được ID video. Chấp nhận khiếu nại đi qua cùng đường `decide()` nên được đếm là false positive; bác khiếu nại với video do máy gỡ ghi là một lần người xác nhận (true positive).
+- **Kiểm tra mẫu ngẫu nhiên**: admin lấy một mẫu video công khai mà máy đã duyệt (loại video có báo cáo mở và video đã vào mẫu), operator gán `pass` hoặc `fail`; `fail` gỡ video với lý do `audit_failed`. Đây là cách duy nhất để ước lượng tỉ lệ bỏ lọt, vì vi phạm chưa ai thấy thì không đếm được và báo cáo của người xem lệch về phía video nổi tiếng.
+- **Số liệu** (`GET /api/admin/metrics`): tỉ lệ gỡ nhầm, độ chính xác của cờ, số bỏ lọt đã biết, tỉ lệ bỏ lọt ước lượng từ mẫu, theo nhãn hàng đầu và theo mã lý do. Mọi tỉ lệ kèm khoảng tin cậy Wilson 95%, mẫu số và độ phủ (phần đã được người xét). Chọn Wilson thay vì khoảng chuẩn vì khoảng chuẩn sai ở mẫu nhỏ và tỉ lệ sát 0 hoặc 1.
+
+Hạn chế của phép đo: tỉ lệ gỡ nhầm chỉ tính trên phần video đã được người xét, nên lệch theo những ai khiếu nại; `coverage` cho biết phần đó. Mẫu kiểm tra nhỏ cho khoảng tin cậy rộng, đúng bản chất của việc ước lượng một tỉ lệ hiếm.
 
 ## 7. Triển khai
 
