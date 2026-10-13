@@ -5,10 +5,13 @@ const Report = require('../models/Report');
 const s3Service = require('./s3Service');
 const { publicListingFilter } = require('../utils/moderation');
 const httpError = require('../utils/httpError');
+const { can } = require('../utils/roles');
 const limits = require('../config/uploadLimits');
 const { MAX_VIDEO_SIZE_BYTES } = limits;
 
-const isAdminUser = (user) => Boolean(user && user.role === 'admin');
+// Xem và phát video đã bị gỡ hoặc đang chờ rà soát: quyền của admin và operator, không phải
+// của auditor (chỉ đọc số liệu). Kiểm tra theo quyền để thêm vai trò không phải sửa ở đây.
+const isAdminUser = (user) => can(user, 'content:viewRemoved');
 
 /**
  * Danh sách video (trang chủ, trang kênh, video liên quan) không cần hai mảng

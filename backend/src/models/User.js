@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
+const { ROLES } = require('../utils/roles');
 
 const userSchema = new mongoose.Schema(
   {
@@ -69,15 +70,16 @@ const userSchema = new mongoose.Schema(
       default: 0,
     },
     /**
-     * Vai trò. `admin` mở trang rà soát nội dung (/admin).
+     * Vai trò (xem utils/roles.js). `admin`, `operator` và `auditor` mở trang vận
+     * hành /admin với quyền khác nhau.
      *
-     * Không endpoint nào ghi trường này: đăng ký và đăng nhập Google chỉ đặt
-     * các trường liệt kê tường minh, nên người dùng không tự nâng quyền được.
-     * Cấp quyền bằng script: `node scripts/set-role.js <email> admin`.
+     * Đăng ký và đăng nhập Google chỉ đặt các trường liệt kê tường minh, nên người
+     * dùng không tự nâng quyền được. Chỉ hai đường ghi: script
+     * `node scripts/set-role.js <email> <vai trò>` và endpoint đổi vai trò của admin.
      */
     role: {
       type: String,
-      enum: ['user', 'admin'],
+      enum: ROLES,
       default: 'user',
     },
     // Password Reset
