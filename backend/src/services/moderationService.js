@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const Video = require('../models/Video');
 const Report = require('../models/Report');
 const ModerationEvent = require('../models/ModerationEvent');
+const AuditSample = require('../models/AuditSample');
 const videoService = require('./videoService');
 const httpError = require('../utils/httpError');
 const { can } = require('../utils/roles');
@@ -364,6 +365,12 @@ const getMetrics = async () => {
     })
     .sort((a, b) => b.reviewed - a.reviewed);
 
+  const [auditPending, auditPass, auditFail] = await Promise.all([
+    AuditSample.countDocuments({ status: 'pending' }),
+    AuditSample.countDocuments({ status: 'pass' }),
+    AuditSample.countDocuments({ status: 'fail' }),
+  ]);
+
   const reasonRows = await ModerationEvent.aggregate([
     { $group: { _id: { outcome: '$outcome', reasonCode: '$reasonCode' }, count: { $sum: 1 } } },
     { $sort: { count: -1 } },
@@ -388,6 +395,14 @@ const getMetrics = async () => {
     },
     missed: {
       falseNegative: sum((k) => k.auto === 'approved' && k.human && k.final === 'blocked'),
+    },
+    // Tỉ lệ false negative ƯỚC LƯỢNG từ mẫu ngẫu nhiên đã gán nhãn (xem auditService).
+    audit: {
+      sampled: auditPending + auditPass + auditFail,
+      pending: auditPending,
+      labelled: auditPass + auditFail,
+      failed: auditFail,
+      falseNegativeRate: wilsonInterval(auditFail, auditPass + auditFail),
     },
     unclassifiedDecisions: sum((k) => !k.auto && k.human),
     byLabel,

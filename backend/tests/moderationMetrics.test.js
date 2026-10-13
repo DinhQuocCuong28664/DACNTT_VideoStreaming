@@ -2,12 +2,14 @@ const { wilsonInterval } = require('../src/utils/stats');
 const moderationService = require('../src/services/moderationService');
 const Video = require('../src/models/Video');
 const ModerationEvent = require('../src/models/ModerationEvent');
+const AuditSample = require('../src/models/AuditSample');
 
 jest.mock('../src/models/Video');
 jest.mock('../src/models/Comment');
 jest.mock('../src/models/Report');
 jest.mock('../src/models/User');
 jest.mock('../src/models/ModerationEvent');
+jest.mock('../src/models/AuditSample');
 jest.mock('../src/services/s3Service');
 
 describe('wilsonInterval', () => {
@@ -57,6 +59,8 @@ describe('getMetrics', () => {
       { _id: { outcome: 'false_positive', reasonCode: 'fiction_or_game' }, count: 3 },
       { _id: { outcome: 'false_negative', reasonCode: 'report_upheld' }, count: 1 },
     ]);
+    // pending, pass, fail theo thứ tự getMetrics hỏi.
+    AuditSample.countDocuments.mockResolvedValueOnce(4).mockResolvedValueOnce(46).mockResolvedValueOnce(2);
   });
 
   afterEach(() => jest.clearAllMocks());
@@ -88,6 +92,11 @@ describe('getMetrics', () => {
 
     expect(metrics.missed.falseNegative).toBe(2);
     expect(metrics.unclassifiedDecisions).toBe(1);
+
+    // Tỉ lệ FN ước lượng chỉ từ mẫu ngẫu nhiên đã gán nhãn: 2 lọt trên 48 đã xét (4 chưa xét không tính).
+    expect(metrics.audit).toMatchObject({ sampled: 52, pending: 4, labelled: 48, failed: 2 });
+    expect(metrics.audit.falseNegativeRate.value).toBeCloseTo(2 / 48, 4);
+    expect(metrics.audit.falseNegativeRate.n).toBe(48);
   });
 
   it('tách tỉ lệ gỡ nhầm theo nhãn hàng đầu, nhãn nhiều mẫu nhất lên đầu', async () => {
