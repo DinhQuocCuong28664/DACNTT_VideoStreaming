@@ -22,6 +22,8 @@ import videoApi from '../api/videoApi';
 import VideoPlayer from '../components/Video/VideoPlayer';
 import VideoCard from '../components/Video/VideoCard';
 import ReportDialog from '../components/Video/ReportDialog';
+import AppealBox from '../components/Video/AppealBox';
+import { can } from '../utils/roles';
 import { formatViews, formatDate, timeAgo } from '../utils/format';
 import './WatchPage.css';
 
@@ -42,7 +44,9 @@ const WatchPage = () => {
   const [unavailable, setUnavailable] = useState(null);
   const [reportOpen, setReportOpen] = useState(false);
   const [toast, showToast] = useToast();
-  const isAdmin = currentUser?.role === 'admin';
+  // Xem và phát được video bị gỡ: admin và operator (không phải auditor). Tên biến giữ nguyên để
+  // không phải sửa các chỗ dùng bên dưới.
+  const isAdmin = can(currentUser, 'content:viewRemoved');
 
   // Engagement state
   const [likesCount, setLikesCount] = useState(0);
@@ -381,6 +385,7 @@ const WatchPage = () => {
                 {video.moderation?.note && (
                   <p className="watch-moderation-note">{t('watch.moderationNote', { note: video.moderation.note })}</p>
                 )}
+                {isRemoved && isOwnVideo && <AppealBox videoId={video._id} />}
               </div>
             </div>
           )}

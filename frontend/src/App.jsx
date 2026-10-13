@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from
 import { useAuth } from './context/useAuth';
 import { registerNavigator } from './api/axiosClient';
 import { isInternalPath } from './hooks/useAuthRedirect';
+import { isStaff } from './utils/roles';
 import MainLayout from './components/Layout/MainLayout';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
@@ -79,18 +80,19 @@ const ProtectedRoute = ({ children }) => {
 };
 
 /**
- * Admin Route — chỉ quản trị viên (role === 'admin').
+ * Admin Route — chỉ đội ngũ vận hành (admin, operator, auditor).
  *
  * Khách được đưa sang đăng nhập như ProtectedRoute; người dùng thường nhận
  * trang 403. Đây chỉ là lớp giao diện: mọi endpoint /api/admin tự kiểm tra
- * vai trò ở máy chủ (middleware requireAdmin).
+ * quyền ở máy chủ (middleware requirePermission). Từng tab của trang /admin
+ * lại tự ẩn theo quyền của vai trò.
  */
 const AdminRoute = ({ children }) => {
   const { user } = useAuth();
 
   return (
     <ProtectedRoute>
-      {user?.role === 'admin' ? children : <Navigate to="/403" replace />}
+      {isStaff(user) ? children : <Navigate to="/403" replace />}
     </ProtectedRoute>
   );
 };

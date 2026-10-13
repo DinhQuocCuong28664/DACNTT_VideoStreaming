@@ -20,6 +20,7 @@ import {
   MdAdminPanelSettings,
 } from 'react-icons/md';
 import { useAuth } from '../../context/useAuth';
+import { isStaff } from '../../utils/roles';
 import { CATEGORIES, ALL_CATEGORY } from '../../i18n/categories';
 
 const CATEGORY_ICONS = {
@@ -83,7 +84,7 @@ const Guide = ({ variant = 'full', onNavigate }) => {
           activeIcon: MdSettings,
           active: location.pathname === '/settings',
         },
-        user?.role === 'admin' && {
+        isStaff(user) && {
           to: '/admin',
           label: t('nav.admin'),
           icon: MdOutlineAdminPanelSettings,
