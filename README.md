@@ -74,9 +74,9 @@ Từ vấn đề trên, đề tài đề xuất xây dựng một nền tảng c
 ## 5. CÁC CHỨC NĂNG CHÍNH
 
 1. **Đăng ký và đăng nhập:** Hệ thống hỗ trợ người dùng đăng ký và đăng nhập tài khoản. Quá trình xác thực sử dụng JWT Authentication với thời hạn Bearer token an toàn.
-2. **Tải video trực tiếp lên Amazon S3 (presigned POST):** Khi người dùng chọn video từ trình duyệt, Frontend gọi Backend API (`POST /api/videos/initiate-upload`) để tạo bản ghi DB trước và nhận một **presigned POST** có thời hạn 15 phút. Tệp video sau đó được tải trực tiếp từ trình duyệt lên Amazon S3 mà không đi qua Backend Server, qua đó giảm tải cho máy chủ Backend. Policy của presigned POST do chính S3 kiểm tra trước khi nhận byte nào: đúng key, đúng `Content-Type` đã kiểm tra và dung lượng 1 byte – 2 GB (presigned PUT của AWS SDK v3 chỉ ký `host`, nên không ép được hai điều kiện sau). Giao diện tích hợp bộ đo telemetry tải lên thời gian thực (tốc độ tải MB/s, thời gian ước tính còn lại ETA, thanh tiến độ phần trăm) và nút Hủy tải lên an toàn (`AbortController` hủy ngay lập tức request tải lên S3, đồng thời kích hoạt hàm `discardDraftVideo()` tự động dọn dẹp bản ghi nháp `UPLOADING` trên MongoDB ở cả 3 nhánh thoát: Hủy tải, Đổi tệp khác, hoặc Lỗi mạng/S3).
+2. **Tải video trực tiếp lên Amazon S3 (presigned POST):** Khi người dùng chọn video từ trình duyệt, Frontend gọi Backend API (`POST /api/videos/initiate-upload`) để tạo bản ghi DB trước và nhận một **presigned POST** có thời hạn 15 phút. Tệp video sau đó được tải trực tiếp từ trình duyệt lên Amazon S3 mà không đi qua Backend Server, qua đó giảm tải cho máy chủ Backend. Policy của presigned POST do chính S3 kiểm tra trước khi nhận byte nào: đúng key, đúng `Content-Type` đã kiểm tra và dung lượng từ 1 byte đến mức trần đang áp dụng (mặc định 2 GiB, production 20 GiB; presigned PUT của AWS SDK v3 chỉ ký `host`, nên không ép được hai điều kiện sau). Tệp lớn hơn 512 MiB không dùng một POST duy nhất mà được tải theo từng phần (multipart) 32 MiB: backend mở lượt tải rồi cấp URL ký riêng cho từng phần, mỗi URL ký đúng dung lượng của phần đó nên S3 tự từ chối phần sai kích thước; trình duyệt tải song song 3 phần và thử lại riêng từng phần tối đa 4 lần; trước khi ghép, backend liệt kê các phần S3 đã nhận và chỉ ghép khi đủ phần, đúng dung lượng. Giao diện tích hợp bộ đo telemetry tải lên thời gian thực (tốc độ tải MB/s, thời gian ước tính còn lại ETA, thanh tiến độ phần trăm) và nút Hủy tải lên an toàn (`AbortController` hủy ngay lập tức request tải lên S3, đồng thời kích hoạt hàm `discardDraftVideo()` tự động dọn dẹp bản ghi nháp `UPLOADING` trên MongoDB ở cả 3 nhánh thoát: Hủy tải, Đổi tệp khác, hoặc Lỗi mạng/S3).
 3. **Xem video bằng HLS & Trình phát tuỳ biến:** Hệ thống tích hợp thư viện `HLS.js` để phân tích tệp manifest `.m3u8`, tải các đoạn video `.ts` theo thời gian thực và phát nội dung trên trình duyệt. Trình phát được trang bị thanh tua thời gian (timeline scrubber) có tooltip bám theo vị trí con trỏ chuột, hiển thị mốc thời gian tại điểm đang trỏ kèm ảnh xem trước (ảnh bìa cố định, không phải khung hình tại vị trí tua).
-4. **Adaptive Bitrate Streaming (ABR):** Trình phát video có khả năng tự động chuyển đổi giữa các mức chất lượng (tối đa 360p, 720p và 1080p) dựa trên tốc độ mạng hiện tại của người xem, hoặc cho phép người xem chủ động chọn mức chất lượng mong muốn. Các mức được chọn theo kích thước nguồn: không phóng to quá nguồn, giữ nguyên tỉ lệ khung hình (video quay dọc có khung dọc, không đệm viền đen).
+4. **Adaptive Bitrate Streaming (ABR):** Trình phát video có khả năng tự động chuyển đổi giữa các mức chất lượng (tối đa sáu mức từ 144p đến 1080p) dựa trên tốc độ mạng hiện tại của người xem, hoặc cho phép người xem chủ động chọn mức chất lượng mong muốn. Các mức được chọn theo kích thước nguồn: không phóng to quá nguồn, giữ nguyên tỉ lệ khung hình (video quay dọc có khung dọc, không đệm viền đen).
 5. **Chia sẻ video & Quản lý quyền riêng tư:** Người dùng có thể chia sẻ video thông qua đường dẫn công khai hoặc riêng tư. Quyền riêng tư được kiểm soát đồng bộ ở cả tầng Backend API lẫn tầng CDN Edge Location qua CloudFront Signed Cookies.
 6. **Trang cá nhân – Channel Management:** Người dùng có thể quản lý danh sách video đã tải lên, theo dõi trạng thái xử lý — đây là nơi duy nhất thấy được video đang ở `PROCESSING` hoặc `ERROR`, vì trang danh mục công khai chỉ liệt kê video đã `READY` — xem lượt xem, thao tác nhanh qua menu 3 chấm hiện đại: đổi trực tiếp trạng thái hiển thị (Public, Unlisted, Private), mở hộp thoại chỉnh sửa kiểu YouTube Studio (tiêu đề, mô tả, danh mục, visibility; tags hiện chỉ đặt được lúc tải lên), hoặc xóa video (xóa sạch DB record và toàn bộ thư mục HLS trên S3). Danh sách video trên trang kênh sắp xếp được theo Mới nhất / Phổ biến / Cũ nhất (`GET /api/videos/user/:userId?sort=`).
 7. **Gợi ý video liên quan (Related Videos) & Tính năng mở rộng:** Hệ thống gợi ý video liên quan (`GET /api/videos/:id/related`) hiển thị ở danh sách "Tiếp theo" bên phải trang xem video, tự động đề xuất dựa trên tag và danh mục tương đồng; thuật toán khoá cứng bộ lọc bảo mật chỉ hiển thị video công khai đã sẵn sàng (`visibility: 'public'` và `status: 'READY'`) đồng thời đóng kín lỗ hổng existence oracle đối với video riêng tư/chưa liệt kê. Bên cạnh đó là các tính năng: Tìm kiếm & lọc video (Search & Filter với regex escaping an toàn), nút Tương tác Like/Dislike, Hệ thống Bình luận (Comments), Đa ngôn ngữ (i18n Tiếng Việt & Tiếng Anh), Phân loại Danh mục (Categories) và Tương thích Responsive Mobile. Giao diện theo bố cục quen thuộc kiểu YouTube: thanh trên với ô tìm kiếm ở giữa, menu trái thu gọn được, lưới thẻ video phẳng cuộn vô hạn, chủ đề sáng / tối / theo thiết bị.
@@ -99,14 +99,20 @@ sequenceDiagram
     participant S3Proc as S3 Processed Bucket
     participant DB as MongoDB Atlas
 
-    User->>S3Raw: Upload Video gốc qua presigned POST (S3 ép key, Content-Type, tối đa 2 GB)
+    User->>S3Raw: Upload video gốc (presigned POST, hoặc multipart từng phần 32 MiB cho tệp trên 512 MiB; S3 ép key, Content-Type, dung lượng)
     S3Raw-->>SQS: Trigger Event Notification (s3:ObjectCreated)
     SQS-->>Lambda: Poll Message & Trigger Lambda
     Lambda->>Batch: SubmitJob (với VIDEO_ID & RAW_S3_KEY)
     activate Batch
     Batch->>DB: Cập nhật status = PROCESSING
-    Batch->>S3Raw: Download video gốc
-    Batch->>Batch: Transcode FFmpeg (tối đa 360p/720p/1080p theo nguồn, .ts 6s, master.m3u8, thumbnail)
+    alt Video dưới 5 phút: một job
+        Batch->>S3Raw: Download video gốc
+        Batch->>Batch: Transcode FFmpeg (tối đa sáu mức 144p đến 1080p theo nguồn, .ts 6s, master.m3u8, thumbnail)
+    else Video từ 5 phút: chia đoạn song song
+        Batch->>Batch: Planner nộp 2 job âm thanh, mảng job chunk (hàng đợi ưu tiên thấp) và job ghép
+        Batch->>S3Raw: Mỗi chunk đọc đoạn của mình qua HTTP Range và mã hoá mọi mức
+        Batch->>Batch: Job ghép: playlist, BANDWIDTH đo thật, thumbnail, kiểm duyệt
+    end
     Batch->>S3Proc: Upload toàn bộ HLS files & thumbnail
     Batch->>DB: Cập nhật status = READY, duration, hlsUrl, thumbnailUrl
     deactivate Batch
@@ -116,19 +122,30 @@ sequenceDiagram
 ### Chi tiết 10 Bước Chuyển mã:
 1. Khi tệp video gốc được tải thành công lên S3 Raw Bucket, Amazon S3 tự động phát ra **Event Notification**.
 2. Sự kiện được chuyển vào **Amazon SQS**. SQS đóng vai trò Message Queue và bộ đệm nhằm bảo đảm các nhiệm vụ xử lý không bị mất khi có hàng trăm video được tải lên cùng thời điểm.
-3. Amazon SQS kích hoạt AWS Batch chạy trên AWS Fargate thông qua Lambda Job Submitter. AWS Batch tự động tạo Docker Container chứa FFmpeg, tải video gốc từ Amazon S3 và thực hiện quá trình chuyển mã.
+3. Amazon SQS kích hoạt AWS Batch chạy trên AWS Fargate thông qua Lambda Job Submitter. AWS Batch tự động tạo Docker Container chứa FFmpeg, tải video gốc từ Amazon S3 và thực hiện quá trình chuyển mã. Với video từ 5 phút trở lên, job đầu tiên không mã hoá mà đóng vai trò lập kế hoạch, rồi nộp tiếp các job con để chia việc chạy song song (xem mục 6.1).
 4. Video được chuyển sang định dạng HLS và chia thành các đoạn `.ts` có thời lượng 6 giây.
-5. Hệ thống tạo tối đa ba phiên bản chất lượng (8-bit 4:2:0, để nguồn 10-bit HDR hay 4:4:4 vẫn chuyển mã được):
+5. Hệ thống tạo tối đa sáu phiên bản chất lượng (8-bit 4:2:0, để nguồn 10-bit HDR hay 4:4:4 vẫn chuyển mã được):
+   - **144p** với bitrate 120 kbps;
+   - **240p** với bitrate 240 kbps;
    - **360p** với bitrate 400 kbps;
+   - **480p** với bitrate 750 kbps;
    - **720p** với bitrate 1,5 Mbps;
    - **1080p** với bitrate 4 Mbps.
 
-   Mỗi mức co nguồn vào khung của nó mà không phóng to: nguồn 480p cho ra 360p và một mức ở đúng 854x480 thay vì một bản "1080p" phóng to 2,25 lần. Kết quả HLS được tải lên S3 song song 8 tệp một lúc.
+   Mỗi mức co nguồn vào khung của nó mà không phóng to: nguồn 480p cho ra 360p và một mức ở đúng 854x480 thay vì một bản "1080p" phóng to 2,25 lần. Kết quả HLS được tải lên S3 song song 8 tệp một lúc. Đường một-job cho video dài hơn 20 phút (nay chỉ còn dùng khi không chia đoạn được) giữ thang rút gọn 360p, 720p và 1080p.
 6. Sau đó, hệ thống sinh Master Playlist có định dạng `.m3u8`, trong đó liệt kê các phiên bản chất lượng khả dụng. HLS.js sử dụng Master Playlist để xác định các mức chất lượng có thể phát.
 7. Khi quá trình chuyển mã hoàn tất, toàn bộ tệp segment `.ts` và manifest `.m3u8` được tải lên S3 Processed Bucket.
 8. Các thông tin metadata gồm tiêu đề, mô tả, URL của manifest, thumbnail và thời lượng video được lưu vào MongoDB Atlas.
 9. Docker Container tự động bị hủy sau khi hoàn thành nhiệm vụ. Hệ thống chỉ phát sinh chi phí cho khoảng thời gian container thực sự thực thi quá trình chuyển mã.
-10. Chống xử lý trùng và chống kẹt trạng thái: Lambda xoá message SQS ngay khi nộp job, nên việc thử lại nằm ở `retry_strategy` của AWS Batch (chỉ thử lại lỗi hạ tầng như mất Spot capacity). Mọi lần ghi của transcoder đều có điều kiện (không bao giờ ghi đè video đã `READY`), và một bộ đối soát định kỳ trong backend đưa video kẹt ở `PROCESSING` quá 6 giờ hoặc bản nháp `UPLOADING` bỏ dở quá 1 ngày về trạng thái đúng. (Cơ chế Heartbeat gia hạn `VisibilityTimeout` chỉ dùng ở chế độ `worker` chạy tay của transcoder, không nằm trên đường chạy production.)
+10. Chống xử lý trùng và chống kẹt trạng thái: Lambda xoá message SQS ngay khi nộp job, nên việc thử lại nằm ở `retry_strategy` của AWS Batch (chỉ thử lại lỗi hạ tầng như mất Spot capacity). Mọi lần ghi của transcoder đều có điều kiện (không bao giờ ghi đè video đã `READY`), và một bộ đối soát định kỳ trong backend đưa video kẹt ở `PROCESSING` quá 6 giờ hoặc bản nháp `UPLOADING` bỏ dở quá 1 ngày về trạng thái đúng. (Cơ chế Heartbeat gia hạn `VisibilityTimeout` chỉ dùng ở chế độ `worker` chạy tay của transcoder, không nằm trên đường chạy production. Riêng đường chia đoạn có một heartbeat khác: các job con định kỳ ghi lại mốc `updatedAt` của video đang `PROCESSING`, để bộ đối soát không đánh nhầm một video dài là bị kẹt.)
+
+### 6.1 Chuyển mã chia đoạn song song cho video dài
+
+Một job FFmpeg 1 vCPU chạy chậm hơn thời gian thực khoảng 5 lần, nên một video dài sẽ vượt giới hạn thời gian 7.200 giây của một job và bị bộ đối soát đánh lỗi. Vì vậy video từ 5 phút trở lên (ngưỡng là biến Terraform `chunk_threshold_seconds`, hiện là 300 giây) đi đường chia đoạn. Job do Lambda nộp trở thành job lập kế hoạch: nó đọc cấu trúc của nguồn qua HTTP, chia video thành các đoạn có độ dài là bội số nguyên của GOP 6 giây, rồi nộp ba loại job con vào cùng AWS Batch. Hai job âm thanh (64 kbps và 128 kbps, mỗi bitrate được mã hoá đúng một lần cho cả video), một mảng job (Batch array job) mà mỗi phần tử mã hoá một đoạn ở mọi mức chất lượng, và một job ghép chỉ chạy khi mọi đoạn đã xong. Job ghép nối các playlist, đo BANDWIDTH thật từ các segment, tạo thumbnail, chạy kiểm duyệt rồi đặt trạng thái `READY`.
+
+Mảng đoạn được đưa vào một hàng đợi ưu tiên thấp dùng chung môi trường Fargate Spot với hàng đợi chính, nên video ngắn nộp sau không phải chờ hết một video dài. Mỗi đoạn chạy trên task 4 vCPU, và số đoạn được chọn theo số chỗ chạy được cùng lúc (khoảng ba đoạn cho mỗi chỗ, nhỏ nhất khoảng một phút). Khi nguồn không thể chia an toàn (khung hình biến thiên, không biết thời lượng, hình và tiếng lệch nhau quá 0,25 giây), pipeline tự lùi về đường một-job.
+
+Với cùng một video 1080p dài 25 phút ở hạn mức 8 vCPU Fargate Spot, đường một-job cần khoảng 132 phút (ước tính theo 5,3 lần thời gian thực, vượt giới hạn của một job). Cấu hình chia đoạn ban đầu (5 đoạn, task 1 vCPU) mất 36 phút 16 giây từ lúc tải xong đến `READY` (đo trên production), và cấu hình hiện tại mất 20 phút 23 giây (đo trên staging). Video 5 phút mất 26,7 phút ở đường một-job so với 11,9 phút ở đường chia đoạn; video 4 giờ mất 3 giờ 5 phút (đo với task 1 vCPU). Chi tiết và phương pháp đo xem [`docs/CHUNKED_TRANSCODING_DESIGN.md`](docs/CHUNKED_TRANSCODING_DESIGN.md) mục 10.
 
 ---
 
@@ -146,7 +163,7 @@ sequenceDiagram
 ## 8. HẠ TẦNG CLOUD-NATIVE VÀ CONTAINERIZATION
 
 - Môi trường xử lý video gồm FFmpeg và Node.js được đóng gói thành Docker Image.
-- Docker Image được tối ưu thông qua **Multi-stage Build** (Base image: `node:24-slim` trang bị FFmpeg qua apt) nhằm giảm kích thước image và hạn chế các thành phần không cần thiết trong môi trường thực thi. Phiên bản Node.js đã trải qua 2 lần nâng cấp: từ `node:18-slim` lên `node:20-slim` do Mongoose 9.x phụ thuộc vào Web Crypto API vốn chưa khả dụng đầy đủ trên Node.js 18; và từ `node:20-slim` lên `node:24-slim` (10/8/2026) vì Node.js 20 đã hết vòng đời hỗ trợ (EOL 30/4/2026, không còn nhận bản vá bảo mật). Chọn Node 24 vì đây là bản Active LTS (hỗ trợ đến 4/2028), ổn định hơn cho production so với bản Current (Node 26, chưa vào LTS tại thời điểm nâng cấp).
+- Docker Image được tối ưu thông qua **Multi-stage Build** (Base image: `node:24-slim`; FFmpeg 8.1.2 là bản dựng tĩnh của `mwader/static-ffmpeg`, ghim theo digest và sao chép vào image thay vì cài bằng apt, vì các phiên bản FFmpeg khác nhau cho kết quả khác nhau ở ranh giới giữa các đoạn) nhằm giảm kích thước image và hạn chế các thành phần không cần thiết trong môi trường thực thi. Phiên bản Node.js đã trải qua 2 lần nâng cấp: từ `node:18-slim` lên `node:20-slim` do Mongoose 9.x phụ thuộc vào Web Crypto API vốn chưa khả dụng đầy đủ trên Node.js 18; và từ `node:20-slim` lên `node:24-slim` (10/8/2026) vì Node.js 20 đã hết vòng đời hỗ trợ (EOL 30/4/2026, không còn nhận bản vá bảo mật). Chọn Node 24 vì đây là bản Active LTS (hỗ trợ đến 4/2028), ổn định hơn cho production so với bản Current (Node 26, chưa vào LTS tại thời điểm nâng cấp).
 - Sau khi được xây dựng, Docker Image được đưa lên **Amazon Elastic Container Registry (ECR)** để AWS Batch sử dụng khi khởi tạo các tác vụ chuyển mã.
 - AWS Batch chạy trên **AWS Fargate** (hỗ trợ `FARGATE_SPOT` ở môi trường Dev giúp tiết kiệm 70% chi phí) chịu trách nhiệm quản lý các tác vụ xử lý video. Hệ thống có khả năng tự động tạo thêm container khi số lượng nhiệm vụ tăng và kết thúc container khi nhiệm vụ hoàn thành.
 
@@ -173,6 +190,8 @@ graph TD
     D --> D1[Stage 1: ESLint Check]
     D1 --> D2[Stage 2: Gitleaks Scan]
     D2 --> D3[Stage 3: Build Docker Image + Trivy Image Scan + Push ECR]
+    D1 --> D1b[Stage 1b: Kiểm tra chuyển mã chia đoạn trong image]
+    D1b --> D3
     D3 --> D4[Stage 4: Update AWS Batch Job Definition]
 
     G --> G1[Stage 1: oxlint Code Quality]
@@ -192,8 +211,8 @@ graph TD
 ```
 
 ### Các Workflows Chính:
-1. `ci-backend.yml`: Chạy Jest Unit Tests (220 test trên 21 test suites) → ESLint check → Gitleaks secret detection → Trivy SCA scan.
-2. `ci-transcoder.yml`: Chạy Jest Unit Tests (140 test trên 9 test suites) → ESLint check → Gitleaks → Build Docker Multi-stage → Trivy Container Scan → Push ECR → Register AWS Batch Job Definition mới.
+1. `ci-backend.yml`: Chạy Jest Unit Tests (288 test trên 24 test suites) → ESLint check → Gitleaks secret detection → Trivy SCA scan.
+2. `ci-transcoder.yml`: Chạy Jest Unit Tests (361 test trên 17 test suites) → ESLint check → Gitleaks → kiểm tra ranh giới đoạn bằng FFmpeg thật bên trong chính image (Stage 1b) → Build Docker Multi-stage → Trivy Container Scan → Push ECR → Register AWS Batch Job Definition mới.
 3. `ci-frontend.yml`: oxlint Code Quality → Build Vite → Tự động deploy lên S3 Static Hosting khi merge vào `main`/`master` (`s3 sync --delete` loại trừ `avatars/`, nơi chứa ảnh đại diện người dùng tải lên) → Invalidate cache CloudFront của frontend.
 4. `ci-infra.yml`: `terraform fmt -check` → `terraform validate` cho cả `dev` và `prod` → Trivy IaC Config Scan.
 5. `security-scan.yml`: DevSecOps Gate cho mọi Pull Request, gồm Gitleaks Secret Detection, Trivy Dependency Scan và SAST bằng `eslint-plugin-security`.
@@ -233,7 +252,7 @@ Cách phân tách này xuất phát từ thực tế vận hành: phần lớn l
 
 ## 10. INFRASTRUCTURE AS CODE
 
-Toàn bộ hạ tầng AWS được quản lý bằng **Terraform** theo phương pháp Infrastructure as Code (IaC) chia thành 11 modules độc lập:
+Toàn bộ hạ tầng AWS được quản lý bằng **Terraform** theo phương pháp Infrastructure as Code (IaC) chia thành 13 modules độc lập:
 
 | Module | Đường dẫn | Chức năng chính |
 |---|---|---|
@@ -245,9 +264,11 @@ Toàn bộ hạ tầng AWS được quản lý bằng **Terraform** theo phươn
 | `secrets` | `infrastructure/modules/secrets` | AWS Secrets Manager lưu `mongodb-uri` & `jwt-secret` |
 | `sns` | `infrastructure/modules/sns` | SNS Notification Topics (`transcode-complete`, `dlq-alert`) + Email Subscriptions |
 | `monitoring` | `infrastructure/modules/monitoring` | CloudWatch Log Groups, Alarms (DLQ Depth > 0), CloudWatch Dashboard |
-| `batch` | `infrastructure/modules/batch` | Fargate Compute Environment (SPOT/ON_DEMAND), Job Queue, Job Definition |
+| `batch` | `infrastructure/modules/batch` | Fargate Compute Environment (SPOT/ON_DEMAND), hai Job Queue (chính và ưu tiên thấp cho các chunk), Job Definition |
 | `lambda` | `infrastructure/modules/lambda` | Lambda Job Submitter (Node.js 22), SQS Event Source Mapping trigger |
 | `cloudfront` | `infrastructure/modules/cloudfront` | CloudFront Distribution, Origin Access Control (OAC), HLS Cache Policy |
+| `backend-userdata` | `infrastructure/modules/backend-userdata` | Dựng chuỗi user-data của EC2 backend từ `scripts/ec2-userdata.sh` (không tạo tài nguyên) |
+| `cloudflare-ips` | `infrastructure/modules/cloudflare-ips` | Dải IPv4 của Cloudflare cho security group của backend (không tạo tài nguyên) |
 
 Hệ thống phân tách môi trường rõ ràng giữa `infrastructure/environments/dev` và `infrastructure/environments/prod`, hỗ trợ khởi tạo toàn bộ hạ tầng thông qua một lệnh `terraform apply`.
 
@@ -286,17 +307,17 @@ Hệ thống phân tách môi trường rõ ràng giữa `infrastructure/environ
 ## 14. SẢN PHẨM DỰ KIẾN
 
 1. Phân hệ đăng ký và đăng nhập người dùng (JWT Authentication).
-2. Chức năng tải video trực tiếp lên Amazon S3 bằng presigned POST (S3 ép dung lượng và định dạng).
+2. Chức năng tải video trực tiếp lên Amazon S3 bằng presigned POST, và tải theo từng phần (multipart) cho tệp trên 512 MiB (S3 ép dung lượng và định dạng).
 3. Trang cá nhân để quản lý video, xem lượt xem và xóa video.
 4. Chức năng chia sẻ video công khai hoặc riêng tư.
-5. Trình phát video hỗ trợ HLS và Adaptive Bitrate Streaming (360p, 720p, 1080p).
+5. Trình phát video hỗ trợ HLS và Adaptive Bitrate Streaming (144p đến 1080p).
 6. Hệ thống chuyển mã video tự động sang HLS dùng FFmpeg trong Docker Container.
 7. Quy trình xử lý sự kiện Event-Driven sử dụng Amazon S3, Amazon SQS, AWS Lambda và AWS Batch.
 8. Hệ thống Serverless Container sử dụng AWS Fargate (`FARGATE_SPOT`).
 9. Hệ thống phân phối video bảo mật qua Amazon CloudFront (OAC).
 10. Docker Image chứa FFmpeg và Node.js (Multi-stage build).
 11. CI/CD Pipeline 4 giai đoạn sử dụng GitHub Actions.
-12. Bộ mã nguồn Infrastructure as Code 11 modules sử dụng Terraform.
+12. Bộ mã nguồn Infrastructure as Code 13 modules sử dụng Terraform.
 13. Khả năng khởi tạo toàn bộ hạ tầng AWS thông qua một lệnh `terraform apply`.
 14. Mã nguồn hoàn chỉnh của toàn bộ hệ thống (Monorepo).
 15. Tài liệu phân tích và thiết kế, Báo cáo đánh giá hiệu năng chuyển mã, Kịch bản k6 Load Test và Báo cáo phân tích tối ưu chi phí FinOps.
@@ -306,7 +327,7 @@ Hệ thống phân tách môi trường rõ ràng giữa `infrastructure/environ
 ## 15. KẾT QUẢ DỰ KIẾN
 
 - Người dùng có thể đăng ký tài khoản, tải video lên, xem video với nhiều mức chất lượng và chia sẻ video, với trải nghiệm tương tự một nền tảng chia sẻ video trực tuyến chuyên nghiệp.
-- Khi video được tải lên, hệ thống tự động kích hoạt Transcoding Pipeline, chuyển video sang HLS với các mức chất lượng 360p, 720p và 1080p, lưu dữ liệu đã xử lý, phân phối video qua CDN và đưa video vào trạng thái sẵn sàng để xem.
+- Khi video được tải lên, hệ thống tự động kích hoạt Transcoding Pipeline, chuyển video sang HLS với các mức chất lượng từ 144p đến 1080p, lưu dữ liệu đã xử lý, phân phối video qua CDN và đưa video vào trạng thái sẵn sàng để xem.
 - Toàn bộ hạ tầng AWS được mô tả và quản lý bằng Terraform, cho phép triển khai hệ thống thông qua một lệnh.
 - CI/CD Pipeline tự động hóa các bước từ kiểm tra mã nguồn, chạy unit test, xây dựng Docker Image, cập nhật AWS Batch Job Definition đến triển khai Backend API.
 - Đề tài cung cấp báo cáo phân tích hiệu năng chuyển mã và báo cáo so sánh chi phí giữa kiến trúc máy chủ hoạt động liên tục với kiến trúc Serverless Container chỉ tính phí theo thời gian thực thi.
