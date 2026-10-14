@@ -121,8 +121,9 @@ two days, and a periodic reconciler in the backend removes a draft that has stay
 \label{sec:chunked-design}
 
 The pipeline of Figure~\ref{fig:sequence} gives each video to one container. That is adequate for
-short videos and fails for long ones: on a single vCPU, FFmpeg ran between four and five times
-slower than real time in the measurements of Section~\ref{sec:chunked-evaluation}, so a long source
+short videos and fails for long ones: on a single vCPU, FFmpeg ran roughly four to five times
+slower than real time in the measurements of Sections~\ref{sec:pipeline-evaluation} and
+\ref{sec:chunked-evaluation}, so a long source
 would exceed the two-hour limit placed on a job however many vCPUs the account holds. The design
 therefore divides a video of five minutes or more into chunks that are encoded concurrently, and
 keeps the single-container path for shorter videos, where splitting costs more than it saves.
