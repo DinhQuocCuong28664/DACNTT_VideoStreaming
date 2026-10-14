@@ -17,7 +17,9 @@ is buffered in Amazon SQS and dispatched by an AWS Lambda job submitter to AWS B
 running on AWS Fargate. A container packaging FFmpeg is created only when there is work to
 do, produces up to six renditions from 144p to 1080p together with a master playlist and
 a thumbnail, uploads the result to a processed bucket, updates the metadata in MongoDB
-Atlas, and then terminates. Content is delivered through Amazon CloudFront with Origin
+Atlas, and then terminates. A video of five minutes or more is divided at group-of-pictures
+boundaries and encoded by an array of parallel jobs; a four-hour source reached playback 135
+minutes after its upload finished at 8~vCPU. Content is delivered through Amazon CloudFront with Origin
 Access Control, and every stream is gated at the edge by CloudFront Signed Cookies, so that a
 viewer without a valid signature is rejected even when they know the exact manifest URL; a
 video's visibility setting governs who the backend will issue those cookies to, not whether
@@ -32,7 +34,7 @@ request whenever a fixable critical vulnerability is detected.
 The system is evaluated along four dimensions: quality of experience, measured both as
 Time-to-First-Frame and, by driving the deployed player in a headless browser under emulated
 network conditions, as rebuffering ratio, bitrate switching and the bitrate a viewer actually
-receives; transcoding pipeline latency across 100~MB, 500~MB, and 1~GB inputs,
+receives; transcoding pipeline latency across 100~MB, 500~MB, and 1~GB inputs and for videos of up to four hours,
 scalability under a concurrent upload stress test, and operating cost compared against a
 traditional always-on Amazon EC2 deployment. The cost analysis shows that, for the
 architecture-dependent portion of the bill, the serverless approach removes almost all idle

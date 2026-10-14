@@ -12,7 +12,7 @@ sequenceDiagram
     User->>API: POST /initiate-upload
     API->>DB: Create record, UPLOADING
     API-->>User: Pre-signed URL, 15 min
-    User->>S3Raw: PUT source video
+    User->>S3Raw: PUT video, or 32 MiB parts
 
     User->>API: PATCH /confirm-upload
     API->>DB: Set PROCESSING
@@ -25,11 +25,11 @@ sequenceDiagram
 
     activate Batch
     Batch->>S3Raw: Download source
-    Batch->>Batch: FFmpeg 360p, 720p, 1080p
+    Batch->>Batch: Screen frames, FFmpeg up to 6 renditions
     Batch->>Batch: master.m3u8 + thumbnail
     Batch->>S3Proc: Upload segments
     Batch->>DB: Conditional write, READY
     deactivate Batch
 
     Note over Batch,DB: The conditional write is<br/>what guards duplicate jobs
-    Note over Batch: Container ends,<br/>Fargate scales to zero
+    Note over Batch: Container ends, Fargate scales to zero.<br/>5 minutes or more: planner, chunk array, finalizer

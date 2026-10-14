@@ -41,7 +41,8 @@ initiates an upload until the video becomes available.
 \begin{sidewaysfigure}
 \centering
 \includegraphics[width=\textheight]{images/02-transcoding-sequence.png}
-\caption{\textit{Sequence diagram of the event-driven transcoding pipeline}}
+\caption{\textit{Sequence diagram of the event-driven transcoding pipeline for one container;
+a video of five minutes or more takes the chunked path of Table~\ref{tab:chunked-jobs}}}
 \label{fig:sequence}
 \end{sidewaysfigure}
 
@@ -88,6 +89,75 @@ Batch. Recording which of the two modes the evaluated system actually executes m
 because a mechanism present in the source but absent from the deployed path cannot be credited
 with the guarantees it would provide if it ran. Section~\ref{sec:challenges} draws the same
 distinction about content protection.
+
+\subsection{Upload of Large Files}
+\label{sec:upload-design}
+
+The sequence of Figure~\ref{fig:sequence} uses one pre-signed request, which suits files up to a
+few hundred megabytes. For larger files the design switches to a multipart upload, because a single
+transfer that fails near its end must be repeated in full and Amazon S3 accepts at most 5~GiB in one
+request. The backend chooses the path from the declared size: a file of up to 512~MiB is sent with
+one pre-signed POST, and a larger file is divided into parts of 32~MiB.
+
+Both paths keep the property that motivated direct upload, that the payload never passes through
+the application server, and both keep the limits enforced by the storage service and not by the
+client. For the single request, the signed policy fixes the object key, the content type and the
+size range. For a multipart upload the backend signs one URL per part for exactly that part's
+length, so S3 itself refuses a part of any other size, and when the client reports the upload
+complete the backend lists the parts that S3 holds and checks them before it asks S3 to assemble
+the object. The ceiling on the size of a file is a configuration value, with a hard limit of
+20~GiB in the source, which is 640 parts of 32~MiB, and 20~GiB in the deployed system. An upload that
+is abandoned is cleaned up in two ways: a lifecycle rule aborts incomplete multipart uploads after
+two days, and a periodic reconciler in the backend removes a draft that has stayed in the
+\texttt{UPLOADING} state for more than a day.
+
+\subsection{Chunk-Parallel Transcoding of Long Videos}
+\label{sec:chunked-design}
+
+The pipeline of Figure~\ref{fig:sequence} gives each video to one container. That is adequate for
+short videos and fails for long ones: on a single vCPU, FFmpeg ran between four and five times
+slower than real time in the measurements of Section~\ref{sec:chunked-evaluation}, so a long source
+would exceed the two-hour limit placed on a job however many vCPUs the account holds. The design
+therefore divides a video of five minutes or more into chunks that are encoded concurrently, and
+keeps the single-container path for shorter videos, where splitting costs more than it saves.
+
+The job that the Lambda submitter starts becomes a planner. It reads the structure of the source
+over HTTP without downloading it and divides the video at boundaries that are whole multiples of a
+six-second group of pictures, counted in frames so that a rate such as 29.97 frames per second does
+not accumulate a fractional error. It then submits the jobs of Table~\ref{tab:chunked-jobs} to the
+same AWS Batch service.
+
+\begin{table}[H]
+\centering
+\caption{Jobs of the chunked path}
+\label{tab:chunked-jobs}
+\small
+\begin{tabularx}{\textwidth}{p{0.14\textwidth} p{0.17\textwidth} p{0.16\textwidth} X}
+\toprule
+\textbf{JOB} & \textbf{COUNT} & \textbf{TASK SIZE} & \textbf{RESPONSIBILITY} \\
+\midrule
+Planner   & 1 & Default & Probes the source, computes the chunk boundaries, and submits the other jobs \\
+Audio     & 2 & Default & Encodes the audio once for the whole video, one job per bitrate (64 and 128~kbit/s) \\
+Chunk     & One per chunk, as an array job & 4~vCPU, 8~GiB & Reads its own range of the source over HTTP and encodes every rendition of the ladder for that range \\
+Finalizer & 1 & Default & Runs after every chunk has ended; joins the playlists, measures the bandwidth of each rendition from the segments, extracts the thumbnail, screens the content, and sets \texttt{READY} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Three properties of this design are deliberate. The chunk array goes to a second, lower-priority
+job queue that shares the Fargate Spot environment of the main queue, so that a short video
+submitted while a long one is encoding is scheduled ahead of its remaining chunks and does not wait
+for all of them. The number of chunks follows the number of tasks that can run at once, about three
+chunks per slot and none shorter than about a minute, so a larger quota produces smaller chunks.
+And the planner declines to split a source that cannot be split safely, which means a variable frame
+rate, an unknown duration, or audio and video that differ by more than 0.25~seconds; such a video
+falls back to the single-container path and is not failed.
+
+While a chunked video is encoding, its child jobs periodically touch the \texttt{updatedAt} field
+of the video. The reconciler that returns a video stuck in \texttt{PROCESSING} for more than six
+hours to a consistent state would otherwise mistake a long and healthy encode for a stuck one. How
+this path behaves, including where adding vCPUs stops helping, is measured in
+Section~\ref{sec:chunked-evaluation}.
 
 \section{Database Design}
 \label{sec:database-design}

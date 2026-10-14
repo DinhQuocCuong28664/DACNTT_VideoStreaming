@@ -18,7 +18,12 @@ The upload flow validates metadata on the server before issuing a pre-signed URL
 validation alone is insufficient, since a user can call the API directly and obtain a URL for
 an arbitrary file, effectively turning the project's storage bucket into free hosting for
 unrelated content. The server therefore checks the declared MIME type against an allow-list of
-video formats and rejects files exceeding two gigabytes.
+video formats and rejects files above the configured ceiling, which has a hard limit of 20~GiB in
+the source and is set to 20~GiB in the deployed system. Files up to 512~MiB go through a single
+pre-signed POST whose policy fixes the object key, the content type and the size range. Larger
+files use an S3 multipart upload in parts of 32~MiB: the backend signs one URL per part for exactly
+that part's length, so the storage service itself refuses a part of any other size, and on
+completion it lists the parts that S3 holds before asking for the object to be assembled.
 
 Several protective measures were added at the HTTP layer. Security headers are applied through
 Helmet. Cross-origin requests are restricted to an explicit allow-list rather than being
@@ -74,6 +79,19 @@ Section~\ref{sec:qoe-playback} examines in detail, and the codec string is read 
 stream's sequence parameter set, since the constraint-set byte that RFC~6381 requires appears in
 neither the profile name nor the level number reported by a probe. A thumbnail is extracted in a
 separate pass.
+
+The chunked path of Section~\ref{sec:chunked-design} runs the same container image under four
+commands. The planner computes the chunk boundaries with functions that perform no input or output,
+so the arithmetic can be tested directly: a boundary is a whole number of groups of pictures counted
+in frames, and every chunk, the first included, writes its timestamps from the same base offset, so
+that the playlists of independently encoded chunks join without a gap or a repeated segment. A chunk
+job reads only its own range of the source over HTTP and encodes every rendition of the ladder for
+it. The finalizer joins the playlists and, as the single-container path does, measures the bandwidth
+of each rendition from the segments and not from the encoder settings. Chunk jobs are submitted with
+a task size of their own, 4~vCPU and 8~GiB, because a four-vCPU task measured 14\% faster and used
+7\% fewer vCPU-seconds than a one-vCPU task; the size is checked against the table of valid Fargate
+combinations when the configuration is loaded, since Batch would otherwise reject the submission
+only after the video had been marked as processing.
 
 Failure handling is deliberate. When FFmpeg exits with a non-zero status, the error propagates
 to the top-level handler, which records the \texttt{ERROR} status in the database and, in
