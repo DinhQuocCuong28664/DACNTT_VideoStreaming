@@ -12,8 +12,8 @@ DACNTT_VideoStreaming/
   backend/             Node.js Express API and test suite
   transcoder/          FFmpeg worker and Docker image
   infrastructure/
-    modules/           Eleven reusable Terraform modules
-    environments/      dev and prod instantiations
+    modules/           Thirteen reusable Terraform modules
+    environments/      dev, staging and prod instantiations
   .github/workflows/   Seven CI/CD workflows
   scripts/             Benchmarking and load testing scripts
   docs/                Architecture diagrams, cost analysis, measured results
@@ -23,11 +23,12 @@ DACNTT_VideoStreaming/
 \section{FFmpeg Transcoding Command}
 \label{app:ffmpeg}
 
-The following invocation produces all three renditions from one read of the source. A single
-input is followed by three output blocks, each carrying its own scaling filter and encoder
-settings, so FFmpeg decodes the source once and feeds all three filter chains from it. The
-second and third blocks are abbreviated here; in the source they repeat the first block in
-full. The master playlist is not written by FFmpeg: the worker generates it afterwards, which is
+The following invocation is the one the worker builds for a 1080p source at 24~fps, which fills
+all six rungs of the ladder, and it produces every rendition from one read of the source. A
+single input is followed by one output block per rendition, each carrying its own scaling filter
+and encoder settings, so FFmpeg decodes the source once and feeds all six filter chains from it.
+The blocks after the first are abbreviated here, and the 360p, 480p and 720p blocks are left out
+of the listing; in the source every block repeats the first in full. The master playlist is not written by FFmpeg: the worker generates it afterwards, which is
 why no \texttt{-master\_pl\_name} argument appears. It does so from the encoded output rather
 than from the settings above, measuring each rendition's peak segment bit rate from the segment
 sizes and their \texttt{\#EXTINF} durations, and reading the codec string for each variant out of
@@ -64,7 +65,7 @@ boundary drifts past the point where a keyframe exists. The value shown below, 1
 24~fps source produces.
 
 Two further arguments keep the boundaries aligned. Scene detection is disabled, because letting
-the encoder place keyframes at scene changes would allow the three renditions to cut at
+the encoder place keyframes at scene changes would allow the renditions to cut at
 different points, and RFC~8216 requires that matching content in variant streams carry matching
 timestamps. \texttt{-force\_key\_frames} then pins a keyframe to every sixth second of
 media time; unlike \texttt{-g}, which only bounds the interval from above, it is absolute and
@@ -72,25 +73,28 @@ independent of the detected frame rate, so a misdetected source still yields ali
 
 The H.264 profile is pinned but the level is not. Each rendition carries a different frame size,
 and the lowest conforming level therefore differs between them, so the level is left for the
-encoder to derive from the resolution rather than fixed in the command.
+encoder to derive from the resolution rather than fixed in the command. The pixel format is
+pinned to 8-bit 4:2:0 for the same reason as the profile: a 10-bit or 4:4:4 source would otherwise
+be encoded in a form that the main profile does not allow and most browsers do not decode.
 
 \begin{lstlisting}[language=bash]
-ffmpeg -i input.mp4 -hide_banner -loglevel warning -y \
-  -vf "scale=640:360:force_original_aspect_ratio=decrease, \
-         pad=640:360:(ow-iw)/2:(oh-ih)/2" \
-  -c:v libx264 -b:v 400k  -maxrate 500k  -bufsize 800k  \
-  -preset fast -profile:v main \
+ffmpeg -i input.mp4 -hide_banner -loglevel warning -stats -y \
+  -vf "scale=256:144,setsar=1" \
+  -c:v libx264 -b:v 120k -maxrate 150k -bufsize 240k \
+  -preset fast -profile:v main -pix_fmt yuv420p \
   -g 144 -keyint_min 144 -sc_threshold 0 \
   -force_key_frames "expr:gte(t,n_forced*6)" \
-  -c:a aac -b:a 64k  -ar 44100 -ac 2 \
+  -c:a aac -b:a 48k -ar 44100 -ac 2 \
   -f hls -hls_time 6 -hls_list_size 0 \
-  -hls_segment_filename 360p/segment_%03d.ts  360p/playlist.m3u8 \
+  -hls_segment_filename 144p/segment_%03d.ts  144p/playlist.m3u8 \
   \
-  -vf "scale=1280:720:..."  -c:v libx264 -b:v 1500k -maxrate 2000k -bufsize 3000k \
-  -c:a aac -b:a 128k -f hls -hls_time 6 \
-  -hls_segment_filename 720p/segment_%03d.ts  720p/playlist.m3u8 \
+  -vf "scale=426:240,setsar=1" -c:v libx264 -b:v 240k -maxrate 300k -bufsize 480k \
+  -c:a aac -b:a 64k -f hls -hls_time 6 \
+  -hls_segment_filename 240p/segment_%03d.ts  240p/playlist.m3u8 \
   \
-  -vf "scale=1920:1080:..." -c:v libx264 -b:v 4000k -maxrate 5000k -bufsize 8000k \
+  ... 360p, 480p and 720p in the same form ... \
+  \
+  -vf "scale=1920:1080,setsar=1" -c:v libx264 -b:v 4000k -maxrate 5000k -bufsize 8000k \
   -c:a aac -b:a 192k -f hls -hls_time 6 \
   -hls_segment_filename 1080p/segment_%03d.ts 1080p/playlist.m3u8
 \end{lstlisting}
