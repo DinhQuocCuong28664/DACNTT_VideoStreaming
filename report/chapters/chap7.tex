@@ -36,8 +36,8 @@ at the edge even when the exact manifest URL is known. This closes a gap that wo
 have made the private visibility setting ineffective in practice, since the API can restrict its
 own responses but cannot restrict a content delivery network.
 
-The infrastructure is fully described as code in eleven Terraform modules across two
-environments, and seven GitHub Actions workflows automate linting, unit testing, static security
+The infrastructure is fully described as code in thirteen Terraform modules across three
+environment definitions, and seven GitHub Actions workflows automate linting, unit testing, static security
 analysis, container scanning, infrastructure validation, and deployment. The security gate
 blocks merges on fixable critical findings rather than merely reporting them.
 
@@ -73,7 +73,7 @@ restrict its own responses but cannot restrict a content delivery network. The m
 verified against the deployed system rather than in code alone, as
 Section~\ref{sec:challenges} records.
 
-The infrastructure is reproducible. Eleven Terraform modules describe two environments in full,
+The infrastructure is reproducible. Thirteen Terraform modules describe three environment definitions in full,
 and seven GitHub Actions workflows automate linting, unit testing, static security analysis,
 container and dependency scanning, infrastructure validation and deployment. The security gate
 blocks a merge on fixable critical findings rather than merely reporting them, and the scanner
