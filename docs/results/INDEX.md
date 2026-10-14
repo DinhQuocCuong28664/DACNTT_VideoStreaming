@@ -10,7 +10,7 @@ Chạy lại: `PYTHONUTF8=1 python scripts/results/build-report-tables.py`.
 | `tab-burst-summary.tex` | Simultaneous submissions: whole-batch time and per-video latency | Chương đánh giá, mục nhiều video đồng thời | 2026-10-14-staging-s5a-25min-1080p-summary, 2026-10-14-staging-s5b-60s-1080p-summary |
 | `tab-chunk-config-25min.tex` | 25-minute video, chunked path, by chunk configuration | Chương đánh giá, mục chuyển mã chia đoạn | 2026-10-09-production-25min-5x1, 2026-10-10-staging-25min-12x2, 2026-10-10-staging-25min-23x1, 2026-10-10-staging-25min-6x4, 2026-10-13-staging-s2a-25min-1080p-r1, 2026-10-13-staging-s2b-25min-1080p-r1, 2026-10-13-staging-s2b-25min-1080p-r2, 2026-10-14-staging-s3-25min-1080p-r1, 2026-10-14-staging-s3-25min-1080p-r2, 2026-10-staging-25min-5x1-bulk-queue |
 | `tab-concurrent-four-videos.tex` | Four 25-minute videos submitted together | Chương đánh giá, mục nhiều video cùng lúc | 2026-10-10-staging-25min-x4-video1, 2026-10-10-staging-25min-x4-video2, 2026-10-10-staging-25min-x4-video3, 2026-10-10-staging-25min-x4-video4, 2026-10-14-staging-s5a-25min-1080p-v1, 2026-10-14-staging-s5a-25min-1080p-v2, 2026-10-14-staging-s5a-25min-1080p-v3, 2026-10-14-staging-s5a-25min-1080p-v4 |
-| `tab-four-hour-breakdown.tex` | Four-hour video, time per step | Chương đánh giá, mục video 4 giờ | 2026-10-13-staging-s4-4h-1080p30-r1 |
+| `tab-four-hour-breakdown.tex` | Four-hour video, time per step | Chương đánh giá, mục video 4 giờ | 2026-10-13-staging-s4-4h-1080p30-r1, 2026-10-14-staging-s4b-4h-1080p30-r1 |
 | `tab-single-vs-chunked.tex` | Single-job path against chunked path, 5 to 15 minutes | Chương đánh giá, mục ngưỡng chia đoạn | 2026-10-10-staging-10min-chunked, 2026-10-10-staging-10min-single-estimated, 2026-10-10-staging-15min-chunked, 2026-10-10-staging-15min-single-estimated, 2026-10-10-staging-5min-chunked, 2026-10-10-staging-5min-single |
 | `tab-transcode-timing-single-job.tex` | Single-job path, 100 MB to 1 GB, 1 vCPU against 4 vCPU | Chương đánh giá, mục thời gian chuyển mã theo dung lượng | transcode-timing |
 
@@ -49,6 +49,7 @@ Chạy lại: `PYTHONUTF8=1 python scripts/results/build-report-tables.py`.
 | `2026-10-13-staging-s4-4h-1080p30-r1` | 2026-10-13 | staging | chunked | 4h-1080p30 | 1 | 85.3 | measured | `transcoder/scripts/staging-measure-set.js (S4)` |
 | `2026-10-14-staging-s3-25min-1080p-r1` | 2026-10-14 | staging | chunked | 25min-1080p | 1 | 26.0 | measured | `transcoder/scripts/staging-measure-set.js (S3)` |
 | `2026-10-14-staging-s3-25min-1080p-r2` | 2026-10-14 | staging | chunked | 25min-1080p | 1 | 22.5 | measured | `transcoder/scripts/staging-measure-set.js (S3)` |
+| `2026-10-14-staging-s4b-4h-1080p30-r1` | 2026-10-14 | staging | chunked | 4h-1080p30 | 1 | 135.3 | measured | `transcoder/scripts/staging-measure-set.js (S4b)` |
 | `2026-10-14-staging-s5a-25min-1080p-summary` | 2026-10-14 | staging | burst | 25min-1080p | 4 | 44.3 | measured | `transcoder/scripts/staging-burst-test.js (S5a)` |
 | `2026-10-14-staging-s5a-25min-1080p-v1` | 2026-10-14 | staging | chunked | 25min-1080p | 4 | 36.1 | measured | `transcoder/scripts/staging-burst-test.js (S5a)` |
 | `2026-10-14-staging-s5a-25min-1080p-v2` | 2026-10-14 | staging | chunked | 25min-1080p | 4 | 17.7 | measured | `transcoder/scripts/staging-burst-test.js (S5a)` |
