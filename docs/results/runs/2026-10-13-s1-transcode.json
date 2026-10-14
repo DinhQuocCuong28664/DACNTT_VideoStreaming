@@ -25,9 +25,10 @@
       "measured_from": "upload_complete",
       "timings_s": {
         "upload": 10,
-        "end_to_end": 393,
-        "queue_to_first_job": 38,
-        "job_run": 378
+        "end_to_end": 383,
+        "queue_to_first_job": 28,
+        "job_run": 378,
+        "end_to_end_with_upload": 393
       },
       "vcpu_seconds": 378,
       "vcpu_seconds_scope": "all_jobs",
@@ -37,7 +38,7 @@
       },
       "provenance": "measured",
       "source": "transcoder/scripts/staging-measure-set.js (S1)",
-      "notes": "Lượt 1 của 100MB; tệp video-100mb.mp4. Mốc tải lên xong lấy từ LastModified của đối tượng S3, READY lấy từ updatedAt của video."
+      "notes": "Lượt 1 của 100MB; tệp video-100mb.mp4. Mốc tải lên xong lấy từ LastModified của đối tượng S3, READY lấy từ updatedAt của video. Đã sửa: mốc tải lên xong ban đầu lấy từ LastModified (lúc BẮT ĐẦU multipart) nên end_to_end và queue_to_first_job cộng thêm thời gian tải lên; đã trừ `upload`, giá trị gốc ở end_to_end_with_upload."
     },
     {
       "id": "2026-10-13-staging-s1-100mb-r2",
@@ -62,9 +63,10 @@
       "measured_from": "upload_complete",
       "timings_s": {
         "upload": 10,
-        "end_to_end": 719,
-        "queue_to_first_job": 42,
-        "job_run": 702
+        "end_to_end": 709,
+        "queue_to_first_job": 32,
+        "job_run": 702,
+        "end_to_end_with_upload": 719
       },
       "vcpu_seconds": 702,
       "vcpu_seconds_scope": "all_jobs",
@@ -74,7 +76,7 @@
       },
       "provenance": "measured",
       "source": "transcoder/scripts/staging-measure-set.js (S1)",
-      "notes": "Lượt 2 của 100MB; tệp video-100mb.mp4. Mốc tải lên xong lấy từ LastModified của đối tượng S3, READY lấy từ updatedAt của video."
+      "notes": "Lượt 2 của 100MB; tệp video-100mb.mp4. Mốc tải lên xong lấy từ LastModified của đối tượng S3, READY lấy từ updatedAt của video. Đã sửa: mốc tải lên xong ban đầu lấy từ LastModified (lúc BẮT ĐẦU multipart) nên end_to_end và queue_to_first_job cộng thêm thời gian tải lên; đã trừ `upload`, giá trị gốc ở end_to_end_with_upload."
     },
     {
       "id": "2026-10-13-staging-s1-100mb-r3",
@@ -99,9 +101,10 @@
       "measured_from": "upload_complete",
       "timings_s": {
         "upload": 9,
-        "end_to_end": 626,
-        "queue_to_first_job": 35,
-        "job_run": 620
+        "end_to_end": 617,
+        "queue_to_first_job": 26,
+        "job_run": 620,
+        "end_to_end_with_upload": 626
       },
       "vcpu_seconds": 620,
       "vcpu_seconds_scope": "all_jobs",
@@ -111,7 +114,7 @@
       },
       "provenance": "measured",
       "source": "transcoder/scripts/staging-measure-set.js (S1)",
-      "notes": "Lượt 3 của 100MB; tệp video-100mb.mp4. Mốc tải lên xong lấy từ LastModified của đối tượng S3, READY lấy từ updatedAt của video."
+      "notes": "Lượt 3 của 100MB; tệp video-100mb.mp4. Mốc tải lên xong lấy từ LastModified của đối tượng S3, READY lấy từ updatedAt của video. Đã sửa: mốc tải lên xong ban đầu lấy từ LastModified (lúc BẮT ĐẦU multipart) nên end_to_end và queue_to_first_job cộng thêm thời gian tải lên; đã trừ `upload`, giá trị gốc ở end_to_end_with_upload."
     },
     {
       "id": "2026-10-13-staging-s1-500mb-r1",
@@ -142,11 +145,12 @@
       "measured_from": "upload_complete",
       "timings_s": {
         "upload": 13,
-        "end_to_end": 640,
-        "queue_to_first_job": 38,
+        "end_to_end": 627,
+        "queue_to_first_job": 25,
         "planner": 26,
         "finalize": 148,
-        "chunks": 423
+        "chunks": 423,
+        "end_to_end_with_upload": 640
       },
       "chunk_stats_s": {
         "min": 96,
@@ -161,7 +165,7 @@
       },
       "provenance": "measured",
       "source": "transcoder/scripts/staging-measure-set.js (S1)",
-      "notes": "Lượt 1 của 500MB; tệp video-500mb.mp4. Mốc tải lên xong lấy từ LastModified của đối tượng S3, READY lấy từ updatedAt của video."
+      "notes": "Lượt 1 của 500MB; tệp video-500mb.mp4. Mốc tải lên xong lấy từ LastModified của đối tượng S3, READY lấy từ updatedAt của video. Đã sửa: mốc tải lên xong ban đầu lấy từ LastModified (lúc BẮT ĐẦU multipart) nên end_to_end và queue_to_first_job cộng thêm thời gian tải lên; đã trừ `upload`, giá trị gốc ở end_to_end_with_upload."
     },
     {
       "id": "2026-10-13-staging-s1-500mb-r2",
@@ -192,11 +196,12 @@
       "measured_from": "upload_complete",
       "timings_s": {
         "upload": 12,
-        "end_to_end": 620,
-        "queue_to_first_job": 38,
+        "end_to_end": 608,
+        "queue_to_first_job": 26,
         "planner": 27,
         "finalize": 123,
-        "chunks": 430
+        "chunks": 430,
+        "end_to_end_with_upload": 620
       },
       "chunk_stats_s": {
         "min": 97,
@@ -211,7 +216,7 @@
       },
       "provenance": "measured",
       "source": "transcoder/scripts/staging-measure-set.js (S1)",
-      "notes": "Lượt 2 của 500MB; tệp video-500mb.mp4. Mốc tải lên xong lấy từ LastModified của đối tượng S3, READY lấy từ updatedAt của video."
+      "notes": "Lượt 2 của 500MB; tệp video-500mb.mp4. Mốc tải lên xong lấy từ LastModified của đối tượng S3, READY lấy từ updatedAt của video. Đã sửa: mốc tải lên xong ban đầu lấy từ LastModified (lúc BẮT ĐẦU multipart) nên end_to_end và queue_to_first_job cộng thêm thời gian tải lên; đã trừ `upload`, giá trị gốc ở end_to_end_with_upload."
     },
     {
       "id": "2026-10-13-staging-s1-1gb-r1",
@@ -242,11 +247,12 @@
       "measured_from": "upload_complete",
       "timings_s": {
         "upload": 70,
-        "end_to_end": 1223,
-        "queue_to_first_job": 90,
+        "end_to_end": 1153,
+        "queue_to_first_job": 20,
         "planner": 27,
         "finalize": 142,
-        "chunks": 936
+        "chunks": 936,
+        "end_to_end_with_upload": 1223
       },
       "chunk_stats_s": {
         "min": 237,
@@ -261,7 +267,7 @@
       },
       "provenance": "measured",
       "source": "transcoder/scripts/staging-measure-set.js (S1)",
-      "notes": "Lượt 1 của 1GB; tệp video-1gb.mp4. Mốc tải lên xong lấy từ LastModified của đối tượng S3, READY lấy từ updatedAt của video."
+      "notes": "Lượt 1 của 1GB; tệp video-1gb.mp4. Mốc tải lên xong lấy từ LastModified của đối tượng S3, READY lấy từ updatedAt của video. Đã sửa: mốc tải lên xong ban đầu lấy từ LastModified (lúc BẮT ĐẦU multipart) nên end_to_end và queue_to_first_job cộng thêm thời gian tải lên; đã trừ `upload`, giá trị gốc ở end_to_end_with_upload."
     },
     {
       "id": "2026-10-13-staging-s1-1gb-r2",
@@ -292,11 +298,12 @@
       "measured_from": "upload_complete",
       "timings_s": {
         "upload": 37,
-        "end_to_end": 1254,
-        "queue_to_first_job": 63,
+        "end_to_end": 1217,
+        "queue_to_first_job": 26,
         "planner": 25,
         "finalize": 114,
-        "chunks": 1034
+        "chunks": 1034,
+        "end_to_end_with_upload": 1254
       },
       "chunk_stats_s": {
         "min": 255,
@@ -311,7 +318,7 @@
       },
       "provenance": "measured",
       "source": "transcoder/scripts/staging-measure-set.js (S1)",
-      "notes": "Lượt 2 của 1GB; tệp video-1gb.mp4. Mốc tải lên xong lấy từ LastModified của đối tượng S3, READY lấy từ updatedAt của video."
+      "notes": "Lượt 2 của 1GB; tệp video-1gb.mp4. Mốc tải lên xong lấy từ LastModified của đối tượng S3, READY lấy từ updatedAt của video. Đã sửa: mốc tải lên xong ban đầu lấy từ LastModified (lúc BẮT ĐẦU multipart) nên end_to_end và queue_to_first_job cộng thêm thời gian tải lên; đã trừ `upload`, giá trị gốc ở end_to_end_with_upload."
     }
   ]
 }

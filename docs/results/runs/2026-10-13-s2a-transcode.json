@@ -1,0 +1,58 @@
+{
+  "schema": 1,
+  "title": "S2a: thời gian chuyển mã (staging, Fargate Spot 8 vCPU)",
+  "runs": [
+    {
+      "id": "2026-10-13-staging-s2a-25min-1080p-r1",
+      "date": "2026-10-13",
+      "account": "B",
+      "region": "ap-southeast-1",
+      "environment": "staging",
+      "path": "chunked",
+      "capacity": {
+        "spot_max_vcpus": 8,
+        "ondemand_max_vcpus": 0
+      },
+      "chunk": {
+        "vcpu": 4,
+        "memory_mib": null,
+        "count": 6,
+        "slots": null,
+        "gops_per_chunk": null
+      },
+      "video": {
+        "label": "25min-1080p",
+        "duration_s": 1500,
+        "size_gib": 2.752,
+        "resolution": "1920x1080",
+        "fps": 30
+      },
+      "concurrency": 1,
+      "measured_from": "upload_complete",
+      "timings_s": {
+        "upload": 292,
+        "end_to_end": 1080,
+        "queue_to_first_job": 21,
+        "planner": 24,
+        "audio": 80,
+        "finalize": 67,
+        "chunks": 866,
+        "end_to_end_with_upload": 1372
+      },
+      "chunk_stats_s": {
+        "min": 223,
+        "median": 255,
+        "max": 281
+      },
+      "vcpu_seconds": 6363,
+      "vcpu_seconds_scope": "all_jobs",
+      "result": {
+        "final_status": "READY",
+        "hls_verified": true
+      },
+      "provenance": "measured",
+      "source": "transcoder/scripts/staging-measure-set.js (S2a)",
+      "notes": "Lượt 1 của 25min-1080p; tệp upload-test-25min.mp4. Mốc tải lên xong lấy từ LastModified của đối tượng S3, READY lấy từ updatedAt của video. Đã sửa: mốc tải lên xong ban đầu lấy từ LastModified (lúc BẮT ĐẦU multipart) nên end_to_end và queue_to_first_job cộng thêm thời gian tải lên; đã trừ `upload`, giá trị gốc ở end_to_end_with_upload."
+    }
+  ]
+}

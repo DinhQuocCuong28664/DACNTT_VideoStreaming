@@ -74,21 +74,29 @@ def table_scaling_25min(runs):
         if r["path"] == "chunked" and r["video"]["label"] == "25min-1080p"
         and r["concurrency"] == 1 and "end_to_end" in r["timings_s"]
     ]
-    picked.sort(key=lambda r: (r["date"], r["chunk"]["vcpu"]))
+    def capacity(r):
+        c = r.get("capacity") or {}
+        return int(c.get("spot_max_vcpus") or 0) + int(c.get("ondemand_max_vcpus") or 0)
+
+    # Cùng cấu hình đoạn nhưng khác công suất (S2: 8 so với 16 vCPU) phải đọc được ở hai dòng riêng.
+    picked.sort(key=lambda r: (capacity(r), r["date"], r["chunk"]["vcpu"], r["id"]))
     rows = []
     for r in picked:
         chunk = r["chunk"]
         phase = r["timings_s"].get("chunks")
         vs = r.get("vcpu_seconds")
+        total = capacity(r)
+        slots = chunk.get("slots") or (total // chunk["vcpu"] if total and chunk.get("vcpu") else None)
         rows.append([
             f"{chunk['count']} $\\times$ {chunk['vcpu']} vCPU ({esc(env_name(r))})",
-            str(chunk["slots"]),
+            str(total) if total else "n/a",
+            str(slots) if slots else "n/a",
             minutes(phase) if phase else "n/a",
             minutes(r["timings_s"]["end_to_end"]),
             f"{vs:,}".replace(",", "\\,") if vs else "n/a",
         ])
-    header = ["CONFIGURATION", "SLOTS", "CHUNK PHASE (MIN)", "END TO READY (MIN)", "VCPU-SECONDS"]
-    return table("X r r r r", header, rows), picked
+    header = ["CONFIGURATION", "CAPACITY (VCPU)", "SLOTS", "CHUNK PHASE (MIN)", "END TO READY (MIN)", "VCPU-SECONDS"]
+    return table("X r r r r r", header, rows), picked
 
 
 def table_concurrency(runs):
@@ -134,15 +142,26 @@ def table_single_vs_chunked(runs):
 
 
 def table_four_hours(runs):
-    run = next((r for r in runs if r["video"]["label"] == "4h-1080p30"), None)
-    if run is None:
+    # Nhiều lần đo 4 giờ: lấy lượt mới nhất (id có ngày), ưu tiên bản ghi có đủ các bước.
+    candidates = [r for r in runs if r["video"]["label"] == "4h-1080p30" and r["path"] == "chunked"]
+    if not candidates:
         return None, []
+    run = sorted(candidates, key=lambda r: (r["date"], r["id"]))[-1]
     t, c = run["timings_s"], run["chunk"]
+
+    if "audio_64k" in t and "audio_128k" in t:
+        audio = f"{minutes(t['audio_64k'])} / {minutes(t['audio_128k'])}"
+    elif t.get("audio") is not None:
+        audio = minutes(t["audio"])  # lần đo mới chỉ ghi job âm thanh chậm nhất
+    else:
+        audio = "n/a"
+    slots = c.get("slots")
+    concurrency = f", {slots} at a time" if slots else ""
     rows = [
-        ["Planner (Lambda submit to child jobs)", minutes(t["planner"])],
-        ["Audio 64 kbit/s and 128 kbit/s (in parallel)", f"{minutes(t['audio_64k'])} / {minutes(t['audio_128k'])}"],
-        [f"{c['count']} chunk jobs, {c['slots']} at a time, {c['vcpu']} vCPU each", minutes(t["chunks"])],
-        ["Finalizer (playlists, thumbnail, moderation, READY)", minutes(t["finalize"])],
+        ["Planner (Lambda submit to child jobs)", minutes(t["planner"]) if t.get("planner") is not None else "n/a"],
+        ["Audio 64 kbit/s and 128 kbit/s (in parallel)", audio],
+        [f"{c['count']} chunk jobs{concurrency}, {c['vcpu']} vCPU each", minutes(t["chunks"])],
+        ["Finalizer (playlists, thumbnail, moderation, READY)", minutes(t["finalize"]) if t.get("finalize") is not None else "n/a"],
         ["\\textbf{Upload complete to READY}", "\\textbf{" + minutes(t["end_to_end"]) + "}"],
     ]
     return table("X r", ["STEP", "MINUTES"], rows), [run]

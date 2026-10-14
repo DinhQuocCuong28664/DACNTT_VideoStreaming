@@ -17,8 +17,8 @@
  * vượt trần hay bị ngắt bằng Ctrl+C) TẮT chúng lại để không job nào lọt vào sau đó (xem
  * scripts/bench/batch-switch.js). `--no-enable` không bật ở đầu; `--keep-on` không tắt ở cuối.
  *
- * Mốc thời gian: thời lượng "từ tải lên xong đến READY" tính từ LastModified của đối tượng S3 đến
- * `updatedAt` của video ở trạng thái READY; các bước con lấy từ startedAt/stoppedAt của job Batch.
+ * Mốc thời gian: thời lượng "từ tải lên xong đến READY" tính từ lúc `aws s3 cp` trả về đến `updatedAt` của
+ * video ở trạng thái READY; các bước con lấy từ startedAt/stoppedAt của job Batch.
  */
 const { spawnSync } = require('child_process');
 const fs = require('fs');
@@ -37,6 +37,10 @@ const REGION = flag('region', 'ap-southeast-1');
 const STAGE = flag('stage', 'S1');
 const PLAN = flag('plan', '');
 const BUDGET_VCPU_SECONDS = Number(flag('budget-vcpu-hours', 13)) * 3600;
+// Công suất đang đặt ở staging, để ghi đúng vào bản ghi (S2 so 8 vCPU với 16 vCPU): quota Fargate Spot
+// của môi trường và quota Fargate On-Demand đứng sau nó (0 khi chưa có môi trường On-Demand).
+const SPOT_VCPUS = Number(flag('spot-vcpus', 8));
+const ONDEMAND_VCPUS = Number(flag('ondemand-vcpus', 0));
 const RAW_BUCKET = `${PREFIX}-raw-bucket`;
 const PROCESSED_BUCKET = `${PREFIX}-processed-bucket`;
 const QUEUES = [`${PREFIX}-transcode-queue`, `${PREFIX}-transcode-bulk-queue`];
@@ -169,7 +173,7 @@ const buildRecord = ({ label, rep, file, video, uploadSeconds, uploadedAt, ready
     region: REGION,
     environment: PREFIX.replace('dacntt-', ''),
     path: chunked ? 'chunked' : 'single',
-    capacity: { spot_max_vcpus: 8, ondemand_max_vcpus: 0 },
+    capacity: { spot_max_vcpus: SPOT_VCPUS, ondemand_max_vcpus: ONDEMAND_VCPUS },
     chunk: chunkInfo,
     video: {
       label,
@@ -188,7 +192,7 @@ const buildRecord = ({ label, rep, file, video, uploadSeconds, uploadedAt, ready
     result: { final_status: video.status, hls_verified: verify === true },
     provenance: 'measured',
     source: `transcoder/scripts/staging-measure-set.js (${STAGE})`,
-    notes: `Lượt ${rep} của ${label}; tệp ${path.basename(file)}. Mốc tải lên xong lấy từ LastModified của đối tượng S3, READY lấy từ updatedAt của video.`,
+    notes: `Lượt ${rep} của ${label}; tệp ${path.basename(file)}. Mốc tải lên xong là lúc aws s3 cp trả về, READY lấy từ updatedAt của video.`,
   };
 };
 
@@ -231,8 +235,10 @@ const oneRun = async (mongoose, { file, label, rep, verify }) => {
   const up = spawnSync('aws', ['s3', 'cp', file, `s3://${RAW_BUCKET}/${key}`, '--region', REGION, '--only-show-errors'], { stdio: 'inherit' });
   if (up.status !== 0) throw new Error('Tải lên thất bại');
   const uploadSeconds = Math.round((Date.now() - t0) / 1000);
-  const head = awsJson('s3api', 'head-object', '--bucket', RAW_BUCKET, '--key', key);
-  const uploadedAt = new Date(head.LastModified).getTime();
+  // Mốc "tải lên xong" là lúc `aws s3 cp` trả về. KHÔNG dùng LastModified của đối tượng S3: với tệp tải
+  // bằng multipart, LastModified là lúc BẮT ĐẦU lượt tải, nên thời gian tải lên (gần 5 phút với 2,8 GiB)
+  // bị cộng vào thời gian xử lý. S1 và S2a đã bị lỗi này (xem notes của các bản ghi đó).
+  const uploadedAt = t0 + uploadSeconds * 1000;
   console.log(`  đã tải lên sau ${fmt(uploadSeconds)}; chờ READY...`);
 
   let video = null;
@@ -280,7 +286,7 @@ const main = async () => {
   const flush = () => {
     if (!has('write')) return;
     fs.mkdirSync(path.dirname(out), { recursive: true });
-    fs.writeFileSync(out, `${JSON.stringify({ schema: 1, title: `${STAGE}: thời gian chuyển mã theo dung lượng (staging, Fargate Spot 8 vCPU)`, runs: records }, null, 2)}\n`, 'utf-8');
+    fs.writeFileSync(out, `${JSON.stringify({ schema: 1, title: `${STAGE}: thời gian chuyển mã (staging, Fargate Spot ${SPOT_VCPUS} vCPU${ONDEMAND_VCPUS ? ` + On-Demand ${ONDEMAND_VCPUS} vCPU` : ''})`, runs: records }, null, 2)}\n`, 'utf-8');
   };
 
   if (!has('no-enable')) {
