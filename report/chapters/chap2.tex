@@ -20,7 +20,11 @@ Netflix also relies on asynchronous messaging rather than synchronous calls to d
 submission from job execution, which is precisely the role played by Amazon SQS in this
 project. Second, Netflix moved from linear encoding to distributed chunk-based encoding,
 allowing hundreds of machines to encode segments of the same title in parallel and reducing
-processing latency from days to hours.
+processing latency from days to hours. This project applies the same principle at a far smaller
+scale: for videos of five minutes or longer, a planner job divides the source into chunks that an
+array of AWS Batch jobs encodes concurrently and a finalizer job merges, with the degree of
+parallelism bounded by the Fargate vCPU quota rather than by a fleet of dedicated machines
+(Section~\ref{sec:chunked-evaluation}).
 
 Amazon Web Services publishes a reference architecture for video on demand that provides a
 useful point of comparison at the level of managed services \cite{awsvod}. That architecture
@@ -50,7 +54,7 @@ relevant to this work.
 \textbf{ASPECT} & \textbf{NETFLIX (COSMOS)} & \textbf{AWS VOD REFERENCE} & \textbf{THIS PROJECT} \\
 \midrule
 Compute model & Dedicated microservice platform with serverless compute tier & Managed service (MediaConvert) & Serverless container on AWS Batch / Fargate \\
-Parallelism & Chunk-based, distributed across many nodes & Managed internally by the service & One container per video \\
+Parallelism & Chunk-based, distributed across many nodes & Managed internally by the service & Chunk-based on AWS Batch array jobs from five minutes of video, one container below that \\
 Bitrate ladder & Per-shot optimisation driven by VMAF & Configurable job template & Fixed ladder: 360p, 720p, 1080p \\
 Queueing & Priority-based messaging system & AWS Step Functions & Amazon SQS with dead letter queue \\
 Content protection & DRM & Signed URLs or signed cookies & OAC plus CloudFront Signed Cookies \\

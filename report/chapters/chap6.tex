@@ -583,7 +583,7 @@ distribution, clustering near 1.2~s and again near 7.5~s, while the third remain
 them or below all of them, which would place the adaptation algorithm at a decision boundary, but
 the third source contradicts that account and the cause was not established here.
 
-section{Transcoding Pipeline Performance}
+\section{Transcoding Pipeline Performance}
 \label{sec:pipeline-evaluation}
 
 Pipeline latency is measured from the completion of the upload to the moment the record reaches
@@ -677,6 +677,169 @@ which holds regardless of whether the exact speedup is 3.3$\times$ or 4.9$\times
 reported separately, because it
 includes the cost of pulling the container image and is therefore substantially slower than the
 steady state.}
+
+\section{Chunked Transcoding of Long Videos}
+\label{sec:chunked-evaluation}
+
+The single-container design evaluated in Section~\ref{sec:pipeline-evaluation} transcodes a video
+at a roughly constant fraction of its own runtime, and one AWS Batch job is bounded by the
+two-hour attempt timeout set in its job definition. A requirement that the platform accept
+videos of four hours or more cannot be met by that path: a five-minute video took 26.7 minutes
+as a single job, which extrapolates to about twenty-one hours for four hours of content. This
+section evaluates the second execution path that was added for that reason.
+
+The path applies to videos of five minutes or longer, a threshold chosen from the measurements in
+Table~\ref{tab:single-vs-chunked}. The job started by the upload event then becomes a planner. It
+reads the container structure of the source over HTTP range requests, divides the video into
+chunks whose length is a whole number of six-second groups of pictures, and submits child jobs to
+AWS Batch: two audio jobs, each encoding one audio bitrate once for the whole video; an array job
+whose elements each encode one chunk at every rendition; and a finalizer that starts when every
+chunk has finished, concatenates the playlists, measures the bandwidth of each rendition from the
+produced segments, extracts the thumbnail, runs content moderation and sets the record to
+\texttt{READY}. The array job is placed in a second, lower-priority queue that shares the compute
+environment, so a short video submitted behind a long one is served before the remaining chunks
+rather than after them. The planner chooses the chunk length so that each concurrent slot receives
+about three chunks, between one and five minutes long, and falls back to the single-job path when
+the source cannot be split safely, for example when its frame rate is variable or its audio and
+video start more than 0.25 seconds apart. Chunk boundaries were verified by analysing the packets
+of the produced renditions for gaps and overlaps, and the check passed in every run reported
+below.
+
+All measurements ran in the staging environment, which uses the same container image, job
+definitions and compute settings as production but a separate database and separate storage
+buckets. Capacity is the Fargate vCPU quota available to the compute environment: 8~vCPU of
+Fargate Spot, which is the production quota, or 16~vCPU when an On-Demand environment of 8~vCPU was
+attached behind it. Each chunk runs in a 4~vCPU / 8~GB task, the size selected by the comparison in
+Table~\ref{tab:chunk-config}. Latency is measured, as in the previous section, from the moment the
+upload finishes to the moment the record reaches \texttt{READY}, taking the return of the upload
+command as the end of the upload. The 25-minute source is a 1080p H.264 file of 2.75~GiB with an
+AAC track. The four-hour source was built by repeating a 1,600-second 1080p test-pattern clip nine
+times and adding a 128~kbit/s tone, and was uploaded with the S3 multipart protocol, which the
+browser path also uses for files larger than 512~MiB.
+
+\begin{table}[H]
+\centering
+\caption{Single-container path against chunked path for videos of five to fifteen minutes}
+\label{tab:single-vs-chunked}
+\small
+\input{generated/tab-single-vs-chunked.tex}
+\end{table}
+
+\noindent\textit{Note: values marked $\approx$ for the single-container path are extrapolated at
+5.3 times the video duration from the measured five-minute run. The chunked values come from three
+videos competing for one 8~vCPU quota, so they overstate what a lone submission would see.}
+
+Table~\ref{tab:single-vs-chunked} shows why the threshold sits at five minutes. For a five-minute
+video the chunked path finished in 11.9 minutes against 26.7 minutes as a single job, about 2.2
+times faster, even though planning, audio encoding and finalisation take roughly 4.4 minutes of
+fixed cost. Below that length the fixed cost would be more than half of the processing time, so
+shorter videos keep the single job.
+
+\begin{table}[H]
+\centering
+\caption{A 25-minute video on the chunked path, by chunk configuration and capacity}
+\label{tab:chunk-config}
+\small
+\input{generated/tab-chunk-config-25min.tex}
+\end{table}
+
+\noindent\textit{Note: the first four rows were timed from the creation of the first job and the
+later rows from the end of the upload, which differ by about half a minute. The vCPU-seconds of the
+first five rows count chunk jobs only; the later rows count every job of the video. Rows are in
+chronological order of measurement. The first column gives the number of chunks and the vCPU of each; $^{\dagger}$ marks the run on the production environment. PHASE is the time from the first chunk start to the last chunk end, SLOTS the
+number of chunks encoded at once, VCPU-S the vCPU-seconds, and OD stands for On-Demand.}
+
+Table~\ref{tab:chunk-config} follows the same 25-minute video through the changes made to the
+chunked path. The first deployment cut the video into five chunks of five minutes on 1~vCPU tasks
+and took 36.3 minutes; five chunks used only five of the eight available vCPU, and chunks of
+identical size ran between 18.2 and 32.6 minutes because Fargate Spot hosts are not uniform.
+Choosing the chunk length from the capacity, which produced 23 chunks, reduced the time to 23.6
+minutes, and moving the chunks to 4~vCPU tasks reduced it to 20.4 minutes and, on a later repeat,
+18.0 minutes; a 4~vCPU task processed a second of video 4.7 times faster than a 1~vCPU task.
+Twelve 2~vCPU tasks gave the same time and the same vCPU-seconds as six 4~vCPU tasks, which is why
+the larger size was kept. Doubling the capacity to 16~vCPU shortened the video to 14.7 and 15.3
+minutes, a factor of only 1.2, for 1.3 to 1.4 times the vCPU-seconds: planning, audio encoding and
+finalisation take about three minutes whatever the capacity, and each of the twelve smaller chunks
+pays a container start-up. For a single video of this length, additional capacity is therefore
+close to saturation.
+
+\begin{table}[H]
+\centering
+\caption{A four-hour video at two capacities}
+\label{tab:four-hour-breakdown}
+\small
+\input{generated/tab-four-hour-breakdown.tex}
+\end{table}
+
+Table~\ref{tab:four-hour-breakdown} reports the requirement that motivated the path. At the
+production capacity of 8~vCPU a four-hour video reached \texttt{READY} 135.3 minutes after its
+upload finished, and with 16~vCPU, which doubles the number of chunks encoded at once, 85.3
+minutes. Both are far inside the two-hour limit of a job, because no chunk ran longer than seven
+minutes. The first measurement of the path, taken with 1~vCPU chunks at 8~vCPU, took 185.0 minutes,
+so the later changes shortened the result at production capacity by 27\%. Capacity helped the
+long video more than the 25-minute one, 1.6 times against 1.2, because 48 chunks keep every slot
+busy through many rounds and the fixed phases are a small share of the total. The compute used
+was 15.1 vCPU-hours at 8~vCPU and 17.3 at 16~vCPU, so doubling the capacity cost about 15\% more
+compute for 37\% less time.
+
+\begin{table}[H]
+\centering
+\caption{Four 25-minute videos submitted together, by capacity}
+\label{tab:concurrent-four}
+\small
+\input{generated/tab-concurrent-four-videos.tex}
+\end{table}
+
+\noindent\textit{Note: in the 8~vCPU rows the four videos were uploaded together over one
+connection and timed from the first job creation. In the 16~vCPU rows the arrival was produced by
+server-side copies of one uploaded file, so all four events reached the pipeline within a second. START and END are the first chunk start and the last chunk end, and ORDER is the order of completion.}
+
+When four 25-minute videos arrived together (Table~\ref{tab:concurrent-four}), 8~vCPU finished them
+one after another at 21.0, 38.7, 62.9 and 73.3 minutes, a throughput of 1.4 times real time, and
+16~vCPU finished them at 17.7, 25.7, 36.1 and 44.3 minutes, 2.3 times real time. Capacity
+therefore shortened the batch by a factor of 1.65 for twice the vCPU, closer to proportional than
+for a single video, because the additional slots were always filled with chunks of the other
+videos. The order of completion follows the order of arrival: the queue is first-in first-out
+within a priority, so the first video is delayed least and the last most.
+
+\begin{table}[H]
+\centering
+\caption{Simultaneous submissions at 16~vCPU}
+\label{tab:burst-summary}
+\small
+\input{generated/tab-burst-summary.tex}
+\end{table}
+
+\noindent\textit{Note: ALL is the time of the whole batch, P50 and P95 the median and 95th percentile of the latency of a video from its arrival, PER MIN the videos completed per minute, and VCPU-H the vCPU-hours used.}
+
+To reach the load level named in the evaluation plan, one hundred 60-second clips were submitted
+at once at 16~vCPU (Table~\ref{tab:burst-summary}). All one hundred reached \texttt{READY} without
+a failure. The whole batch took 35.8 minutes, the median clip waited 17.9 minutes and the 95th
+percentile 33.7, and the batch drained at 2.8 videos per minute for 8.3 vCPU-hours of compute. The
+fastest clip needed 3.7 minutes, which is the time of a single job running alone, so the rest of
+the latency is queueing: sixteen one-vCPU jobs run at a time and one hundred clips need about six
+rounds. The queue absorbed the burst without losing any work, and the capacity quota rather than
+the architecture set the drain rate.
+
+Fargate On-Demand did not make the work faster. The same 25-minute video on 8~vCPU of On-Demand
+took 26.0 and 22.5 minutes against 18.0 on Spot, with chunk medians of 414 and 313 seconds against
+255 seconds, so On-Demand showed no advantage and, at a higher price per vCPU-second, was several
+times more expensive per video. Two On-Demand runs and one Spot run do not establish that
+On-Demand is slower, because the host hardware behind a Fargate task is not guaranteed, but they
+give no reason to prefer it other than as overflow when the Spot quota is exhausted. Spot capacity
+was also reliable: in the seven days of AWS Batch job history queried at the end of the
+measurements, 2 of 370 job executions (0.5\%) had been interrupted, and both were retried
+successfully by AWS Batch.
+
+Several limits apply to these figures. Most rows are single runs, and chunks of identical size on
+Fargate Spot varied by up to 1.8 times within one job in the first deployment, so differences of
+about ten percent between two rows should not be read as an effect. The four-hour source is a
+synthetic test pattern at 5.35~Mbit/s, which may encode faster than camera footage, although its
+chunks ran at 0.9 seconds per second of video against 1.0 for the 25-minute file, which suggests
+the bias is small. The 16~vCPU capacity exceeds the quota granted for production at the time of
+the measurements, so those rows describe what a quota increase would give rather than the
+deployed system, and the staging environment served no other traffic during the runs, so
+production contention is not represented.
 
 \section{Load Testing}
 \label{sec:load-testing}

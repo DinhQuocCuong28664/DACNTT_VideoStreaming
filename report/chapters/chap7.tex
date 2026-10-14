@@ -23,6 +23,13 @@ carrying the reason for the failure rather than terminating silently. Both mecha
 earlier designs that held only for an execution mode the deployed system does not use; the
 reasoning is set out in Section~\ref{sec:pipeline-design} and Section~\ref{sec:challenges}.
 
+The platform also processes long videos. Videos of five minutes or longer are divided by a planner
+job into chunks that an array of AWS Batch jobs encodes in parallel and a finalizer job merges,
+while shorter videos keep the single-job path. Measured on the deployed pipeline, a four-hour video
+reached the \texttt{READY} state 135 minutes after its upload finished at the production capacity
+of 8~vCPU and 85 minutes at 16~vCPU, and one hundred 60-second clips submitted at once were all
+processed without a failure (Section~\ref{sec:chunked-evaluation}).
+
 Content protection was implemented in two layers. Origin Access Control keeps the storage
 bucket entirely private, and CloudFront Signed Cookies ensure that private videos are rejected
 at the edge even when the exact manifest URL is known. This closes a gap that would otherwise
@@ -53,6 +60,11 @@ rather than on a reserved instance, compute capacity exists only while a job run
 Section~\ref{sec:cost-analysis} estimates the monthly operating cost of this arrangement at
 \$1.51 against \$133.35 for an always-on instance sized for the same workload, a difference that
 originates entirely in the elimination of idle capacity.
+
+The same property extends to long videos. Chunk jobs are ordinary AWS Batch jobs on the same
+compute environment, so additional vCPU quota translates directly into lower latency: a four-hour
+video took 135 minutes at 8~vCPU and 85 minutes at 16~vCPU, and no chunk came near the two-hour
+limit of a job (Section~\ref{sec:chunked-evaluation}).
 
 Content protection is enforced at the edge rather than only in the API. Origin Access Control
 keeps the storage bucket private and CloudFront Signed Cookies reject unauthorised requests before
@@ -87,12 +99,18 @@ wastes bandwidth on simple content while under-serving complex content. Netflix 
 reductions between 28\% and 38\% at equivalent perceptual quality by optimising the ladder per
 shot \cite{netflix2018dynamic}, which indicates the magnitude of the opportunity forgone.
 
-Each video is transcoded by a single container, without the chunk-based parallelism that Netflix
-employs. Processing time therefore scales linearly with video duration, and a long video cannot be
-accelerated by adding capacity. Section~\ref{sec:drain-rate} measured roughly 66 seconds of
-wall-clock time per job for a three-second clip, which shows how far fixed overhead dominates for
-short content; for long content the encoder itself dominates instead, and it is that portion which
-the current design cannot parallelise.
+Parallelism is bounded by the account quota and by fixed per-job costs. Chunked transcoding
+converts capacity into lower latency for long videos, but the gain flattens for shorter ones: a
+25-minute video finished in 18.0 minutes at 8~vCPU and in about 15 minutes at 16~vCPU, a speed-up
+of only 1.2, because planning, audio encoding and finalisation take about three minutes
+regardless of capacity and each chunk pays a container start-up
+(Section~\ref{sec:chunked-evaluation}). Production runs on a Fargate Spot quota of 8~vCPU, so a
+burst of long videos is served one after another: four 25-minute videos submitted together
+finished after 73 minutes, and a request for a larger quota had not been granted when the
+measurements ended. Videos shorter than five minutes keep the single-container path, where
+processing time still scales linearly with duration; Section~\ref{sec:drain-rate} measured
+roughly 66 seconds of wall-clock time per job for a three-second clip, which shows how far fixed
+overhead dominates for short content.
 
 Signed Cookies remain valid for two hours after issuance, so switching a video from public to
 private leaves viewers holding unexpired cookies with access until those cookies lapse. Immediate
@@ -113,6 +131,11 @@ allowing uploaders to update the title, description, category, and visibility of
 without losing accumulated views, comments, or transcoding artifacts. However, tags management
 remains confined to the initial upload form, and thumbnail replacement is not yet supported in the
 interface; changing a video's poster requires administrative intervention or re-uploading.
+
+The long-video measurements are narrower than their headline figures in one respect as well: the
+four-hour results are one run per capacity on a synthetic source, a test pattern repeated nine
+times, and the 16~vCPU rows describe a quota that production does not currently have
+(Section~\ref{sec:chunked-evaluation}).
 
 Two experimental results are narrower than the headline figures suggest. The comparison between
 1 and 4~vCPU allocations rests on a 1~vCPU baseline whose three runs span 56\%, so the estimated
@@ -164,11 +187,14 @@ operating points and selecting those on the convex hull of the quality-versus-bi
 would reduce delivery bandwidth at unchanged perceived quality, which lowers the largest
 remaining cost component of the system.
 
-Chunk-based parallel transcoding would address the linear scaling of processing time. Splitting
-the source at keyframe boundaries, encoding the segments concurrently across multiple
-containers, and concatenating the results would convert additional capacity into reduced
-latency. The main challenge is maintaining rate control consistency across chunk boundaries so
-that quality does not fluctuate visibly.
+Chunked transcoding is in place, so the remaining work on long videos concerns its efficiency.
+Each chunk pays a container start-up of tens of seconds, which is why doubling the capacity helps a
+25-minute video so little. Encoding several chunks in one longer-lived worker, or raising the
+minimum chunk length, would trade parallelism for less overhead, and the measurements of
+Section~\ref{sec:chunked-evaluation} suggest that the best choice depends on both the length of
+the video and the quota available. A related extension is to compare a faster x264 preset with the
+current one using VMAF on difficult clips, since a faster preset could shorten every chunk if the
+quality loss is acceptable.
 
 Hardware acceleration offers a further avenue. Research on GPU-enabled serverless platforms for
 HEVC encoding \cite{gpuserverless2024} suggests substantial throughput gains, and adopting a
