@@ -1,0 +1,57 @@
+{
+  "schema": 1,
+  "title": "S4b: thời gian chuyển mã (staging, Fargate Spot 8 vCPU)",
+  "runs": [
+    {
+      "id": "2026-10-14-staging-s4b-4h-1080p30-r1",
+      "date": "2026-10-14",
+      "account": "B",
+      "region": "ap-southeast-1",
+      "environment": "staging",
+      "path": "chunked",
+      "capacity": {
+        "spot_max_vcpus": 8,
+        "ondemand_max_vcpus": 0
+      },
+      "chunk": {
+        "vcpu": 4,
+        "memory_mib": null,
+        "count": 48,
+        "slots": null,
+        "gops_per_chunk": null
+      },
+      "video": {
+        "label": "4h-1080p30",
+        "duration_s": 14400,
+        "size_gib": 9.202,
+        "resolution": "1920x1080",
+        "fps": 30
+      },
+      "concurrency": 1,
+      "measured_from": "upload_complete",
+      "timings_s": {
+        "upload": 182,
+        "end_to_end": 8116,
+        "queue_to_first_job": 31,
+        "planner": 25,
+        "audio": 279,
+        "finalize": 195,
+        "chunks": 7555
+      },
+      "chunk_stats_s": {
+        "min": 217,
+        "median": 269,
+        "max": 419
+      },
+      "vcpu_seconds": 54472,
+      "vcpu_seconds_scope": "all_jobs",
+      "result": {
+        "final_status": "READY",
+        "hls_verified": true
+      },
+      "provenance": "measured",
+      "source": "transcoder/scripts/staging-measure-set.js (S4b)",
+      "notes": "Lượt 1 của 4h-1080p30; tệp s4-source-4h.mp4. Mốc tải lên xong là lúc aws s3 cp trả về, READY lấy từ updatedAt của video."
+    }
+  ]
+}

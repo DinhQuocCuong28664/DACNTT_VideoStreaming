@@ -172,29 +172,54 @@ def table_single_vs_chunked(runs):
 
 
 def table_four_hours(runs):
-    # Nhiều lần đo 4 giờ: lấy lượt mới nhất (id có ngày), ưu tiên bản ghi có đủ các bước.
+    """Video 4 giờ: một cột cho mỗi công suất đã đo (mới nhất của mỗi công suất)."""
     candidates = [r for r in runs if r["video"]["label"] == "4h-1080p30" and r["path"] == "chunked"]
     if not candidates:
         return None, []
-    run = sorted(candidates, key=lambda r: (r["date"], r["id"]))[-1]
-    t, c = run["timings_s"], run["chunk"]
 
-    if "audio_64k" in t and "audio_128k" in t:
-        audio = f"{minutes(t['audio_64k'])} / {minutes(t['audio_128k'])}"
-    elif t.get("audio") is not None:
-        audio = minutes(t["audio"])  # lần đo mới chỉ ghi job âm thanh chậm nhất
-    else:
-        audio = "n/a"
-    slots = c.get("slots")
-    concurrency = f", {slots} at a time" if slots else ""
-    rows = [
-        ["Planner (Lambda submit to child jobs)", minutes(t["planner"]) if t.get("planner") is not None else "n/a"],
-        ["Audio 64 kbit/s and 128 kbit/s (in parallel)", audio],
-        [f"{c['count']} chunk jobs{concurrency}, {c['vcpu']} vCPU each", minutes(t["chunks"])],
-        ["Finalizer (playlists, thumbnail, moderation, READY)", minutes(t["finalize"]) if t.get("finalize") is not None else "n/a"],
-        ["\\textbf{Upload complete to READY}", "\\textbf{" + minutes(t["end_to_end"]) + "}"],
+    latest = {}
+    for r in sorted(candidates, key=lambda x: (x["date"], x["id"])):
+        latest[_capacity(r)] = r  # lượt mới nhất của từng công suất ghi đè lượt cũ
+    capacities = sorted(latest, reverse=True)
+    picked = [latest[c] for c in capacities]
+
+    def audio_text(t):
+        if "audio_64k" in t and "audio_128k" in t:
+            return f"{minutes(t['audio_64k'])} / {minutes(t['audio_128k'])}"
+        return minutes(t["audio"]) if t.get("audio") is not None else "n/a"
+
+    def cell(r, key):
+        t, c = r["timings_s"], r["chunk"]
+        if key == "planner":
+            return minutes(t["planner"]) if t.get("planner") is not None else "n/a"
+        if key == "audio":
+            return audio_text(t)
+        if key == "chunks":
+            return minutes(t["chunks"])
+        if key == "finalize":
+            return minutes(t["finalize"]) if t.get("finalize") is not None else "n/a"
+        if key == "vcpu_hours":
+            return f"{(r.get('vcpu_seconds') or 0) / 3600:.1f}"
+        return "\\textbf{" + minutes(t["end_to_end"]) + "}"
+
+    def chunks_label():
+        counts = {r["chunk"]["count"] for r in picked}
+        vcpus = {r["chunk"]["vcpu"] for r in picked}
+        n = counts.pop() if len(counts) == 1 else "n"
+        v = vcpus.pop() if len(vcpus) == 1 else "n"
+        return f"{n} chunk jobs, {v} vCPU each"
+
+    steps = [
+        ("Planner (Lambda submit to child jobs)", "planner"),
+        ("Audio 64 kbit/s and 128 kbit/s (in parallel)", "audio"),
+        (chunks_label(), "chunks"),
+        ("Finalizer (playlists, thumbnail, moderation, READY)", "finalize"),
+        ("\\textbf{Upload complete to READY}", "end_to_end"),
+        ("Compute (vCPU-hours)", "vcpu_hours"),
     ]
-    return table("X r", ["STEP", "MINUTES"], rows), [run]
+    rows = [[label] + [cell(r, key) for r in picked] for label, key in steps]
+    header = ["STEP (MINUTES)"] + [f"{c} VCPU" for c in capacities]
+    return table("X " + "r " * len(capacities), header, rows), picked
 
 
 def table_legacy_timing():
