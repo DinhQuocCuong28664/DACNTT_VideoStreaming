@@ -1,0 +1,219 @@
+{
+  "schema": 1,
+  "title": "S5a: 4 video 25min-1080p cùng lúc (staging)",
+  "runs": [
+    {
+      "date": "2026-10-14",
+      "account": "B",
+      "region": "ap-southeast-1",
+      "environment": "staging",
+      "capacity": {
+        "spot_max_vcpus": 8,
+        "ondemand_max_vcpus": 8
+      },
+      "video": {
+        "label": "25min-1080p",
+        "duration_s": 1500,
+        "size_gib": 2.752,
+        "resolution": "1920x1080",
+        "fps": 30
+      },
+      "concurrency": 4,
+      "measured_from": "first_event_arrival",
+      "provenance": "measured",
+      "source": "transcoder/scripts/staging-burst-test.js (S5a)",
+      "id": "2026-10-14-staging-s5a-25min-1080p-v2",
+      "path": "chunked",
+      "chunk": {
+        "vcpu": 4,
+        "memory_mib": null,
+        "count": 12,
+        "slots": null,
+        "gops_per_chunk": null
+      },
+      "queue_position": 1,
+      "timings_s": {
+        "arrival_offset": 0,
+        "chunks_start": 181,
+        "chunks_end": 960,
+        "latency_from_arrival": 1062,
+        "end_to_end": 1062
+      },
+      "result": {
+        "final_status": "READY",
+        "hls_verified": false
+      },
+      "notes": "Video 2/4 của đợt S5a; end_to_end tính từ lúc sự kiện đầu tiên đến."
+    },
+    {
+      "date": "2026-10-14",
+      "account": "B",
+      "region": "ap-southeast-1",
+      "environment": "staging",
+      "capacity": {
+        "spot_max_vcpus": 8,
+        "ondemand_max_vcpus": 8
+      },
+      "video": {
+        "label": "25min-1080p",
+        "duration_s": 1500,
+        "size_gib": 2.752,
+        "resolution": "1920x1080",
+        "fps": 30
+      },
+      "concurrency": 4,
+      "measured_from": "first_event_arrival",
+      "provenance": "measured",
+      "source": "transcoder/scripts/staging-burst-test.js (S5a)",
+      "id": "2026-10-14-staging-s5a-25min-1080p-v3",
+      "path": "chunked",
+      "chunk": {
+        "vcpu": 4,
+        "memory_mib": null,
+        "count": 12,
+        "slots": null,
+        "gops_per_chunk": null
+      },
+      "queue_position": 2,
+      "timings_s": {
+        "arrival_offset": 0,
+        "chunks_start": 162,
+        "chunks_end": 1473,
+        "latency_from_arrival": 1540,
+        "end_to_end": 1540
+      },
+      "result": {
+        "final_status": "READY",
+        "hls_verified": false
+      },
+      "notes": "Video 3/4 của đợt S5a; end_to_end tính từ lúc sự kiện đầu tiên đến."
+    },
+    {
+      "date": "2026-10-14",
+      "account": "B",
+      "region": "ap-southeast-1",
+      "environment": "staging",
+      "capacity": {
+        "spot_max_vcpus": 8,
+        "ondemand_max_vcpus": 8
+      },
+      "video": {
+        "label": "25min-1080p",
+        "duration_s": 1500,
+        "size_gib": 2.752,
+        "resolution": "1920x1080",
+        "fps": 30
+      },
+      "concurrency": 4,
+      "measured_from": "first_event_arrival",
+      "provenance": "measured",
+      "source": "transcoder/scripts/staging-burst-test.js (S5a)",
+      "id": "2026-10-14-staging-s5a-25min-1080p-v1",
+      "path": "chunked",
+      "chunk": {
+        "vcpu": 4,
+        "memory_mib": null,
+        "count": 12,
+        "slots": null,
+        "gops_per_chunk": null
+      },
+      "queue_position": 3,
+      "timings_s": {
+        "arrival_offset": 0,
+        "chunks_start": 1331,
+        "chunks_end": 2099,
+        "latency_from_arrival": 2165,
+        "end_to_end": 2165
+      },
+      "result": {
+        "final_status": "READY",
+        "hls_verified": false
+      },
+      "notes": "Video 1/4 của đợt S5a; end_to_end tính từ lúc sự kiện đầu tiên đến."
+    },
+    {
+      "date": "2026-10-14",
+      "account": "B",
+      "region": "ap-southeast-1",
+      "environment": "staging",
+      "capacity": {
+        "spot_max_vcpus": 8,
+        "ondemand_max_vcpus": 8
+      },
+      "video": {
+        "label": "25min-1080p",
+        "duration_s": 1500,
+        "size_gib": 2.752,
+        "resolution": "1920x1080",
+        "fps": 30
+      },
+      "concurrency": 4,
+      "measured_from": "first_event_arrival",
+      "provenance": "measured",
+      "source": "transcoder/scripts/staging-burst-test.js (S5a)",
+      "id": "2026-10-14-staging-s5a-25min-1080p-v4",
+      "path": "chunked",
+      "chunk": {
+        "vcpu": 4,
+        "memory_mib": null,
+        "count": 12,
+        "slots": null,
+        "gops_per_chunk": null
+      },
+      "queue_position": 4,
+      "timings_s": {
+        "arrival_offset": 0,
+        "chunks_start": 1923,
+        "chunks_end": 2599,
+        "latency_from_arrival": 2658,
+        "end_to_end": 2658
+      },
+      "result": {
+        "final_status": "READY",
+        "hls_verified": false
+      },
+      "notes": "Video 4/4 của đợt S5a; end_to_end tính từ lúc sự kiện đầu tiên đến."
+    },
+    {
+      "date": "2026-10-14",
+      "account": "B",
+      "region": "ap-southeast-1",
+      "environment": "staging",
+      "capacity": {
+        "spot_max_vcpus": 8,
+        "ondemand_max_vcpus": 8
+      },
+      "video": {
+        "label": "25min-1080p",
+        "duration_s": 1500,
+        "size_gib": 2.752,
+        "resolution": "1920x1080",
+        "fps": 30
+      },
+      "concurrency": 4,
+      "measured_from": "first_event_arrival",
+      "provenance": "measured",
+      "source": "transcoder/scripts/staging-burst-test.js (S5a)",
+      "id": "2026-10-14-staging-s5a-25min-1080p-summary",
+      "path": "burst",
+      "chunk": null,
+      "timings_s": {
+        "upload_source": 54,
+        "end_to_end": 2658,
+        "latency_p50": 2165,
+        "latency_p95": 2658,
+        "latency_max": 2658
+      },
+      "vcpu_seconds": 33189,
+      "vcpu_seconds_scope": "all_jobs",
+      "result": {
+        "final_status": "READY",
+        "hls_verified": false,
+        "ready": 4,
+        "failed": 0,
+        "throughput_per_minute": 0.09
+      },
+      "notes": "Tổng hợp cả đợt 4 video; end_to_end là thời gian cả đợt (từ sự kiện đầu tiên đến video READY cuối cùng)."
+    }
+  ]
+}
