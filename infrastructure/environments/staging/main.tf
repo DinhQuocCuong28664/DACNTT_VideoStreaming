@@ -204,7 +204,7 @@ module "batch" {
   use_spot                      = true
   # 8 = quota Fargate Spot của tài khoản (staging và production dùng chung quota): đủ để đo
   # thời gian thật của pipeline chia đoạn với video 4 giờ. Staging chỉ chạy khi được bật.
-  max_vcpus                   = 8
+  max_vcpus                   = var.spot_max_vcpus
   ondemand_max_vcpus          = var.ondemand_max_vcpus
   chunked_transcoding_enabled = true
   job_vcpu                    = var.job_vcpu

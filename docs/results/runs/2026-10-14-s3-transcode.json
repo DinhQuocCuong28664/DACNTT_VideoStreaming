@@ -1,0 +1,108 @@
+{
+  "schema": 1,
+  "title": "S3: thời gian chuyển mã (staging, Fargate Spot 0 vCPU + On-Demand 8 vCPU)",
+  "runs": [
+    {
+      "id": "2026-10-14-staging-s3-25min-1080p-r1",
+      "date": "2026-10-14",
+      "account": "B",
+      "region": "ap-southeast-1",
+      "environment": "staging",
+      "path": "chunked",
+      "capacity": {
+        "spot_max_vcpus": 0,
+        "ondemand_max_vcpus": 8
+      },
+      "chunk": {
+        "vcpu": 4,
+        "memory_mib": null,
+        "count": 6,
+        "slots": null,
+        "gops_per_chunk": null
+      },
+      "video": {
+        "label": "25min-1080p",
+        "duration_s": 1500,
+        "size_gib": 2.752,
+        "resolution": "1920x1080",
+        "fps": 30
+      },
+      "concurrency": 1,
+      "measured_from": "upload_complete",
+      "timings_s": {
+        "upload": 166,
+        "end_to_end": 1558,
+        "queue_to_first_job": 33,
+        "planner": 26,
+        "audio": 90,
+        "finalize": 74,
+        "chunks": 1302
+      },
+      "chunk_stats_s": {
+        "min": 398,
+        "median": 414,
+        "max": 422
+      },
+      "vcpu_seconds": 10182,
+      "vcpu_seconds_scope": "all_jobs",
+      "result": {
+        "final_status": "READY",
+        "hls_verified": true
+      },
+      "provenance": "measured",
+      "source": "transcoder/scripts/staging-measure-set.js (S3)",
+      "notes": "Lượt 1 của 25min-1080p; tệp upload-test-25min.mp4. Mốc tải lên xong là lúc aws s3 cp trả về, READY lấy từ updatedAt của video."
+    },
+    {
+      "id": "2026-10-14-staging-s3-25min-1080p-r2",
+      "date": "2026-10-14",
+      "account": "B",
+      "region": "ap-southeast-1",
+      "environment": "staging",
+      "path": "chunked",
+      "capacity": {
+        "spot_max_vcpus": 0,
+        "ondemand_max_vcpus": 8
+      },
+      "chunk": {
+        "vcpu": 4,
+        "memory_mib": null,
+        "count": 6,
+        "slots": null,
+        "gops_per_chunk": null
+      },
+      "video": {
+        "label": "25min-1080p",
+        "duration_s": 1500,
+        "size_gib": 2.752,
+        "resolution": "1920x1080",
+        "fps": 30
+      },
+      "concurrency": 1,
+      "measured_from": "upload_complete",
+      "timings_s": {
+        "upload": 76,
+        "end_to_end": 1348,
+        "queue_to_first_job": 34,
+        "planner": 25,
+        "audio": 90,
+        "finalize": 71,
+        "chunks": 1091
+      },
+      "chunk_stats_s": {
+        "min": 218,
+        "median": 313,
+        "max": 416
+      },
+      "vcpu_seconds": 7852,
+      "vcpu_seconds_scope": "all_jobs",
+      "result": {
+        "final_status": "READY",
+        "hls_verified": false
+      },
+      "provenance": "measured",
+      "source": "transcoder/scripts/staging-measure-set.js (S3)",
+      "notes": "Lượt 2 của 25min-1080p; tệp upload-test-25min.mp4. Mốc tải lên xong là lúc aws s3 cp trả về, READY lấy từ updatedAt của video."
+    }
+  ]
+}
