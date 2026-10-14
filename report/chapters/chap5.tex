@@ -327,32 +327,33 @@ the address stable across any rebuild that does occur.
 \section{Testing}
 \label{sec:testing}
 
-The automated test suite comprises 209 tests across fourteen suites, summarised in
-Table~\ref{tab:test-coverage}.
+The automated test suite comprises 767 tests across 46 suites, 406 in 29 suites for the backend
+and 361 in 17 for the transcoder, and Table~\ref{tab:test-coverage} groups them by area.
 
 \begin{table}[H]
 \centering
-\caption{Automated test coverage by area}
+\caption{Automated tests by area}
 \label{tab:test-coverage}
 \small
-\begin{tabularx}{\textwidth}{p{0.28\textwidth} p{0.10\textwidth} X}
+\begin{tabularx}{\textwidth}{p{0.27\textwidth} p{0.09\textwidth} X}
 \toprule
-\textbf{SUITE} & \textbf{TESTS} & \textbf{FOCUS} \\
+\textbf{AREA} & \textbf{TESTS} & \textbf{FOCUS} \\
 \midrule
-\texttt{videoService}       & 11 & Upload initiation, ownership checks, deletion cascade \\
-\texttt{s3Service}          & 2  & Key generation and pre-signed URL creation \\
-\texttt{authService}        & 17 & Registration conflicts, login failures, token claims, password reset \\
-\texttt{authMiddleware}     & 14 & Missing, malformed, forged, and expired tokens, and tokens issued before the account's last password change \\
-\texttt{visibility}         & 21 & Privacy enforcement across every query path, view deduplication \\
-\texttt{uploadValidation}   & 11 & HTTP-level validation of file type and size \\
-\texttt{cloudfrontService}  & 24 & Cookie signing, policy scope, cookie attributes, and that revocation repeats the attributes used when issuing \\
-\texttt{forgotPassword}     & 5  & That the response is identical whether or not the address has an account, including when e-mail delivery fails \\
-\texttt{relatedVideos}      & 10 & That the recommendation endpoint reuses the same authorisation rule as the detail endpoint, and never surfaces a private or unlisted video \\
-\texttt{transcoder/dbHandler} & 6 & Conditional writes preventing duplicate-job overwrites \\
-\path{transcoder/emailService} & 6 & READY/ERROR notification content and recipient targeting, and that raw failure detail is never exposed to the viewer \\
-\path{transcoder/framerate} & 32 & That the group of pictures follows the real source frame rate, that a variable-frame-rate file cannot poison it, and that every rendition is forced to cut at the same instant \\
-\path{transcoder/bandwidth} & 18 & That the declared bandwidth of each variant is the peak measured from the segments themselves rather than a configured target, rounded upward so it remains the upper bound RFC 8216 requires \\
-\path{transcoder/codecs} & 32 & That the codec string declared for each variant is read from the encoded stream itself rather than derived from configuration, and is omitted rather than guessed when it cannot be read \\
+\multicolumn{3}{l}{\textit{Backend: 406 tests in 29 suites}} \\
+Authentication & 41 & Registration conflicts, login failures and token claims; missing, malformed, forged and expired tokens, and tokens issued before the account's last password change; the password policy; and a reset response that is identical whether or not the address has an account, including when e-mail delivery fails \\
+Visibility and authorisation & 34 & Privacy enforcement across every query path; that the recommendation endpoint reuses the rule of the detail endpoint and never surfaces a private or unlisted video; and that a video exposes how many likes and dislikes it has but not who gave them \\
+Upload & 93 & Metadata and ownership checks, the deletion cascade, pre-signed URL creation, file type and size validation, the ceiling and its hard limit, the choice between a single and a multipart upload, part URLs signed for exact sizes, completion by listing the stored parts, and the clean-up of abandoned uploads \\
+Content delivery & 30 & Cookie signing, policy scope and cookie attributes, and that revocation repeats the attributes used when issuing \\
+Listing, reactions and views & 31 & Pagination bounds, a stable sort order for channel pages, likes and dislikes as conditional updates, view deduplication, and the order of routes \\
+Operation and reconciliation & 32 & Reconciliation of videos stuck in processing or abandoned in uploading, the client address behind Cloudflare and nginx, rate-limit keys, e-mail configuration, and the health endpoint \\
+Moderation and operations console & 145 & Classification of each decision as a false positive, a false negative or neither; the snapshot of the machine's conclusion written once; the permission table for the four roles; one appeal per decision; audit sampling and labelling; the Wilson interval and the rates; and that the last administrator cannot be demoted \\
+\addlinespace
+\multicolumn{3}{l}{\textit{Transcoder: 361 tests in 17 suites}} \\
+Chunked pipeline & 184 & Chunk boundaries as multiples of the group of pictures counted in frames, the conditions that fall back to one container, command construction, playlist joining, submission to the lower-priority queue, task-size validation, and the planner, audio, chunk and finalizer jobs end to end \\
+Ladder, frame rate and encode guard & 78 & Rung selection from the source resolution and the reduced ladder for long videos; that the group of pictures follows the real frame rate, that a variable-frame-rate file cannot poison it, and that every rendition cuts at the same instant; giving up early when a video cannot be encoded within the budget of a job; the thumbnail \\
+Playlist metadata & 51 & That the declared bandwidth of each variant is the peak measured from the segments rather than a configured target, rounded upward as RFC 8216 requires, and that the codec string is read from the encoded stream and omitted rather than guessed \\
+Persistence and delivery & 30 & Conditional writes that prevent a duplicate job from overwriting a result, object storage access, and the content of the READY and ERROR notifications, which never expose raw failure detail to the viewer \\
+Content screening & 18 & The label policy including parent labels and the downgrade of animated content, the frame sampling plan, and holding back a video that could not be analysed fully \\
 \bottomrule
 \end{tabularx}
 \end{table}
