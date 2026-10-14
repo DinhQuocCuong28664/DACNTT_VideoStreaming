@@ -28,8 +28,8 @@ the machine's verdict into \texttt{autoStatus} only if no earlier decision has d
 open reports on the video, dismissed on an approval and actioned on a removal, and then appends the
 event. The event is written after the decision has been applied. If writing it fails the decision
 stands and the failure is logged, because withdrawing a removal on account of a faulty log would be
-the worse outcome; the rates are computed from the video documents themselves, so a missing event
-does not skew them.
+the worse outcome; the false positive rate, the precision of the flag and the coverage are
+computed from the video documents themselves, so a missing event does not skew them.
 
 The upload flow validates metadata on the server before issuing a pre-signed URL. Client-side
 validation alone is insufficient, since a user can call the API directly and obtain a URL for
