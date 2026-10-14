@@ -103,6 +103,11 @@ description, category, and visibility), or is deleted.
 \section{Quality of Experience Evaluation}
 \label{sec:qoe-evaluation}
 
+The playback measurements of this section were taken in September 2026, when the ladder had three
+rungs, 360p, 720p and 1080p; the ladder was extended to six rungs on 7 October 2026
+(Section~\ref{sec:transcoder-impl}). The rungs named in its tables are those three, and the
+findings about declared and actual bandwidth do not depend on the number of rungs.
+
 Time-to-First-Frame is measured by an instrumentation script that fetches the master playlist,
 parses it to locate a rendition playlist, fetches that playlist, and finally downloads the first
 media segment, recording the elapsed time for each stage. The measurement is repeated so that

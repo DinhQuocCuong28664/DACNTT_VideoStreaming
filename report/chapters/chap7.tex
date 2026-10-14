@@ -9,7 +9,7 @@ serverless container and event-driven architecture, and to evaluate whether that
 delivers the cost and scalability benefits it promises.
 
 The functional platform was completed. Users can register, authenticate, upload videos directly
-to Amazon S3 through pre-signed URLs, watch them with adaptive bitrate playback across three
+to Amazon S3 through pre-signed URLs, watch them with adaptive bitrate playback across up to six
 renditions, control whether each video is public, unlisted or private, manage their channel,
 search and
 filter the catalogue, and interact through likes and comments.
@@ -93,7 +93,8 @@ playing.
 
 Several limitations remain in the delivered system.
 
-The bitrate ladder is fixed at three rungs regardless of content. As the literature reviewed in
+The bitrate ladder is fixed at six rungs regardless of content, and a video receives those that
+its source resolution can fill. As the literature reviewed in
 Section~\ref{sec:core-models} shows, the optimal ladder is content-dependent, so a fixed ladder
 wastes bandwidth on simple content while under-serving complex content. Netflix reported bitrate
 reductions between 28\% and 38\% at equivalent perceptual quality by optimising the ladder per

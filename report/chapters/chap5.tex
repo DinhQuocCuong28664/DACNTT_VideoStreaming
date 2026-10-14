@@ -59,8 +59,13 @@ not already \texttt{READY}, and \texttt{processVideo} now checks the video's sta
 downloading anything, so a duplicate delivery that arrives after the first job has already
 finished is rejected immediately instead of re-downloading and re-transcoding the source.
 
-A single FFmpeg invocation produces all three renditions, which is more efficient than three
-separate invocations because the source is decoded only once. The command emits segments of six
+A single FFmpeg invocation produces every rendition of the ladder that the source can fill,
+which is more efficient than separate invocations because the source is decoded only once. The
+ladder has six rungs, from 144p at 120~kbit/s to 1080p at 4~Mbit/s, and each rung fits the source
+inside its own frame without enlarging it: a 480p source yields a 360p rung and one at
+854$\times$480, not a 1080p rendition enlarged 2.25 times. Only the single-container path for a
+video longer than twenty minutes keeps the earlier three-rung ladder of 360p, 720p and 1080p, to
+stay within the time limit of a job. The command emits segments of six
 seconds, generates the per-rendition playlists, and the worker then writes the master playlist
 that lists the available bandwidths, codecs and resolutions. Those bandwidths and codec strings
 are derived from the encoded output rather than from the encoder settings: the bandwidth is the
