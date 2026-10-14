@@ -140,7 +140,9 @@ exactly-once delivery; a two-layer content protection scheme combining Origin Ac
 CloudFront Signed Cookies so that private videos remain inaccessible even to a viewer holding
 the exact manifest URL; a chunk-parallel transcoding path that splits a video of five minutes or
 more across concurrent jobs and brings a four-hour source to playback in 135 minutes at the
-production quota; a complete Infrastructure as Code description of the AWS environment
+production quota; a content moderation pipeline and a role-based console whose recorded
+decisions make the false positive and false negative rates measurable; a complete Infrastructure
+as Code description of the AWS environment
 in thirteen Terraform modules; and a DevSecOps pipeline whose security gate genuinely blocks
 merges rather than merely reporting findings.
 

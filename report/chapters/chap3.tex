@@ -4,7 +4,7 @@
 \section{Stakeholders and User Requirements}
 \label{sec:stakeholders}
 
-Three groups interact with the system, and their differing needs shape the requirements.
+Four groups interact with the system, and their differing needs shape the requirements.
 
 The \emph{anonymous visitor} arrives without an account. This group needs to browse public
 videos, search and filter by category, and watch content immediately, because requiring
@@ -13,7 +13,10 @@ additionally needs to upload videos, control whether each video is public, unlis
 private, manage
 the videos on their own channel, and interact through likes and comments. The
 \emph{system administrator}, in the context of this project the development team itself,
-needs the platform to be observable and deployable without manual intervention.
+needs the platform to be observable and deployable without manual intervention. Finally, the
+\emph{operations staff} decide whether uploaded content may be shown: they need a queue of the
+videos that the automatic screening could not settle, a way to hear an owner's appeal, and figures
+that tell them how often the screening is wrong.
 
 \section{Functional Requirements}
 \label{sec:functional-requirements}
@@ -42,6 +45,28 @@ FR-08 & Search and filtering & Users search by title, description, or tags, and 
 FR-09 & Engagement & Users express likes and dislikes and post comments; a comment may be removed by its author or by the video owner. \\
 FR-10 & View counting & The system records a view only after playback has genuinely started, and does not count repeated views from the same viewer within a short window. \\
 FR-11 & Related videos & The watch page suggests further videos drawn from the same category and the same uploader. A suggestion is subject to the same visibility rule as the video itself, so the list never reveals one the viewer could not open directly. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Table~\ref{tab:functional-requirements-moderation} continues the list with the requirements of
+moderation and operation, which Section~\ref{sec:moderation-design} designs.
+
+\begin{table}[H]
+\centering
+\caption{Functional requirements of moderation and operation}
+\label{tab:functional-requirements-moderation}
+\small
+\begin{tabularx}{\textwidth}{p{0.08\textwidth} p{0.22\textwidth} X}
+\toprule
+\textbf{ID} & \textbf{REQUIREMENT} & \textbf{DESCRIPTION} \\
+\midrule
+FR-12 & Automatic screening & Before a video is published, the system samples frames from it and classifies them; a video with clearly violating content is removed automatically, and one with doubtful content is held back for review. Screening that cannot be completed holds the video back and does not publish it. \\
+FR-13 & Viewer reports & A signed-in viewer can report a video for a reason chosen from a short list, and has at most one open report per video. \\
+FR-14 & Staff review & Operators approve or remove the held-back and reported videos, and every decision carries a reason from a closed list. \\
+FR-15 & Appeals & The owner of a removed video can appeal once per decision, an operator resolves the appeal with a note, and a person other than the owner cannot learn that the video exists. \\
+FR-16 & Accountability & Every decision is recorded together with what the automatic screening had concluded, so that the rates of false positives and false negatives can be estimated, the latter from a random audit sample, and an auditor can read them without being able to change a decision. \\
+FR-17 & Role management & An administrator assigns the roles operator, auditor and administrator, cannot change their own role and cannot demote the last administrator; every change is recorded. \\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -106,6 +131,10 @@ not invoked by the user at all. The user's upload action triggers them indirectl
 event chain, which is why they are attached to the system actor rather than to the human
 actors. This separation is what allows the browser to return control to the user immediately
 after the upload completes, without waiting for processing to finish.
+
+The diagram shows the use cases of the people who use the platform. The use cases of the
+operations staff, which are requirements FR-12 to FR-17, are specified in
+Table~\ref{tab:functional-requirements-moderation} and designed in Section~\ref{sec:moderation-design}.
 
 Table~\ref{tab:usecase-upload} specifies the most architecturally significant use case in
 detail.

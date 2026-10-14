@@ -14,6 +14,23 @@ authorisation endpoint, calls that same function. This is a deliberate choice: d
 permission check across endpoints is the most common way for an access control gap to appear,
 because a later change updates one copy and not the others.
 
+Operational authority follows the same principle. The four roles of the platform, user, operator,
+auditor and administrator, are mapped to permissions in a single table, and each route asks whether
+the requester holds a named permission, such as \texttt{moderation:review} or
+\texttt{metrics:read}, instead of comparing role names. Adding a role therefore means editing one
+table and not searching the code for comparisons. The requester's record, and with it the role, is
+read from the database on every request and is not copied into the token, so demoting a person takes
+effect at once and not when a token expires.
+
+A decision is applied by one service function. It validates the reason code against the closed list
+for that decision, refuses to let an operator change a decision that an administrator made, copies
+the machine's verdict into \texttt{autoStatus} only if no earlier decision has done so, resolves the
+open reports on the video, dismissed on an approval and actioned on a removal, and then appends the
+event. The event is written after the decision has been applied. If writing it fails the decision
+stands and the failure is logged, because withdrawing a removal on account of a faulty log would be
+the worse outcome; the rates are computed from the video documents themselves, so a missing event
+does not skew them.
+
 The upload flow validates metadata on the server before issuing a pre-signed URL. Client-side
 validation alone is insufficient, since a user can call the API directly and obtain a URL for
 an arbitrary file, effectively turning the project's storage bucket into free hosting for
@@ -93,6 +110,15 @@ a task size of their own, 4~vCPU and 8~GiB, because a four-vCPU task measured 14
 combinations when the configuration is loaded, since Batch would otherwise reject the submission
 only after the video had been marked as processing.
 
+Content screening is one function that the single-container job and the finalizer both call, with
+the same policy and thresholds. It extracts the sampled frames with FFmpeg, sends them to
+Rekognition three at a time with retries and client-side rate limiting when the service throttles,
+applies the label policy of Section~\ref{sec:screening-design}, and returns the verdict together
+with its evidence labels and the share of planned frames that could be analysed. A failure inside
+the step is converted into a flagged verdict that carries the error, so that the video waits for a
+person and is neither lost nor published. Screening is on unless \texttt{MODERATION\_ENABLED} is
+explicitly set to false, so that a missing setting cannot silently publish every video.
+
 Failure handling is deliberate. When FFmpeg exits with a non-zero status, the error propagates
 to the top-level handler, which records the \texttt{ERROR} status in the database and, in
 \texttt{worker} mode, does \emph{not} delete the SQS message: leaving it in flight allows the
@@ -120,7 +146,7 @@ longer log retention and no forced destruction of buckets.
 \caption{Terraform modules and their responsibilities}
 \label{tab:terraform-modules}
 \small
-\begin{tabularx}{\textwidth}{p{0.14\textwidth} X}
+\begin{tabularx}{\textwidth}{p{0.25\textwidth} X}
 \toprule
 \textbf{MODULE} & \textbf{RESPONSIBILITY} \\
 \midrule
@@ -346,18 +372,18 @@ the address stable across any rebuild that does occur.
 \label{sec:testing}
 
 The automated test suite comprises 767 tests across 46 suites, 406 in 29 suites for the backend
-and 361 in 17 for the transcoder, and Table~\ref{tab:test-coverage} groups them by area.
+and 361 in 17 for the transcoder, and Tables~\ref{tab:test-coverage-backend} and
+\ref{tab:test-coverage-transcoder} group them by area.
 
 \begin{table}[H]
 \centering
-\caption{Automated tests by area}
-\label{tab:test-coverage}
+\caption{Automated backend tests by area, 406 tests in 29 suites}
+\label{tab:test-coverage-backend}
 \small
 \begin{tabularx}{\textwidth}{p{0.27\textwidth} p{0.09\textwidth} X}
 \toprule
 \textbf{AREA} & \textbf{TESTS} & \textbf{FOCUS} \\
 \midrule
-\multicolumn{3}{l}{\textit{Backend: 406 tests in 29 suites}} \\
 Authentication & 41 & Registration conflicts, login failures and token claims; missing, malformed, forged and expired tokens, and tokens issued before the account's last password change; the password policy; and a reset response that is identical whether or not the address has an account, including when e-mail delivery fails \\
 Visibility and authorisation & 34 & Privacy enforcement across every query path; that the recommendation endpoint reuses the rule of the detail endpoint and never surfaces a private or unlisted video; and that a video exposes how many likes and dislikes it has but not who gave them \\
 Upload & 93 & Metadata and ownership checks, the deletion cascade, pre-signed URL creation, file type and size validation, the ceiling and its hard limit, the choice between a single and a multipart upload, part URLs signed for exact sizes, completion by listing the stored parts, and the clean-up of abandoned uploads \\
@@ -365,8 +391,19 @@ Content delivery & 30 & Cookie signing, policy scope and cookie attributes, and 
 Listing, reactions and views & 31 & Pagination bounds, a stable sort order for channel pages, likes and dislikes as conditional updates, view deduplication, and the order of routes \\
 Operation and reconciliation & 32 & Reconciliation of videos stuck in processing or abandoned in uploading, the client address behind Cloudflare and nginx, rate-limit keys, e-mail configuration, and the health endpoint \\
 Moderation and operations console & 145 & Classification of each decision as a false positive, a false negative or neither; the snapshot of the machine's conclusion written once; the permission table for the four roles; one appeal per decision; audit sampling and labelling; the Wilson interval and the rates; and that the last administrator cannot be demoted \\
-\addlinespace
-\multicolumn{3}{l}{\textit{Transcoder: 361 tests in 17 suites}} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Automated transcoder tests by area, 361 tests in 17 suites}
+\label{tab:test-coverage-transcoder}
+\small
+\begin{tabularx}{\textwidth}{p{0.27\textwidth} p{0.09\textwidth} X}
+\toprule
+\textbf{AREA} & \textbf{TESTS} & \textbf{FOCUS} \\
+\midrule
 Chunked pipeline & 184 & Chunk boundaries as multiples of the group of pictures counted in frames, the conditions that fall back to one container, command construction, playlist joining, submission to the lower-priority queue, task-size validation, and the planner, audio, chunk and finalizer jobs end to end \\
 Ladder, frame rate and encode guard & 78 & Rung selection from the source resolution and the reduced ladder for long videos; that the group of pictures follows the real frame rate, that a variable-frame-rate file cannot poison it, and that every rendition cuts at the same instant; giving up early when a video cannot be encoded within the budget of a job; the thumbnail \\
 Playlist metadata & 51 & That the declared bandwidth of each variant is the peak measured from the segments rather than a configured target, rounded upward as RFC 8216 requires, and that the codec string is read from the encoded stream and omitted rather than guessed \\
