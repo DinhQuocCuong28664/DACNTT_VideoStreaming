@@ -596,6 +596,11 @@ the \texttt{READY} state, which corresponds to the interval a user actually wait
 interval encompasses the S3 event delay, the time spent queued in SQS, container startup on
 Fargate, FFmpeg execution, and the upload of results.
 
+The measurements of this section predate both the six-rung ladder and chunked transcoding: the
+encoder produced the three renditions 360p, 720p and 1080p, in one container per video. That is
+the configuration against which Section~\ref{sec:chunked-evaluation} later compares the chunked
+path.
+
 The compute allocation of each run was verified after the fact rather than taken from the label
 the measurement script recorded, since a mislabelled run would silently invalidate the comparison
 that follows. Querying the job definition revision each job actually executed against resolved
