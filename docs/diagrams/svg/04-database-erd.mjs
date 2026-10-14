@@ -31,7 +31,7 @@ Object.assign(TYPE, {
 });
 
 const W = 1345;
-const H = 764;
+const H = 800;
 const p = [];
 
 const LEFT = 40;
@@ -50,6 +50,7 @@ const user = entity({
     { type: 'string', name: 'displayName' },
     { type: 'string', name: 'avatar' },
     { type: 'string', name: 'channelDescription' },
+    { type: 'string', name: 'role', note: 'four roles' },
     { type: 'number', name: 'subscribers' },
     { type: 'string', name: 'resetPasswordToken', note: 'SHA-256' },
     { type: 'Date', name: 'resetPasswordExpire' },
@@ -86,6 +87,8 @@ const video = entity({
     { type: 'string', name: 'status', note: 'UPLOADING, PROCESSING, READY, ERROR' },
     { type: 'string', name: 'visibility', note: 'public / private / unlisted' },
     { type: 'string', name: 'rawS3Key' },
+    { type: 'string', name: 'multipartUploadId', note: 'only while uploading' },
+    { type: 'number', name: 'multipartPartSize', note: 'bytes' },
     { type: 'string', name: 'hlsUrl', note: 'CloudFront master m3u8' },
     { type: 'string', name: 'thumbnailUrl' },
     { type: 'number', name: 'duration', note: 'seconds' },
@@ -95,6 +98,7 @@ const video = entity({
     { type: 'ObjectId[]', name: 'likes', key: 'FK' },
     { type: 'ObjectId[]', name: 'dislikes', key: 'FK' },
     { type: 'string[]', name: 'tags' },
+    { type: 'object', name: 'moderation', note: 'verdict, evidence, reviewer' },
     { type: 'Date', name: 'createdAt' },
     { type: 'Date', name: 'updatedAt' },
   ],
@@ -112,7 +116,7 @@ p.push(edge([[user.box.r, user.rowY(0)], [LANE, user.rowY(0)], [LANE, video.rowY
 p.push(edge([[user.box.r, user.rowY(2)], [LANE - 34, user.rowY(2)], [LANE - 34, comment.rowY(2)], [comment.box.r, comment.rowY(2)]],
   { label: 'writes  1 : N', labelDy: -8, labelAt: 0.55 }));
 
-p.push(edge([[video.box.x, video.rowY(17)], [LANE, video.rowY(17)], [LANE, comment.rowY(1)], [comment.box.r, comment.rowY(1)]],
+p.push(edge([[video.box.x, video.rowY(20)], [LANE, video.rowY(20)], [LANE, comment.rowY(1)], [comment.box.r, comment.rowY(1)]],
   { label: 'has  1 : N', labelDy: -8, labelAt: 0.5 }));
 
 p.push(text(
