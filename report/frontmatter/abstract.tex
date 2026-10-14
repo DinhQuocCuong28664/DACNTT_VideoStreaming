@@ -17,12 +17,12 @@ is buffered in Amazon SQS and dispatched by an AWS Lambda job submitter to AWS B
 running on AWS Fargate. A container packaging FFmpeg is created only when there is work to
 do, produces up to six renditions from 144p to 1080p together with a master playlist and
 a thumbnail, uploads the result to a processed bucket, updates the metadata in MongoDB
-Atlas, and then terminates. Videos of five minutes or more are encoded as parallel chunks; four
-hours of video was ready 135 minutes after upload at 8~vCPU. Content is delivered through Amazon CloudFront with Origin
+Atlas, and then terminates. Videos of five minutes or more are encoded as parallel chunks, and four
+hours of video was ready in 135 minutes at 8~vCPU. Content is delivered through Amazon CloudFront with Origin
 Access Control, and every stream is gated at the edge by CloudFront Signed Cookies, so that a
 viewer without a valid signature is rejected even when they know the exact manifest URL; a
 video's visibility setting governs who the backend will issue those cookies to, not whether
-the gate applies. Content is screened automatically and reviewed in a role-based console that
+the gate applies. Content is screened automatically and reviewed in a console that
 records each decision.
 
 The entire AWS infrastructure is described as code using thirteen independent Terraform
