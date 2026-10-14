@@ -99,21 +99,51 @@ def table_scaling_25min(runs):
     return table("X r r r r r", header, rows), picked
 
 
+def _capacity(r):
+    c = r.get("capacity") or {}
+    return int(c.get("spot_max_vcpus") or 0) + int(c.get("ondemand_max_vcpus") or 0)
+
+
 def table_concurrency(runs):
-    """Bốn video 25 phút nộp cùng lúc."""
-    picked = [r for r in runs if r["concurrency"] == 4 and r["video"]["label"] == "25min-1080p"]
-    picked.sort(key=lambda r: r["queue_position"])
+    """Bốn video 25 phút nộp cùng lúc, ở từng công suất (8 và 16 vCPU)."""
+    picked = [
+        r for r in runs
+        if r["concurrency"] == 4 and r["video"]["label"] == "25min-1080p" and r["path"] != "burst"
+    ]
+    picked.sort(key=lambda r: (_capacity(r), r["queue_position"]))
     rows = []
     for r in picked:
         t = r["timings_s"]
         rows.append([
+            str(_capacity(r)),
             str(r["queue_position"]),
             minutes(t["chunks_start"]),
             minutes(t["chunks_end"]),
             minutes(t["end_to_end"]),
         ])
-    header = ["SUBMISSION ORDER", "CHUNKS START (MIN)", "CHUNKS END (MIN)", "READY (MIN)"]
-    return table("X r r r", header, rows), picked
+    header = ["CAPACITY (VCPU)", "COMPLETION ORDER", "CHUNKS START (MIN)", "CHUNKS END (MIN)", "READY (MIN)"]
+    return table("X r r r r", header, rows), picked
+
+
+def table_burst(runs):
+    """Tổng hợp các đợt nộp đồng thời (bản ghi path == burst)."""
+    picked = sorted((r for r in runs if r["path"] == "burst"), key=lambda r: (r["concurrency"], r["id"]))
+    rows = []
+    for r in picked:
+        t, res = r["timings_s"], r["result"]
+        vcpu_h = (r.get("vcpu_seconds") or 0) / 3600
+        rows.append([
+            f"{r['concurrency']} $\\times$ {esc(r['video']['label'])}",
+            str(_capacity(r)),
+            f"{res['ready']}/{r['concurrency']}",
+            minutes(t["end_to_end"]),
+            minutes(t["latency_p50"]),
+            minutes(t["latency_p95"]),
+            f"{res['throughput_per_minute']:.2f}",
+            f"{vcpu_h:.1f}",
+        ])
+    header = ["BATCH", "CAPACITY (VCPU)", "READY", "WHOLE BATCH (MIN)", "MEDIAN (MIN)", "P95 (MIN)", "VIDEOS PER MINUTE", "VCPU-HOURS"]
+    return table("X r r r r r r r", header, rows), picked
 
 
 def table_single_vs_chunked(runs):
@@ -200,6 +230,8 @@ TABLES = [
      "Chương đánh giá, mục chuyển mã chia đoạn"),
     ("tab-concurrent-four-videos.tex", "Four 25-minute videos submitted together", table_concurrency,
      "Chương đánh giá, mục nhiều video cùng lúc"),
+    ("tab-burst-summary.tex", "Simultaneous submissions: whole-batch time and per-video latency", table_burst,
+     "Chương đánh giá, mục nhiều video đồng thời"),
     ("tab-single-vs-chunked.tex", "Single-job path against chunked path, 5 to 15 minutes", table_single_vs_chunked,
      "Chương đánh giá, mục ngưỡng chia đoạn"),
     ("tab-four-hour-breakdown.tex", "Four-hour video, time per step", table_four_hours,
