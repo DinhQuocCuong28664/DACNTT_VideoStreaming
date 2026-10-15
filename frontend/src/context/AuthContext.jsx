@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import authApi from '../api/authApi';
 import AuthContext from './authContextDef';
 
@@ -77,6 +77,22 @@ export const AuthProvider = ({ children }) => {
   };
 
   /**
+   * Tải lại hồ sơ từ máy chủ, cho các thay đổi xảy ra ngoài trang này (vd.
+   * email vừa được xác minh từ liên kết trong thư, có thể ở tab khác).
+   *
+   * Giữ cùng một hàm qua các lần render: trang xác minh đặt nó vào danh sách
+   * phụ thuộc của effect, và một hàm mới mỗi lần render sẽ khiến effect gọi
+   * lại API vô hạn (gọi xong → user đổi → render → hàm mới → gọi lại).
+   */
+  const refreshUser = useCallback(async () => {
+    const res = await authApi.getMe();
+    const userData = res.data.data.user;
+    localStorage.setItem('user', JSON.stringify(userData));
+    setUser(userData);
+    return userData;
+  }, []);
+
+  /**
    * Đăng xuất.
    *
    * Xoá trạng thái cục bộ TRƯỚC, rồi mới nhờ máy chủ thu hồi CloudFront Signed
@@ -109,6 +125,7 @@ export const AuthProvider = ({ children }) => {
     linkGoogleAccount,
     register,
     updateUser,
+    refreshUser,
     logout,
   };
 

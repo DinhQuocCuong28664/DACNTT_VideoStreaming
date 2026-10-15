@@ -3,7 +3,7 @@ const { SUPPORTED, DEFAULT_LANGUAGE } = require('../config/i18n');
 
 /**
  * Email Service — Gmail SMTP with App Password
- * Used for password reset emails.
+ * Used for password reset and email verification emails.
  */
 
 const createTransporter = () => {
@@ -47,15 +47,34 @@ const COPY = {
   },
 };
 
-/**
- * Send password reset email
- * @param {string} to - Recipient email
- * @param {string} resetUrl - Full URL with reset token
- * @param {string} [language] - 'vi' or 'en'; falls back to the default language
- */
-const sendPasswordResetEmail = async (to, resetUrl, language = DEFAULT_LANGUAGE) => {
+/** Nội dung email xác minh địa chỉ sau khi đăng ký. */
+const VERIFY_COPY = {
+  vi: {
+    subject: '✉️ Xác minh email — DACNTT Video Platform',
+    greeting: 'Xin chào,',
+    intro:
+      'Cảm ơn bạn đã đăng ký. Nhấn vào nút bên dưới để xác nhận đây là email của bạn. Sau khi xác minh, bạn có thể tải video lên:',
+    button: 'Xác minh email',
+    expiry: 'Liên kết này sẽ hết hạn sau <strong>24 giờ</strong>.',
+    ignore: 'Nếu bạn không tạo tài khoản nào, vui lòng bỏ qua email này.',
+  },
+  en: {
+    subject: '✉️ Verify your email — DACNTT Video Platform',
+    greeting: 'Hello,',
+    intro:
+      'Thanks for signing up. Use the button below to confirm this is your email address. Once it is verified you can upload videos:',
+    button: 'Verify email',
+    expiry: 'This link expires in <strong>24 hours</strong>.',
+    ignore: 'If you did not create an account, you can ignore this email.',
+  },
+};
+
+const pickCopy = (table, language) =>
+  table[SUPPORTED.includes(language) ? language : DEFAULT_LANGUAGE];
+
+/** Gửi một thư gồm lời chào, một nút hành động và dòng hạn dùng. */
+const sendActionEmail = async (to, copy, actionUrl) => {
   const transporter = createTransporter();
-  const copy = COPY[SUPPORTED.includes(language) ? language : DEFAULT_LANGUAGE];
 
   const mailOptions = {
     from: process.env.EMAIL_FROM || 'DACNTT Video Platform <noreply@zelostech.site>',
@@ -68,7 +87,7 @@ const sendPasswordResetEmail = async (to, resetUrl, language = DEFAULT_LANGUAGE)
         <p>${copy.greeting}</p>
         <p>${copy.intro}</p>
         <div style="text-align: center; margin: 30px 0;">
-          <a href="${resetUrl}"
+          <a href="${actionUrl}"
              style="background-color: #6c5ce7; color: white; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-size: 16px; font-weight: bold;">
             ${copy.button}
           </a>
@@ -83,6 +102,24 @@ const sendPasswordResetEmail = async (to, resetUrl, language = DEFAULT_LANGUAGE)
 
   await transporter.sendMail(mailOptions);
 };
+
+/**
+ * Send password reset email
+ * @param {string} to - Recipient email
+ * @param {string} resetUrl - Full URL with reset token
+ * @param {string} [language] - 'vi' or 'en'; falls back to the default language
+ */
+const sendPasswordResetEmail = (to, resetUrl, language = DEFAULT_LANGUAGE) =>
+  sendActionEmail(to, pickCopy(COPY, language), resetUrl);
+
+/**
+ * Send email verification email
+ * @param {string} to - Recipient email
+ * @param {string} verifyUrl - Full URL with verification token
+ * @param {string} [language] - 'vi' or 'en'; falls back to the default language
+ */
+const sendVerificationEmail = (to, verifyUrl, language = DEFAULT_LANGUAGE) =>
+  sendActionEmail(to, pickCopy(VERIFY_COPY, language), verifyUrl);
 
 /**
  * Cấu hình email có dùng được không, xét trước khi chạm tới mạng: thiếu biến,
@@ -106,7 +143,7 @@ const isEmailConfigured = (env = process.env) =>
  */
 const verifyEmailTransport = async (logger = console) => {
   if (!isEmailConfigured()) {
-    logger.warn('⚠️  Email is not configured (EMAIL_USER / EMAIL_APP_PASSWORD missing or placeholder): password reset emails will not be delivered');
+    logger.warn('⚠️  Email is not configured (EMAIL_USER / EMAIL_APP_PASSWORD missing or placeholder): password reset and verification emails will not be delivered');
     return false;
   }
   try {
@@ -114,13 +151,14 @@ const verifyEmailTransport = async (logger = console) => {
     logger.log(`✉️  SMTP ready as ${process.env.EMAIL_USER}`);
     return true;
   } catch (err) {
-    logger.error(`❌ SMTP check failed: ${err.message} — password reset emails will not be delivered`);
+    logger.error(`❌ SMTP check failed: ${err.message} — password reset and verification emails will not be delivered`);
     return false;
   }
 };
 
 module.exports = {
   sendPasswordResetEmail,
+  sendVerificationEmail,
   isEmailConfigured,
   verifyEmailTransport,
 };

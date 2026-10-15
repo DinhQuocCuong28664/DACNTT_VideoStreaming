@@ -21,6 +21,11 @@ export const authApi = {
   resetPassword: (token, password) =>
     axiosClient.post(`/auth/reset-password/${token}`, { password }),
 
+  // Trang /verify-email/:token gọi khi mở liên kết trong thư; không cần đăng nhập.
+  verifyEmail: (token) => axiosClient.post(`/auth/verify-email/${token}`),
+
+  resendVerification: () => axiosClient.post('/auth/resend-verification'),
+
   changePassword: (currentPassword, newPassword) =>
     axiosClient.put('/auth/change-password', { currentPassword, newPassword }),
 

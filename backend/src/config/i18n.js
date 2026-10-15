@@ -36,6 +36,14 @@ const MESSAGES = {
     'rate.tooManyReports': 'Bạn đã gửi quá nhiều báo cáo trong một giờ. Vui lòng thử lại sau.',
     'report.received': 'Cảm ơn bạn. Đội ngũ vận hành sẽ xem xét báo cáo này.',
     'report.alreadyReported': 'Bạn đã báo cáo video này rồi. Đội ngũ vận hành đang xem xét.',
+    'auth.verificationSent': 'Đã gửi email xác minh tới {email}.',
+    'auth.verificationSendFailed': 'Chưa gửi được email xác minh. Vui lòng thử lại sau ít phút.',
+    'auth.alreadyVerified': 'Email của bạn đã được xác minh.',
+    'auth.emailVerified': 'Đã xác minh email.',
+    'auth.verifyLinkInvalid': 'Liên kết xác minh không hợp lệ hoặc đã hết hạn.',
+    'auth.emailNotVerified': 'Bạn cần xác minh email trước khi tải video lên.',
+    'rate.tooManyVerificationEmails':
+      'Bạn đã yêu cầu quá nhiều email xác minh trong một giờ. Vui lòng thử lại sau.',
   },
   en: {
     'cors.forbiddenOrigin': 'Origin not allowed by the CORS policy: {origin}',
@@ -57,6 +65,14 @@ const MESSAGES = {
     'rate.tooManyReports': 'You have sent too many reports in the past hour. Please try again later.',
     'report.received': 'Thanks for reporting. Our moderators will review this video.',
     'report.alreadyReported': 'You have already reported this video. Our moderators are reviewing it.',
+    'auth.verificationSent': 'A verification email has been sent to {email}.',
+    'auth.verificationSendFailed': 'The verification email could not be sent. Please try again in a few minutes.',
+    'auth.alreadyVerified': 'Your email address is already verified.',
+    'auth.emailVerified': 'Email address verified.',
+    'auth.verifyLinkInvalid': 'This verification link is invalid or has expired.',
+    'auth.emailNotVerified': 'Please verify your email address before uploading videos.',
+    'rate.tooManyVerificationEmails':
+      'You have requested too many verification emails in the past hour. Please try again later.',
   },
 };
 

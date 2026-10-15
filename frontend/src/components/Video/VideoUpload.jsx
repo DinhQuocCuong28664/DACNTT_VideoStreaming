@@ -1,8 +1,17 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { MdFileUpload, MdClose, MdErrorOutline, MdCheck, MdOutlineMovie } from 'react-icons/md';
+import {
+  MdFileUpload,
+  MdClose,
+  MdErrorOutline,
+  MdCheck,
+  MdOutlineMovie,
+  MdOutlineMarkEmailUnread,
+} from 'react-icons/md';
 import videoApi from '../../api/videoApi';
+import { useAuth } from '../../context/useAuth';
+import ResendVerificationButton from '../Auth/ResendVerificationButton';
 import { UPLOAD_CATEGORIES } from '../../i18n/categories';
 import VisibilityPicker from './VisibilityPicker';
 import './VideoUpload.css';
@@ -33,6 +42,10 @@ const EMPTY_FORM = {
 const VideoUpload = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { user, refreshUser } = useAuth();
+  // Máy chủ từ chối tải lên khi email chưa xác minh (EMAIL_NOT_VERIFIED); báo
+  // trước ở bước chọn tệp thay vì để người dùng điền xong thông tin mới biết.
+  const needsVerification = user?.emailVerified === false;
   const fileInputRef = useRef(null);
   const abortControllerRef = useRef(null);
   const uploadStartTimeRef = useRef(null);
@@ -249,6 +262,15 @@ const VideoUpload = () => {
         // Handled by handleCancelUpload
         return;
       }
+      if (err.response?.data?.code === 'EMAIL_NOT_VERIFIED') {
+        // Hồ sơ trong trình duyệt đã cũ (vd. lưu từ trước khi có xác minh):
+        // tải lại để bước 1 hiện lời nhắc xác minh.
+        setUploading(false);
+        setStep(1);
+        setFile(null);
+        refreshUser().catch(() => {});
+        return;
+      }
       setError(err.response?.data?.message || t('upload.errorFailed'));
       setStep(2);
       setUploading(false);
@@ -329,8 +351,20 @@ const VideoUpload = () => {
           )}
         </div>
 
+        {/* Bước 1, khi email chưa xác minh: lời nhắc thay cho vùng thả tệp */}
+        {step === 1 && needsVerification && (
+          <div className="upload-verify">
+            <span className="dropzone-circle">
+              <MdOutlineMarkEmailUnread aria-hidden="true" />
+            </span>
+            <p className="dropzone-text">{t('verify.uploadTitle')}</p>
+            <p className="dropzone-sub">{t('verify.uploadDesc', { email: user.email })}</p>
+            <ResendVerificationButton className="btn btn-primary" />
+          </div>
+        )}
+
         {/* Bước 1: chọn tệp */}
-        {step === 1 && (
+        {step === 1 && !needsVerification && (
           /* Vùng thả tệp là <div> nên bàn phím không tới được: khai báo nó là
              nút, cho vào thứ tự tab, và mở hộp chọn tệp bằng Enter hoặc phím
              cách đúng như khi bấm chuột. */

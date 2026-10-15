@@ -5,6 +5,7 @@ import { MdMenu } from 'react-icons/md';
 import Navbar from './Navbar';
 import Guide from './Guide';
 import Logo from './Logo';
+import EmailVerificationBanner from '../Auth/EmailVerificationBanner';
 
 /** Từ bề rộng này trở lên, menu trái mở đầy đủ 240 px (như YouTube). */
 const WIDE_QUERY = '(min-width: 1312px)';
@@ -110,6 +111,7 @@ const MainLayout = () => {
       )}
 
       <main id="main-content" className="app-main">
+        <EmailVerificationBanner />
         {/* Các trang tải riêng theo route (xem App.jsx) chờ ở đây, nên thanh
             trên và menu trái vẫn hiện trong lúc tải chunk của trang. */}
         <Suspense

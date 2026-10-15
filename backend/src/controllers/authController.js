@@ -23,27 +23,100 @@ const logout = (req, res) => {
 };
 
 /**
+ * Gửi thư xác minh; trả về true nếu gửi được.
+ *
+ * Không ném lỗi: thư hỏng không được làm hỏng việc đăng ký, người dùng gửi
+ * lại được từ trang Cài đặt hoặc trang tải lên. Liên kết trỏ về trang frontend
+ * (giống liên kết đặt lại mật khẩu), trang đó mới gọi API xác minh.
+ */
+const sendVerification = async (req, user, verificationToken) => {
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+  const verifyUrl = `${frontendUrl}/verify-email/${verificationToken}`;
+  try {
+    await emailService.sendVerificationEmail(user.email, verifyUrl, languageOf(req));
+    return true;
+  } catch (emailError) {
+    console.error('❌ Verification email failed:', emailError.message);
+    return false;
+  }
+};
+
+/**
  * @route   POST /api/auth/register
- * @desc    Register a new user
+ * @desc    Register a new user and email them a verification link
  * @access  Public
  */
 const registerUser = async (req, res, next) => {
   try {
     const { username, email, password } = req.body;
 
-    const { user, token } = await authService.register(
+    const { user, token, verificationToken } = await authService.register(
       username,
       email,
       password
     );
 
+    const verificationEmailSent = await sendVerification(req, user, verificationToken);
+
     res.status(201).json({
       success: true,
       message: 'User registered successfully',
-      data: { user, token },
+      data: { user, token, verificationEmailSent },
     });
   } catch (error) {
     next(error);
+  }
+};
+
+/**
+ * @route   POST /api/auth/verify-email/:token
+ * @desc    Mark the account's email as verified using the link from the email
+ * @access  Public
+ *
+ * Không trả về thông tin tài khoản: ai cầm liên kết cũng gọi được, và giao
+ * diện đang đăng nhập tự tải lại hồ sơ của mình sau khi xác minh.
+ */
+const verifyEmail = async (req, res, next) => {
+  try {
+    await authService.verifyEmail(req.params.token);
+
+    res.status(200).json({
+      success: true,
+      message: t(req, 'auth.emailVerified'),
+      data: { emailVerified: true },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @route   POST /api/auth/resend-verification
+ * @desc    Email a new verification link to the signed-in user
+ * @access  Private
+ */
+const resendVerification = async (req, res, next) => {
+  try {
+    const { user, verificationToken } = await authService.prepareVerificationEmail(req.user._id);
+
+    const sent = await sendVerification(req, user, verificationToken);
+    if (!sent) {
+      // Người gọi đã đăng nhập và biết email của chính mình, nên báo thật là
+      // gửi hỏng không làm lộ gì. Trả thẳng ở đây vì errorHandler thay mọi
+      // thông điệp >= 500 bằng câu chung chung ở production.
+      return res.status(503).json({
+        success: false,
+        message: t(req, 'auth.verificationSendFailed'),
+        code: 'EMAIL_SEND_FAILED',
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: t(req, 'auth.verificationSent', { email: user.email }),
+    });
+  } catch (error) {
+    return next(error);
   }
 };
 
@@ -232,6 +305,8 @@ const changePassword = async (req, res, next) => {
 
 module.exports = {
   registerUser,
+  verifyEmail,
+  resendVerification,
   loginUser,
   googleAuth,
   linkGoogle,

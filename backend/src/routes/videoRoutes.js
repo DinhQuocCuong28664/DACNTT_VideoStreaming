@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
-const { optionalAuth } = require('../middleware/auth');
+const { optionalAuth, requireVerifiedEmail } = require('../middleware/auth');
 const { validateRequest, validateUploadMetadata } = require('../middleware/validateRequest');
 const { uploadLimiter, reportLimiter } = require('../middleware/rateLimiter');
 const {
@@ -39,9 +39,13 @@ router.post('/:id/view', optionalAuth, registerView);
 router.get('/:id/comments', optionalAuth, getComments);
 
 // Protected routes (require JWT)
+// Chặn ngay ở bước tạo bản ghi: confirm-upload chỉ chạy cho video đã qua
+// bước này. Kiểm tra xác minh trước limiter để lượt bị từ chối không ăn vào
+// hạn mức tải lên của giờ đó.
 router.post(
   '/initiate-upload',
   auth,
+  requireVerifiedEmail,
   uploadLimiter,
   validateRequest(['filename', 'mimetype']),
   validateUploadMetadata,

@@ -162,6 +162,9 @@ chọn:
 cd infrastructure/environments/dev && terraform validate
 
 # 2. Pipeline chạy thật đầu-cuối
+# Tài khoản của token phải đã xác minh email, nếu không initiate-upload trả
+# 403 EMAIL_NOT_VERIFIED. Tài khoản thử thì đánh dấu bằng tay:
+#   node backend/scripts/verify-email.js <email>
 export API_URL="https://api.zelostech.site/api"
 export JWT_TOKEN="<token đăng nhập>"
 node scripts/measure-transcode.js samples/video-100mb.mp4 verify-rebuild
