@@ -136,10 +136,12 @@ detected, is examined in Section~\ref{sec:challenges}.
 \label{sec:iac}
 
 The AWS environment is described by thirteen Terraform modules, summarised in
-Table~\ref{tab:terraform-modules}, and is instantiated by three environment definitions:
+Table~\ref{tab:terraform-modules}, and is described by three environment definitions:
 \texttt{dev}, which hosts the deployed system; \texttt{staging}, a reduced copy used to test a
-branch before it is merged; and \texttt{prod}, which differs in using On-Demand Fargate capacity,
-longer log retention and no forced destruction of buckets.
+branch before it is merged; and \texttt{prod}, a variant that uses On-Demand Fargate capacity,
+keeps logs for thirty days and does not force-destroy buckets. Only the first two have been
+applied: the state of \texttt{prod} does not exist, and its definition was checked with
+\texttt{terraform validate} and never deployed.
 
 \begin{table}[H]
 \centering
