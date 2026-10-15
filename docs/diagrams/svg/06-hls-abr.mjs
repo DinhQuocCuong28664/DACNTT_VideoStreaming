@@ -21,7 +21,7 @@
 import { card, edge, text, document_, write, PALETTE } from './render.mjs';
 
 const W = 792;
-const H = 906;
+const H = 934;
 const p = [];
 
 const CX = W / 2;
@@ -48,54 +48,43 @@ const ff = card({
 p.push(src.svg, ff.svg);
 p.push(edge([[src.box.cx, src.box.b], [ff.box.cx, ff.box.y]]));
 
-// ── Ba rung của thang bitrate ───────────────────────────────────────────────
-const RW = 236;
-const RGAP = 14;
-const rowX = CX - (RW * 3 + RGAP * 2) / 2;
+// ── Thang bitrate: tối đa sáu rung ────────────────────────────────────────
+// Một thẻ liệt kê cả thang thay vì sáu thẻ riêng: sáu thẻ xếp hai hàng làm các
+// cạnh toả ra phải chui qua hàng trên, còn một danh sách thì đọc được ngay từ
+// bitrate nào đi với mức nào. Video nguồn chỉ nhận các rung mà độ phân giải của
+// nó lấp được (mục 5.2), nên "tối đa".
 const RY = 372;
-
-const rungs = [
-  { name: '360p', v: '400 kbps', a: '64 kbps', dir: '360p/playlist.m3u8' },
-  { name: '720p', v: '1500 kbps', a: '128 kbps', dir: '720p/playlist.m3u8' },
-  { name: '1080p', v: '4000 kbps', a: '192 kbps', dir: '1080p/playlist.m3u8' },
-];
-
-const boxes = rungs.map((r, i) => {
-  const c = card({
-    x: rowX + i * (RW + RGAP), y: RY, w: RW, h: 124,
-    title: r.name,
-    sub: [`video ${r.v}, audio ${r.a}`, r.dir, 'plus 6-second .ts segments'],
-    tone: 'network',
-  });
-  p.push(c.svg);
-  return c;
+const ladder = card({
+  x: CX - 270, y: RY, w: 540, h: 188,
+  title: 'One output block per rung, up to six',
+  sub: [
+    '144p    video 120 kbps, audio 48 kbps',
+    '240p    video 240 kbps, audio 64 kbps',
+    '360p    video 400 kbps, audio 64 kbps',
+    '480p    video 750 kbps, audio 96 kbps',
+    '720p    video 1500 kbps, audio 128 kbps',
+    '1080p  video 4000 kbps, audio 192 kbps',
+    'each rung has its own playlist.m3u8 and 6-second .ts segments',
+  ],
+  tone: 'network',
 });
-
-// Một lệnh, ba đầu ra: nhánh toả ra từ cùng một điểm để thấy rõ là song song
-// trong cùng một lần chạy, không phải ba lần chạy nối tiếp.
-const FAN_Y = 330;
-p.push(edge([[ff.box.cx, ff.box.b], [ff.box.cx, FAN_Y]], { arrow: false }));
-boxes.forEach((b) => {
-  p.push(edge([[ff.box.cx, FAN_Y], [b.box.cx, FAN_Y], [b.box.cx, b.box.y]]));
-});
-p.push(text('one input, three output blocks', ff.box.cx + 122, FAN_Y - 10,
+p.push(ladder.svg);
+p.push(edge([[ff.box.cx, ff.box.b], [ff.box.cx, ladder.box.y]]));
+p.push(text('one input, up to six output blocks', ff.box.cx + 20, 330,
   { size: 13, anchor: 'start', fill: PALETTE.muted }));
 
-// ── Master playlist và trình phát ───────────────────────────────────────────
+// ── Master playlist và trình phát ──────────────────────────────────────────
 const master = card({
-  x: CX - 200, y: 588, w: 400, h: 96,
+  x: CX - 200, y: ladder.box.b + 50, w: 400, h: 96,
   title: 'master.m3u8',
   sub: ['lists each rendition with its declared bandwidth'],
   tone: 'compute',
 });
 p.push(master.svg);
-boxes.forEach((b) => {
-  p.push(edge([[b.box.cx, b.box.b], [b.box.cx, 560], [master.box.cx, 560], [master.box.cx, master.box.y]],
-    { arrow: b === boxes[1] }));
-});
+p.push(edge([[ladder.box.cx, ladder.box.b], [master.box.cx, master.box.y]]));
 
 const player = card({
-  x: CX - 210, y: 746, w: 420, h: 118, iconName: 'javascript', iconSize: 28,
+  x: CX - 210, y: master.box.b + 62, w: 420, h: 118, iconName: 'javascript', iconSize: 28,
   title: 'Player (hls.js)',
   sub: ['measures throughput and switches rung', 'at a segment boundary'],
   tone: 'secret',

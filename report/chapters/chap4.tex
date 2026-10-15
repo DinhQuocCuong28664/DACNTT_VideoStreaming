@@ -29,6 +29,12 @@ transcoding demand without affecting the responsiveness of the interface. And a 
 processing tier degrades the system gracefully, leaving already-published videos playable while
 newly uploaded ones remain in a pending state.
 
+Two later additions sit inside this structure and do not change it. Content moderation runs in the
+processing tier, as the last step before a video is published, so that the check neither delays
+the upload nor adds a component to operate (Section~\ref{sec:moderation-design}). And the console
+that human reviewers use is a role-restricted part of the same single page application and the same
+backend API, not a separate system.
+
 \section{Transcoding Pipeline Design}
 \label{sec:pipeline-design}
 
@@ -41,7 +47,8 @@ initiates an upload until the video becomes available.
 \begin{sidewaysfigure}
 \centering
 \includegraphics[width=\textheight]{images/02-transcoding-sequence.png}
-\caption{\textit{Sequence diagram of the event-driven transcoding pipeline}}
+\caption{\textit{Sequence diagram of the event-driven transcoding pipeline for one container;
+a video of five minutes or more takes the chunked path of Table~\ref{tab:chunked-jobs}}}
 \label{fig:sequence}
 \end{sidewaysfigure}
 
@@ -89,18 +96,90 @@ because a mechanism present in the source but absent from the deployed path cann
 with the guarantees it would provide if it ran. Section~\ref{sec:challenges} draws the same
 distinction about content protection.
 
+\subsection{Upload of Large Files}
+\label{sec:upload-design}
+
+The sequence of Figure~\ref{fig:sequence} uses one pre-signed request, which suits files up to a
+few hundred megabytes. For larger files the design switches to a multipart upload, because a single
+transfer that fails near its end must be repeated in full and Amazon S3 accepts at most 5~GiB in one
+request. The backend chooses the path from the declared size: a file of up to 512~MiB is sent with
+one pre-signed POST, and a larger file is divided into parts of 32~MiB.
+
+Both paths keep the property that motivated direct upload, that the payload never passes through
+the application server, and both keep the limits enforced by the storage service and not by the
+client. For the single request, the signed policy fixes the object key, the content type and the
+size range. For a multipart upload the backend signs one URL per part for exactly that part's
+length, so S3 itself refuses a part of any other size, and when the client reports the upload
+complete the backend lists the parts that S3 holds and checks them before it asks S3 to assemble
+the object. The ceiling on the size of a file is a configuration value, with a hard limit of
+20~GiB in the source, which is 640 parts of 32~MiB, and 20~GiB in the deployed system. An upload that
+is abandoned is cleaned up in two ways: a lifecycle rule aborts incomplete multipart uploads after
+two days, and a periodic reconciler in the backend removes a draft that has stayed in the
+\texttt{UPLOADING} state for more than a day.
+
+\subsection{Chunk-Parallel Transcoding of Long Videos}
+\label{sec:chunked-design}
+
+The pipeline of Figure~\ref{fig:sequence} gives each video to one container. That is adequate for
+short videos and fails for long ones: on a single vCPU, FFmpeg ran roughly four to five times
+slower than real time in the measurements of Sections~\ref{sec:pipeline-evaluation} and
+\ref{sec:chunked-evaluation}, so a long source
+would exceed the two-hour limit placed on a job however many vCPUs the account holds. The design
+therefore divides a video of five minutes or more into chunks that are encoded concurrently, and
+keeps the single-container path for shorter videos, where splitting costs more than it saves.
+
+The job that the Lambda submitter starts becomes a planner. It reads the structure of the source
+over HTTP without downloading it and divides the video at boundaries that are whole multiples of a
+six-second group of pictures, counted in frames so that a rate such as 29.97 frames per second does
+not accumulate a fractional error. It then submits the jobs of Table~\ref{tab:chunked-jobs} to the
+same AWS Batch service.
+
+\begin{table}[H]
+\centering
+\caption{Jobs of the chunked path}
+\label{tab:chunked-jobs}
+\small
+\begin{tabularx}{\textwidth}{p{0.14\textwidth} p{0.17\textwidth} p{0.16\textwidth} X}
+\toprule
+\textbf{JOB} & \textbf{COUNT} & \textbf{TASK SIZE} & \textbf{RESPONSIBILITY} \\
+\midrule
+Planner   & 1 & Default & Probes the source, computes the chunk boundaries, and submits the other jobs \\
+Audio     & 2 & Default & Encodes the audio once for the whole video, one job per bitrate (64 and 128~kbit/s) \\
+Chunk     & One per chunk, as an array job & 4~vCPU, 8~GiB & Reads its own range of the source over HTTP and encodes every rendition of the ladder for that range \\
+Finalizer & 1 & Default & Runs after every chunk has ended; joins the playlists, measures the bandwidth of each rendition from the segments, extracts the thumbnail, screens the content, and sets \texttt{READY} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Three properties of this design are deliberate. The chunk array goes to a second, lower-priority
+job queue that shares the Fargate Spot environment of the main queue, so that a short video
+submitted while a long one is encoding is scheduled ahead of its remaining chunks and does not wait
+for all of them. The number of chunks follows the number of tasks that can run at once, about three
+chunks per slot and none shorter than about a minute, so a larger quota produces smaller chunks.
+And the planner declines to split a source that cannot be split safely, which means a variable frame
+rate, an unknown duration, or audio and video that differ by more than 0.25~seconds; such a video
+falls back to the single-container path and is not failed.
+
+While a chunked video is encoding, its child jobs periodically touch the \texttt{updatedAt} field
+of the video. The reconciler that returns a video stuck in \texttt{PROCESSING} for more than six
+hours to a consistent state would otherwise mistake a long and healthy encode for a stuck one. How
+this path behaves, including where adding vCPUs stops helping, is measured in
+Section~\ref{sec:chunked-evaluation}.
+
 \section{Database Design}
 \label{sec:database-design}
 
-The persistence layer uses MongoDB Atlas with three collections, shown in
-Figure~\ref{fig:erd}.
+The persistence layer uses MongoDB Atlas with eight collections. Three of them,
+\texttt{User}, \texttt{Video} and \texttt{Comment}, model the platform itself and are shown in
+Figure~\ref{fig:erd}. The other five exist to moderate and operate it, and are described after the
+state machine of the video.
 
 % Xoay ngang: bảng VIDEO có mười chín thuộc tính kèm ghi chú. Đặt vừa bề rộng
 % vùng chữ thì tên trường rơi xuống khoảng 5pt.
 \begin{sidewaysfigure}
 \centering
 \includegraphics[width=\textheight]{images/04-database-erd.png}
-\caption{\textit{Entity relationship diagram of the MongoDB data model}}
+\caption{\textit{Entity relationship diagram of the core MongoDB collections}}
 \label{fig:erd}
 \end{sidewaysfigure}
 
@@ -111,6 +190,41 @@ either \texttt{READY} or \texttt{ERROR}. Modelling the lifecycle explicitly rath
 inferring it from the presence of other fields makes the interface straightforward: the client
 simply renders a different state for each value, and a video that failed to transcode is
 distinguishable from one that is merely slow.
+
+A second state, independent of the first, lives in the \texttt{moderation} sub-document of
+\texttt{Video}: the verdict (\texttt{approved}, \texttt{flagged} or \texttt{blocked}), whether it
+came from the machine or from a person, the labels that were its evidence, and, written exactly once
+and before any person first changes the verdict, \texttt{autoStatus}, the machine's own conclusion
+(Section~\ref{sec:moderation-design}). The five collections that support moderation are summarised
+in Table~\ref{tab:moderation-collections} and shown in Figure~\ref{fig:erd-moderation}.
+
+\begin{table}[H]
+\centering
+\caption{Collections that support moderation and operation}
+\label{tab:moderation-collections}
+\small
+\begin{tabularx}{\textwidth}{p{0.25\textwidth} p{0.28\textwidth} X}
+\toprule
+\textbf{COLLECTION} & \textbf{ONE DOCUMENT IS} & \textbf{CONSTRAINT} \\
+\midrule
+\texttt{Report} & A viewer's report of a video & At most one open report per viewer and video, by a partial unique index \\
+\texttt{ModerationEvent} & One decision by a person & Append only: no route edits or deletes it \\
+\texttt{Appeal} & An owner's appeal against a removal & One per video and decision time, by a unique index \\
+\texttt{AuditSample} & A video drawn into a random audit & A video enters at most once, by a unique index on the video \\
+\texttt{RoleChange} & A change of one user's role & Append only: who changed whom, from which role to which \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+% Xoay ngang vì cùng lý do với hình 4.3: ba cột bảng đặt vừa bề rộng vùng chữ thì nhãn chỉ còn
+% khoảng 4pt.
+\begin{sidewaysfigure}
+\centering
+\includegraphics[width=\textheight]{images/09-moderation-erd.png}
+\caption{\textit{Entity relationship diagram of the collections that support moderation and
+operation; every video field refers to \texttt{Video} and every user field to \texttt{User}}}
+\label{fig:erd-moderation}
+\end{sidewaysfigure}
 
 Likes and dislikes are stored as arrays of user identifiers embedded within the video document
 rather than as a separate collection. The denormalisation is justified at this scale because the
@@ -191,6 +305,177 @@ in a listing, and treating it as public costs nothing that the scheme was design
 The narrower point is that the protected unit is the stream, not every byte associated with a
 video.
 
+\section{Content Moderation and Operations Design}
+\label{sec:moderation-design}
+
+A platform that publishes what its users upload has to decide, for each upload, whether it may be
+shown. No single check can be trusted with that decision, because an automatic classifier errs in
+both directions: it removes harmless videos, which are false positives, and it lets harmful ones
+through, which are false negatives. The design therefore stacks four layers, each of which can
+correct the one before it: automatic screening, reports from viewers, review by staff, and a random
+audit of what was approved. It also records every human decision together with what the machine had
+concluded, so that the error rates of the earlier layers can be estimated and not assumed.
+
+\subsection{Automatic Screening}
+\label{sec:screening-design}
+
+Screening runs inside the job that finishes the video and writes its verdict in the same
+conditional write that marks the video \texttt{READY}, so a video is never published without a
+verdict unless screening was switched off explicitly. On the single-container path it runs before
+transcoding, and on the chunked path in the finalizer. A video that is blocked is still transcoded,
+so that staff can watch it when its owner appeals.
+
+The job samples one frame every five seconds, at most 120 frames, scaled to at most 720 pixels
+wide, and sends each to the image moderation operation of Amazon Rekognition
+\cite{awsrekognitionmoderation}. The image operation was preferred to the video operation for a
+concrete reason: the video operation accepts stored videos only if they are encoded with H.264 in
+an MPEG-4 or MOV container and are at most 10~GB \cite{awsrekognitionlimits}, whereas the platform
+accepts MKV, WebM and AVI uploads of up to 20~GiB, and FFmpeg in the container can decode all of
+them. The image operation also runs synchronously inside a job that is already running, so it needs
+no notification topic and no polling, and its cost has a ceiling: at the list price of 0.001~USD per
+image a video costs at most 0.12~USD. The price of this choice is that sparse sampling can miss
+content that appears for less than the interval between two samples, which is why screening is the
+first layer and not the only one.
+
+Each label returned for a frame is looked up in a policy table that maps it to one of three actions
+(Table~\ref{tab:label-policy}). The table sets policy at the coarse levels of the label taxonomy
+and uses the finest level only to exclude a specific concept, so that a bare male chest, for
+example, does not send a video to review merely because its parent label is non-explicit nudity.
+
+\begin{table}[H]
+\centering
+\caption{Actions assigned to Rekognition labels by the screening policy}
+\label{tab:label-policy}
+\small
+\begin{tabularx}{\textwidth}{p{0.11\textwidth} X p{0.30\textwidth}}
+\toprule
+\textbf{ACTION} & \textbf{LABELS} & \textbf{EFFECT} \\
+\midrule
+block  & Explicit nudity and sexual activity, sex toys, graphic violence, death and emaciation, hate symbols and extremism & The video is removed automatically when a label reaches 90\% confidence \\
+review & Non-explicit nudity, obstructed intimate parts, violence, explosions, visually disturbing content, crashes & The video is held back for review when a label reaches 60\% confidence \\
+ignore & Weapons, bare back, exposed male nipple, and any label that is not in the table & No effect \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Two refinements keep the policy from over-reaching. A frame that Rekognition classifies as
+animated or illustrated with at least 80\% confidence lowers graphic violence and death from
+\emph{block} to \emph{review}, since violence in a game or a cartoon is not the violence the rule is
+about; explicit sexual content and hate symbols are not lowered, because a drawing violates the
+rule as much as a photograph does. And screening fails closed: a video for which no frame could be
+analysed, or fewer than 80\% of the planned frames, is held back for review and is not published,
+so that an unavailable service produces a delay and not a publication.
+
+\subsection{Moderation States and Visibility}
+
+The verdict is stored as \texttt{approved}, \texttt{flagged} or \texttt{blocked}, independently of
+the transcoding status of Section~\ref{sec:database-design}. Whether a video has finished encoding
+says nothing about whether it may be shown, and a video can be \texttt{READY} and still hidden. A
+flagged video appears in no listing and is visible only to its owner and to staff. A blocked video
+can be played by staff alone, and its owner can appeal the removal. The filter that implements this
+is one function used by every public query path, for the reason given for authorisation in
+Section~\ref{sec:backend-impl}: copies of a rule drift apart. A video uploaded before moderation
+existed carries no verdict and is treated as approved.
+
+\subsection{Review, Appeals and Audit}
+\label{sec:review-design}
+
+Amazon's own guidance expects people to review a small share of the content, typically one to five
+per cent of the total volume, already flagged by the model \cite{awsrekognitionmoderation}. Staff
+clear the review queue by approving or blocking each video, and every decision must carry a reason
+code from a short, closed list: for an approval, for example, a model error, fiction or a game, or
+an acceptable context; for a removal, for example content missed by the model, an upheld report or
+a failed audit. The list is closed because free text cannot be counted, whereas a count of how many
+removals were reversed because the content was a game points to the threshold that needs adjusting.
+
+Each decision is appended to an event log that records who decided and in which role, the verdict
+before and after, the conclusion the machine had reached, the reason code, and the outcome class of
+Table~\ref{tab:outcome-classes}. The machine's conclusion is copied onto the video once, immediately
+before a person first changes the verdict. Without that snapshot the first human decision would
+overwrite the very fact that is needed to say whether the machine was right. No route edits or
+deletes an event, because the auditor's work depends on the log being intact.
+
+\begin{table}[H]
+\centering
+\caption{Outcome class of a human decision, given the machine's conclusion}
+\label{tab:outcome-classes}
+\small
+\begin{tabularx}{\textwidth}{p{0.20\textwidth} p{0.21\textwidth} p{0.14\textwidth} X}
+\toprule
+\textbf{OUTCOME} & \textbf{MACHINE} & \textbf{PERSON} & \textbf{MEANING} \\
+\midrule
+False positive & blocked & approves & The machine removed a video that was acceptable \\
+Flag noise & flagged & approves & The flag did not need a person; it is not counted as a wrongful removal \\
+False negative & approved & blocks & A violating video was published \\
+True positive & blocked or flagged & blocks & The machine was right \\
+True negative & approved & approves & The machine was right, for example a report found unfounded or an audit sample that passed \\
+Unclassified & not known & either & A video from before the snapshot existed; it enters no rate \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+The owner of a removed video can appeal, once per decision, with a message of at most 500
+characters; a new decision, such as the video being restored and later removed again, allows a new
+appeal. A person who does not own the video receives a not-found response, for the same reason as
+for visibility, and an operator resolves the appeal as upheld or rejected with a note. This follows
+the Santa Clara Principles, which ask a platform to notify the person affected and to offer an
+appeal that is reviewed by a person who took no part in the first decision
+\cite{santaclara2021}. Appeals are also the most reliable source of false positives, since only
+the owner has a reason to say that the machine was wrong.
+
+False negatives are harder to find, because a missed video is one among thousands that were approved
+and viewer reports see only the most conspicuous of them. The design therefore draws a random sample
+of approved videos, which staff label \emph{pass} or \emph{fail}; the proportion of failures in the
+sample estimates the rate at which violating videos get through. A video can enter a sample only
+once, so its label is never counted twice.
+
+\subsection{Measuring the Screening}
+
+The console reports four figures, each with its denominator and a 95\% Wilson confidence interval
+\cite{wilson1927}: the share of automatic removals that staff reversed, which is the false positive
+rate; the share of flags that staff confirmed, which is the precision of the flag; the share of each
+group that has been reviewed at all, which is coverage; and the false negative rate. The Wilson
+interval is used because the counts are small, and unlike the normal approximation it stays within
+zero and one and remains usable when the observed rate is near zero. The false negative rate comes
+only from the random audit and never from viewer reports, which would bias it low. A video that no
+one has reviewed is reported as unverified and enters no rate.
+
+\subsection{Roles and Permissions}
+\label{sec:roles-design}
+
+Four roles divide the work (Table~\ref{tab:role-permissions}). Operators decide, auditors read the
+error rates and the log without being able to change a decision, and administrators assign roles and
+draw audit samples. The separation of operator and auditor is deliberate: the person who reads the
+error rates is not the person whose decisions produce them, so the monitoring does not depend on the
+monitored.
+
+\begin{table}[H]
+\centering
+\caption{Permissions of the four roles}
+\label{tab:role-permissions}
+\small
+\begin{tabularx}{\textwidth}{X c c c c}
+\toprule
+\textbf{PERMISSION} & \textbf{ADMIN} & \textbf{OPERATOR} & \textbf{AUDITOR} & \textbf{USER} \\
+\midrule
+Approve or block a video, with a reason & yes & yes & -- & -- \\
+Resolve an appeal & yes & yes & -- & -- \\
+Label a video of an audit sample & yes & yes & -- & -- \\
+Play a removed or held-back video & yes & yes & -- & -- \\
+Draw a new audit sample & yes & -- & -- & -- \\
+Read the rates and the event log & yes & -- & yes & -- \\
+See the owner's e-mail address in the queue & yes & -- & -- & -- \\
+Change a user's role & yes & -- & -- & -- \\
+Appeal the removal of one's own video & yes & yes & yes & yes \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Authorisation is expressed as permissions and not as role names, so that adding a role means editing
+one table. A role change is itself restricted: only an administrator may make it, nobody may change
+their own role, the last administrator cannot be demoted, and every change is appended to a log that
+the auditor can read.
+
 \section{Interface Design}
 \label{sec:interface-design}
 
@@ -211,7 +496,8 @@ and the video enters the \texttt{PROCESSING} state, in which it is visible only 
 the channel management view. Only when the pipeline marks it \texttt{READY} does it join the
 public catalogue. The interface consequently has to represent a video that exists but cannot yet
 be played, which is why the state machine of Section~\ref{sec:database-design} is modelled
-explicitly rather than inferred.
+explicitly rather than inferred. The same holds after the pipeline has finished: a video that
+screening held back is visible to its owner and not in the catalogue until a person approves it.
 
 \begin{figure}[htbp]
 \centering
@@ -246,3 +532,10 @@ the page loads, which would allow the count to be inflated by repeated refreshes
 notifies the page only after playback has passed a threshold of several seconds, and the server
 additionally ignores repeated reports from the same viewer within a thirty-minute window and
 never counts the owner's own views.
+
+The operations console is part of the same application, at its own address and reachable only by
+staff. Its tabs are the review queue, the removed videos, appeals, audit samples, the rates, the
+event log and the users, and a person sees only the tabs that the permissions of their role allow,
+so an operator never sees the rates and an auditor never sees a decision button. Thumbnails of
+videos under review are shown blurred until a reviewer chooses to reveal them, so that reading the
+queue does not by itself expose staff to the content.

@@ -132,7 +132,7 @@ const ecr = card({
 });
 const batch = card({
   x: 878, y: 720, w: 178, h: 140, iconName: 'aws-batch', iconSize: 30,
-  title: ['AWS Batch', 'on Fargate'], sub: ['FFmpeg container'], tone: 'compute',
+  title: ['AWS Batch', 'on Fargate'], sub: ['FFmpeg, chunked for', 'long videos'], tone: 'compute',
 });
 const s3Proc = card({
   x: 572, y: 726, w: 190, h: 124, iconName: 'aws-s3', iconSize: 30,

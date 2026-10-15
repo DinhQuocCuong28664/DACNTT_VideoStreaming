@@ -11,7 +11,8 @@ Thư mục này chứa các sơ đồ dùng cho báo cáo đồ án. Ảnh PNG x
 | `05-use-case.png` | Sơ đồ Use Case với 3 tác nhân, ký hiệu UML chuẩn | 3.1 |
 | `06-hls-abr.png` | Các tệp HLS sinh ra từ một video nguồn và thứ tự player tải | 2.2 |
 | `07-compute-models.png` | So sánh cụm luôn bật với container serverless, kèm thanh tỉ lệ giờ tính tiền | 2.1 |
-| `08-user-flow.png` | Luồng người dùng từ lúc vào trang tới khi video được công bố | 4.4 |
+| `08-user-flow.png` | Luồng người dùng từ lúc vào trang tới khi video được công bố | 4.5 |
+| `09-moderation-erd.png` | Năm collection phục vụ kiểm duyệt và vận hành (Report, ModerationEvent, Appeal, AuditSample, RoleChange) | 4.4 |
 
 ## Tái sinh ảnh sau khi sửa sơ đồ
 
@@ -30,13 +31,13 @@ Thư mục này dùng hai công cụ, chọn theo loại sơ đồ.
 **Mermaid** (`src/*.mmd`) chỉ còn dùng cho **sơ đồ tuần tự**, loại Mermaid làm
 tốt và không cần icon dịch vụ.
 
-Sơ đồ luồng người dùng (hình 4.4) đã chuyển sang bộ sinh SVG, không phải vì
+Sơ đồ luồng người dùng (hình 4.5) đã chuyển sang bộ sinh SVG, không phải vì
 trình bày mà vì **tỉ lệ khung**: `graph TB` xếp mọi thứ thành một cột dọc và
 không có cách nào bảo nó gấp lại, nên hình ra 1:2,15, phải đặt theo chiều cao
 trang, và chữ in ra chỉ còn 6,4pt. Xếp tay thành ba cột đưa tỉ lệ về 1:1,47 và
 chữ lên 8,5pt — lớn nhất trong các hình của báo cáo.
 
-**Bộ sinh SVG riêng** (`svg/`) cho bảy hình còn lại, vì các lý do sau. Thứ nhất,
+**Bộ sinh SVG riêng** (`svg/`) cho tám hình còn lại, vì các lý do sau. Thứ nhất,
 Mermaid chỉ nạp được icon qua lời gọi JavaScript `registerIconPacks`, mà
 mermaid-cli không phơi hàm đó ra, nên chạy qua CLI thì mọi icon đều thành dấu
 hỏi. Thứ hai, bố cục tự động không đặt được các khối lồng nhau theo đúng ranh
@@ -56,6 +57,13 @@ icon mới thì bổ sung tên vào `WANTED` trong `svg/extract-icons.mjs` rồi
 ```bash
 cd docs/diagrams/svg && npm i --no-save @iconify-json/logos @resvg/resvg-js && node extract-icons.mjs
 ```
+
+## Giới hạn của sơ đồ tuần tự
+
+Hình 4.2 đã ở sát ngưỡng: thêm một hàng làm tỉ lệ khung đi từ 1:1,53 xuống 1:1,1 và chữ in ra
+dưới 6,2pt. Vì vậy đường chia đoạn (planner, hai job âm thanh, mảng chunk, job ghép) không vẽ
+thành các hàng riêng mà được ghi trong chú thích cuối hình và mô tả bằng bảng 4.1 trong mục 4.2.
+Muốn vẽ đầy đủ thì tách thành hai sơ đồ, đừng nối dài sơ đồ hiện có.
 
 ## Kiểm tra cỡ chữ khi in
 

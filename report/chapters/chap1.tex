@@ -54,6 +54,12 @@ automated transcoding subsystem that supports it. Specifically, the objectives a
           transcoding performance, scalability under load, and operating cost.
 \end{enumerate}
 
+The first two objectives define what the platform does for its users, and the third defines how
+the processing is carried out and why, since the choice of on-demand containers is the central
+hypothesis of the project. The fourth makes the system reproducible and safe to change. The fifth
+turns the claims of the other four into measurements, which is why every performance figure in
+Chapter~\ref{chap:evaluation} comes from a script that is committed with the source code.
+
 \section{Scope and Deliverables}
 \label{sec:scope}
 
@@ -66,7 +72,8 @@ digital rights management systems such as Widevine or FairPlay, which would be r
 prevent an authorised viewer from redistributing content they can legitimately access. It does
 not implement live streaming, since the architecture is designed around video on demand. It
 also does not attempt per-title bitrate ladder optimisation, using instead a fixed ladder of
-three renditions; the rationale and the trade-off involved are discussed in
+six rungs from 144p to 1080p, of which each video receives those that its source resolution can
+fill; the rationale and the trade-off involved are discussed in
 Chapter~\ref{chap:conclusion}.
 
 \section{Research Methodology}
@@ -137,8 +144,12 @@ service in between; a containerised FFmpeg worker whose conditional database wri
 duplicate delivery harmless, so that exactly-once \emph{effects} are obtained without relying on
 exactly-once delivery; a two-layer content protection scheme combining Origin Access Control with
 CloudFront Signed Cookies so that private videos remain inaccessible even to a viewer holding
-the exact manifest URL; a complete Infrastructure as Code description of the AWS environment
-in eleven Terraform modules; and a DevSecOps pipeline whose security gate genuinely blocks
+the exact manifest URL; a chunk-parallel transcoding path that splits a video of five minutes or
+more across concurrent jobs and brings a four-hour source to playback in 135 minutes at the
+production quota; a content moderation pipeline and a role-based console whose recorded
+decisions make the false positive and false negative rates measurable; a complete Infrastructure
+as Code description of the AWS environment
+in thirteen Terraform modules; and a DevSecOps pipeline whose security gate genuinely blocks
 merges rather than merely reporting findings.
 
 \section{Structure of the Report}

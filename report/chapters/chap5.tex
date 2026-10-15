@@ -14,11 +14,33 @@ authorisation endpoint, calls that same function. This is a deliberate choice: d
 permission check across endpoints is the most common way for an access control gap to appear,
 because a later change updates one copy and not the others.
 
+Operational authority follows the same principle. The four roles of the platform, user, operator,
+auditor and administrator, are mapped to permissions in a single table, and each route asks whether
+the requester holds a named permission, such as \texttt{moderation:review} or
+\texttt{metrics:read}, instead of comparing role names. Adding a role therefore means editing one
+table and not searching the code for comparisons. The requester's record, and with it the role, is
+read from the database on every request and is not copied into the token, so demoting a person takes
+effect at once and not when a token expires.
+
+A decision is applied by one service function. It validates the reason code against the closed list
+for that decision, refuses to let an operator change a decision that an administrator made, copies
+the machine's verdict into \texttt{autoStatus} only if no earlier decision has done so, resolves the
+open reports on the video, dismissed on an approval and actioned on a removal, and then appends the
+event. The event is written after the decision has been applied. If writing it fails the decision
+stands and the failure is logged, because withdrawing a removal on account of a faulty log would be
+the worse outcome; the false positive rate, the precision of the flag and the coverage are
+computed from the video documents themselves, so a missing event does not skew them.
+
 The upload flow validates metadata on the server before issuing a pre-signed URL. Client-side
 validation alone is insufficient, since a user can call the API directly and obtain a URL for
 an arbitrary file, effectively turning the project's storage bucket into free hosting for
 unrelated content. The server therefore checks the declared MIME type against an allow-list of
-video formats and rejects files exceeding two gigabytes.
+video formats and rejects files above the configured ceiling, which has a hard limit of 20~GiB in
+the source and is set to 20~GiB in the deployed system. Files up to 512~MiB go through a single
+pre-signed POST whose policy fixes the object key, the content type and the size range. Larger
+files use an S3 multipart upload in parts of 32~MiB: the backend signs one URL per part for exactly
+that part's length, so the storage service itself refuses a part of any other size, and on
+completion it lists the parts that S3 holds before asking for the object to be assembled.
 
 Several protective measures were added at the HTTP layer. Security headers are applied through
 Helmet. Cross-origin requests are restricted to an explicit allow-list rather than being
@@ -59,8 +81,13 @@ not already \texttt{READY}, and \texttt{processVideo} now checks the video's sta
 downloading anything, so a duplicate delivery that arrives after the first job has already
 finished is rejected immediately instead of re-downloading and re-transcoding the source.
 
-A single FFmpeg invocation produces all three renditions, which is more efficient than three
-separate invocations because the source is decoded only once. The command emits segments of six
+A single FFmpeg invocation produces every rendition of the ladder that the source can fill,
+which is more efficient than separate invocations because the source is decoded only once. The
+ladder has six rungs, from 144p at 120~kbit/s to 1080p at 4~Mbit/s, and each rung fits the source
+inside its own frame without enlarging it: a 480p source yields a 360p rung and one at
+854$\times$480, not a 1080p rendition enlarged 2.25 times. Only the single-container path for a
+video longer than twenty minutes keeps the earlier three-rung ladder of 360p, 720p and 1080p, to
+stay within the time limit of a job. The command emits segments of six
 seconds, generates the per-rendition playlists, and the worker then writes the master playlist
 that lists the available bandwidths, codecs and resolutions. Those bandwidths and codec strings
 are derived from the encoded output rather than from the encoder settings: the bandwidth is the
@@ -69,6 +96,28 @@ Section~\ref{sec:qoe-playback} examines in detail, and the codec string is read 
 stream's sequence parameter set, since the constraint-set byte that RFC~6381 requires appears in
 neither the profile name nor the level number reported by a probe. A thumbnail is extracted in a
 separate pass.
+
+The chunked path of Section~\ref{sec:chunked-design} runs the same container image under four
+commands. The planner computes the chunk boundaries with functions that perform no input or output,
+so the arithmetic can be tested directly: a boundary is a whole number of groups of pictures counted
+in frames, and every chunk, the first included, writes its timestamps from the same base offset, so
+that the playlists of independently encoded chunks join without a gap or a repeated segment. A chunk
+job reads only its own range of the source over HTTP and encodes every rendition of the ladder for
+it. The finalizer joins the playlists and, as the single-container path does, measures the bandwidth
+of each rendition from the segments and not from the encoder settings. Chunk jobs are submitted with
+a task size of their own, 4~vCPU and 8~GiB, because a four-vCPU task measured 14\% faster and used
+7\% fewer vCPU-seconds than a one-vCPU task; the size is checked against the table of valid Fargate
+combinations when the configuration is loaded, since Batch would otherwise reject the submission
+only after the video had been marked as processing.
+
+Content screening is one function that the single-container job and the finalizer both call, with
+the same policy and thresholds. It extracts the sampled frames with FFmpeg, sends them to
+Rekognition three at a time with retries and client-side rate limiting when the service throttles,
+applies the label policy of Section~\ref{sec:screening-design}, and returns the verdict together
+with its evidence labels and the share of planned frames that could be analysed. A failure inside
+the step is converted into a flagged verdict that carries the error, so that the video waits for a
+person and is neither lost nor published. Screening is on unless \texttt{MODERATION\_ENABLED} is
+explicitly set to false, so that a missing setting cannot silently publish every video.
 
 Failure handling is deliberate. When FFmpeg exits with a non-zero status, the error propagates
 to the top-level handler, which records the \texttt{ERROR} status in the database and, in
@@ -86,16 +135,20 @@ detected, is examined in Section~\ref{sec:challenges}.
 \section{Infrastructure as Code}
 \label{sec:iac}
 
-The AWS environment is described by eleven Terraform modules, summarised in
-Table~\ref{tab:terraform-modules}, and is instantiated separately for the development and
-production environments.
+The AWS environment is described by thirteen Terraform modules, summarised in
+Table~\ref{tab:terraform-modules}, and is described by three environment definitions:
+\texttt{dev}, which hosts the deployed system; \texttt{staging}, a reduced copy used to test a
+branch before it is merged; and \texttt{prod}, a variant that uses On-Demand Fargate capacity,
+keeps logs for thirty days and does not force-destroy buckets. Only the first two have been
+applied: the state of \texttt{prod} does not exist, and its definition was checked with
+\texttt{terraform validate} and never deployed.
 
 \begin{table}[H]
 \centering
 \caption{Terraform modules and their responsibilities}
 \label{tab:terraform-modules}
 \small
-\begin{tabularx}{\textwidth}{p{0.14\textwidth} X}
+\begin{tabularx}{\textwidth}{p{0.25\textwidth} X}
 \toprule
 \textbf{MODULE} & \textbf{RESPONSIBILITY} \\
 \midrule
@@ -106,10 +159,12 @@ production environments.
 \texttt{vpc}        & Virtual network, public subnets, internet gateway, security groups, S3 gateway endpoint \\
 \texttt{secrets}    & AWS Secrets Manager entries for the database connection string and the token signing secret \\
 \texttt{sns}        & Notification topics for transcode completion and dead letter queue alerts \\
-\texttt{monitoring} & CloudWatch log groups, alarms, and dashboard \\
-\texttt{batch}      & Fargate compute environment, job queue, and job definition \\
+\texttt{monitoring} & CloudWatch log groups, alarms and dashboard, a scheduled health check of the public API, and a rule that alerts on failed Batch jobs \\
+\texttt{batch}      & Fargate Spot compute environment and an optional On-Demand one for overflow, the main and the lower-priority job queue, and the job definition \\
 \texttt{lambda}     & Job submitter function and its SQS event source mapping \\
 \texttt{cloudfront} & Distribution, Origin Access Control, cache policy, and the trusted key group used for signed cookies \\
+\texttt{backend-userdata} & Builds the start-up script of the backend instance from a single template, so that every environment runs the same script; creates no resources \\
+\texttt{cloudflare-ips} & The IPv4 ranges from which Cloudflare reaches the origin, used to restrict the backend's security group; creates no resources \\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -318,32 +373,44 @@ the address stable across any rebuild that does occur.
 \section{Testing}
 \label{sec:testing}
 
-The automated test suite comprises 209 tests across fourteen suites, summarised in
-Table~\ref{tab:test-coverage}.
+The automated test suite comprises 767 tests across 46 suites, 406 in 29 suites for the backend
+and 361 in 17 for the transcoder, and Tables~\ref{tab:test-coverage-backend} and
+\ref{tab:test-coverage-transcoder} group them by area.
 
 \begin{table}[H]
 \centering
-\caption{Automated test coverage by area}
-\label{tab:test-coverage}
+\caption{Automated backend tests by area, 406 tests in 29 suites}
+\label{tab:test-coverage-backend}
 \small
-\begin{tabularx}{\textwidth}{p{0.28\textwidth} p{0.10\textwidth} X}
+\begin{tabularx}{\textwidth}{p{0.27\textwidth} p{0.09\textwidth} X}
 \toprule
-\textbf{SUITE} & \textbf{TESTS} & \textbf{FOCUS} \\
+\textbf{AREA} & \textbf{TESTS} & \textbf{FOCUS} \\
 \midrule
-\texttt{videoService}       & 11 & Upload initiation, ownership checks, deletion cascade \\
-\texttt{s3Service}          & 2  & Key generation and pre-signed URL creation \\
-\texttt{authService}        & 17 & Registration conflicts, login failures, token claims, password reset \\
-\texttt{authMiddleware}     & 14 & Missing, malformed, forged, and expired tokens, and tokens issued before the account's last password change \\
-\texttt{visibility}         & 21 & Privacy enforcement across every query path, view deduplication \\
-\texttt{uploadValidation}   & 11 & HTTP-level validation of file type and size \\
-\texttt{cloudfrontService}  & 24 & Cookie signing, policy scope, cookie attributes, and that revocation repeats the attributes used when issuing \\
-\texttt{forgotPassword}     & 5  & That the response is identical whether or not the address has an account, including when e-mail delivery fails \\
-\texttt{relatedVideos}      & 10 & That the recommendation endpoint reuses the same authorisation rule as the detail endpoint, and never surfaces a private or unlisted video \\
-\texttt{transcoder/dbHandler} & 6 & Conditional writes preventing duplicate-job overwrites \\
-\path{transcoder/emailService} & 6 & READY/ERROR notification content and recipient targeting, and that raw failure detail is never exposed to the viewer \\
-\path{transcoder/framerate} & 32 & That the group of pictures follows the real source frame rate, that a variable-frame-rate file cannot poison it, and that every rendition is forced to cut at the same instant \\
-\path{transcoder/bandwidth} & 18 & That the declared bandwidth of each variant is the peak measured from the segments themselves rather than a configured target, rounded upward so it remains the upper bound RFC 8216 requires \\
-\path{transcoder/codecs} & 32 & That the codec string declared for each variant is read from the encoded stream itself rather than derived from configuration, and is omitted rather than guessed when it cannot be read \\
+Authentication & 41 & Registration conflicts, login failures and token claims; missing, malformed, forged and expired tokens, and tokens issued before the account's last password change; the password policy; and a reset response that is identical whether or not the address has an account, including when e-mail delivery fails \\
+Visibility and authorisation & 34 & Privacy enforcement across every query path; that the recommendation endpoint reuses the rule of the detail endpoint and never surfaces a private or unlisted video; and that a video exposes how many likes and dislikes it has but not who gave them \\
+Upload & 93 & Metadata and ownership checks, the deletion cascade, pre-signed URL creation, file type and size validation, the ceiling and its hard limit, the choice between a single and a multipart upload, part URLs signed for exact sizes, completion by listing the stored parts, and the clean-up of abandoned uploads \\
+Content delivery & 30 & Cookie signing, policy scope and cookie attributes, and that revocation repeats the attributes used when issuing \\
+Listing, reactions and views & 31 & Pagination bounds, a stable sort order for channel pages, likes and dislikes as conditional updates, view deduplication, and the order of routes \\
+Operation and reconciliation & 32 & Reconciliation of videos stuck in processing or abandoned in uploading, the client address behind Cloudflare and nginx, rate-limit keys, e-mail configuration, and the health endpoint \\
+Moderation and operations console & 145 & Classification of each decision as a false positive, a false negative or neither; the snapshot of the machine's conclusion written once; the permission table for the four roles; one appeal per decision; audit sampling and labelling; the Wilson interval and the rates; and that the last administrator cannot be demoted \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Automated transcoder tests by area, 361 tests in 17 suites}
+\label{tab:test-coverage-transcoder}
+\small
+\begin{tabularx}{\textwidth}{p{0.27\textwidth} p{0.09\textwidth} X}
+\toprule
+\textbf{AREA} & \textbf{TESTS} & \textbf{FOCUS} \\
+\midrule
+Chunked pipeline & 184 & Chunk boundaries as multiples of the group of pictures counted in frames, the conditions that fall back to one container, command construction, playlist joining, submission to the lower-priority queue, task-size validation, and the planner, audio, chunk and finalizer jobs end to end \\
+Ladder, frame rate and encode guard & 78 & Rung selection from the source resolution and the reduced ladder for long videos; that the group of pictures follows the real frame rate, that a variable-frame-rate file cannot poison it, and that every rendition cuts at the same instant; giving up early when a video cannot be encoded within the budget of a job; the thumbnail \\
+Playlist metadata & 51 & That the declared bandwidth of each variant is the peak measured from the segments rather than a configured target, rounded upward as RFC 8216 requires, and that the codec string is read from the encoded stream and omitted rather than guessed \\
+Persistence and delivery & 30 & Conditional writes that prevent a duplicate job from overwriting a result, object storage access, and the content of the READY and ERROR notifications, which never expose raw failure detail to the viewer \\
+Content screening & 18 & The label policy including parent labels and the downgrade of animated content, the frame sampling plan, and holding back a video that could not be analysed fully \\
 \bottomrule
 \end{tabularx}
 \end{table}

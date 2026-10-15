@@ -9,10 +9,19 @@ serverless container and event-driven architecture, and to evaluate whether that
 delivers the cost and scalability benefits it promises.
 
 The functional platform was completed. Users can register, authenticate, upload videos directly
-to Amazon S3 through pre-signed URLs, watch them with adaptive bitrate playback across three
+to Amazon S3 through pre-signed URLs, watch them with adaptive bitrate playback across up to six
 renditions, control whether each video is public, unlisted or private, manage their channel,
 search and
 filter the catalogue, and interact through likes and comments.
+
+The platform also moderates what it publishes. Uploaded videos are screened automatically with
+Amazon Rekognition, and doubtful ones are held back for review by staff working in a console with
+separate roles: operators decide, auditors read the error rates, and administrators assign roles.
+Every decision is recorded together with the machine's own conclusion, so that the false positive
+rate and, from a random audit sample, the false negative rate can be estimated with confidence
+intervals, and the owner of a removed video can appeal (Section~\ref{sec:moderation-design}).
+The implementation is covered by 145 of the backend's tests, but the rates themselves have not
+been measured on real traffic, so this report makes no claim about how accurate the screening is.
 
 The transcoding pipeline operates without manual intervention. An upload emits an S3 event that
 is buffered in Amazon SQS and dispatched by an AWS Lambda function to AWS Batch, where a
@@ -36,12 +45,13 @@ at the edge even when the exact manifest URL is known. This closes a gap that wo
 have made the private visibility setting ineffective in practice, since the API can restrict its
 own responses but cannot restrict a content delivery network.
 
-The infrastructure is fully described as code in eleven Terraform modules across two
-environments, and seven GitHub Actions workflows automate linting, unit testing, static security
+The infrastructure is fully described as code in thirteen Terraform modules across three
+environment definitions, and seven GitHub Actions workflows automate linting, unit testing, static security
 analysis, container scanning, infrastructure validation, and deployment. The security gate
 blocks merges on fixable critical findings rather than merely reporting them.
 
-The automated test suite grew to 209 tests across fourteen suites. Its practical value was demonstrated
+The automated test suite grew to 767 tests across 46 suites, 406 for the backend and 361 for
+the transcoder. Its practical value was demonstrated
 when it caught a defect in the cookie signing implementation that would have prevented every
 private video from playing once deployed. A second defect in that same subsystem, which only
 appeared once the distribution was live, is described in Section~\ref{sec:challenges}.
@@ -73,7 +83,7 @@ restrict its own responses but cannot restrict a content delivery network. The m
 verified against the deployed system rather than in code alone, as
 Section~\ref{sec:challenges} records.
 
-The infrastructure is reproducible. Eleven Terraform modules describe two environments in full,
+The infrastructure is reproducible. Thirteen Terraform modules describe three environment definitions in full,
 and seven GitHub Actions workflows automate linting, unit testing, static security analysis,
 container and dependency scanning, infrastructure validation and deployment. The security gate
 blocks a merge on fixable critical findings rather than merely reporting them, and the scanner
@@ -84,8 +94,8 @@ Time-to-First-Frame was measured from six AWS regions and from a consumer connec
 and led to two corrections of the CloudFront price class that reduced the median latency seen from
 Vietnam by a factor of 6.6 and the median seen from Brazil by a factor of 32. Transcoding
 throughput was measured under one hundred concurrent uploads of real video and cross-validated
-with two independently implemented load generators. And the automated suite of 209 tests across
-fourteen suites caught a signing defect that would otherwise have prevented every private video from
+with two independently implemented load generators. And the automated suite, which has since
+grown to 767 tests in 46 suites, caught a signing defect that would otherwise have prevented every private video from
 playing.
 
 \section{Limitations}
@@ -93,7 +103,8 @@ playing.
 
 Several limitations remain in the delivered system.
 
-The bitrate ladder is fixed at three rungs regardless of content. As the literature reviewed in
+The bitrate ladder is fixed at six rungs regardless of content, and a video receives those that
+its source resolution can fill. As the literature reviewed in
 Section~\ref{sec:core-models} shows, the optimal ladder is content-dependent, so a fixed ladder
 wastes bandwidth on simple content while under-serving complex content. Netflix reported bitrate
 reductions between 28\% and 38\% at equivalent perceptual quality by optimising the ladder per
@@ -111,6 +122,13 @@ measurements ended. Videos shorter than five minutes keep the single-container p
 processing time still scales linearly with duration; Section~\ref{sec:drain-rate} measured
 roughly 66 seconds of wall-clock time per job for a three-second clip, which shows how far fixed
 overhead dominates for short content.
+
+The automatic screening samples one frame every five seconds, so content that is on screen for
+less than that interval can pass it; this is why viewer reports, staff review and audit sampling
+follow it. Its confidence thresholds, 60 and 90 per cent, were set from the provider's guidance
+and were not calibrated on this platform's own content, and, as stated in
+Section~\ref{sec:summary}, the error rates of the arrangement as a whole have not been measured
+on real traffic.
 
 Signed Cookies remain valid for two hours after issuance, so switching a video from public to
 private leaves viewers holding unexpired cookies with access until those cookies lapse. Immediate
@@ -195,6 +213,12 @@ Section~\ref{sec:chunked-evaluation} suggest that the best choice depends on bot
 the video and the quota available. A related extension is to compare a faster x264 preset with the
 current one using VMAF on difficult clips, since a faster preset could shorten every chunk if the
 quality loss is acceptable.
+
+The moderation console already collects what is needed to tune the screening: the reason codes
+show which labels cause reversed removals, and the audit sample gives an unbiased estimate of
+what passes. Once a few hundred decisions have accumulated, the confidence thresholds and the
+label policy can be adjusted from that evidence and the effect measured again, instead of staying
+at the provider's defaults.
 
 Hardware acceleration offers a further avenue. Research on GPU-enabled serverless platforms for
 HEVC encoding \cite{gpuserverless2024} suggests substantial throughput gains, and adopting a

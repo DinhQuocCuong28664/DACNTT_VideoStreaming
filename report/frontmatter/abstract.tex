@@ -15,15 +15,17 @@ sharing platform whose transcoding subsystem is built on a Serverless Container
 and Event-Driven architecture. Uploading a file to Amazon S3 emits an event that
 is buffered in Amazon SQS and dispatched by an AWS Lambda job submitter to AWS Batch
 running on AWS Fargate. A container packaging FFmpeg is created only when there is work to
-do, produces three renditions at 360p, 720p, and 1080p together with a master playlist and
+do, produces up to six renditions from 144p to 1080p together with a master playlist and
 a thumbnail, uploads the result to a processed bucket, updates the metadata in MongoDB
-Atlas, and then terminates. Content is delivered through Amazon CloudFront with Origin
+Atlas, and then terminates. Videos of five minutes or more are encoded as parallel chunks, and four
+hours of video was ready in 135 minutes at 8~vCPU. Content is delivered through Amazon CloudFront with Origin
 Access Control, and every stream is gated at the edge by CloudFront Signed Cookies, so that a
 viewer without a valid signature is rejected even when they know the exact manifest URL; a
 video's visibility setting governs who the backend will issue those cookies to, not whether
-the gate applies.
+the gate applies. Content is screened automatically and reviewed in a console that
+records each decision.
 
-The entire AWS infrastructure is described as code using eleven independent Terraform
+The entire AWS infrastructure is described as code using thirteen independent Terraform
 modules and can be provisioned with a single command. Seven GitHub Actions workflows
 automate linting, unit testing, static security analysis, container image scanning,
 infrastructure validation, and deployment, with a two-tier quality gate that blocks a pull

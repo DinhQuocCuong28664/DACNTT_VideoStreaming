@@ -31,7 +31,7 @@ const FLOOR = 6.2;
  * Ghi lại kết quả ở đây để bảng luôn đủ tám hình; đo lại khi sửa hai hình đó.
  */
 const MEASURED = {
-  '02-transcoding-sequence': { pt: 6.54, note: 'Mermaid, đo chữ hoa trên ảnh: 34/5079 px' },
+  '02-transcoding-sequence': { pt: 6.40, note: 'Mermaid, cùng cỡ chữ 34 px như bản đo trước, ảnh rộng 5193 px' },
 };
 
 const inc = /\\includegraphics\[(width|height)=([0-9.]*)\\(textwidth|textheight)\]\{images\/([^}]+)\.png\}/g;

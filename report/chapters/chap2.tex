@@ -55,7 +55,7 @@ relevant to this work.
 \midrule
 Compute model & Dedicated microservice platform with serverless compute tier & Managed service (MediaConvert) & Serverless container on AWS Batch / Fargate \\
 Parallelism & Chunk-based, distributed across many nodes & Managed internally by the service & Chunk-based on AWS Batch array jobs from five minutes of video, one container below that \\
-Bitrate ladder & Per-shot optimisation driven by VMAF & Configurable job template & Fixed ladder: 360p, 720p, 1080p \\
+Bitrate ladder & Per-shot optimisation driven by VMAF & Configurable job template & Fixed ladder: six rungs from 144p to 1080p, limited by the source \\
 Queueing & Priority-based messaging system & AWS Step Functions & Amazon SQS with dead letter queue \\
 Content protection & DRM & Signed URLs or signed cookies & OAC plus CloudFront Signed Cookies \\
 Operational effort & Very high & Very low & Moderate \\
@@ -164,7 +164,7 @@ fixed but content-dependent, and that the ideal operating points lie on the conv
 quality-versus-bitrate curve \cite{netflix2015pertitle}. By encoding each shot separately under
 the control of the VMAF perceptual quality metric, Netflix reported bitrate reductions of
 between 28\% and 38\% at equivalent visual quality \cite{netflix2018dynamic}. The present
-project uses a fixed three-rung ladder, which is simpler to implement and reason about; the
+project uses a fixed ladder of six rungs, which is simpler to implement and reason about; the
 implications of this simplification are revisited in Section~\ref{sec:future-work}.
 
 \section{Technology Stack Justification}

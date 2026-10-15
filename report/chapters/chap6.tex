@@ -103,6 +103,11 @@ description, category, and visibility), or is deleted.
 \section{Quality of Experience Evaluation}
 \label{sec:qoe-evaluation}
 
+The playback measurements of this section were taken in September 2026, when the ladder had three
+rungs, 360p, 720p and 1080p; the ladder was extended to six rungs on 7 October 2026
+(Section~\ref{sec:transcoder-impl}). The rungs named in its tables are those three, and the
+findings about declared and actual bandwidth do not depend on the number of rungs.
+
 Time-to-First-Frame is measured by an instrumentation script that fetches the master playlist,
 parses it to locate a rendition playlist, fetches that playlist, and finally downloads the first
 media segment, recording the elapsed time for each stage. The measurement is repeated so that
@@ -590,6 +595,11 @@ Pipeline latency is measured from the completion of the upload to the moment the
 the \texttt{READY} state, which corresponds to the interval a user actually waits. This
 interval encompasses the S3 event delay, the time spent queued in SQS, container startup on
 Fargate, FFmpeg execution, and the upload of results.
+
+The measurements of this section predate both the six-rung ladder and chunked transcoding: the
+encoder produced the three renditions 360p, 720p and 1080p, in one container per video. That is
+the configuration against which Section~\ref{sec:chunked-evaluation} later compares the chunked
+path.
 
 The compute allocation of each run was verified after the fact rather than taken from the label
 the measurement script recorded, since a mislabelled run would silently invalidate the comparison
