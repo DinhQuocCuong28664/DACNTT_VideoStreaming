@@ -132,6 +132,7 @@ Yêu cầu: tối thiểu 4 giờ video. Một job chuyển mã chạy tuần t�
 - [x] Ảnh chụp trang vận hành ở mục 6.2 (hình 6.5 tab Đã gỡ, hình 6.6 tab Độ chính xác, chụp trên production 2026-10-16).
 - [x] Sơ đồ use case có tác nhân nhân sự vận hành (2026-10-17): hình 3.1 thêm use case xác minh email (hàng cách 80 thay vì 86 để vẫn vừa một trang), hình 3.2 mới cho kiểm duyệt và vận hành với operator, auditor, administrator, sàng lọc tự động, báo cáo và khiếu nại; chương 3 mô tả cả hai hình.
 - [x] Hình 4.1 hết nhãn đè lên thẻ (2026-10-17): 15 trong 18 nhãn cạnh cắt viền thẻ hoặc khung, nay 14 bước là huy hiệu số kèm bảng chú giải ngay trong hình, chỗ đặt tự chọn, và bước kiểm bố cục trong `render.mjs` làm dựng hỏng nếu có chỗ đè nhau (bản cũ bị báo 39 chỗ, bản mới 0).
+- [x] Chữ đè lên hình ở các hình còn lại (2026-10-17): `svg/check-text-overlap.mjs` đọc SVG và đo chữ thật; trước khi sửa báo 10 chỗ ở hình 03, 04, 05, 08, 09 và xem bằng mắt thấy hình 02 (Mermaid) có nhãn bị đường sống cắt, số bước che chữ, ghi chú tràn khung. Đã sửa cả sáu; hình 09 còn cập nhật cột `action` thêm `confirm` (nay ghi "four actions"). Hình sequence nay có 16 bước thay vì 15 vì tách bước sàng lọc khỏi bước FFmpeg.
 - [ ] Báo cáo còn thiếu: kết quả phát lại sàng lọc (chờ quyết định cho phép ghi số liệu lấy từ production vào repo).
 
 ---

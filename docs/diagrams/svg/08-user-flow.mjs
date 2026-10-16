@@ -29,7 +29,10 @@
  * CHANNEL → WATCH); bố cục tự động sẽ cho chúng cắt qua hộp, còn đặt tay thì
  * đẩy được ra hai rãnh dọc x=240 và x=704 nằm ngoài mọi cột.
  */
-import { chip, edge, text, document_, write, PALETTE, TYPE } from './render.mjs';
+import { chip, edge, text, document_, write, enableLayoutCheck, PALETTE, TYPE } from './render.mjs';
+
+// Dựng hỏng nếu có nhãn đè lên thẻ hoặc đường của cạnh khác (xem render.mjs).
+enableLayoutCheck();
 
 // Canvas hẹp nên nâng cỡ chữ lên được mà vẫn vừa hộp; xem phép tính ở đầu tệp.
 TYPE.chipLabel = 14.5;
@@ -101,16 +104,16 @@ const WATCH = node(C1, 906, ['Watch page', 'adaptive playback,', 'like, comment,
 
 const AUTH = decision(cx2, 248, 'Signed in?');
 const LOGIN = node(C2, 320, ['Sign in', 'e-mail, or Google'], 'compute');
-const REG = node(C2, 424, 'Register an account', 'compute', 46);
-const UPLOAD = node(C2, 520, ['Upload page', 'title, description,', 'category, visibility'], 'network', 76);
-const PRESIGN = node(C2, 626, ['Browser transfers the file', 'directly to Amazon S3'], 'network');
+const REG = node(C2, 416, 'Register an account', 'compute', 46);
+const UPLOAD = node(C2, 500, ['Upload page', 'title, description,', 'category, visibility'], 'network', 76);
+const PRESIGN = node(C2, 606, ['Browser transfers the file', 'directly to Amazon S3'], 'network');
 // "Video shown as PROCESSING" tràn ra ngoài hộp 200px: chữ hoa rộng hơn ước
 // lượng theo số ký tự, và `chip` căn giữa chứ không xuống dòng nên nó lặng lẽ
 // thò ra hai bên. "is" thay cho "shown as" giữ nguyên nghĩa mà vừa khung.
-const PROC = node(C2, 714, ['Video is PROCESSING', "on the owner's channel"], 'network');
+const PROC = node(C2, 694, ['Video is PROCESSING', "on the owner's channel"], 'network');
 const READY = node(C2, 810, ['Video reaches READY', 'and joins the catalogue'], 'network');
 
-const RESET = node(C3, 424, ['Reset a forgotten password', 'via e-mailed token'], 'compute');
+const RESET = node(C3, 416, ['Reset a forgotten password', 'via e-mailed token'], 'compute');
 const FAILED = node(C3, 810, ['Video reaches ERROR', 'the watch page says so'], 'secret');
 const CHANNEL = node(C3, 906, ['Channel management', 'change visibility, delete'], 'network');
 
@@ -129,15 +132,15 @@ p.push(edge([[HOME.box.r, HOME.box.cy], [cx2, HOME.box.cy], [cx2, AUTH.box.t]],
 p.push(edge([[cx1, HOME.box.b], [cx1, WATCH.box.y]]));
 
 // Nhánh tài khoản
-p.push(edge([[AUTH.box.cx, AUTH.box.b], [LOGIN.box.cx, LOGIN.box.y]], { label: 'no' }));
-p.push(edge([[LOGIN.box.cx, LOGIN.box.b], [REG.box.cx, REG.box.y]], { label: 'no account' }));
+p.push(edge([[AUTH.box.cx, AUTH.box.b], [LOGIN.box.cx, LOGIN.box.y]], { label: 'no', labelDx: 24, labelDy: 5 }));
+p.push(edge([[LOGIN.box.cx, LOGIN.box.b], [REG.box.cx, REG.box.y]], { label: 'no account', labelDy: 4 }));
 // Vòng xuống rồi sang ngang, KHÔNG đi vòng ra mép phải. Bản trước cho đường
 // này chạy tới x=692, đúng bằng mép phải của chính hộp RESET, nên đoạn cuối dài
 // bằng 0 và hướng mũi tên thành không xác định — SVG không báo lỗi, chỉ vẽ ra
 // một đầu mũi tên quay lung tung.
 p.push(edge([[LOGIN.box.cx + 60, LOGIN.box.b], [LOGIN.box.cx + 60, 400],
              [RESET.box.cx, 400], [RESET.box.cx, RESET.box.y]],
-  { label: 'forgot password' }));
+  { label: 'forgot password', labelDx: 36 }));
 // Quay lại đăng nhập sau khi đặt lại mật khẩu: rãnh giữa hai cột phải.
 p.push(edge([[RESET.box.x, RESET.box.cy], [C3 - 20, RESET.box.cy],
              [C3 - 20, LOGIN.box.cy + 16], [LOGIN.box.r, LOGIN.box.cy + 16]]));
@@ -156,14 +159,14 @@ p.push(edge([[PRESIGN.box.cx, PRESIGN.box.b], [PROC.box.cx, PROC.box.y]]));
 
 // Ba kết cục của việc chuyển mã
 p.push(edge([[PROC.box.cx, PROC.box.b], [READY.box.cx, READY.box.y]],
-  { label: 'pipeline completes', labelDy: 2 }));
+  { label: 'pipeline completes', labelDy: 5 }));
 // Xuống trước rồi mới sang ngang. Bản trước rẽ ngang ngay từ mép phải PROC, nên
 // nhãn rơi vào đoạn dọc sát hộp và nền trắng của nhãn sơn đè lên dòng chữ "on
 // the owner's channel". Nhãn vẽ sau cùng nên nó luôn thắng, không phải lỗi độ
 // trong suốt mà là lỗi thứ tự vẽ.
-p.push(edge([[PROC.box.cx + 60, PROC.box.b], [PROC.box.cx + 60, 790],
-             [FAILED.box.cx, 790], [FAILED.box.cx, FAILED.box.y]],
-  { label: 'transcoding fails' }));
+p.push(edge([[PROC.box.cx + 90, PROC.box.b], [PROC.box.cx + 90, 792],
+             [FAILED.box.cx, 792], [FAILED.box.cx, FAILED.box.y]],
+  { label: 'transcoding fails', labelDy: -8 }));
 p.push(edge([[PROC.box.r, PROC.box.cy], [GUTTER_R, PROC.box.cy],
              [GUTTER_R, CHANNEL.box.cy], [CHANNEL.box.r, CHANNEL.box.cy]]));
 p.push(edge([[FAILED.box.cx, FAILED.box.b], [CHANNEL.box.cx, CHANNEL.box.y]]));

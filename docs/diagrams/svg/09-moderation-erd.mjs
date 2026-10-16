@@ -73,7 +73,9 @@ const event = entity({
     { type: 'ObjectId', name: 'actor', key: 'FK' },
     { type: 'string', name: 'actorRole', note: 'role at the time' },
     { type: 'string', name: 'decision', note: 'approve / block' },
-    { type: 'string', name: 'action', note: 'approve/block/restore' },
+    // Bốn giá trị: approve, block, restore và confirm (xác nhận một lần gỡ của máy, từ #41). Chữ liệt kê
+    // cả bốn rộng 178px, quá cột ghi chú còn 122px; cột decision ngay trên đã ghi approve / block.
+    { type: 'string', name: 'action', note: 'four actions' },
     { type: 'string', name: 'fromStatus', note: 'verdict before' },
     { type: 'string', name: 'toStatus', note: 'verdict after' },
     { type: 'string', name: 'autoStatus', note: 'machine verdict' },

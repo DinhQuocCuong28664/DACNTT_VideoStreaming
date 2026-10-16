@@ -75,8 +75,9 @@ hiệu dọc theo cạnh thì đặt `badgeAt` (tỉ lệ từ 0 đến 1 theo c
 Hình nào gọi `enableLayoutCheck()` thì được bước kiểm bố cục: dựng sẽ dừng, không ghi tệp, và liệt
 kê từng chỗ nếu có nhãn đè lên thẻ, viền hoặc tiêu đề khung, nhãn nằm trên đường của cạnh khác,
 cạnh đi xuyên thẻ hoặc cắt tiêu đề khung, hay tiêu đề rộng hơn khung của nó. Trên bản dựng cũ của
-hình 4.1 bước kiểm báo 39 chỗ; bản hiện tại không còn chỗ nào. Hiện chỉ hình 4.1 bật bước kiểm, vì
-các hình khác dùng ký hiệu riêng (ellipse, thực thể) chưa đăng ký vào sổ hình học của `render.mjs`.
+hình 4.1 bước kiểm báo 39 chỗ; bản hiện tại không còn chỗ nào. Hiện hình 4.1 và hình luồng người dùng bật bước
+kiểm này; các hình còn lại được kiểm bằng script đọc SVG ở mục sau, vì ellipse và các ký hiệu riêng
+chưa đăng ký vào sổ hình học của `render.mjs`.
 
 ```bash
 node docs/diagrams/svg/01-architecture-overview.mjs
@@ -86,6 +87,30 @@ node --test docs/diagrams/svg/layout-check.selftest.mjs
 Tệp `layout-check.selftest.mjs` dựng lại đúng các lỗi cũ (nhãn rộng hơn khe, tiêu đề tràn khung,
 cạnh xuyên thẻ, cạnh cắt tiêu đề) và xác nhận bước kiểm bắt được chúng, cùng với việc huy hiệu đặt
 lọt chính cái khe đó.
+
+## Kiểm tra chữ đè lên hình
+
+`svg/check-text-overlap.mjs` đọc thẳng các tệp SVG đã dựng, không phụ thuộc cách từng hình được vẽ.
+Nó đo chiều rộng thật của từng đoạn chữ bằng chính bộ dựng resvg (cùng phông chữ như khi ra PNG)
+rồi báo: chữ cắt ngang viền hình chữ nhật hoặc ellipse (tràn khỏi thẻ, hoặc nằm đè lên viền); nền
+trắng của nhãn cạnh cắt viền, vì chính nền đó xoá viền thẻ; chữ bị một đường nối cắt qua; hai đoạn
+chữ đè nhau; và cảnh báo chữ lọt trong thẻ nhưng sát viền dưới 8px. Thoát với mã 1 nếu có phát hiện.
+
+```bash
+node docs/diagrams/svg/check-text-overlap.mjs          # mọi hình
+node docs/diagrams/svg/check-text-overlap.mjs 04 08    # chọn theo số đầu tên tệp
+```
+
+Hai bước kiểm bổ sung cho nhau: bước trong `render.mjs` biết cạnh nào của nhãn nào nên bắt được
+nhãn nằm trên đường của cạnh khác và đường đi xuyên thẻ; script đọc SVG thì thấy cả ellipse và bảng
+thực thể, và bắt được chữ tràn khỏi thẻ.
+
+Hình tuần tự (Mermaid) không có SVG nên không kiểm tự động được. Hai lỗi của nó đã được trị bằng cấu
+hình trong `mermaid-config.json`: `messageAlign: left` đặt chữ ở đầu mũi tên thay vì giữa, nên nhãn
+của mũi tên dài không còn bị các đường sống ở giữa cắt qua; `messageMargin`, `boxMargin` và
+`noteMargin` giảm để thêm một bước tự gọi mà hình chỉ cao thêm 2,6%, vì hình đã nằm sát chiều cao
+trang. Khi sửa nhãn thì xem bằng mắt rằng mỗi nhãn ngắn hơn khoảng cách tới đường sống kế tiếp
+(khoảng 175px ở tỉ lệ một lần, tức chừng 22 ký tự).
 
 ## Giới hạn của sơ đồ tuần tự
 

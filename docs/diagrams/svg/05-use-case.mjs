@@ -34,7 +34,7 @@ Object.assign(TYPE, {
   groupLabel: 16,
 });
 
-const W = 1000;
+const W = 1060;   // 1000 trước khi nới khe include thêm 60px; vẫn 6,7pt khi in
 const H = 1494;
 const p = [];
 
@@ -43,7 +43,8 @@ const RX = 152;
 const RY = 34;
 const ROW = 80;   // 15 use case trong cột chính; giữ hàng 86 thì hình cao hơn trang cho phép
 
-const OFF_X = 800;         // tâm cột lệch, dành cho đích của quan hệ include
+const OFF_X = 880;         // tâm cột lệch, dành cho đích của quan hệ include; khe tới cột chính
+                           // rộng 122px, đủ cho nhãn «include» (84px) mà không cắt ellipse nào
 const OFF_RX = 128;
 
 const LANE_ANON = 196;
@@ -52,7 +53,7 @@ const LANE_SYS = 196;
 
 // ── Ranh giới hệ thống ──────────────────────────────────────────────────────
 p.push(group({
-  x: 300, y: 40, w: 664, h: 1292,
+  x: 300, y: 40, w: 724, h: 1292,
   label: 'Video sharing platform', stroke: '#8a94a6', fill: '#fcfdfe', dash: '7 5',
 }).svg);
 
@@ -98,7 +99,7 @@ const visibility = usecase({
   label: ['Set visibility: public,', 'unlisted or private'],
 });
 const del = usecase({
-  cx: OFF_X, cy: at(9) + 46, rx: OFF_RX, ry: RY, label: 'Delete a video',
+  cx: OFF_X, cy: at(9), rx: OFF_RX, ry: RY, label: 'Delete a video',
 });
 p.push(visibility.svg, del.svg);
 
@@ -122,8 +123,10 @@ function link(a, lane, target) {
 // ── Quan hệ include và trigger ──────────────────────────────────────────────
 p.push(edge([[uc.upload.box.r, uc.upload.box.cy], [visibility.box.l, visibility.box.cy]],
   { dashed: true, label: '«include»', labelDy: -8 }));
-p.push(edge([[uc.manage.box.r - 30, uc.manage.box.b - 8], [del.box.l, del.box.cy]],
-  { dashed: true, label: '«include»', labelDy: -8 }));
+// Ngang như include thứ nhất. Nhãn lệch sang phải 10px để không dính đường «trigger» đi xuống ở
+// x = TRIG_X, vốn cắt qua khe này.
+p.push(edge([[uc.manage.box.r, uc.manage.box.cy], [del.box.l, del.box.cy]],
+  { dashed: true, label: '«include»', labelDy: -8, labelDx: 10 }));
 
 // Tải lên kích hoạt chuyển mã. Đi vòng ngoài lề phải để không cắt qua use case
 // nào trong cột chính.
