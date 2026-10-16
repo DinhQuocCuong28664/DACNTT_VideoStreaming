@@ -385,7 +385,8 @@ per cent of the total volume, already flagged by the model \cite{awsrekognitionm
 clear the review queue by approving or blocking each video, and every decision must carry a reason
 code from a short, closed list: for an approval, for example, a model error, fiction or a game, or
 an acceptable context; for a removal, for example content missed by the model, an upheld report or
-a failed audit. The list is closed because free text cannot be counted, whereas a count of how many
+a failed audit; and, for a video that the machine has already removed, a confirmation that it was
+right. The list is closed because free text cannot be counted, whereas a count of how many
 removals were reversed because the content was a game points to the threshold that needs adjusting.
 
 Each decision is appended to an event log that records who decided and in which role, the verdict
@@ -438,7 +439,11 @@ group that has been reviewed at all, which is coverage; and the false negative r
 interval is used because the counts are small, and unlike the normal approximation it stays within
 zero and one and remains usable when the observed rate is near zero. The false negative rate comes
 only from the random audit and never from viewer reports, which would bias it low. A video that no
-one has reviewed is reported as unverified and enters no rate.
+one has reviewed is reported as unverified and enters no rate. Confirming a removal that the machine
+made is a separate action in the console, because such a video goes straight to the Removed list,
+where the only other action is to restore it. Without the confirmation the removals that staff had
+reviewed would be those they reversed, and the false positive rate would be computed over
+reversals alone; with it, a confirmed removal is a true positive and stays in the denominator.
 
 \subsection{Roles and Permissions}
 \label{sec:roles-design}
