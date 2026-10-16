@@ -26,7 +26,7 @@ import adminApi from '../api/adminApi';
 import { useAuth } from '../context/useAuth';
 import useInfiniteList from '../hooks/useInfiniteList';
 import { formatDuration, timeAgo } from '../utils/format';
-import { can, DECISION_REASONS } from '../utils/roles';
+import { can, CONFIRM_REASONS, DECISION_REASONS } from '../utils/roles';
 import './AdminPage.css';
 
 const PAGE_SIZE = 20;
@@ -98,12 +98,23 @@ const DecisionDialog = ({ video, decision, onClose, onDone }) => {
   const [error, setError] = useState('');
 
   const isBlock = decision === 'block';
-  const isRestore = !isBlock && video.moderation?.status === 'blocked';
-  const title = isBlock
-    ? t('admin.confirmBlockTitle')
-    : isRestore
-      ? t('admin.confirmRestoreTitle')
-      : t('admin.confirmApproveTitle');
+  const isBlocked = video.moderation?.status === 'blocked';
+  // Gỡ một video đang bị gỡ là xác nhận quyết định của máy, không phải gỡ mới.
+  const isConfirm = isBlock && isBlocked;
+  const isRestore = !isBlock && isBlocked;
+  const reasons = isConfirm ? CONFIRM_REASONS : DECISION_REASONS[decision];
+  const title = isConfirm
+    ? t('admin.confirmRemovalTitle')
+    : isBlock
+      ? t('admin.confirmBlockTitle')
+      : isRestore
+        ? t('admin.confirmRestoreTitle')
+        : t('admin.confirmApproveTitle');
+  const body = isConfirm
+    ? t('admin.confirmRemovalBody')
+    : isBlock
+      ? t('admin.confirmBlockBody')
+      : t('admin.confirmApproveBody');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -114,8 +125,8 @@ const DecisionDialog = ({ video, decision, onClose, onDone }) => {
     setSaving(true);
     setError('');
     try {
-      await adminApi.decide(video._id, decision, reasonCode, note.trim());
-      onDone(video, decision);
+      const res = await adminApi.decide(video._id, decision, reasonCode, note.trim());
+      onDone(video, decision, res.data?.data?.video);
     } catch (err) {
       setError(t('admin.decideFailed', { message: err.response?.data?.message || err.message }));
       setSaving(false);
@@ -133,7 +144,7 @@ const DecisionDialog = ({ video, decision, onClose, onDone }) => {
         </div>
         <div className="dialog-body decision-body">
           <p className="decision-video">{video.title}</p>
-          <p className="admin-muted">{isBlock ? t('admin.confirmBlockBody') : t('admin.confirmApproveBody')}</p>
+          <p className="admin-muted">{body}</p>
           {error && (
             <p className="field-error" role="alert">
               <MdErrorOutline aria-hidden="true" /> {error}
@@ -145,7 +156,7 @@ const DecisionDialog = ({ video, decision, onClose, onDone }) => {
             </span>
             <select value={reasonCode} onChange={(e) => setReasonCode(e.target.value)} disabled={saving} required>
               <option value="">{t('admin.reasonPlaceholder')}</option>
-              {DECISION_REASONS[decision].map((code) => (
+              {reasons.map((code) => (
                 <option key={code} value={code}>{t(`admin.decisionReasons.${code}`)}</option>
               ))}
             </select>
@@ -162,7 +173,7 @@ const DecisionDialog = ({ video, decision, onClose, onDone }) => {
           <button type="button" className="btn btn-plain" onClick={onClose} disabled={saving}>
             {t('common.cancel')}
           </button>
-          <button type="submit" className={`btn ${isBlock ? 'admin-btn-danger' : 'btn-primary'}`} disabled={saving || !reasonCode}>
+          <button type="submit" className={`btn ${isBlock && !isConfirm ? 'admin-btn-danger' : 'btn-primary'}`} disabled={saving || !reasonCode}>
             {saving && <span className="spinner spinner-sm" aria-hidden="true" />}
             <span>{saving ? t('admin.saving') : t('admin.confirm')}</span>
           </button>
@@ -265,6 +276,14 @@ const QueueItem = ({ video, onDecide }) => {
           {showReports ? <MdExpandLess /> : <MdExpandMore />}
           <span>{showReports ? t('admin.hideReports') : t('admin.showReports')}</span>
         </button>
+        {/* Video máy đã gỡ mà chưa ai xem lại: người vận hành xác nhận đúng hoặc khôi phục. Không có nút
+            xác nhận thì một lần tự gỡ chỉ có thể bị khôi phục, và tỉ lệ gỡ nhầm bị lệch lên. */}
+        {isBlocked && moderation.source !== 'admin' && (
+          <button type="button" className="btn btn-secondary" onClick={() => onDecide(video, 'block')}>
+            <MdOutlineVerifiedUser />
+            <span>{t('admin.confirmRemoval')}</span>
+          </button>
+        )}
         <button type="button" className="btn btn-secondary" onClick={() => onDecide(video, 'approve')}>
           {isBlocked ? <MdRestore /> : <MdCheck />}
           <span>{isBlocked ? t('admin.restore') : t('admin.approve')}</span>
@@ -298,13 +317,24 @@ const QueuePanel = ({ tab, onDecided }) => {
   const list = useInfiniteList(fetchPage);
   const { items, setItems } = list;
 
-  const handleDone = (video, decision) => {
+  const handleDone = (video, decision, updated) => {
     setPending(null);
-    // Mọi quyết định đều đưa video ra khỏi tab hiện tại: giữ lại thì rời hàng
-    // rà soát, gỡ thì sang tab "Đã gỡ", khôi phục thì rời tab "Đã gỡ".
-    setItems((prev) => prev.filter((v) => v._id !== video._id));
-    const toastKey =
-      decision === 'block'
+    const confirmed = decision === 'block' && video.moderation?.status === 'blocked';
+    if (confirmed) {
+      // Xác nhận không đổi tab: video vẫn bị gỡ, chỉ đổi thành "đã được xem lại". Chỉ gộp phần
+      // `moderation` của phản hồi, vì các trường dựng riêng cho hàng chờ (ảnh bìa, lý do báo cáo)
+      // không nằm trong đó.
+      setItems((prev) =>
+        prev.map((v) => (v._id === video._id ? { ...v, moderation: { ...v.moderation, ...updated?.moderation } } : v)),
+      );
+    } else {
+      // Các quyết định còn lại đưa video ra khỏi tab hiện tại: giữ lại thì rời hàng rà soát,
+      // gỡ thì sang tab "Đã gỡ", khôi phục thì rời tab "Đã gỡ".
+      setItems((prev) => prev.filter((v) => v._id !== video._id));
+    }
+    const toastKey = confirmed
+      ? 'admin.confirmedToast'
+      : decision === 'block'
         ? 'admin.blockedToast'
         : video.moderation?.status === 'blocked'
           ? 'admin.restoredToast'

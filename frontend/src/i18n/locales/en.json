@@ -447,6 +447,10 @@
     "approve": "Keep",
     "restore": "Restore",
     "block": "Remove video",
+    "confirmRemoval": "Confirm removal",
+    "confirmRemovalTitle": "Confirm this video violates the guidelines?",
+    "confirmRemovalBody": "The video stays removed. You confirm the automatic check was right; the decision is recorded to measure how accurate the automatic check is.",
+    "confirmedToast": "Confirmed the removal of \"{{title}}\"",
     "confirmBlockTitle": "Remove this video?",
     "confirmApproveTitle": "Keep this video?",
     "confirmRestoreTitle": "Restore this video?",
@@ -486,6 +490,7 @@
       "acceptable_context": "Acceptable in context",
       "appeal_upheld": "The uploader's appeal is justified",
       "report_unfounded": "The report is unfounded",
+      "confirmed_violation": "The automatic check was right",
       "missed_by_model": "The automatic check missed it",
       "report_upheld": "The report is justified",
       "audit_failed": "Failed the spot check",
@@ -558,6 +563,7 @@
       "action": {
         "approve": "Kept",
         "block": "Removed",
+        "confirm": "Removal confirmed",
         "restore": "Restored"
       }
     },

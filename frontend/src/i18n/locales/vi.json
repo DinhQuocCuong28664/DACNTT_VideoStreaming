@@ -443,6 +443,10 @@
     "approve": "Giữ lại",
     "restore": "Khôi phục",
     "block": "Gỡ video",
+    "confirmRemoval": "Xác nhận gỡ",
+    "confirmRemovalTitle": "Xác nhận video này vi phạm?",
+    "confirmRemovalBody": "Video vẫn bị gỡ. Bạn xác nhận kiểm tra tự động đã gỡ đúng; quyết định này được ghi lại để tính độ chính xác của kiểm tra tự động.",
+    "confirmedToast": "Đã xác nhận việc gỡ video \"{{title}}\"",
     "confirmBlockTitle": "Gỡ video này?",
     "confirmApproveTitle": "Giữ lại video này?",
     "confirmRestoreTitle": "Khôi phục video này?",
@@ -482,6 +486,7 @@
       "acceptable_context": "Chấp nhận được theo bối cảnh",
       "appeal_upheld": "Khiếu nại của chủ video là đúng",
       "report_unfounded": "Báo cáo không có cơ sở",
+      "confirmed_violation": "Kiểm tra tự động đã gỡ đúng",
       "missed_by_model": "Kiểm tra tự động đã bỏ lọt",
       "report_upheld": "Báo cáo là đúng",
       "audit_failed": "Không đạt khi kiểm tra mẫu",
@@ -554,6 +559,7 @@
       "action": {
         "approve": "Giữ lại",
         "block": "Đã gỡ",
+        "confirm": "Xác nhận gỡ",
         "restore": "Khôi phục"
       }
     },

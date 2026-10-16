@@ -387,6 +387,34 @@ describe('Kiểm duyệt nội dung', () => {
         expect(ModerationEvent.create.mock.calls[0][0]).toMatchObject({ action: 'restore', fromStatus: 'blocked', toStatus: 'approved' });
       });
 
+      it('ghi action confirm khi gỡ một video máy đã gỡ, tính là true positive và chụp kết luận của máy', async () => {
+        mockCurrent({ status: 'blocked', source: 'auto' });
+
+        await moderationService.decide(videoId, admin, { decision: 'block', reasonCode: 'confirmed_violation' });
+
+        expect(ModerationEvent.create.mock.calls[0][0]).toMatchObject({
+          action: 'confirm',
+          fromStatus: 'blocked',
+          toStatus: 'blocked',
+          autoStatus: 'blocked',
+          outcome: 'true_positive',
+          reasonCode: 'confirmed_violation',
+        });
+        const update = Video.findByIdAndUpdate.mock.calls[0][1].$set;
+        expect(update['moderation.status']).toBe('blocked');
+        expect(update['moderation.source']).toBe('admin');
+        expect(update['moderation.autoStatus']).toBe('blocked');
+      });
+
+      it('chỉ nhận confirmed_violation cho quyết định gỡ, không cho quyết định giữ lại', async () => {
+        mockCurrent({ status: 'blocked', source: 'auto' });
+
+        await expect(
+          moderationService.decide(videoId, admin, { decision: 'approve', reasonCode: 'confirmed_violation' })
+        ).rejects.toMatchObject({ statusCode: 400 });
+        expect(Video.findByIdAndUpdate).not.toHaveBeenCalled();
+      });
+
       it('lỗi ghi nhật ký không làm mất quyết định đã áp dụng', async () => {
         const spy = jest.spyOn(console, 'error').mockImplementation(() => {});
         ModerationEvent.create.mockRejectedValue(new Error('db down'));
