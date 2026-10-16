@@ -59,6 +59,23 @@ export const PALETTE = {
  */
 const LABELS = [];
 
+/**
+ * Sổ đăng ký hình học, để đặt huy hiệu và kiểm bố cục sau khi mọi thứ đã khai báo.
+ *
+ * Nhãn cạnh viết kiểu "ở giữa đoạn dài nhất" sẽ đè lên viền thẻ mỗi khi đoạn đó ngắn hơn
+ * nhãn: nền trắng của nhãn xoá luôn viền và cả chữ của thẻ bên cạnh. Hình kiến trúc có 15 trong
+ * 18 nhãn dính lỗi đó. Muốn trị tận gốc thì phải biết vị trí mọi thẻ và mọi cạnh lúc đặt nhãn,
+ * mà lúc đó người viết chưa khai báo hết, nên đặt nhãn dồn lại đến lúc dựng tài liệu.
+ *
+ * Mỗi tệp .mjs là một tiến trình riêng chỉ dựng một hình, nên sổ này ở cấp module không rò
+ * sang hình khác.
+ */
+const BOXES = [];        // thẻ và khung: { kind, x, y, w, h, title? }
+const EDGES = [];        // đa tuyến của mọi cạnh: { id, points }
+const LABEL_RECTS = [];  // nhãn chữ trên cạnh: { text, x, y, w, h, edge }
+const BADGES = [];       // huy hiệu số chờ đặt: { id, n, points, at }
+let LAYOUT_CHECK = false;
+
 export const TYPE = {
   cardTitle: 16,
   cardSub: 13.5,
@@ -152,6 +169,7 @@ export function card(spec) {
     x, y, w = 168, h = 104, iconName, title, sub, tone = 'plain', iconSize = 34,
   } = spec;
   const c = PALETTE[tone] ?? PALETTE.plain;
+  BOXES.push({ kind: 'card', x, y, w, h });
 
   const parts = [];
   parts.push(
@@ -198,6 +216,12 @@ export function group(spec) {
     `stroke="${stroke}" stroke-width="1.5" stroke-dasharray="${dash}"/>`,
   ];
   const lx = x + 16;
+  const titleLines = Array.isArray(label) ? label : [label];
+  const titleW = Math.max(...titleLines.map((l) => String(l).length)) * TYPE.groupLabel * 0.6 + (iconName ? 30 : 0);
+  BOXES.push({
+    kind: 'group', x, y, w, h,
+    title: { x: lx - 2, y: y + 8, w: titleW + 4, h: 26 + (titleLines.length - 1) * TYPE.groupLabel * 1.25 },
+  });
   if (iconName) {
     parts.push(icon(iconName, lx, y + 10, 20));
     parts.push(textLines(label, lx + 30, y + 26, { size: TYPE.groupLabel, weight: 'bold', anchor: 'start', fill: stroke }));
@@ -216,13 +240,22 @@ export function edge(points, opts = {}) {
   const {
     label, dashed = false, color = PALETTE.line, labelAt = 0.5,
     labelDx = 0, labelDy = -7, width = 1.8, arrow = true, labelBg = true,
+    badge = null, badgeAt = 0.5,
   } = opts;
 
   const d = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p[0]} ${p[1]}`).join(' ');
+  const id = EDGES.length;
+  EDGES.push({ id, points });
   const parts = [
     `<path d="${d}" fill="none" stroke="${color}" stroke-width="${width}" ` +
     `${dashed ? 'stroke-dasharray="6 4" ' : ''}${arrow ? 'marker-end="url(#arrow)"' : ''}/>`,
   ];
+
+  // Huy hiệu số: không vẽ nhãn chữ, chỗ đặt do placeBadges() chọn lúc dựng tài liệu.
+  if (badge != null) {
+    BADGES.push({ id, n: badge, points, at: badgeAt });
+    return parts.join('');
+  }
 
   if (label) {
     // Đặt nhãn trên đoạn dài nhất để chữ không đè lên chỗ đường gãy.
@@ -236,6 +269,9 @@ export function edge(points, opts = {}) {
     const ly = a[1] + (b[1] - a[1]) * labelAt + labelDy;
     const text = String(label);
     const lab = [];
+    const rectW = text.length * TYPE.edgeLabel * (7.2 / 13) + 14;
+    const rectH = TYPE.edgeLabel * (19 / 13);
+    LABEL_RECTS.push({ text, x: lx - rectW / 2, y: ly - TYPE.edgeLabel, w: rectW, h: rectH, edge: id });
     if (labelBg) {
       // Nen tray phai co dan theo co chu. Truoc day be rong la
       // `text.length * 7.2 + 14`, do dac cho co chu 13px; hinh kien truc nang
@@ -427,8 +463,214 @@ export function text(str, x, y, opts = {}) {
   return textLines(str, x, y, opts);
 }
 
+/** Xoá toàn bộ sổ đăng ký hình học. Chỉ dùng cho kiểm thử, vì mỗi hình thật chạy trong một tiến trình riêng. */
+export function resetLayoutState() {
+  for (const list of [LABELS, BOXES, EDGES, LABEL_RECTS, BADGES, PLACED]) list.length = 0;
+  LAYOUT_CHECK = false;
+}
+
+/** Bật bước kiểm bố cục cho hình này: dựng hình mà có chỗ đè nhau thì báo lỗi và không ghi tệp. */
+export function enableLayoutCheck() {
+  LAYOUT_CHECK = true;
+}
+
+// ── Hình học cho việc đặt huy hiệu và kiểm bố cục ──────────────────────────────
+const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+function distPointRect(px, py, r) {
+  const dx = Math.max(r.x - px, 0, px - (r.x + r.w));
+  const dy = Math.max(r.y - py, 0, py - (r.y + r.h));
+  return Math.hypot(dx, dy);
+}
+
+/** Khoảng cách tới đường viền của hình chữ nhật, tính cả khi điểm nằm trong. */
+function distPointOutline(px, py, r) {
+  const inside = px >= r.x && px <= r.x + r.w && py >= r.y && py <= r.y + r.h;
+  if (!inside) return distPointRect(px, py, r);
+  return Math.min(px - r.x, r.x + r.w - px, py - r.y, r.y + r.h - py);
+}
+
+function distPointSeg(px, py, a, b) {
+  const vx = b[0] - a[0];
+  const vy = b[1] - a[1];
+  const len2 = vx * vx + vy * vy;
+  const t = len2 ? clamp(((px - a[0]) * vx + (py - a[1]) * vy) / len2, 0, 1) : 0;
+  return Math.hypot(px - (a[0] + t * vx), py - (a[1] + t * vy));
+}
+
+/** Đoạn thẳng a-b có cắt hình chữ nhật r không (Liang-Barsky). */
+function segHitsRect(a, b, r) {
+  let t0 = 0;
+  let t1 = 1;
+  const dx = b[0] - a[0];
+  const dy = b[1] - a[1];
+  const p = [-dx, dx, -dy, dy];
+  const q = [a[0] - r.x, r.x + r.w - a[0], a[1] - r.y, r.y + r.h - a[1]];
+  for (let i = 0; i < 4; i++) {
+    if (p[i] === 0) {
+      if (q[i] < 0) return false;
+    } else {
+      const t = q[i] / p[i];
+      if (p[i] < 0) {
+        if (t > t1) return false;
+        if (t > t0) t0 = t;
+      } else {
+        if (t < t0) return false;
+        if (t < t1) t1 = t;
+      }
+    }
+  }
+  return true;
+}
+
+const rectsHit = (a, b, pad = 0) =>
+  !(a.x + a.w + pad <= b.x || b.x + b.w + pad <= a.x || a.y + a.h + pad <= b.y || b.y + b.h + pad <= a.y);
+
+const shrink = (r, d) => ({ x: r.x + d, y: r.y + d, w: r.w - 2 * d, h: r.h - 2 * d });
+const segmentsOf = (points) => points.slice(0, -1).map((a, i) => [a, points[i + 1]]);
+
+const BADGE_R = 13;
+const PLACED = [];   // huy hiệu đã đặt: { cx, cy, n }
+
+/**
+ * Đặt huy hiệu số lên các cạnh có khai báo `badge`.
+ *
+ * Với mỗi huy hiệu, thử các điểm cách nhau 3px dọc theo cạnh của nó, rồi cả hai bên cạnh
+ * (khi đoạn quá ngắn để đặt ngay trên đường, như khe 36px giữa hai thẻ). Một điểm hợp lệ khi
+ * vòng tròn không chạm thẻ, viền khung, tiêu đề khung, nhãn chữ, huy hiệu khác, và không nằm
+ * trên đường của cạnh nào khác, cũng không che mũi tên của chính cạnh nó. Chọn điểm gần vị trí
+ * ưa thích `at` nhất; huy hiệu ít chỗ lựa nhất được đặt trước.
+ */
+function placeBadges() {
+  if (!BADGES.length) return '';
+  const R = BADGE_R;
+  const M = 4;                 // chừa quanh vòng tròn
+  const OFF = R + 9;           // lệch ngang khi đặt cạnh đường
+  const cards = BOXES.filter((b) => b.kind === 'card');
+  const groups = BOXES.filter((b) => b.kind === 'group');
+
+  const validAt = (bd, cx, cy, segIndex, offset) => {
+    for (const c of cards) if (distPointRect(cx, cy, c) < R + M) return false;
+    for (const g of groups) {
+      if (distPointOutline(cx, cy, g) < R + M) return false;
+      if (distPointRect(cx, cy, g.title) < R + M) return false;
+    }
+    for (const L of LABEL_RECTS) if (distPointRect(cx, cy, L) < R + M) return false;
+
+    const own = EDGES[bd.id];
+    const ownSegs = segmentsOf(own.points);
+    for (let i = 0; i < ownSegs.length; i++) {
+      if (i === segIndex) continue;
+      if (distPointSeg(cx, cy, ownSegs[i][0], ownSegs[i][1]) < R + 2) return false;
+    }
+    for (const e of EDGES) {
+      if (e.id === bd.id) continue;
+      for (const [a, b] of segmentsOf(e.points)) {
+        if (distPointSeg(cx, cy, a, b) < (offset ? OFF + 8 : R + M)) return false;
+      }
+    }
+    const end = own.points[own.points.length - 1];
+    if (Math.hypot(cx - end[0], cy - end[1]) < R + 14) return false;   // mũi tên
+    return true;
+  };
+
+  const candidates = BADGES.map((bd) => {
+    const segs = segmentsOf(bd.points);
+    const total = segs.reduce((t, [a, b]) => t + Math.hypot(b[0] - a[0], b[1] - a[1]), 0);
+    const list = [];
+    let acc = 0;
+    segs.forEach(([a, b], i) => {
+      const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      if (len < 1) return;
+      const ux = (b[0] - a[0]) / len;
+      const uy = (b[1] - a[1]) / len;
+      for (let s = 0; s <= len; s += 3) {
+        for (const off of [0, OFF, -OFF]) {
+          const cx = a[0] + ux * s - uy * off;
+          const cy = a[1] + uy * s + ux * off;
+          if (!validAt(bd, cx, cy, i, off !== 0)) continue;
+          const score = Math.abs(acc + s - bd.at * total) + (off !== 0 ? 80 : 0);
+          list.push({ cx, cy, score });
+        }
+      }
+      acc += len;
+    });
+    list.sort((p, q) => p.score - q.score);
+    return { bd, list };
+  });
+
+  const failures = [];
+  const out = [];
+  PLACED.length = 0;
+  for (const { bd, list } of candidates.sort((p, q) => p.list.length - q.list.length)) {
+    const spot = list.find((c) => PLACED.every((o) => Math.hypot(c.cx - o.cx, c.cy - o.cy) >= 2 * R + 6));
+    if (!spot) {
+      failures.push(`không có chỗ trống cho huy hiệu ${bd.n} (${list.length} điểm hợp lệ trước khi xét huy hiệu khác)`);
+      continue;
+    }
+    PLACED.push({ cx: spot.cx, cy: spot.cy, n: bd.n });
+    out.push(
+      `<circle cx="${spot.cx.toFixed(1)}" cy="${spot.cy.toFixed(1)}" r="${R}" fill="#334155" stroke="#ffffff" stroke-width="2"/>` +
+      `<text x="${spot.cx.toFixed(1)}" y="${(spot.cy + TYPE.edgeLabel * 0.35).toFixed(1)}" font-family="Arial, Helvetica, sans-serif" ` +
+      `font-size="${TYPE.edgeLabel}" font-weight="bold" fill="#ffffff" text-anchor="middle">${bd.n}</text>`);
+  }
+  if (failures.length) throw new Error(`Đặt huy hiệu thất bại:\n  ${failures.join('\n  ')}`);
+  return out.join('');
+}
+
+/**
+ * Bước kiểm bố cục: liệt kê mọi chỗ đè nhau thay vì để người đọc PDF tự phát hiện.
+ * Chỉ chạy khi hình gọi enableLayoutCheck().
+ */
+function layoutViolations() {
+  const v = [];
+  const cards = BOXES.filter((b) => b.kind === 'card');
+  const groups = BOXES.filter((b) => b.kind === 'group');
+  const at = (r) => `(${Math.round(r.x)},${Math.round(r.y)})`;
+
+  for (const g of groups) {
+    if (g.title.x + g.title.w > g.x + g.w) v.push(`tiêu đề khung ${at(g)} rộng hơn chính khung`);
+  }
+
+  for (const L of LABEL_RECTS) {
+    for (const c of cards) if (rectsHit(L, c)) v.push(`nhãn "${L.text}" đè lên thẻ ${at(c)}`);
+    for (const g of groups) {
+      if (rectsHit(L, g.title)) v.push(`nhãn "${L.text}" đè lên tiêu đề khung ${at(g)}`);
+      if (rectsHit(L, g) && !(L.x >= g.x + 3 && L.y >= g.y + 3 && L.x + L.w <= g.x + g.w - 3 && L.y + L.h <= g.y + g.h - 3)) {
+        v.push(`nhãn "${L.text}" cắt viền khung ${at(g)}`);
+      }
+    }
+    for (const e of EDGES) {
+      if (e.id === L.edge) continue;
+      for (const [a, b] of segmentsOf(e.points)) {
+        if (segHitsRect(a, b, L)) { v.push(`nhãn "${L.text}" nằm trên đường của một cạnh khác`); break; }
+      }
+    }
+    for (const o of LABEL_RECTS) if (o !== L && rectsHit(L, o, 2) && L.text < o.text) v.push(`nhãn "${L.text}" chạm nhãn "${o.text}"`);
+  }
+
+  for (const e of EDGES) {
+    for (const [a, b] of segmentsOf(e.points)) {
+      for (const g of groups) if (segHitsRect(a, b, g.title)) v.push(`cạnh ${e.id} cắt tiêu đề khung ${at(g)}`);
+      for (const c of cards) if (segHitsRect(a, b, shrink(c, 3))) v.push(`cạnh ${e.id} đi xuyên thẻ ${at(c)}`);
+    }
+  }
+  return [...new Set(v)];
+}
+
 /** Ghép các phần thành một tài liệu SVG hoàn chỉnh. */
 export function document_({ width, height, body, title }) {
+  const badgeSvg = placeBadges();
+  if (LAYOUT_CHECK) {
+    const problems = layoutViolations();
+    if (problems.length) {
+      throw new Error(`Bố cục có ${problems.length} chỗ đè nhau:\n  - ${problems.join('\n  - ')}`);
+    }
+  }
+  return documentSvg({ width, height, body: `${body}`, title, badgeSvg });
+}
+
+function documentSvg({ width, height, body, title, badgeSvg }) {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
 <defs>
   <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
@@ -438,7 +680,7 @@ export function document_({ width, height, body, title }) {
 <rect width="${width}" height="${height}" fill="#ffffff"/>
 ${title ? textLines(title, width / 2, 34, { size: 18, weight: 'bold' }) : ''}
 ${body}
-${LABELS.join('')}
+${LABELS.join('')}${badgeSvg}
 </svg>`;
 }
 
