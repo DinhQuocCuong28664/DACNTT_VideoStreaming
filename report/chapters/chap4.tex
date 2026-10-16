@@ -476,6 +476,34 @@ one table. A role change is itself restricted: only an administrator may make it
 their own role, the last administrator cannot be demoted, and every change is appended to a log that
 the auditor can read.
 
+\subsection{Verifying the Owner of an Account}
+\label{sec:verification-design}
+
+Registration checks that an e-mail address is well formed and nothing more, so anyone can register
+with an address that belongs to someone else. Two harms follow. The registrant can upload, the most
+expensive operation of the system, under another person's address, which makes uploads anonymous in
+practice. And when the real owner of the address later signs in with Google, the account is already
+taken by someone who knows its password. The design therefore asks each new account to prove that it
+can receive mail at its address, and lets only verified accounts upload.
+
+After registration the backend generates a random token of 32 bytes, stores only its SHA-256 hash with
+an expiry of 24 hours, and e-mails a link that carries the token itself, as is done for the tokens of
+a password reset. The link opens a page of the single page application, and that page sends the token
+in a POST request, so that a mail client that previews links by fetching them cannot verify the
+account by itself. The server consumes the token in one conditional update, so two clicks on the same
+link cannot both succeed. An account that has not verified its address can still browse, like and
+comment, but the upload endpoint refuses it with a distinct error code, which the interface turns
+into a reminder with a button that sends the link again, limited to five mails per hour for each
+account.
+
+Three events count as proof of ownership: following the link; signing in with Google, whose identity
+token carries an address that Google has verified; and completing a password reset, since the reset
+link also goes only to the mailbox. A Google sign-in whose address matches an unverified local account
+takes that account over. The password is removed, every token issued earlier is invalidated through
+the password-change timestamp, and any pending verification or reset token is deleted, so that
+whoever registered first cannot keep access. An account that is already verified is never merged
+automatically: its owner must sign in with the password and link Google from the settings page.
+
 \section{Interface Design}
 \label{sec:interface-design}
 

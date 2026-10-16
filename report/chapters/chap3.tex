@@ -34,8 +34,8 @@ the design and implementation chapters.
 \toprule
 \textbf{ID} & \textbf{REQUIREMENT} & \textbf{DESCRIPTION} \\
 \midrule
-FR-01 & Registration and login & Users register with a username, email address, and password. Authentication uses JSON Web Tokens carried in the Authorization header. \\
-FR-02 & Password recovery & Users request a reset link by email; the token is single-use and expires after fifteen minutes. \\
+FR-01 & Registration and login & Users register with a username, email address, and password. Authentication uses JSON Web Tokens carried in the Authorization header. A new account must prove that it can receive mail at its address before it may upload videos; signing in with Google counts as that proof. \\
+FR-02 & Password recovery & Users request a reset link by email; the token is single-use and expires after fifteen minutes. A completed reset also confirms the address. \\
 FR-03 & Direct upload to S3 & The client requests a pre-signed URL from the backend and transfers the file directly to Amazon S3 without routing the payload through the application server. A file above 512~MiB is transferred in parts of 32~MiB, so that a part that fails is retried without repeating the whole file. \\
 FR-04 & Automatic transcoding & Once the upload completes, the system transcodes the source into HLS renditions without any manual trigger. \\
 FR-05 & Adaptive playback & The player switches automatically among the renditions produced for the video, chosen from six rungs between 144p and 1080p according to the source resolution, as the available bandwidth changes. \\
@@ -151,7 +151,7 @@ detail.
 \midrule
 Identifier & UC-07 \\
 Actor & Authenticated user \\
-Precondition & The user holds a valid JSON Web Token. \\
+Precondition & The user holds a valid JSON Web Token and a verified e-mail address. \\
 Trigger & The user selects a video file and submits the upload form. \\
 Main flow &
   1. The client validates the file type and size locally. \newline
@@ -160,7 +160,7 @@ Main flow &
   4. The browser transfers the file directly to the raw S3 bucket. \newline
   5. The client confirms completion and the record moves to \texttt{PROCESSING}. \newline
   6. The transcoding pipeline runs asynchronously and eventually sets the record to \texttt{READY}. \\
-Alternative flow & If the file type is not an accepted video format or the size exceeds the limit, the server rejects the request before issuing a URL, and no orphan record is created. For a file larger than 512~MiB, step 3 returns a URL for each part of 32~MiB instead, and the server checks the stored parts before the object is assembled. \\
+Alternative flow & If the file type is not an accepted video format or the size exceeds the limit, the server rejects the request before issuing a URL, and no orphan record is created. For a file larger than 512~MiB, step 3 returns a URL for each part of 32~MiB instead, and the server checks the stored parts before the object is assembled. If the e-mail address is not verified, the server refuses the request with the code \texttt{EMAIL\_NOT\_VERIFIED} and the interface offers to send the link again. \\
 Postcondition & The video appears on the user's channel, initially as processing and subsequently as ready to play. \\
 \bottomrule
 \end{tabularx}

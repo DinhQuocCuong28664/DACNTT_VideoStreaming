@@ -31,7 +31,7 @@ Object.assign(TYPE, {
 });
 
 const W = 1345;
-const H = 800;
+const H = 884;
 const p = [];
 
 const LEFT = 40;
@@ -55,6 +55,9 @@ const user = entity({
     { type: 'string', name: 'resetPasswordToken', note: 'SHA-256' },
     { type: 'Date', name: 'resetPasswordExpire' },
     { type: 'Date', name: 'passwordChangedAt', note: 'invalidates old JWTs' },
+    { type: 'boolean', name: 'emailVerified', note: 'Google counts too' },
+    { type: 'string', name: 'emailVerificationToken', note: 'SHA-256' },
+    { type: 'Date', name: 'emailVerificationExpire', note: '24 hours' },
     { type: 'Date', name: 'createdAt' },
     { type: 'Date', name: 'updatedAt' },
   ],

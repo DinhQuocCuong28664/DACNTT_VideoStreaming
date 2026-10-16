@@ -42,6 +42,14 @@ files use an S3 multipart upload in parts of 32~MiB: the backend signs one URL p
 that part's length, so the storage service itself refuses a part of any other size, and on
 completion it lists the parts that S3 holds before asking for the object to be assembled.
 
+Verification is a property of the account on which three places must agree: the guard of the upload
+route, the profile that the interface reads, and the takeover of an account by a Google sign-in. All
+three read it through one method of the user model, which treats an account with a Google identity as
+verified, and not through the stored field. The guard stands on the creation of the upload record,
+ahead of the upload rate limiter, so that a refused request does not use up the hourly quota; the
+later steps of a multipart upload need no guard of their own, because they act only on a record that
+the guarded step created.
+
 Several protective measures were added at the HTTP layer. Security headers are applied through
 Helmet. Cross-origin requests are restricted to an explicit allow-list rather than being
 accepted from any origin, which is also a prerequisite for signed cookies to work, because the
@@ -373,22 +381,22 @@ the address stable across any rebuild that does occur.
 \section{Testing}
 \label{sec:testing}
 
-The automated test suite comprises 767 tests across 46 suites, 406 in 29 suites for the backend
+The automated test suite comprises 791 tests across 50 suites, 430 in 33 suites for the backend
 and 361 in 17 for the transcoder, and Tables~\ref{tab:test-coverage-backend} and
 \ref{tab:test-coverage-transcoder} group them by area.
 
 \begin{table}[H]
 \centering
-\caption{Automated backend tests by area, 406 tests in 29 suites}
+\caption{Automated backend tests by area, 430 tests in 33 suites}
 \label{tab:test-coverage-backend}
 \small
 \begin{tabularx}{\textwidth}{p{0.27\textwidth} p{0.09\textwidth} X}
 \toprule
 \textbf{AREA} & \textbf{TESTS} & \textbf{FOCUS} \\
 \midrule
-Authentication & 41 & Registration conflicts, login failures and token claims; missing, malformed, forged and expired tokens, and tokens issued before the account's last password change; the password policy; and a reset response that is identical whether or not the address has an account, including when e-mail delivery fails \\
+Authentication and account verification & 60 & Registration conflicts, login failures and token claims; the issue, expiry and single use of the verification link, which is stored only as a hash; the Google sign-in that takes over an unverified account; missing, malformed, forged and expired tokens, and tokens issued before the account's last password change; the password policy; and a reset response that is identical whether or not the address has an account, including when e-mail delivery fails \\
 Visibility and authorisation & 34 & Privacy enforcement across every query path; that the recommendation endpoint reuses the rule of the detail endpoint and never surfaces a private or unlisted video; and that a video exposes how many likes and dislikes it has but not who gave them \\
-Upload & 93 & Metadata and ownership checks, the deletion cascade, pre-signed URL creation, file type and size validation, the ceiling and its hard limit, the choice between a single and a multipart upload, part URLs signed for exact sizes, completion by listing the stored parts, and the clean-up of abandoned uploads \\
+Upload & 98 & Metadata and ownership checks, the refusal of an unverified account, the deletion cascade, pre-signed URL creation, file type and size validation, the ceiling and its hard limit, the choice between a single and a multipart upload, part URLs signed for exact sizes, completion by listing the stored parts, and the clean-up of abandoned uploads \\
 Content delivery & 30 & Cookie signing, policy scope and cookie attributes, and that revocation repeats the attributes used when issuing \\
 Listing, reactions and views & 31 & Pagination bounds, a stable sort order for channel pages, likes and dislikes as conditional updates, view deduplication, and the order of routes \\
 Operation and reconciliation & 32 & Reconciliation of videos stuck in processing or abandoned in uploading, the client address behind Cloudflare and nginx, rate-limit keys, e-mail configuration, and the health endpoint \\

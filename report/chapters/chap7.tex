@@ -22,6 +22,8 @@ rate and, from a random audit sample, the false negative rate can be estimated w
 intervals, and the owner of a removed video can appeal (Section~\ref{sec:moderation-design}).
 The implementation is covered by 145 of the backend's tests, but the rates themselves have not
 been measured on real traffic, so this report makes no claim about how accurate the screening is.
+Uploading also requires a verified e-mail address, so that the public content of the platform is tied
+to a mailbox that someone can read (Section~\ref{sec:verification-design}).
 
 The transcoding pipeline operates without manual intervention. An upload emits an S3 event that
 is buffered in Amazon SQS and dispatched by an AWS Lambda function to AWS Batch, where a
@@ -50,7 +52,7 @@ environment definitions, and seven GitHub Actions workflows automate linting, un
 analysis, container scanning, infrastructure validation, and deployment. The security gate
 blocks merges on fixable critical findings rather than merely reporting them.
 
-The automated test suite grew to 767 tests across 46 suites, 406 for the backend and 361 for
+The automated test suite grew to 791 tests across 50 suites, 430 for the backend and 361 for
 the transcoder. Its practical value was demonstrated
 when it caught a defect in the cookie signing implementation that would have prevented every
 private video from playing once deployed. A second defect in that same subsystem, which only
@@ -95,7 +97,7 @@ and led to two corrections of the CloudFront price class that reduced the median
 Vietnam by a factor of 6.6 and the median seen from Brazil by a factor of 32. Transcoding
 throughput was measured under one hundred concurrent uploads of real video and cross-validated
 with two independently implemented load generators. And the automated suite, which has since
-grown to 767 tests in 46 suites, caught a signing defect that would otherwise have prevented every private video from
+grown to 791 tests in 50 suites, caught a signing defect that would otherwise have prevented every private video from
 playing.
 
 \section{Limitations}
@@ -128,7 +130,16 @@ less than that interval can pass it; this is why viewer reports, staff review an
 follow it. Its confidence thresholds, 60 and 90 per cent, were set from the provider's guidance
 and were not calibrated on this platform's own content, and, as stated in
 Section~\ref{sec:summary}, the error rates of the arrangement as a whole have not been measured
-on real traffic.
+on real traffic. Screening is also the largest line of the monthly bill under the stated workload,
+22.50~USD at sixty images per five-minute video, so a longer sampling interval would trade coverage
+for money.
+
+The controls on accounts are thin. A password needs eight characters and is not compared with lists
+of leaked passwords, which current guidance for password verifiers asks for. Registration sends a
+verification e-mail to whatever address it is given and is limited only per client address, so it can
+be used to send unwanted mail from the project's mailbox. And every account created before
+verification was introduced counts as unverified, except those that sign in with Google, until its
+owner follows a link.
 
 Signed Cookies remain valid for two hours after issuance, so switching a video from public to
 private leaves viewers holding unexpired cookies with access until those cookies lapse. Immediate
@@ -213,6 +224,11 @@ Section~\ref{sec:chunked-evaluation} suggest that the best choice depends on bot
 the video and the quota available. A related extension is to compare a faster x264 preset with the
 current one using VMAF on difficult clips, since a faster preset could shorten every chunk if the
 quality loss is acceptable.
+
+Account hardening would start with a check of new passwords against a list of leaked ones, a throttle
+on verification mail for each recipient address and not only for each client, and a second backend
+instance behind a health-checked address, which would remove the one single point of failure of the
+system.
 
 The moderation console already collects what is needed to tune the screening: the reason codes
 show which labels cause reversed removals, and the audit sample gives an unbiased estimate of
