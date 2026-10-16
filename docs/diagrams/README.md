@@ -59,6 +59,34 @@ icon mới thì bổ sung tên vào `WANTED` trong `svg/extract-icons.mjs` rồi
 cd docs/diagrams/svg && npm i --no-save @iconify-json/logos @resvg/resvg-js && node extract-icons.mjs
 ```
 
+## Huy hiệu số và bước kiểm bố cục
+
+Nhãn chữ trên cạnh dễ đè lên thẻ khi khe giữa hai thẻ hẹp hơn nhãn: nền trắng của nhãn xoá luôn
+viền thẻ và cả chữ của thẻ kề bên. Bản đầu của hình 4.1 có 15 trong 18 nhãn dính lỗi này, vì nhãn
+rộng 66 đến 314px mà khe giữa hai thẻ chỉ 36 đến 46px, còn hành lang giữa cột bên thứ ba và tài
+khoản AWS chỉ rộng 136px mà chứa bốn làn dọc cùng năm nhãn.
+
+Vì vậy `edge()` nhận thêm `{ badge: n }`: cạnh được đánh dấu bằng một huy hiệu tròn 26px mang số
+bước, và nghĩa của số nằm trong bảng chú giải "Numbered steps" ngay trong hình. Chỗ đặt huy hiệu do
+`placeBadges()` tự chọn lúc dựng tài liệu, ngay trên đường hoặc cạnh đường khi khe quá hẹp, sao cho
+không chạm thẻ, viền và tiêu đề khung, nhãn khác, đường của cạnh khác hay mũi tên. Muốn dịch một huy
+hiệu dọc theo cạnh thì đặt `badgeAt` (tỉ lệ từ 0 đến 1 theo chiều dài cạnh).
+
+Hình nào gọi `enableLayoutCheck()` thì được bước kiểm bố cục: dựng sẽ dừng, không ghi tệp, và liệt
+kê từng chỗ nếu có nhãn đè lên thẻ, viền hoặc tiêu đề khung, nhãn nằm trên đường của cạnh khác,
+cạnh đi xuyên thẻ hoặc cắt tiêu đề khung, hay tiêu đề rộng hơn khung của nó. Trên bản dựng cũ của
+hình 4.1 bước kiểm báo 39 chỗ; bản hiện tại không còn chỗ nào. Hiện chỉ hình 4.1 bật bước kiểm, vì
+các hình khác dùng ký hiệu riêng (ellipse, thực thể) chưa đăng ký vào sổ hình học của `render.mjs`.
+
+```bash
+node docs/diagrams/svg/01-architecture-overview.mjs
+node --test docs/diagrams/svg/layout-check.selftest.mjs
+```
+
+Tệp `layout-check.selftest.mjs` dựng lại đúng các lỗi cũ (nhãn rộng hơn khe, tiêu đề tràn khung,
+cạnh xuyên thẻ, cạnh cắt tiêu đề) và xác nhận bước kiểm bắt được chúng, cùng với việc huy hiệu đặt
+lọt chính cái khe đó.
+
 ## Giới hạn của sơ đồ tuần tự
 
 Hình 4.2 đã ở sát ngưỡng: thêm một hàng làm tỉ lệ khung đi từ 1:1,53 xuống 1:1,1 và chữ in ra
