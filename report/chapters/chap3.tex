@@ -115,10 +115,11 @@ Section~\ref{sec:content-protection} addresses explicitly.
 \section{Use Case Model}
 \label{sec:use-cases}
 
-Figure~\ref{fig:use-case} presents the use case diagram of the system. Three actors appear: the
-anonymous visitor, the authenticated user, and the transcoding system itself, which is modelled
-as an actor because it initiates processing autonomously in response to events rather than in
-response to a direct user action.
+Figure~\ref{fig:use-case} presents the use cases of the people who use the platform. Three actors
+appear: the anonymous visitor, the authenticated user, and the transcoding system itself, which is
+modelled as an actor because it initiates processing autonomously in response to events rather than
+in response to a direct user action. Verifying the e-mail address is the use case that lets a new
+account upload (requirement FR-01).
 
 \begin{figure}[htbp]
 \centering
@@ -133,9 +134,22 @@ event chain, which is why they are attached to the system actor rather than to t
 actors. This separation is what allows the browser to return control to the user immediately
 after the upload completes, without waiting for processing to finish.
 
-The diagram shows the use cases of the people who use the platform. The use cases of the
-operations staff, which are requirements FR-12 to FR-17, are specified in
-Table~\ref{tab:functional-requirements-moderation} and designed in Section~\ref{sec:moderation-design}.
+Figure~\ref{fig:use-case-staff} adds the use cases of moderation and operation, which are
+requirements FR-12 to FR-17 (Table~\ref{tab:functional-requirements-moderation}), designed in
+Section~\ref{sec:moderation-design}. They are drawn apart because adding them to
+Figure~\ref{fig:use-case} would make that figure taller than a page. Three more actors appear, the
+roles operator, auditor and administrator. The use cases of each role stand together, and an
+administrator can also do everything an operator or an auditor can, which is why each association is
+drawn once. The transcoding system keeps its place as an actor because the screening runs inside the
+transcoder. Three things lead to a decision that only staff can take: what the screening holds back,
+a report from a viewer, and an appeal from the owner of a removed video.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.975\textwidth]{images/10-use-case-staff.png}
+\caption{\textit{Use case diagram of moderation and operation}}
+\label{fig:use-case-staff}
+\end{figure}
 
 Table~\ref{tab:usecase-upload} specifies the most architecturally significant use case in
 detail.

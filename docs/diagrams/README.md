@@ -8,15 +8,16 @@ Thư mục này chứa các sơ đồ dùng cho báo cáo đồ án. Ảnh PNG x
 | `02-transcoding-sequence.png` | Sequence Diagram quy trình chuyển mã Event-Driven | 4.2 |
 | `03-cicd-pipeline.png` | Bảy workflow CI/CD, đường dẫn kích hoạt và cổng chất lượng hai tầng | 5.1 |
 | `04-database-erd.png` | ERD của MongoDB (User, Video, Comment) | 4.3 |
-| `05-use-case.png` | Sơ đồ Use Case với 3 tác nhân, ký hiệu UML chuẩn | 3.1 |
+| `05-use-case.png` | Sơ đồ Use Case của người dùng nền tảng: 3 tác nhân, 15 use case, ký hiệu UML chuẩn | 3.1 |
 | `06-hls-abr.png` | Các tệp HLS sinh ra từ một video nguồn và thứ tự player tải | 2.2 |
 | `07-compute-models.png` | So sánh cụm luôn bật với container serverless, kèm thanh tỉ lệ giờ tính tiền | 2.1 |
 | `08-user-flow.png` | Luồng người dùng từ lúc vào trang tới khi video được công bố | 4.5 |
 | `09-moderation-erd.png` | Năm collection phục vụ kiểm duyệt và vận hành (Report, ModerationEvent, Appeal, AuditSample, RoleChange) | 4.4 |
+| `10-use-case-staff.png` | Sơ đồ Use Case của kiểm duyệt và vận hành: operator, auditor, administrator cùng sàng lọc tự động, báo cáo và khiếu nại | 3.2 |
 
 ## Tái sinh ảnh sau khi sửa sơ đồ
 
-Sau khi chỉnh sửa tệp `.mmd` trong `src/`, chạy lệnh sau tại thư mục gốc của dự án để xuất lại ảnh dựng bằng Mermaid (chỉ còn hình 4.2). Bảy ảnh còn lại dựng bằng công cụ khác, lệnh riêng nằm ở mục kế tiếp:
+Sau khi chỉnh sửa tệp `.mmd` trong `src/`, chạy lệnh sau tại thư mục gốc của dự án để xuất lại ảnh dựng bằng Mermaid (chỉ còn hình 4.2). Chín ảnh còn lại dựng bằng công cụ khác, lệnh riêng nằm ở mục kế tiếp:
 
 ```bash
 for f in docs/diagrams/src/*.mmd; do npx --yes @mermaid-js/mermaid-cli -i "$f" -o "docs/diagrams/$(basename "$f" .mmd).png" -c docs/diagrams/mermaid-config.json -b white -s 3; done
@@ -37,7 +38,7 @@ không có cách nào bảo nó gấp lại, nên hình ra 1:2,15, phải đặt
 trang, và chữ in ra chỉ còn 6,4pt. Xếp tay thành ba cột đưa tỉ lệ về 1:1,47 và
 chữ lên 8,5pt — lớn nhất trong các hình của báo cáo.
 
-**Bộ sinh SVG riêng** (`svg/`) cho tám hình còn lại, vì các lý do sau. Thứ nhất,
+**Bộ sinh SVG riêng** (`svg/`) cho chín hình còn lại, vì các lý do sau. Thứ nhất,
 Mermaid chỉ nạp được icon qua lời gọi JavaScript `registerIconPacks`, mà
 mermaid-cli không phơi hàm đó ra, nên chạy qua CLI thì mọi icon đều thành dấu
 hỏi. Thứ hai, bố cục tự động không đặt được các khối lồng nhau theo đúng ranh
@@ -47,7 +48,7 @@ Icon lấy từ bộ `@iconify-json/logos`, đã trích sẵn phần cần dùng
 `svg/icons.json` (khoảng 80 KB) nên dựng lại hình không cần mạng.
 
 ```bash
-for f in docs/diagrams/svg/0*.mjs; do node "$f"; done
+for f in docs/diagrams/svg/[0-9][0-9]-*.mjs; do node "$f"; done
 ```
 
 Lệnh trên ghi ra cả `svg/01-architecture-overview.svg` (bản gốc vector, để sửa
@@ -85,10 +86,10 @@ Mỗi hình được đặt kích thước theo cỡ chữ nhỏ nhất còn đ�
 không theo thói quen dùng `\textwidth`. Cỡ chữ hiện ra trên giấy bằng
 `font_px / canvas_px × bề_rộng_in`, nên hình có nhiều nội dung phải xoay ngang
 để dùng chiều cao trang (247 mm) làm bề rộng, còn hình cao và hẹp thì phải ràng
-buộc theo chiều cao chứ không theo chiều rộng. Toàn bộ tám hình hiện ở mức
+buộc theo chiều cao chứ không theo chiều rộng. Toàn bộ chín hình hiện ở mức
 6,2pt trở lên.
 
 Cỡ chữ của bộ sinh SVG khai báo trong bảng `TYPE` ở `svg/render.mjs`. Hình nào
 có canvas rộng thì ghi đè bảng này ở đầu tệp của nó kèm phép tính, thay vì sửa
-trong thân hàm và kéo theo cả bảy hình còn lại. Hình kiến trúc và hình use case
-đang ghi đè vì canvas của chúng rộng hơn hẳn.
+trong thân hàm và kéo theo cả tám hình còn lại. Hình kiến trúc và hai hình use case
+đang ghi đè vì canvas của chúng khác mức chuẩn.
