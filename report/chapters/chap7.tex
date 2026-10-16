@@ -52,7 +52,7 @@ environment definitions, and seven GitHub Actions workflows automate linting, un
 analysis, container scanning, infrastructure validation, and deployment. The security gate
 blocks merges on fixable critical findings rather than merely reporting them.
 
-The automated test suite grew to 851 tests across 52 suites, 490 for the backend and 361 for
+The automated test suite grew to 853 tests across 52 suites, 492 for the backend and 361 for
 the transcoder. Its practical value was demonstrated
 when it caught a defect in the cookie signing implementation that would have prevented every
 private video from playing once deployed. A second defect in that same subsystem, which only
@@ -98,7 +98,7 @@ and led to two corrections of the CloudFront price class that reduced the median
 Vietnam by a factor of 6.6 and the median seen from Brazil by a factor of 32. Transcoding
 throughput was measured under one hundred concurrent uploads of real video and cross-validated
 with two independently implemented load generators. And the automated suite, which has since
-grown to 851 tests in 52 suites, caught a signing defect that would otherwise have prevented every private video from
+grown to 853 tests in 52 suites, caught a signing defect that would otherwise have prevented every private video from
 playing.
 
 \section{Limitations}

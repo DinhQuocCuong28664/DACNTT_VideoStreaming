@@ -405,13 +405,13 @@ the address stable across any rebuild that does occur.
 \section{Testing}
 \label{sec:testing}
 
-The automated test suite comprises 851 tests across 52 suites, 490 in 35 suites for the backend
+The automated test suite comprises 853 tests across 52 suites, 492 in 35 suites for the backend
 and 361 in 17 for the transcoder, and Tables~\ref{tab:test-coverage-backend} and
 \ref{tab:test-coverage-transcoder} group them by area.
 
 \begin{table}[H]
 \centering
-\caption{Automated backend tests by area, 490 tests in 35 suites}
+\caption{Automated backend tests by area, 492 tests in 35 suites}
 \label{tab:test-coverage-backend}
 \small
 \begin{tabularx}{\textwidth}{p{0.27\textwidth} p{0.09\textwidth} X}
@@ -424,7 +424,7 @@ Upload & 98 & Metadata and ownership checks, the refusal of an unverified accoun
 Content delivery & 30 & Cookie signing, policy scope and cookie attributes, and that revocation repeats the attributes used when issuing \\
 Listing, reactions and views & 31 & Pagination bounds, a stable sort order for channel pages, likes and dislikes as conditional updates, view deduplication, and the order of routes \\
 Operation and reconciliation & 50 & Reconciliation of videos stuck in processing or abandoned in uploading, the client address behind Cloudflare and nginx, rate-limit keys, the cap on mail to one recipient with its sliding window and bounded memory, e-mail configuration, and the health endpoint \\
-Moderation and operations console & 145 & Classification of each decision as a false positive, a false negative or neither; the snapshot of the machine's conclusion written once; the permission table for the four roles; one appeal per decision; audit sampling and labelling; the Wilson interval and the rates; and that the last administrator cannot be demoted \\
+Moderation and operations console & 147 & Classification of each decision as a false positive, a false negative or neither; the snapshot of the machine's conclusion written once; the confirmation of a removal the machine made, logged as its own action and counted as a true positive; the permission table for the four roles; one appeal per decision; audit sampling and labelling; the Wilson interval and the rates; and that the last administrator cannot be demoted \\
 \bottomrule
 \end{tabularx}
 \end{table}
