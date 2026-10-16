@@ -38,7 +38,7 @@ describe('Xác minh email', () => {
       User.create.mockImplementation(async (doc) => ({ _id: 'u1', ...doc }));
 
       const before = Date.now();
-      const result = await authService.register('nguoidung', 'moi@example.com', 'matkhau123');
+      const result = await authService.register('nguoidung', 'moi@example.com', 'Mat-Khau-Tot-2026');
 
       const created = User.create.mock.calls[0][0];
       expect(created.emailVerified).toBe(false);
@@ -123,7 +123,7 @@ describe('Xác minh email', () => {
 
       const res = createMockRes();
       await authController.registerUser(
-        { body: { username: 'moi', email: 'moi@example.com', password: 'matkhau123' }, headers: {} },
+        { body: { username: 'moi', email: 'moi@example.com', password: 'Mat-Khau-Tot-2026' }, headers: {} },
         res,
         jest.fn()
       );
@@ -143,7 +143,7 @@ describe('Xác minh email', () => {
       const res = createMockRes();
       const next = jest.fn();
       await authController.registerUser(
-        { body: { username: 'moi', email: 'moi@example.com', password: 'matkhau123' }, headers: {} },
+        { body: { username: 'moi', email: 'moi@example.com', password: 'Mat-Khau-Tot-2026' }, headers: {} },
         res,
         next
       );

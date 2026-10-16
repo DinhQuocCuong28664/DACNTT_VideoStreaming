@@ -45,7 +45,7 @@ describe('authService Unit Tests', () => {
       User.findOne.mockResolvedValue({ email: 'trung@example.com', username: 'khac' });
 
       await expect(
-        authService.register('nguoidung', 'trung@example.com', 'matkhau123')
+        authService.register('nguoidung', 'trung@example.com', 'Mat-Khau-Tot-2026')
       ).rejects.toMatchObject({
         statusCode: 409,
         message: 'Email already exists',
@@ -58,7 +58,7 @@ describe('authService Unit Tests', () => {
       User.findOne.mockResolvedValue({ email: 'khac@example.com', username: 'nguoidung' });
 
       await expect(
-        authService.register('nguoidung', 'moi@example.com', 'matkhau123')
+        authService.register('nguoidung', 'moi@example.com', 'Mat-Khau-Tot-2026')
       ).rejects.toMatchObject({
         statusCode: 409,
         message: 'Username already exists',
@@ -71,7 +71,7 @@ describe('authService Unit Tests', () => {
       User.findOne.mockResolvedValue(null);
       User.create.mockResolvedValue({ _id: newUserId, username: 'nguoidung' });
 
-      const result = await authService.register('nguoidung', 'moi@example.com', 'matkhau123');
+      const result = await authService.register('nguoidung', 'moi@example.com', 'Mat-Khau-Tot-2026');
 
       expect(User.create).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -167,7 +167,7 @@ describe('authService Unit Tests', () => {
     it('nên từ chối token không hợp lệ hoặc đã hết hạn với mã lỗi 400', async () => {
       User.findOne.mockResolvedValue(null);
 
-      await expect(authService.resetPassword('token_khong_hop_le', 'matkhaumoi')).rejects.toMatchObject({
+      await expect(authService.resetPassword('token_khong_hop_le', 'Mat-Khau-Moi-2026')).rejects.toMatchObject({
         statusCode: 400,
         message: 'Invalid or expired reset token',
       });
@@ -176,7 +176,7 @@ describe('authService Unit Tests', () => {
     it('nên tra cứu bằng token đã băm chứ không phải token thô', async () => {
       User.findOne.mockResolvedValue(null);
 
-      await authService.resetPassword('token_tho', 'matkhaumoi').catch(() => {});
+      await authService.resetPassword('token_tho', 'Mat-Khau-Moi-2026').catch(() => {});
 
       const filter = User.findOne.mock.calls[0][0];
       expect(filter.resetPasswordToken).not.toBe('token_tho');
@@ -191,9 +191,9 @@ describe('authService Unit Tests', () => {
       };
       User.findOne.mockResolvedValue(mockUser);
 
-      await authService.resetPassword('token_hop_le', 'matkhaumoi');
+      await authService.resetPassword('token_hop_le', 'Mat-Khau-Moi-2026');
 
-      expect(mockUser.password).toBe('matkhaumoi');
+      expect(mockUser.password).toBe('Mat-Khau-Moi-2026');
       expect(mockUser.resetPasswordToken).toBeUndefined();
       expect(mockUser.resetPasswordExpire).toBeUndefined();
       expect(mockUser.save).toHaveBeenCalled();
@@ -210,7 +210,7 @@ describe('authService Unit Tests', () => {
       User.findById.mockReturnValue({ select: jest.fn().mockResolvedValue(mockUser) });
 
       await expect(
-        authService.changePassword(mockUser._id, 'sai', 'matkhaumoi')
+        authService.changePassword(mockUser._id, 'sai', 'Mat-Khau-Moi-2026')
       ).rejects.toMatchObject({ statusCode: 401 });
 
       expect(mockUser.save).not.toHaveBeenCalled();
@@ -224,9 +224,9 @@ describe('authService Unit Tests', () => {
       };
       User.findById.mockReturnValue({ select: jest.fn().mockResolvedValue(mockUser) });
 
-      await authService.changePassword(mockUser._id, 'dung', 'matkhaumoi');
+      await authService.changePassword(mockUser._id, 'dung', 'Mat-Khau-Moi-2026');
 
-      expect(mockUser.password).toBe('matkhaumoi');
+      expect(mockUser.password).toBe('Mat-Khau-Moi-2026');
       expect(mockUser.save).toHaveBeenCalled();
     });
   });

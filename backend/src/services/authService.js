@@ -3,8 +3,36 @@ const crypto = require('crypto');
 const { OAuth2Client } = require('google-auth-library');
 const User = require('../models/User');
 const httpError = require('../utils/httpError');
+const { findWeakness } = require('../utils/passwordBlocklist');
+const pwnedPasswords = require('./pwnedPasswordService');
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
+/**
+ * Từ chối mật khẩu quá dễ đoán trước khi nó chạm tới model.
+ *
+ * Hai lớp (xem utils/passwordBlocklist.js): danh sách và mẫu hiển nhiên chạy cục
+ * bộ, rồi danh sách mật khẩu đã bị lộ. Lớp thứ hai chỉ chặn khi dịch vụ trả lời
+ * rằng mật khẩu đã lộ; không trả lời được thì cho qua, để đăng ký không hỏng vì
+ * một dịch vụ ngoài. Mật khẩu ngắn hơn 8 ký tự bỏ qua ở đây, model từ chối chúng
+ * bằng thông điệp riêng.
+ */
+const assertPasswordAllowed = async (password, identity) => {
+  const weakness = findWeakness(password, identity);
+  if (weakness === 'common') {
+    throw httpError.localized(400, 'auth.passwordCommon', 'PASSWORD_TOO_COMMON');
+  }
+  if (weakness === 'personal') {
+    throw httpError.localized(400, 'auth.passwordPersonal', 'PASSWORD_PERSONAL');
+  }
+
+  if (pwnedPasswords.isEnabled() && String(password).length >= 8) {
+    const count = await pwnedPasswords.countBreaches(password);
+    if (count !== null && count >= pwnedPasswords.MIN_BREACH_COUNT) {
+      throw httpError.localized(400, 'auth.passwordBreached', 'PASSWORD_BREACHED');
+    }
+  }
+};
 
 /** Liên kết xác minh email dùng được trong 24 giờ. */
 const EMAIL_VERIFICATION_TTL_MS = 24 * 60 * 60 * 1000;
@@ -53,6 +81,8 @@ const register = async (username, email, password) => {
     error.statusCode = 409;
     throw error;
   }
+
+  await assertPasswordAllowed(password, { username, email });
 
   const { rawToken, fields } = newEmailVerificationToken();
 
@@ -390,6 +420,8 @@ const resetPassword = async (rawToken, newPassword) => {
     throw error;
   }
 
+  await assertPasswordAllowed(newPassword, { username: user.username, email: user.email });
+
   // Set new password (will be hashed by pre-save hook)
   user.password = newPassword;
   user.resetPasswordToken = undefined;
@@ -427,6 +459,8 @@ const changePassword = async (userId, currentPassword, newPassword) => {
     throw error;
   }
 
+  await assertPasswordAllowed(newPassword, { username: user.username, email: user.email });
+
   user.password = newPassword;
   await user.save();
 
@@ -436,6 +470,7 @@ const changePassword = async (userId, currentPassword, newPassword) => {
 };
 
 module.exports = {
+  assertPasswordAllowed,
   register,
   verifyEmail,
   prepareVerificationEmail,

@@ -41,6 +41,9 @@ const MESSAGES = {
     'auth.alreadyVerified': 'Email của bạn đã được xác minh.',
     'auth.emailVerified': 'Đã xác minh email.',
     'auth.verifyLinkInvalid': 'Liên kết xác minh không hợp lệ hoặc đã hết hạn.',
+    'auth.passwordCommon': 'Mật khẩu này quá dễ đoán. Hãy chọn mật khẩu dài hơn hoặc ít phổ biến hơn.',
+    'auth.passwordPersonal': 'Mật khẩu không được chứa tên người dùng, phần đầu của email hoặc tên của dịch vụ này.',
+    'auth.passwordBreached': 'Mật khẩu này đã xuất hiện trong các vụ rò rỉ dữ liệu. Vui lòng chọn mật khẩu khác.',
     'auth.emailNotVerified': 'Bạn cần xác minh email trước khi tải video lên.',
     'rate.tooManyVerificationEmails':
       'Bạn đã yêu cầu quá nhiều email xác minh trong một giờ. Vui lòng thử lại sau.',
@@ -70,6 +73,9 @@ const MESSAGES = {
     'auth.alreadyVerified': 'Your email address is already verified.',
     'auth.emailVerified': 'Email address verified.',
     'auth.verifyLinkInvalid': 'This verification link is invalid or has expired.',
+    'auth.passwordCommon': 'This password is too easy to guess. Choose a longer or less common one.',
+    'auth.passwordPersonal': 'The password must not contain your username, the start of your email address or the name of this service.',
+    'auth.passwordBreached': 'This password has appeared in a data breach. Please choose another one.',
     'auth.emailNotVerified': 'Please verify your email address before uploading videos.',
     'rate.tooManyVerificationEmails':
       'You have requested too many verification emails in the past hour. Please try again later.',
