@@ -494,7 +494,7 @@ account by itself. The server consumes the token in one conditional update, so t
 link cannot both succeed. An account that has not verified its address can still browse, like and
 comment, but the upload endpoint refuses it with a distinct error code, which the interface turns
 into a reminder with a button that sends the link again, limited to five mails per hour for each
-account.
+account and, whoever asks, to five per hour for each recipient address.
 
 Three events count as proof of ownership: following the link; signing in with Google, whose identity
 token carries an address that Google has verified; and completing a password reset, since the reset
