@@ -52,7 +52,7 @@ environment definitions, and seven GitHub Actions workflows automate linting, un
 analysis, container scanning, infrastructure validation, and deployment. The security gate
 blocks merges on fixable critical findings rather than merely reporting them.
 
-The automated test suite grew to 791 tests across 50 suites, 430 for the backend and 361 for
+The automated test suite grew to 851 tests across 52 suites, 490 for the backend and 361 for
 the transcoder. Its practical value was demonstrated
 when it caught a defect in the cookie signing implementation that would have prevented every
 private video from playing once deployed. A second defect in that same subsystem, which only
@@ -98,7 +98,7 @@ and led to two corrections of the CloudFront price class that reduced the median
 Vietnam by a factor of 6.6 and the median seen from Brazil by a factor of 32. Transcoding
 throughput was measured under one hundred concurrent uploads of real video and cross-validated
 with two independently implemented load generators. And the automated suite, which has since
-grown to 791 tests in 50 suites, caught a signing defect that would otherwise have prevented every private video from
+grown to 851 tests in 52 suites, caught a signing defect that would otherwise have prevented every private video from
 playing.
 
 \section{Limitations}
@@ -135,12 +135,14 @@ on real traffic. Screening is also the largest line of the monthly bill under th
 22.50~USD at sixty images per five-minute video, so a longer sampling interval would trade coverage
 for money.
 
-The controls on accounts are thin. A password needs eight characters and is not compared with lists
-of leaked passwords, which current guidance for password verifiers asks for. Registration sends a
-verification e-mail to whatever address it is given and is limited only per client address, so it can
-be used to send unwanted mail from the project's mailbox. And every account created before
-verification was introduced counts as unverified, except those that sign in with Google, until its
-owner follows a link.
+The controls on accounts are limited. A new password is compared with a list of common ones, with
+the user's own details and with a breach service, as current guidance for verifiers asks
+\cite{nist80063b}, but existing passwords were not rechecked and the breach lookup is skipped when
+the service does not answer within two seconds. Mail to one address is capped at five per hour, yet
+the count lives in process memory and registration has no CAPTCHA, so automated registration is
+slowed by the per-address limit and not stopped. And every account created before verification was
+introduced counts as unverified, except those that sign in with Google, until its owner follows a
+link.
 
 Signed Cookies remain valid for two hours after issuance, so switching a video from public to
 private leaves viewers holding unexpired cookies with access until those cookies lapse. Immediate
@@ -226,10 +228,12 @@ the video and the quota available. A related extension is to compare a faster x2
 current one using VMAF on difficult clips, since a faster preset could shorten every chunk if the
 quality loss is acceptable.
 
-Account hardening would start with a check of new passwords against a list of leaked ones, a throttle
-on verification mail for each recipient address and not only for each client, and a second backend
-instance behind a health-checked address, which would remove the one single point of failure of the
-system.
+Account hardening would continue with a CAPTCHA on registration and password reset, a shared store
+for the mail count, and a second backend instance behind a health-checked address, which would remove
+the one single point of failure of the system. The state that matters is already in MongoDB Atlas
+and S3, so a second identical instance needs a load balancer and, for the rate limits, the shared
+store; an orchestrator such as Kubernetes would add automatic replacement and rolling updates, a
+larger change than the single point of failure calls for.
 
 The moderation console already collects what is needed to tune the screening: the reason codes
 show which labels cause reversed removals, and the audit sample gives an unbiased estimate of

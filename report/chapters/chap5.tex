@@ -60,6 +60,30 @@ validates its required environment variables at startup and refuses to start if 
 signing secret is missing, converting a dangerous runtime failure into an immediate and obvious
 one.
 
+A new password is checked in two stages, at registration, reset and change alike. The first runs
+locally: a short list of the passwords tried first, 131 of them and including common Vietnamese ones;
+obvious patterns, such as one repeated character, runs like \texttt{12345678} or \texttt{abcdefgh} and a
+short block repeated; a common base word followed by a few digits or symbols, or with letters swapped
+for digits; and the user's own name, the start of their e-mail address and the name of the service. The
+second asks the Pwned Passwords service whether the password appears in a known breach, by the
+k-anonymity protocol \cite{cloudflarekanon}: only the first five hexadecimal characters of its SHA-1
+hash leave the server, and the reply lists the suffixes that share them. A reply that takes more than
+two seconds, or fails, counts as no answer and lets the password through, so that registration does
+not depend on an outside service. Both stages apply only from eight characters, the length the user
+model already requires, and a refusal is a 400 response with the code \texttt{PASSWORD\_TOO\_COMMON},
+\texttt{PASSWORD\_PERSONAL} or \texttt{PASSWORD\_BREACHED}, which the interface shows as a message. This
+follows the guidance that a verifier compare a new secret with commonly used, expected or compromised
+values and not impose composition rules \cite{nist80063b}.
+
+The per-address limit on authentication does not stop one mailbox from being flooded, because an
+attacker who changes address is counted afresh while the mail still comes from the project's own
+account. A second limit therefore counts the mails sent to one recipient, under a hash of the
+normalised address, with one count shared by verification and reset mail: five per hour. Beyond it,
+registration still creates the account and skips the mail, the interface offering to send it again;
+a request to send the link again is refused with a 429 response before a new token is issued; and a
+reset request returns the same generic reply as every other outcome, so it still does not reveal which
+addresses have an account, and issues no new token.
+
 \section{Transcoder Implementation}
 \label{sec:transcoder-impl}
 
@@ -381,25 +405,25 @@ the address stable across any rebuild that does occur.
 \section{Testing}
 \label{sec:testing}
 
-The automated test suite comprises 791 tests across 50 suites, 430 in 33 suites for the backend
+The automated test suite comprises 851 tests across 52 suites, 490 in 35 suites for the backend
 and 361 in 17 for the transcoder, and Tables~\ref{tab:test-coverage-backend} and
 \ref{tab:test-coverage-transcoder} group them by area.
 
 \begin{table}[H]
 \centering
-\caption{Automated backend tests by area, 430 tests in 33 suites}
+\caption{Automated backend tests by area, 490 tests in 35 suites}
 \label{tab:test-coverage-backend}
 \small
 \begin{tabularx}{\textwidth}{p{0.27\textwidth} p{0.09\textwidth} X}
 \toprule
 \textbf{AREA} & \textbf{TESTS} & \textbf{FOCUS} \\
 \midrule
-Authentication and account verification & 60 & Registration conflicts, login failures and token claims; the issue, expiry and single use of the verification link, which is stored only as a hash; the Google sign-in that takes over an unverified account; missing, malformed, forged and expired tokens, and tokens issued before the account's last password change; the password policy; and a reset response that is identical whether or not the address has an account, including when e-mail delivery fails \\
+Authentication and account verification & 102 & Registration conflicts, login failures and token claims; the issue, expiry and single use of the verification link, which is stored only as a hash; the Google sign-in that takes over an unverified account; missing, malformed, forged and expired tokens, and tokens issued before the account's last password change; the password policy, which refuses common, personal and breached passwords and lets a password through when the breach lookup fails; and a reset response that is identical whether or not the address has an account, including when e-mail delivery fails \\
 Visibility and authorisation & 34 & Privacy enforcement across every query path; that the recommendation endpoint reuses the rule of the detail endpoint and never surfaces a private or unlisted video; and that a video exposes how many likes and dislikes it has but not who gave them \\
 Upload & 98 & Metadata and ownership checks, the refusal of an unverified account, the deletion cascade, pre-signed URL creation, file type and size validation, the ceiling and its hard limit, the choice between a single and a multipart upload, part URLs signed for exact sizes, completion by listing the stored parts, and the clean-up of abandoned uploads \\
 Content delivery & 30 & Cookie signing, policy scope and cookie attributes, and that revocation repeats the attributes used when issuing \\
 Listing, reactions and views & 31 & Pagination bounds, a stable sort order for channel pages, likes and dislikes as conditional updates, view deduplication, and the order of routes \\
-Operation and reconciliation & 32 & Reconciliation of videos stuck in processing or abandoned in uploading, the client address behind Cloudflare and nginx, rate-limit keys, e-mail configuration, and the health endpoint \\
+Operation and reconciliation & 50 & Reconciliation of videos stuck in processing or abandoned in uploading, the client address behind Cloudflare and nginx, rate-limit keys, the cap on mail to one recipient with its sliding window and bounded memory, e-mail configuration, and the health endpoint \\
 Moderation and operations console & 145 & Classification of each decision as a false positive, a false negative or neither; the snapshot of the machine's conclusion written once; the permission table for the four roles; one appeal per decision; audit sampling and labelling; the Wilson interval and the rates; and that the last administrator cannot be demoted \\
 \bottomrule
 \end{tabularx}

@@ -34,7 +34,7 @@ the design and implementation chapters.
 \toprule
 \textbf{ID} & \textbf{REQUIREMENT} & \textbf{DESCRIPTION} \\
 \midrule
-FR-01 & Registration and login & Users register with a username, email address, and password. Authentication uses JSON Web Tokens carried in the Authorization header. A new account must prove that it can receive mail at its address before it may upload videos; signing in with Google counts as that proof. \\
+FR-01 & Registration and login & Users register with a username, email address, and password. Authentication uses JSON Web Tokens carried in the Authorization header. A new account must prove that it can receive mail at its address before it may upload videos; signing in with Google counts as that proof. A new password, at registration, reset or change, is refused when it is a commonly used one, contains the user's own details or appears in a known breach. \\
 FR-02 & Password recovery & Users request a reset link by email; the token is single-use and expires after fifteen minutes. A completed reset also confirms the address. \\
 FR-03 & Direct upload to S3 & The client requests a pre-signed URL from the backend and transfers the file directly to Amazon S3 without routing the payload through the application server. A file above 512~MiB is transferred in parts of 32~MiB, so that a part that fails is retried without repeating the whole file. \\
 FR-04 & Automatic transcoding & Once the upload completes, the system transcodes the source into HLS renditions without any manual trigger. \\
