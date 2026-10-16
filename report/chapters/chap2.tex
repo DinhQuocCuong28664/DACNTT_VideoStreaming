@@ -77,7 +77,8 @@ Figure~\ref{fig:compute-models} contrasts this model with the conventional alter
 transcoding workload of the size assumed in Section~\ref{sec:cost-analysis}. In the always-on
 arrangement on one side of the figure, a cluster is sized for the busiest moment the service
 expects and then runs continuously, so it is billed for all 730 hours in a month while performing
-roughly 3.75 hours of actual encoding, a utilisation of about half a percent. Its capacity is also
+roughly 105 vCPU-hours of actual encoding out of the 2,920 that a four-vCPU instance
+offers, a utilisation of under four percent. Its capacity is also
 a hard ceiling: an upload burst larger than the cluster was provisioned for must either wait or be
 rejected, and the only remedy is to provision for a still larger peak and waste correspondingly
 more. In the serverless arrangement on the other side, no compute exists between uploads. An

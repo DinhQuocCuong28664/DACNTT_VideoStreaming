@@ -70,8 +70,9 @@ in the processing tier leaves already-published videos playable.
 The processing tier costs nothing while idle. Because transcoding runs on AWS Batch over Fargate
 rather than on a reserved instance, compute capacity exists only while a job runs.
 Section~\ref{sec:cost-analysis} estimates the monthly operating cost of this arrangement at
-\$1.51 against \$133.35 for an always-on instance sized for the same workload, a difference that
-originates entirely in the elimination of idle capacity.
+\$3.40 against \$133.35 for an always-on instance sized for the same workload, a difference that
+originates entirely in the elimination of idle capacity. Screening and delivery cost the same on
+both sides, and with them included the saving is about 77\%.
 
 The same property extends to long videos. Chunk jobs are ordinary AWS Batch jobs on the same
 compute environment, so additional vCPU quota translates directly into lower latency: a four-hour

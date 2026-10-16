@@ -332,8 +332,8 @@ concrete reason: the video operation accepts stored videos only if they are enco
 an MPEG-4 or MOV container and are at most 10~GB \cite{awsrekognitionlimits}, whereas the platform
 accepts MKV, WebM and AVI uploads of up to 20~GiB, and FFmpeg in the container can decode all of
 them. The image operation also runs synchronously inside a job that is already running, so it needs
-no notification topic and no polling, and its cost has a ceiling: at the list price of 0.001~USD per
-image a video costs at most 0.12~USD. The price of this choice is that sparse sampling can miss
+no notification topic and no polling, and its cost has a ceiling: at the Singapore list price of 0.00125~USD per
+image, for the first million images of the month, a video costs at most 0.15~USD. The price of this choice is that sparse sampling can miss
 content that appears for less than the interval between two samples, which is why screening is the
 first layer and not the only one.
 
