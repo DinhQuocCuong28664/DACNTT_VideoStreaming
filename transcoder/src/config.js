@@ -61,8 +61,9 @@ const config = {
   // thì hệ thống vẫn kiểm duyệt, thay vì lặng lẽ công khai mọi video.
   moderation: {
     enabled: process.env.MODERATION_ENABLED !== 'false',
-    // Một khung hình mỗi 5 giây, tối đa 120 khung: trần $0.12/video theo giá
-    // $0.001/ảnh; video dài hơn 10 phút thì khoảng cách tự giãn ra.
+    // Một khung hình mỗi 5 giây, tối đa 120 khung: trần $0.15/video theo giá
+    // $0.00125/ảnh (bậc đầu ở ap-southeast-1); video dài hơn 10 phút thì khoảng
+    // cách tự giãn ra.
     interval: positiveNumber(process.env.MODERATION_FRAME_INTERVAL, 5),
     maxFrames: Math.floor(positiveNumber(process.env.MODERATION_MAX_FRAMES, 120)),
     // AWS: MinConfidence dưới 50 cho nhiều dương tính giả. 60 để vào hàng rà

@@ -26,13 +26,13 @@ Rekognition có hai cách kiểm duyệt video:
 |---|---|---|
 | Định dạng đầu vào | Chỉ H.264 trong MP4/MOV | Mọi thứ FFmpeg giải mã được |
 | Kiểu gọi | Bất đồng bộ: cần SNS topic, IAM PassRole, chờ kết quả | Đồng bộ, gọn trong job Batch đang chạy |
-| Giá | $0.10/phút | $0.001/ảnh |
+| Giá | $0.10/phút | $0.00125/ảnh ở ap-southeast-1 (1 triệu ảnh đầu mỗi tháng; $0.001 là bậc 1 đến 10 triệu ảnh) |
 
 Dự án cho phép tải lên MKV, WebM và AVI (`ALLOWED_VIDEO_MIME_TYPES`), nên API video sẽ hỏng với một phần video. Blog AWS Machine Learning so sánh hai cách trên 200 video và kết luận độ chính xác tương đương khi lấy mẫu cùng tần suất; API ảnh còn nhanh hơn với video dưới 90 giây và cho phép dừng sớm. Hệ thống vì vậy chọn **trích khung hình bằng FFmpeg có sẵn trong container, rồi gọi API ảnh**.
 
 ### 3.2. Lấy mẫu
 
-- Mỗi 5 giây lấy một khung, tối đa 120 khung. Video dài hơn 10 phút thì khoảng cách tự giãn ra, nên chi phí tối đa là **$0.12/video**.
+- Mỗi 5 giây lấy một khung, tối đa 120 khung. Video dài hơn 10 phút thì khoảng cách tự giãn ra, nên chi phí tối đa là **$0.15/video** (120 ảnh × $0.00125).
 - Mỗi khung được lấy ở **giữa** khoảng của nó (2.5s, 7.5s, ...), để tránh giây 0 thường là màn hình đen.
 - `-ss` đặt trước `-i` để FFmpeg nhảy thẳng tới keyframe gần nhất thay vì giải mã từ đầu video.
 - Chạy song song 3 luồng, SDK dùng `retryMode: 'adaptive'` để tự giãn nhịp khi bị throttle.
@@ -141,7 +141,7 @@ Hạn chế của phép đo: tỉ lệ gỡ nhầm chỉ tính trên phần vide
 
 ## 8. Chi phí
 
-$0.001 mỗi khung hình (DetectModerationLabels thuộc nhóm Group 2 của Rekognition Image). Một video 3 phút tốn 36 khung ≈ **$0.036**; video từ 10 phút trở lên chạm trần 120 khung ≈ **$0.12**. Video bị chặn sớm tốn ít hơn nhờ dừng sớm.
+$0.00125 mỗi khung hình ở ap-southeast-1 (bậc đầu, 1 triệu ảnh đầu mỗi tháng; DetectModerationLabels tính chung trong nhóm Images Processed của Rekognition Image). Một video 3 phút tốn 36 khung ≈ **$0.045**; video từ 10 phút trở lên chạm trần 120 khung ≈ **$0.15**. Video bị chặn sớm tốn ít hơn nhờ dừng sớm.
 
 ## 9. Kiểm thử
 

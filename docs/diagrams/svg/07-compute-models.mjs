@@ -25,8 +25,8 @@ const p = [];
 
 const M = 36;                 // lề trái
 const PANEL_W = W - M * 2;
-const HOURS_IN_MONTH = 730;
-const USEFUL_HOURS = 3.75;
+const HOURS_IN_MONTH = 2920; // vCPU-giờ: 4 vCPU x 730 giờ
+const USEFUL_HOURS = 105; // vCPU-giờ chuyển mã đo được cho 300 video 5 phút
 
 /** Vẽ một bảng mô hình. */
 function panel(spec) {
@@ -61,11 +61,11 @@ panel({
   stroke: PALETTE.secret.stroke, fill: '#fef8f7',
   iconName: 'aws-ec2', cardTitle: 'Amazon EC2', cardSub: 'c5.xlarge, always on', cardTone: 'compute',
   facts: [
-    'Runs continuously for 730 hours a month',
-    'Only 3.75 of those hours do real work',
+    'Runs continuously: 730 hours, 2,920 vCPU-hours',
+    'Only about 105 vCPU-hours do real work',
     'A burst above capacity is queued or rejected',
   ],
-  statLabel: 'Utilisation', statValue: 'about 0.5 %', cost: 'USD 124.10',
+  statLabel: 'Utilisation', statValue: 'about 3.6 %', cost: 'USD 124.10',
 });
 
 panel({
@@ -78,7 +78,7 @@ panel({
     'A container starts per job, then terminates',
     'The queue absorbs the burst, up to max_vcpus',
   ],
-  statLabel: 'Billed for', statValue: 'vCPU-seconds', cost: 'USD 0.05',
+  statLabel: 'Billed for', statValue: 'vCPU-seconds', cost: 'USD 1.94',
 });
 
 // ── Hai thanh trên cùng một thang thời gian ─────────────────────────────────
@@ -86,13 +86,13 @@ const barsY = 754;
 const BAR_X = M + 128;
 const BAR_W = W - BAR_X - M;
 
-p.push(text('Compute hours billed per month, both on the same scale',
+p.push(text('Compute billed per month in vCPU-hours, both on the same scale',
   M, barsY - 46, { size: 15, weight: 'bold', anchor: 'start' }));
 
 p.push(text('Always-on', M, barsY + 20, { size: 13.5, weight: 'bold', anchor: 'start' }));
 p.push(bar({
   x: BAR_X, y: barsY, w: BAR_W, h: 28, fraction: 1,
-  fillColor: PALETTE.secret.stroke, valueLabel: '730 hours billed',
+  fillColor: PALETTE.secret.stroke, valueLabel: '2,920 vCPU-hours billed',
 }).svg);
 
 // Phần thực sự làm việc. Viền mảnh để dải này đọc ra là một đại lượng được đo
@@ -102,18 +102,18 @@ const usefulW = Math.max(BAR_W * (USEFUL_HOURS / HOURS_IN_MONTH), 2.5);
 const tickX = (BAR_X + usefulW / 2).toFixed(1);
 p.push(`<rect x="${BAR_X}" y="${barsY}" width="${usefulW.toFixed(2)}" height="28" fill="#ffffff" stroke="#7d2018" stroke-width="1.2"/>`);
 p.push(`<path d="M ${tickX} ${barsY + 28} L ${tickX} ${barsY + 46}" stroke="#7d2018" stroke-width="1.2"/>`);
-p.push(text('3.75 h of useful work', BAR_X + usefulW / 2 + 6, barsY + 60,
+p.push(text('105 vCPU-hours of useful work', BAR_X + usefulW / 2 + 6, barsY + 60,
   { size: 13, anchor: 'start', fill: PALETTE.muted }));
 
 p.push(text('Serverless', M, barsY + 108, { size: 13.5, weight: 'bold', anchor: 'start' }));
 p.push(bar({
   x: BAR_X, y: barsY + 88, w: BAR_W, h: 28, fraction: USEFUL_HOURS / HOURS_IN_MONTH,
-  fillColor: PALETTE.network.stroke, valueLabel: '3.75 hours billed',
+  fillColor: PALETTE.network.stroke, valueLabel: '105 vCPU-hours billed',
 }).svg);
 
 p.push(text(
   ['The saving comes entirely from the empty part of the upper bar.',
-   'Figures from Table 6.7.'],
+   'Figures from Table 6.18.'],
   M, barsY + 156, { size: 13, anchor: 'start', fill: PALETTE.muted, lineHeight: 17.5 }));
 
 const svg = document_({ width: W, height: H, body: p.join('\n') });

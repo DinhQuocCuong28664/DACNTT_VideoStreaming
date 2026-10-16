@@ -1057,38 +1057,53 @@ determines how long a user waits.
 
 The cost comparison contrasts a traditional deployment, in which an Amazon EC2 instance runs
 FFmpeg continuously, against the serverless container architecture. The workload assumption is
-three hundred videos per month averaging five minutes each, with a mean transcoding time of
-forty-five seconds, giving 3.75 hours of actual processing per month.
+three hundred videos per month averaging five minutes each. The processing effort is taken from the
+measurements of Section~\ref{sec:chunked-evaluation} and not assumed: a 25-minute video used 6,363
+vCPU-seconds at the best configuration and a four-hour video 15.1 vCPU-hours, which is about 0.35
+vCPU-hours for each five minutes of video, so the month needs about 105 vCPU-hours. An earlier
+version of this estimate assumed forty-five seconds of encoding per video, 3.75 hours a month. The
+measurements show that figure to have been about thirty times too low, because encoding one second of
+1080p video takes about four vCPU-seconds.
+
+Prices are the list prices of ap-southeast-1 read from the AWS Price List API on 15 October 2026:
+0.05056~USD per Fargate vCPU-hour and 0.00553~USD per GB-hour, which is 0.0616~USD per vCPU-hour for
+the 2~GB per vCPU of the chunk tasks. Spot capacity is taken at 30\% of that, 0.0185~USD, since AWS
+publishes discounts of up to 70\%; the real Spot price varies with demand.
 
 \begin{table}[H]
 \centering
-\caption{Monthly operating cost comparison (ap-southeast-1)}
+\caption{Monthly operating cost comparison for the part of the bill that the architecture controls (ap-southeast-1)}
 \label{tab:cost-comparison}
 \small
 \begin{tabularx}{\textwidth}{p{0.20\textwidth} X X r}
 \toprule
 \textbf{COMPONENT} & \textbf{EC2 (ALWAYS ON)} & \textbf{SERVERLESS} & \textbf{SAVING} \\
 \midrule
-Compute & \texttt{c5.xlarge} for 730 h: \$124.10 & Fargate Spot for 3.75 h: \$0.05 & 99.96\% \\
+Compute & \texttt{c5.xlarge} for 730 h: \$124.10 & Fargate Spot for 105 vCPU-h: \$1.94 & 98.44\% \\
 Storage & EBS 100 GB plus S3 50 GB: \$9.25 & S3 with Glacier lifecycle: \$1.45 & 84.32\% \\
 Queueing & Self-hosted broker & SQS and Lambda: \$0.01 & n/a \\
 \midrule
-\textbf{Total} & \textbf{\$133.35} & \textbf{\$1.51} & \textbf{98.87\%} \\
+\textbf{Total} & \textbf{\$133.35} & \textbf{\$3.40} & \textbf{97.45\%} \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
-Content delivery cost is excluded from Table~\ref{tab:cost-comparison} because it is neutral
-with respect to the architectural choice: the volume of data served to viewers is identical
-whichever compute model produces the renditions. Attributing a CloudFront charge to the EC2
-column while crediting the serverless column with the free tier would overstate the saving. When
-delivery is included on both sides at post-free-tier rates, the total becomes \$145.35 against
-\$13.51, a saving of approximately 90.7\%, which is the more conservative figure and the one
-that should be quoted for total cost of ownership at scale.
+Two costs are excluded from Table~\ref{tab:cost-comparison} because they are neutral with respect to
+the architectural choice, and both are larger than the serverless column. Content delivery is the
+first: the volume of data served to viewers is identical whichever compute model produces the
+renditions, and attributing a CloudFront charge to the EC2 column while crediting the serverless
+column with the free tier would overstate the saving. At post-free-tier rates it is about 12~USD a
+month. Content screening is the second, because both architectures must screen what users upload.
+A five-minute video is sampled at one frame every five seconds, 60 images, and at the Singapore
+price of 0.00125~USD per image for the first million images of the month that is 0.075~USD per video
+and 22.50~USD for three hundred videos, more than six times the whole architecture-dependent bill
+of the serverless column. With both costs added to both columns the totals are \$167.85 against
+\$37.90, a saving of about 77.4\%. That is the conservative figure and the one to quote for total cost of
+ownership at scale; the saving on the part that the architecture controls is 97.5\%.
 
-The saving originates entirely in the elimination of idle capacity. Under the stated
-assumptions the always-on instance is billed for 730 hours while performing useful work for only
-3.75 of them, a utilisation of roughly 0.5\%. It follows that the advantage is not universal:
-as sustained utilisation rises, per-second Fargate billing approaches and eventually exceeds the
-cost of a reserved instance. The architecture is therefore best suited to workloads that are
-genuinely bursty, which is the case for user-generated video uploads.
+The saving originates entirely in the elimination of idle capacity. Under the stated assumptions the
+always-on instance offers 2,920 vCPU-hours in a month, four vCPUs for 730 hours, while the work
+needs about 105 of them, a utilisation of roughly 3.6\%. It follows that the advantage is not
+universal: as sustained utilisation rises, per-second Fargate billing approaches and eventually
+exceeds the cost of a reserved instance. The architecture is therefore best suited to workloads that
+are genuinely bursty, which is the case for user-generated video uploads.
