@@ -100,6 +100,42 @@ description, category, and visibility), or is deleted.
 \label{fig:ui-channel}
 \end{figure}
 
+Staff reach the operations console of Figure~\ref{fig:ui-console-removed} from the Moderation entry of
+the sidebar, which is shown only to the roles operator, auditor and administrator. Three counters stand
+above the tabs: the videos waiting for review, the open viewer reports, and the removed videos, the
+last with the number that the machine removed on its own. The \emph{Removed} tab lists each removed
+video with a blurred poster that is shown only on request, the labels the machine detected with their
+confidence and the time in the video at which each was found, and who removed it: the machine, or a
+named member of staff. Beside each video are the actions to watch it, to read the reports against it
+and to restore it; for a video that the machine removed and nobody has reviewed, a further button
+confirms the removal and records that the machine was right. The two videos in the figure are test
+uploads made for this purpose: one removed by an operator after a viewer report, and one deliberately
+violent clip that the machine removed on its own, with 98.9 per cent confidence for both Blood and Gore
+and Graphic Violence, and that an administrator then reviewed and kept removed.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.92\textwidth]{images/console-removed.png}
+\caption{\textit{Operations console, Removed tab, with the labels the machine detected and who removed each video}}
+\label{fig:ui-console-removed}
+\end{figure}
+
+Figure~\ref{fig:ui-console-accuracy} shows the Accuracy tab, which administrators and auditors see. It
+gives four figures, each with its 95 per cent interval and the number of videos behind it: the share of
+automatic removals that were wrongly made, the share of flags that were right, the missed share
+estimated from the random sample, and the number of known misses, which is not a rate because the
+violations nobody has seen are not counted. With one removal reviewed, the interval for the wrongly
+removed share runs from 0.0 to 79.3 per cent, which is what an interval is for: the screen says that so
+small a sample tells little, and this is why the report makes no claim about the error rates of the
+screening on real traffic.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.92\textwidth]{images/console-accuracy.png}
+\caption{\textit{Operations console, Accuracy tab, each rate shown with its interval and sample size}}
+\label{fig:ui-console-accuracy}
+\end{figure}
+
 \section{Quality of Experience Evaluation}
 \label{sec:qoe-evaluation}
 
