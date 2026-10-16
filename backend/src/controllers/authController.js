@@ -1,5 +1,6 @@
 const authService = require('../services/authService');
 const emailService = require('../services/emailService');
+const recipientMailThrottle = require('../utils/recipientMailThrottle');
 const { clearPlaybackCookies } = require('../services/cloudfrontService');
 const { t, languageOf } = require('../config/i18n');
 
@@ -56,7 +57,15 @@ const registerUser = async (req, res, next) => {
       password
     );
 
-    const verificationEmailSent = await sendVerification(req, user, verificationToken);
+    // Quá giới hạn thư tới địa chỉ này trong giờ qua: tài khoản vẫn được tạo, thư bị bỏ qua và
+    // giao diện cho người dùng nút gửi lại. Không ghi địa chỉ vào log. Kiểm ở đây chứ không trong
+    // sendVerification, vì đường gửi lại đã tự kiểm trước khi cấp token mới.
+    let verificationEmailSent = false;
+    if (recipientMailThrottle.allowMail(user.email)) {
+      verificationEmailSent = await sendVerification(req, user, verificationToken);
+    } else {
+      console.warn('⚠️  Verification email skipped: recipient over the hourly limit');
+    }
 
     res.status(201).json({
       success: true,
@@ -97,6 +106,15 @@ const verifyEmail = async (req, res, next) => {
  */
 const resendVerification = async (req, res, next) => {
   try {
+    // Kiểm trước khi cấp token mới: bị chặn thì token cũ, đã nằm trong thư trước, vẫn dùng được.
+    if (!recipientMailThrottle.allowMail(req.user.email)) {
+      return res.status(429).json({
+        success: false,
+        message: t(req, 'rate.tooManyVerificationEmails'),
+        code: 'RECIPIENT_RATE_LIMITED',
+      });
+    }
+
     const { user, verificationToken } = await authService.prepareVerificationEmail(req.user._id);
 
     const sent = await sendVerification(req, user, verificationToken);
@@ -222,6 +240,14 @@ const forgotPassword = async (req, res, next) => {
 
   try {
     const { email } = req.body;
+
+    // Quá giới hạn thư tới địa chỉ này: trả đúng câu chung như mọi kết cục khác và không cấp token
+    // mới, để token trong thư trước đó vẫn dùng được. Kiểm theo địa chỉ khách nhập, không theo việc
+    // tài khoản có tồn tại hay không, nên không tiết lộ gì thêm.
+    if (!recipientMailThrottle.allowMail(email)) {
+      console.warn('⚠️  Password reset email skipped: recipient over the hourly limit');
+      return res.status(200).json(genericResponse);
+    }
 
     const result = await authService.forgotPassword(email);
 
