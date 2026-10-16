@@ -69,8 +69,8 @@ const comment = entity({
   x: LEFT, y: user.box.b + 54, w: COL_W, name: 'COMMENT', tone: 'network',
   rows: [
     { type: 'ObjectId', name: '_id', key: 'PK' },
-    { type: 'ObjectId', name: 'video', key: 'FK' },
     { type: 'ObjectId', name: 'user', key: 'FK' },
+    { type: 'ObjectId', name: 'video', key: 'FK' },
     { type: 'string', name: 'content' },
     { type: 'Date', name: 'createdAt' },
     { type: 'Date', name: 'updatedAt' },
@@ -111,15 +111,23 @@ p.push(video.svg);
 // ── Quan hệ ─────────────────────────────────────────────────────────────────
 // Ba quan hệ đều là một-nhiều, ký hiệu bằng chữ chứ không bằng chân quạ, vì ở
 // cỡ chữ này chân quạ nhỏ tới mức không phân biệt được khi in.
-const LANE = RIGHT - 84;
+//
+// Khe giữa USER và VIDEO chỉ rộng 140px, mà nhãn rộng khoảng 100px. Bản đầu đặt nhãn lên đoạn
+// ngang cuối của mỗi đường, dài 84px, nên nền trắng của nhãn tràn sang bảng bên cạnh và xoá viền của
+// nó. Ở đây mỗi nhãn nằm trên một đoạn dài hơn nhãn và hoàn toàn trong khe: "uploads" trên đoạn
+// ngang dài 120px, "writes" trên đoạn dọc, "has" trên đoạn ngang dài 110px. Ba làn dọc cách nhau đủ
+// để các đường không cắt nhau (xem thứ tự hàng của COMMENT ở trên).
+const LANE_UPLOADS = RIGHT - 20;
+const LANE_WRITES = 600;
+const LANE_HAS = 640;
 
-p.push(edge([[user.box.r, user.rowY(0)], [LANE, user.rowY(0)], [LANE, video.rowY(1)], [video.box.x, video.rowY(1)]],
+p.push(edge([[user.box.r, user.rowY(0)], [LANE_UPLOADS, user.rowY(0)], [LANE_UPLOADS, video.rowY(1)], [video.box.x, video.rowY(1)]],
   { label: 'uploads  1 : N', labelDy: -8, labelAt: 0.5 }));
 
-p.push(edge([[user.box.r, user.rowY(2)], [LANE - 34, user.rowY(2)], [LANE - 34, comment.rowY(2)], [comment.box.r, comment.rowY(2)]],
-  { label: 'writes  1 : N', labelDy: -8, labelAt: 0.55 }));
+p.push(edge([[user.box.r, user.rowY(2)], [LANE_WRITES, user.rowY(2)], [LANE_WRITES, comment.rowY(1)], [comment.box.r, comment.rowY(1)]],
+  { label: 'writes  1 : N', labelDy: 4, labelAt: 0.5 }));
 
-p.push(edge([[video.box.x, video.rowY(20)], [LANE, video.rowY(20)], [LANE, comment.rowY(1)], [comment.box.r, comment.rowY(1)]],
+p.push(edge([[video.box.x, video.rowY(20)], [LANE_HAS, video.rowY(20)], [LANE_HAS, comment.rowY(2)], [comment.box.r, comment.rowY(2)]],
   { label: 'has  1 : N', labelDy: -8, labelAt: 0.5 }));
 
 p.push(text(

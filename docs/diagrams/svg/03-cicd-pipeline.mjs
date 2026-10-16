@@ -67,7 +67,8 @@ const rows = [
       { icon: 'eslint', label: ['ESLint and', 'Gitleaks'], tone: 'compute' },
       { icon: 'docker', label: ['Docker', 'multi-stage build'], tone: 'plain' },
       { icon: 'docker', label: 'Trivy image scan', tone: 'secret' },
-      { icon: 'aws-ecs', label: 'Push to Amazon ECR', tone: 'storage' },
+      // Hai dòng: một dòng "Push to Amazon ECR" rộng 172px trong chip 176px nên chữ sát viền phải 2px.
+      { icon: 'aws-ecs', label: ['Push to', 'Amazon ECR'], tone: 'storage' },
       { icon: 'aws-batch', label: ['Register Batch', 'job definition'], tone: 'compute' },
     ],
   },

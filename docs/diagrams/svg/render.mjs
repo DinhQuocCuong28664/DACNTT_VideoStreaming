@@ -310,6 +310,7 @@ export function legend(x, y, entries) {
 export function chip(spec) {
   const { x, y, w = 150, h = 46, iconName, label, tone = 'plain', iconSize = 20 } = spec;
   const c = PALETTE[tone] ?? PALETTE.plain;
+  BOXES.push({ kind: 'card', x, y, w, h });
   const parts = [
     `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="8" ` +
     `fill="${c.fill}" stroke="${c.stroke}" stroke-width="1.4"/>`,
@@ -424,6 +425,7 @@ export function entity(spec) {
   } = spec;
   const c = PALETTE[tone] ?? PALETTE.storage;
   const h = headH + rows.length * rowH;
+  BOXES.push({ kind: 'card', x, y, w, h });
   const parts = [];
 
   parts.push(`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="6" fill="#ffffff" ` +

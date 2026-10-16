@@ -11,7 +11,11 @@
   },
   "sequence": {
     "useMaxWidth": false,
-    "showSequenceNumbers": false
+    "showSequenceNumbers": false,
+    "messageAlign": "left",
+    "messageMargin": 25,
+    "boxMargin": 8,
+    "noteMargin": 8
   },
   "er": {
     "useMaxWidth": false
