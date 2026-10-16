@@ -48,6 +48,7 @@ const DECISION_REASONS = {
     'other',
   ],
   block: [
+    'confirmed_violation', // máy đã gỡ, người xem lại và xác nhận đúng
     'missed_by_model', // máy duyệt qua nhưng có vi phạm
     'report_upheld', // báo cáo của người xem đúng
     'audit_failed', // phát hiện qua kiểm tra mẫu

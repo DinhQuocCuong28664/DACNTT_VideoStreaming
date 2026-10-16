@@ -262,7 +262,16 @@ const decide = async (videoId, actor, { decision, note, reasonCode } = {}) => {
       actor: actor._id,
       actorRole: actor.role,
       decision,
-      action: decision === 'block' ? 'block' : current.status === 'blocked' ? 'restore' : 'approve',
+      // Gỡ một video đang bị gỡ là xác nhận quyết định của máy: trạng thái không đổi nhưng đó là
+      // một lượt người xem lại, và là cách duy nhất để một lần tự gỡ được tính là đúng (true positive).
+      action:
+        decision === 'block'
+          ? current.status === 'blocked'
+            ? 'confirm'
+            : 'block'
+          : current.status === 'blocked'
+            ? 'restore'
+            : 'approve',
       fromStatus: current.status || 'none',
       toStatus,
       autoStatus: autoStatus || undefined,

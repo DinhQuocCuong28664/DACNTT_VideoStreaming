@@ -16,8 +16,9 @@ const moderationEventSchema = new mongoose.Schema(
     actor: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     actorRole: { type: String, required: true },
     decision: { type: String, enum: MODERATION_DECISIONS, required: true },
-    // `restore` khi duyệt một video đang bị gỡ, để nhật ký đọc được mà không phải suy ra.
-    action: { type: String, enum: ['approve', 'block', 'restore'], required: true },
+    // `restore` khi duyệt một video đang bị gỡ, `confirm` khi gỡ một video đang bị gỡ (người xác nhận
+    // quyết định của máy), để nhật ký đọc được mà không phải suy ra.
+    action: { type: String, enum: ['approve', 'block', 'restore', 'confirm'], required: true },
     fromStatus: { type: String, enum: [...MODERATION_STATUSES, 'none'], default: 'none' },
     toStatus: { type: String, enum: MODERATION_STATUSES, required: true },
     autoStatus: { type: String, enum: MODERATION_STATUSES },

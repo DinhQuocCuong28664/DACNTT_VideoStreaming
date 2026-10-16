@@ -26,5 +26,8 @@ export const isStaff = (user) => Boolean(user && ['operator', 'auditor', 'admin'
 /** Mã lý do cho từng quyết định, khớp DECISION_REASONS của backend. */
 export const DECISION_REASONS = {
   approve: ['model_error', 'fiction_or_game', 'news_or_education', 'acceptable_context', 'appeal_upheld', 'report_unfounded', 'other'],
-  block: ['missed_by_model', 'report_upheld', 'audit_failed', 'policy_violation', 'other'],
+  block: ['confirmed_violation', 'missed_by_model', 'report_upheld', 'audit_failed', 'policy_violation', 'other'],
 };
+
+/** Khi xác nhận một video máy đã gỡ, chỉ những lý do còn nghĩa (máy đã gỡ rồi nên không có "máy bỏ lọt"). */
+export const CONFIRM_REASONS = ['confirmed_violation', 'policy_violation', 'other'];
