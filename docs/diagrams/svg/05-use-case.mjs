@@ -40,8 +40,8 @@ const p = [];
 
 const UC_X = 478;          // tâm cột use case chính
 const RX = 152;
-const RY = 37;
-const ROW = 86;
+const RY = 34;
+const ROW = 80;   // 15 use case trong cột chính; giữ hàng 86 thì hình cao hơn trang cho phép
 
 const OFF_X = 800;         // tâm cột lệch, dành cho đích của quan hệ include
 const OFF_RX = 128;
@@ -78,33 +78,34 @@ place('search', 4, ['Search and filter', 'by category']);
 place('watch', 5, ['Watch HLS video', 'with ABR']);
 
 // Nhóm 3: chỉ người dùng đã đăng ký
-place('reset', 6, ['Reset a forgotten', 'password']);
-place('upload', 7, ['Upload a video via', 'a pre-signed URL']);
-place('manage', 8, ['Manage videos on', 'their own channel']);
-place('react', 9, 'Like or dislike a video');
-place('comment', 10, 'Comment on a video');
-place('share', 11, 'Share a video link');
+place('verify', 6, 'Verify the e-mail address');
+place('reset', 7, ['Reset a forgotten', 'password']);
+place('upload', 8, ['Upload a video via', 'a pre-signed URL']);
+place('manage', 9, ['Manage videos on', 'their own channel']);
+place('react', 10, 'Like or dislike a video');
+place('comment', 11, 'Comment on a video');
+place('share', 12, 'Share a video link');
 
 // Nhóm 4: do hệ thống chuyển mã tự khởi động
-place('transcode', 12, ['Transcode to HLS', 'automatically'], 'compute');
+place('transcode', 13, ['Transcode to HLS', 'automatically'], 'compute');
 // Cách xa hơn một nhịp so với các hàng khác: hai ellipse liền nhau chỉ hở 12px,
 // không đủ chỗ cho một mũi tên include nhìn ra được.
-place('thumb', 13, ['Generate a thumbnail', 'and metadata'], 'compute', 38);
+place('thumb', 14, ['Generate a thumbnail', 'and metadata'], 'compute', 38);
 
 // ── Hai đích của quan hệ include, đặt lệch phải ─────────────────────────────
 const visibility = usecase({
-  cx: OFF_X, cy: at(7), rx: OFF_RX, ry: RY,
+  cx: OFF_X, cy: at(8), rx: OFF_RX, ry: RY,
   label: ['Set visibility: public,', 'unlisted or private'],
 });
 const del = usecase({
-  cx: OFF_X, cy: at(8) + 46, rx: OFF_RX, ry: RY, label: 'Delete a video',
+  cx: OFF_X, cy: at(9) + 46, rx: OFF_RX, ry: RY, label: 'Delete a video',
 });
 p.push(visibility.svg, del.svg);
 
 // ── Tác nhân ────────────────────────────────────────────────────────────────
 const anon = actor({ cx: 108, cy: at(1) - 12, label: ['Anonymous', 'visitor'] });
-const user = actor({ cx: 108, cy: at(8) - 12, label: ['Registered', 'user'] });
-const sys = actor({ cx: 108, cy: at(13) + 32, label: ['Transcoding', 'system'] });
+const user = actor({ cx: 108, cy: at(9) - 12, label: ['Registered', 'user'] });
+const sys = actor({ cx: 108, cy: Math.round((at(13) + at(14) + 38) / 2) + 56, label: ['Transcoding', 'system'] });
 p.push(anon.svg, user.svg, sys.svg);
 
 /** Liên kết tác nhân với use case qua một làn dọc riêng. */
@@ -114,7 +115,7 @@ function link(a, lane, target) {
 
 ['register', 'login', 'google', 'browse', 'search', 'watch']
   .forEach((k) => link(anon, LANE_ANON, uc[k]));
-['browse', 'search', 'watch', 'reset', 'upload', 'manage', 'react', 'comment', 'share']
+['browse', 'search', 'watch', 'verify', 'reset', 'upload', 'manage', 'react', 'comment', 'share']
   .forEach((k) => link(user, LANE_USER, uc[k]));
 ['transcode', 'thumb'].forEach((k) => link(sys, LANE_SYS, uc[k]));
 
