@@ -173,7 +173,10 @@ Table~\ref{tab:terraform-modules}, and is described by three environment definit
 branch before it is merged; and \texttt{prod}, a variant that uses On-Demand Fargate capacity,
 keeps logs for thirty days and does not force-destroy buckets. Only the first two have been
 applied: the state of \texttt{prod} does not exist, and its definition was checked with
-\texttt{terraform validate} and never deployed.
+\texttt{terraform validate} and never deployed. The \texttt{dev} environment, which serves real users,
+carries the same protection against a mistaken \texttt{terraform destroy}: its buckets and its
+registry cannot be force-deleted while they hold objects or images, and a deleted secret stays
+recoverable for seven days.
 
 \begin{table}[H]
 \centering
