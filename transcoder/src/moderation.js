@@ -19,7 +19,7 @@ const config = require('./config');
  *   mã được mọi định dạng đó.
  * - API ảnh chạy đồng bộ, gọn trong chính job Batch đang chạy: không cần SNS
  *   topic, IAM PassRole hay vòng hỏi kết quả.
- * - Chi phí có trần: tối đa `maxFrames` ảnh × $0.001 mỗi video, và dừng sớm
+ * - Chi phí có trần: tối đa `maxFrames` ảnh × $0.00125 mỗi video (giá ap-southeast-1), và dừng sớm
  *   ngay khi đã đủ căn cứ để chặn.
  *
  * Đánh đổi: lấy mẫu thưa thì có thể lọt nội dung chỉ xuất hiện vài giây giữa

@@ -19,15 +19,16 @@ Báo cáo này cung cấp bảng tính toán và so sánh chi phí vận hành t
 ### Giả định Mô hình Kiểm thử:
 - **Số lượng video upload/tháng:** 300 video (trung bình 10 video/ngày).
 - **Thời lượng trung bình mỗi video:** 5 phút (1080p, H.264).
-- **Thời gian chuyển mã trung bình (FFmpeg 360p + 720p + 1080p):** 45 giây / video.
-- **Tổng thời gian xử lý thực tế/tháng:** 300 video × 45s = 13,500 giây = **3.75 giờ / tháng**.
+- **Công sức chuyển mã đo thực tế:** khoảng 0,35 vCPU-giờ cho mỗi 5 phút video 1080p (video 25 phút dùng 6.363 vCPU-giây ở cấu hình tốt nhất, video 4 giờ dùng 15,1 vCPU-giờ; xem `docs/results/runs/`).
+- **Tổng công sức/tháng:** 300 video × 0,35 = **105 vCPU-giờ / tháng**. (Bản đầu của tài liệu này giả định 45 giây mỗi video, tức 3,75 giờ/tháng; các phép đo cho thấy con số đó thấp hơn thực tế khoảng 30 lần.)
+- **Đơn giá:** lấy từ AWS Price List API ngày 2026-10-15 cho ap-southeast-1: Fargate $0.05056/vCPU-giờ và $0.00553/GB-giờ, tức $0.0616 cho mỗi vCPU-giờ với 2 GB mỗi vCPU; Spot tính bằng 30% (AWS công bố giảm tới 70%, giá thật dao động) = **$0.0185/vCPU-giờ**.
 
 | Thành phần Hạ tầng | Mô hình Truyền thống (EC2 24/7) | Mô hình Serverless (AWS Batch Fargate SPOT) | Mức Tiết kiệm |
 |---|---|---|---|
-| **Compute Engine** | `c5.xlarge` (4 vCPU, 8 GB RAM) chạy 24/7 (730 giờ/tháng)<br>👉 **$124.10 / tháng** | AWS Fargate SPOT (1 vCPU, 2 GB RAM)<br>Chỉ tính phí **3.75 giờ / tháng**<br>👉 **$0.05 / tháng** | **99.96%** |
+| **Compute Engine** | `c5.xlarge` (4 vCPU, 8 GB RAM) chạy 24/7 (730 giờ/tháng)<br>👉 **$124.10 / tháng** | AWS Fargate SPOT (task 4 vCPU, 8 GB)<br>Chỉ tính phí **105 vCPU-giờ / tháng**<br>👉 **$1.94 / tháng** | **98.44%** |
 | **Storage (EBS / S3)** | EBS gp3 100 GB ($8.00/tháng)<br>S3 Standard 50 GB ($1.25/tháng)<br>👉 **$9.25 / tháng** | S3 Standard 50 GB ($1.25/tháng)<br>S3 Glacier Lifecycle sau 30 ngày ($0.20/tháng)<br>👉 **$1.45 / tháng** | **84.32%** |
 | **Queue & Trigger** | Không sử dụng hoặc tự cài RabbitMQ trên EC2 | Amazon SQS (10,000 requests = $0.004)<br>AWS Lambda ($0.001)<br>👉 **$0.01 / tháng** | N/A |
-| **TỔNG CHI PHÍ (phần phụ thuộc kiến trúc)** | **$133.35 / tháng** (~3,333,000 VNĐ) | **$1.51 / tháng** (~37,700 VNĐ) | **~98.87%** |
+| **TỔNG CHI PHÍ (phần phụ thuộc kiến trúc)** | **$133.35 / tháng** (~3,333,000 VNĐ) | **$3.40 / tháng** (~85,000 VNĐ) | **~97.45%** |
 
 ### Thành phần chi phí không phụ thuộc kiến trúc
 
@@ -36,8 +37,9 @@ Chi phí phân phối nội dung qua Amazon CloudFront được tách riêng kh�
 | Thành phần | Chi phí thực tế (cả hai mô hình) | Ghi chú |
 |---|---|---|
 | **CloudFront 100 GB/tháng** | **$0.00** trong phạm vi Free Tier<br>Khoảng **$8.50 – $12.00** khi vượt Free Tier | Áp dụng như nhau cho cả hai kiến trúc |
+| **Kiểm duyệt nội dung (Amazon Rekognition)** | **$22.50** = 300 video × 60 ảnh (1 ảnh mỗi 5 giây) × $0.00125 | Bậc giá đầu tiên (1 triệu ảnh đầu mỗi tháng) ở ap-southeast-1; trần $0.15/video (120 ảnh). Cả hai kiến trúc đều phải kiểm duyệt |
 
-Nói cách khác, mức tiết kiệm **~98.87%** phản ánh đúng phần chi phí mà kiến trúc Serverless Container thực sự tác động tới — gồm Compute Engine và Storage. Nếu tính gộp cả CloudFront ở mức giá ngoài Free Tier ($12.00) vào cả hai vế, tổng chi phí sẽ là $145.35/tháng so với $13.51/tháng, tương ứng mức tiết kiệm **~90.7%**. Con số này thận trọng hơn và là con số nên được trích dẫn khi đánh giá tổng chi phí sở hữu hệ thống ở quy mô vượt Free Tier.
+Nói cách khác, mức tiết kiệm **~97.45%** phản ánh đúng phần chi phí mà kiến trúc Serverless Container thực sự tác động tới — gồm Compute Engine và Storage. Nếu tính gộp cả CloudFront ở mức giá ngoài Free Tier ($12.00) và kiểm duyệt ($22.50) vào cả hai vế, tổng chi phí sẽ là $167.85/tháng so với $37.90/tháng, tương ứng mức tiết kiệm **~77.4%**. Con số này thận trọng hơn và là con số nên được trích dẫn khi đánh giá tổng chi phí sở hữu hệ thống ở quy mô vượt Free Tier. Đáng chú ý: kiểm duyệt là khoản lớn nhất của phía serverless, gấp hơn sáu lần phần phụ thuộc kiến trúc; tăng khoảng cách lấy mẫu từ 5 giây lên 10 giây giảm khoản này một nửa nhưng cũng giảm độ phủ.
 
 ---
 
@@ -63,8 +65,8 @@ Cần lưu ý rằng cơ chế nén tự động (Gzip/Brotli) của CloudFront 
 
 ## 4. KẾT LUẬN
 
-Xét trên phần chi phí chịu tác động trực tiếp của lựa chọn kiến trúc (Compute Engine và Storage), mô hình **Serverless Container Event-Driven** giúp giảm chi phí hạ tầng từ **$133.35/tháng xuống còn $1.51/tháng**, tương ứng mức tiết kiệm **~98.87%**. Khi tính gộp cả chi phí phân phối nội dung qua CloudFront ở mức giá ngoài Free Tier vào cả hai vế so sánh, mức tiết kiệm là **~90.7%** — đây là con số thận trọng và phản ánh sát thực tế vận hành ở quy mô lớn hơn.
+Xét trên phần chi phí chịu tác động trực tiếp của lựa chọn kiến trúc (Compute Engine và Storage), mô hình **Serverless Container Event-Driven** giúp giảm chi phí hạ tầng từ **$133.35/tháng xuống còn $3.40/tháng**, tương ứng mức tiết kiệm **~97.45%**. Khi tính gộp cả chi phí phân phối nội dung qua CloudFront ở mức giá ngoài Free Tier và kiểm duyệt nội dung vào cả hai vế so sánh, mức tiết kiệm là **~77.4%** — đây là con số thận trọng và phản ánh sát thực tế vận hành ở quy mô lớn hơn.
 
-Nguồn gốc của khoản tiết kiệm này nằm ở việc loại bỏ hoàn toàn chi phí tài nguyên nhàn rỗi (Idle Resource Waste). Với giả định 300 video mỗi tháng, cụm máy chủ EC2 truyền thống phải được duy trì đủ 730 giờ nhưng chỉ thực sự thực thi tác vụ chuyển mã trong 3,75 giờ, tức **hiệu suất sử dụng tài nguyên chỉ đạt khoảng 0,5%**. Kiến trúc Serverless Container chuyển mô hình chi phí từ "trả theo thời gian cấp phát" sang "trả theo thời gian thực thi", đồng thời vẫn giữ được khả năng tự động mở rộng khi lượng video tải lên tăng đột biến.
+Nguồn gốc của khoản tiết kiệm này nằm ở việc loại bỏ hoàn toàn chi phí tài nguyên nhàn rỗi (Idle Resource Waste). Với giả định 300 video mỗi tháng, cụm máy chủ EC2 truyền thống phải được duy trì đủ 730 giờ (2.920 vCPU-giờ) nhưng công việc chuyển mã chỉ cần khoảng 105 vCPU-giờ, tức **hiệu suất sử dụng tài nguyên chỉ đạt khoảng 3,6%**. Kiến trúc Serverless Container chuyển mô hình chi phí từ "trả theo thời gian cấp phát" sang "trả theo thời gian thực thi", đồng thời vẫn giữ được khả năng tự động mở rộng khi lượng video tải lên tăng đột biến.
 
 Cần lưu ý rằng ưu thế chi phí này không phải là tuyệt đối trong mọi kịch bản. Khi khối lượng công việc đủ lớn và liên tục — chẳng hạn khi tổng thời gian chuyển mã vượt ngưỡng khoảng 60–70% thời gian hoạt động của máy chủ — chi phí Fargate tính theo giây sẽ tiệm cận rồi vượt chi phí thuê EC2 dài hạn (đặc biệt khi áp dụng Reserved Instance hoặc Savings Plan). Kiến trúc Serverless Container vì vậy phù hợp nhất với các workload có tính chất **bất đồng bộ và biến động mạnh (spiky)** đúng như đặc thù của bài toán chia sẻ video mà đề tài hướng tới.
