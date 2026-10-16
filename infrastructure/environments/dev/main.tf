@@ -30,7 +30,7 @@ module "sqs" {
 module "s3" {
   source                      = "../../modules/s3"
   project_name                = "${var.project_name}-${var.environment}"
-  force_destroy               = true # Dev only — allow force destroy
+  force_destroy               = false # Môi trường này đang phục vụ người dùng thật: terraform destroy không được xoá video
   cors_allowed_origins        = var.cors_allowed_origins
   sqs_queue_arn               = module.sqs.queue_arn
   sqs_queue_policy_dependency = module.sqs.queue_policy_id
@@ -42,7 +42,7 @@ module "ecr" {
   source          = "../../modules/ecr"
   project_name    = "${var.project_name}-${var.environment}"
   max_image_count = 5
-  force_delete    = true
+  force_delete    = false # Còn ảnh trong kho thì không xoá được kho
   tags            = local.common_tags
 }
 
@@ -53,7 +53,7 @@ module "secrets" {
   mongodb_uri             = var.mongodb_uri
   jwt_secret              = var.jwt_secret
   email_app_password      = var.email_app_password
-  recovery_window_in_days = 0 # Dev: immediate delete (no recovery period)
+  recovery_window_in_days = 7 # Xoá nhầm thì còn 7 ngày để khôi phục (staging mới để 0 vì dựng lại liên tục)
   tags                    = local.common_tags
 }
 
