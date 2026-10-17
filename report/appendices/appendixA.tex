@@ -126,7 +126,8 @@ scripts listed below. Detailed instructions, including the environment variables
 the order in which the measurements must be taken, are given in
 \texttt{docs/results/README.md} within the repository.
 
-Every table of measurements in Chapter~\ref{chap:evaluation} is listed below against the script
+Every table of measurements in Chapter~\ref{chap:evaluation} and in
+Appendix~\ref{app:measurement-tables} is listed below against the script
 that produced it and the file its figures were read from, so that any individual number can be
 traced back to its source. Paths are relative to the repository root, and the result files are
 those under \path{docs/results/}.
@@ -156,6 +157,12 @@ those under \path{docs/results/}.
 \bottomrule
 \end{tabularx}
 \end{table}
+
+The charts of Chapter~\ref{chap:evaluation} are drawn by the scripts \path{docs/diagrams/svg/11-chart-ttff-cdn.mjs}
+to \path{docs/diagrams/svg/16-chart-concurrent-four.mjs}, and each reads the result files named above for the
+table it replaces. The three that chart the transcoding measurements read
+\path{report/generated/chart-*.json}, which \path{scripts/results/build-report-tables.py} writes from the same
+runs as the generated tables, so those charts and tables cannot differ.
 
 \section{Deploying the Infrastructure}
 \label{app:deploy}
