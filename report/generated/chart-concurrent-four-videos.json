@@ -1,0 +1,58 @@
+[
+  {
+    "capacity_vcpu": 8,
+    "order": 1,
+    "start_min": 2.8,
+    "end_min": 19.7,
+    "ready_min": 21.0
+  },
+  {
+    "capacity_vcpu": 8,
+    "order": 2,
+    "start_min": 18.4,
+    "end_min": 37.1,
+    "ready_min": 38.7
+  },
+  {
+    "capacity_vcpu": 8,
+    "order": 3,
+    "start_min": 35.5,
+    "end_min": 58.5,
+    "ready_min": 62.9
+  },
+  {
+    "capacity_vcpu": 8,
+    "order": 4,
+    "start_min": 52.2,
+    "end_min": 71.9,
+    "ready_min": 73.3
+  },
+  {
+    "capacity_vcpu": 16,
+    "order": 1,
+    "start_min": 3.0,
+    "end_min": 16.0,
+    "ready_min": 17.7
+  },
+  {
+    "capacity_vcpu": 16,
+    "order": 2,
+    "start_min": 2.7,
+    "end_min": 24.6,
+    "ready_min": 25.7
+  },
+  {
+    "capacity_vcpu": 16,
+    "order": 3,
+    "start_min": 22.2,
+    "end_min": 35.0,
+    "ready_min": 36.1
+  },
+  {
+    "capacity_vcpu": 16,
+    "order": 4,
+    "start_min": 32.0,
+    "end_min": 43.3,
+    "ready_min": 44.3
+  }
+]

@@ -112,6 +112,52 @@ của mũi tên dài không còn bị các đường sống ở giữa cắt qua
 trang. Khi sửa nhãn thì xem bằng mắt rằng mỗi nhãn ngắn hơn khoảng cách tới đường sống kế tiếp
 (khoảng 175px ở tỉ lệ một lần, tức chừng 22 ký tự).
 
+## Biểu đồ số liệu (hình 11 đến 16)
+
+Sáu hình cuối là biểu đồ, không phải sơ đồ, và thay cho bảy bảng đo ở chương đánh giá: hình nào trong
+chương 6 chỉ kể một so sánh hay một xu hướng thì vẽ ra dễ thấy hơn đọc từng ô số. Bảng gốc không mất:
+chúng nằm ở Phụ lục B (`report/appendices/appendixB.tex`), kèm ghi chú gốc, để tra số chính xác.
+
+| Hình | Tệp | Thay cho bảng | Số liệu đọc từ |
+|---|---|---|---|
+| 11 | `11-chart-ttff-cdn.mjs` | `ttff-results`, `ttff-cloudfront` | `docs/results/qoe-ttff.json`, `qoe-ttff-cloudfront.json` |
+| 12 | `12-chart-ttff-regions.mjs` | `ttff-multiregion` | `docs/results/qoe-ttff-multiregion.json` |
+| 13 | `13-chart-qoe-sources.mjs` | `qoe-multisource` | `docs/results/qoe-comparison.json` |
+| 14 | `14-chart-chunk-config.mjs` | `chunk-config` | `report/generated/chart-chunk-config-25min.json` |
+| 15 | `15-chart-four-hour.mjs` | `four-hour-breakdown` | `report/generated/chart-four-hour-breakdown.json` |
+| 16 | `16-chart-concurrent-four.mjs` | `concurrent-four` | `report/generated/chart-concurrent-four-videos.json` |
+
+Ba hình cuối đọc các tệp `chart-*.json` do `scripts/results/build-report-tables.py` sinh cùng lúc, từ cùng
+các lượt đo với bảng cùng tên, nên chúng không thể lệch nhau; sửa số liệu thì chạy lại script đó rồi dựng
+lại hình. Ba hình đầu đọc thẳng các tệp kết quả thô vì bảng của chúng gõ tay.
+
+`svg/chart.mjs` giữ phần vẽ chung. Khác với sơ đồ, biểu đồ không có toạ độ đặt tay: người viết khai
+báo một thang đo (`linear`) và chữ, cột, trục đều đặt theo thang đó, còn việc nhãn nằm trong hay ngoài
+cột thì quyết theo chiều rộng thật của chữ (`measure`). Quy ước chung:
+
+- canvas rộng 800px và in ra 160mm, nên 1px bằng 0,2mm và chữ 12px ra 6,8pt (ngưỡng là 6,2pt);
+- cột không có `stroke`, và lưới, trục vẽ bằng `<line>`, để `check-text-overlap.mjs` không coi chúng là
+  thẻ hay đường nối của sơ đồ; chữ vẫn được kiểm chồng chữ lên nhau;
+- ba tông độ sáng khác nhau cho mọi bộ màu, để in đen trắng vẫn phân biệt được;
+- một cột chỉ đại diện cho một số đo; nơi dữ liệu không cho biết thứ tự (phần còn lại của thời gian chuyển
+  mã trước hay sau pha chunk) thì vẽ phép cộng chứ không vẽ trục thời gian, và nơi hai cột đo khác phạm vi
+  (vCPU-giây chỉ của job chunk hay của mọi job) thì tô khác nhau và ghi trong chú giải.
+
+```bash
+node docs/diagrams/svg/16-chart-concurrent-four.mjs     # dựng một hình, chép PNG sang report/images/
+node docs/diagrams/svg/check-text-overlap.mjs 11 12 13 14 15 16
+node --test docs/diagrams/svg/chart-data.selftest.mjs   # mọi số trên hình khớp bảng ở Phụ lục B
+```
+
+`chart-data.selftest.mjs` đọc chữ trong SVG đã dựng và các ô của bảng trong `.tex` rồi so từng số, kèm
+đếm số nhãn để bắt cả trường hợp hình có thêm hoặc thiếu một giá trị. Chạy nó sau mỗi lần đổi số liệu,
+hình hoặc bảng, vì LaTeX vẫn dịch sạch khi hai bên đã lệch nhau.
+
+Hình 11 có một số không nằm trong tệp nào: trung vị 727,69 ms qua edge Marseille. Tệp JSON của lượt đo
+đó bị lượt đo sau khi sửa ghi đè, nên con số chỉ còn trong chương 6 và thông điệp commit `b952fe3`; hình
+ghi điều đó trong chú thích và không vẽ thời gian từng giai đoạn cho cấu hình này. Bài kiểm kiểm rằng chương
+6 vẫn nhắc đúng số đó.
+
 ## Giới hạn của sơ đồ tuần tự
 
 Hình 4.2 đã ở sát ngưỡng: thêm một hàng làm tỉ lệ khung đi từ 1:1,53 xuống 1:1,1 và chữ in ra
