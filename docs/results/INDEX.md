@@ -5,8 +5,11 @@ Chạy lại: `PYTHONUTF8=1 python scripts/results/build-report-tables.py`.
 
 ## Bảng của báo cáo và nguồn của chúng
 
-| Tệp bảng (`report/generated/`) | Nội dung | Dùng ở | Lượt đo nguồn |
+| Tệp sinh ra (`report/generated/`) | Nội dung | Dùng ở | Lượt đo nguồn |
 |---|---|---|---|
+| `chart-chunk-config-25min.json` | 25-minute video, time to READY and compute by chunk configuration | Biểu đồ trong chương đánh giá | 2026-10-09-production-25min-5x1, 2026-10-10-staging-25min-12x2, 2026-10-10-staging-25min-23x1, 2026-10-10-staging-25min-6x4, 2026-10-13-staging-s2a-25min-1080p-r1, 2026-10-13-staging-s2b-25min-1080p-r1, 2026-10-13-staging-s2b-25min-1080p-r2, 2026-10-14-staging-s3-25min-1080p-r1, 2026-10-14-staging-s3-25min-1080p-r2, 2026-10-staging-25min-5x1-bulk-queue |
+| `chart-concurrent-four-videos.json` | Four 25-minute videos submitted together, per video | Biểu đồ trong chương đánh giá | 2026-10-10-staging-25min-x4-video1, 2026-10-10-staging-25min-x4-video2, 2026-10-10-staging-25min-x4-video3, 2026-10-10-staging-25min-x4-video4, 2026-10-14-staging-s5a-25min-1080p-v1, 2026-10-14-staging-s5a-25min-1080p-v2, 2026-10-14-staging-s5a-25min-1080p-v3, 2026-10-14-staging-s5a-25min-1080p-v4 |
+| `chart-four-hour-breakdown.json` | Four-hour video, minutes per step at each capacity | Biểu đồ trong chương đánh giá | 2026-10-13-staging-s4-4h-1080p30-r1, 2026-10-14-staging-s4b-4h-1080p30-r1 |
 | `tab-burst-summary.tex` | Simultaneous submissions: whole-batch time and per-video latency | Chương đánh giá, mục nhiều video đồng thời | 2026-10-14-staging-s5a-25min-1080p-summary, 2026-10-14-staging-s5b-60s-1080p-summary |
 | `tab-chunk-config-25min.tex` | 25-minute video, chunked path, by chunk configuration | Chương đánh giá, mục chuyển mã chia đoạn | 2026-10-09-production-25min-5x1, 2026-10-10-staging-25min-12x2, 2026-10-10-staging-25min-23x1, 2026-10-10-staging-25min-6x4, 2026-10-13-staging-s2a-25min-1080p-r1, 2026-10-13-staging-s2b-25min-1080p-r1, 2026-10-13-staging-s2b-25min-1080p-r2, 2026-10-14-staging-s3-25min-1080p-r1, 2026-10-14-staging-s3-25min-1080p-r2, 2026-10-staging-25min-5x1-bulk-queue |
 | `tab-concurrent-four-videos.tex` | Four 25-minute videos submitted together | Chương đánh giá, mục nhiều video cùng lúc | 2026-10-10-staging-25min-x4-video1, 2026-10-10-staging-25min-x4-video2, 2026-10-10-staging-25min-x4-video3, 2026-10-10-staging-25min-x4-video4, 2026-10-14-staging-s5a-25min-1080p-v1, 2026-10-14-staging-s5a-25min-1080p-v2, 2026-10-14-staging-s5a-25min-1080p-v3, 2026-10-14-staging-s5a-25min-1080p-v4 |
