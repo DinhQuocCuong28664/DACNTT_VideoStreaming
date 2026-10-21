@@ -1,6 +1,9 @@
 \chapter{System Design}
 \label{chap:design}
 
+This chapter describes the architecture of the system, the transcoding pipeline, the database, the
+protection of private content, the moderation of uploads, the interface and the API.
+
 \section{High-Level Architecture}
 \label{sec:architecture}
 
@@ -53,49 +56,23 @@ a video of five minutes or more takes the chunked path of Table~\ref{tab:chunked
 \label{fig:sequence}
 \end{sidewaysfigure}
 
-Two design decisions embedded in this sequence merit explanation.
+Two design decisions in this sequence need explanation. The first is the order of record creation
+and URL issuance. The backend creates the database record \emph{before} it generates the pre-signed
+URL, and derives the S3 object key from the record's identifier. Generating the key first would
+create a race: the S3 event could start transcoding before the record exists, and the job would
+have no row to update. Creating the record first removes this failure entirely.
 
-The first concerns the ordering of database record creation and URL issuance. The backend
-creates the database record \emph{before} generating the pre-signed URL, and derives the S3
-object key from the identifier of that record. The alternative, generating a key first and
-creating the record afterwards, introduces a race condition: the S3 event notification can
-arrive and trigger transcoding before the record exists, at which point the transcoder has no
-row to update and the job fails. Creating the record first eliminates this class of failure
-entirely.
-
-The second concerns the visibility timeout of the SQS message. Amazon SQS hides a message from
-other consumers for a configured period after it is received, and redelivers it if the consumer
-has not deleted it by then. Transcoding a large file can easily exceed any reasonable fixed
-timeout, which would cause the same video to be processed twice concurrently. The transcoder
-therefore implements the heartbeat pattern: while FFmpeg runs, a timer periodically extends the
-visibility timeout of the in-flight message. The message is deleted only after the job
-completes successfully. If the container crashes, the heartbeat stops, the timeout lapses, and
-the message returns to the queue for another attempt.
-
-That description is accurate about the transcoder's \texttt{worker} mode, in which the container
-consumes from the queue itself, but it is important to be precise that this is not the mode the
-deployed system runs. The container image and the AWS Batch job definition both invoke
-\texttt{batch} mode, in which the video identifier and object key arrive as environment variables
-and the container never contacts SQS at all. The queue is consumed instead by the Lambda
-submitter, which reads the message, submits a Batch job, and returns immediately. Because the
-Lambda's work is finished at that point, the message is deleted when the job is \emph{submitted},
-not when transcoding completes.
-
-The consequence is that on the deployed path there is no heartbeat, and the message is long gone
-before FFmpeg starts. Two properties the pattern was chosen to provide therefore have to be
-obtained elsewhere. Protection against duplicate processing rests entirely on the conditional
-database writes described in Section~\ref{sec:transcoder-impl}, which is where it belongs in any
-case, since Burrows' analysis of leases (Section~\ref{sec:testing}) shows that a renewal timer
-cannot by itself guarantee mutual exclusion. Retrying a failed job, which the heartbeat design
-delegated to SQS redelivery, has no equivalent unless AWS Batch is configured to provide it; that
-it originally was not is discussed in Section~\ref{sec:challenges}.
-
-Retaining the worker-mode implementation is a deliberate choice rather than an oversight: it
-allows the transcoder to be run against the queue directly during development without provisioning
-Batch. Recording which of the two modes the evaluated system actually executes matters, though,
-because a mechanism present in the source but absent from the deployed path cannot be credited
-with the guarantees it would provide if it ran. Section~\ref{sec:challenges} draws the same
-distinction about content protection.
+The second is protection against processing a video twice. The transcoder has two modes. In
+\texttt{worker} mode, used during development, the container reads the SQS queue itself and, while
+FFmpeg runs, keeps extending the visibility timeout of its message, a heartbeat, so that SQS does
+not hand the same message to another consumer; the message is deleted only after success. The
+deployed system runs \texttt{batch} mode: the Lambda submitter reads the message, submits an AWS
+Batch job and deletes the message at once, and the container receives the video identifier as an
+environment variable. On the deployed path there is therefore no heartbeat. Protection against a
+duplicate rests on conditional database writes, which is where it belongs in any case, since a
+renewal timer alone cannot guarantee mutual exclusion (Section~\ref{sec:transcoder-impl}), and
+retry is provided by AWS Batch (Section~\ref{sec:challenges}). Worker mode is kept because it lets
+the transcoder run against the queue without provisioning Batch.
 
 \subsection{Upload of Large Files}
 \label{sec:upload-design}
@@ -106,31 +83,28 @@ transfer that fails near its end must be repeated in full and Amazon S3 accepts 
 request. The backend chooses the path from the declared size: a file of up to 512~MiB is sent with
 one pre-signed POST, and a larger file is divided into parts of 32~MiB.
 
-Both paths keep the property that motivated direct upload, that the payload never passes through
-the application server, and both keep the limits enforced by the storage service and not by the
-client. For the single request, the signed policy fixes the object key, the content type and the
-size range. For a multipart upload the backend signs one URL per part for exactly that part's
-length, so S3 itself refuses a part of any other size, and when the client reports the upload
-complete the backend lists the parts that S3 holds and checks them before it asks S3 to assemble
-the object. The ceiling on the size of a file is a configuration value, with a hard limit of
-20~GiB in the source, which is 640 parts of 32~MiB, and 20~GiB in the deployed system. An upload that
-is abandoned is cleaned up in two ways: a lifecycle rule aborts incomplete multipart uploads after
-two days, and a periodic reconciler in the backend removes a draft that has stayed in the
-\texttt{UPLOADING} state for more than a day.
+Both paths keep the payload away from the application server, and both let the storage service,
+not the client, enforce the limits. For the single request, the signed policy fixes the object key,
+the content type and the size range. For a multipart upload the backend signs one URL per part for
+exactly that part's length, so S3 itself refuses a part of any other size, and when the client
+reports completion the backend lists the parts that S3 holds before asking S3 to assemble the object.
+The ceiling on file size is a configuration value with a hard limit of 20~GiB, which is 640 parts of
+32~MiB, and the deployed system uses that limit. An abandoned upload is cleaned up twice over: a
+lifecycle rule aborts incomplete multipart uploads after two days, and a periodic reconciler removes
+a draft that has stayed in the \texttt{UPLOADING} state for more than a day.
 
 \subsection{Chunk-Parallel Transcoding of Long Videos}
 \label{sec:chunked-design}
 
-The pipeline of Figure~\ref{fig:sequence} gives each video to one container. That is adequate for
-short videos and fails for long ones: on a single vCPU, FFmpeg ran roughly four to five times
-slower than real time in the measurements of Sections~\ref{sec:pipeline-evaluation} and
-\ref{sec:chunked-evaluation}, so a long source
-would exceed the two-hour limit placed on a job however many vCPUs the account holds. The design
-therefore divides a video of five minutes or more into chunks that are encoded concurrently, and
-keeps the single-container path for shorter videos, where splitting costs more than it saves.
+The pipeline of Figure~\ref{fig:sequence} gives each video to one container. That suits short videos
+and fails for long ones: on a single vCPU, FFmpeg ran four to five times slower than real time
+(Sections~\ref{sec:pipeline-evaluation} and \ref{sec:chunked-evaluation}), so a long source would
+exceed the two-hour limit of a job however many vCPUs the account holds. The design therefore divides
+a video of five minutes or more into chunks that are encoded concurrently, and keeps the
+single-container path for shorter videos, where splitting costs more than it saves.
 
-The job that the Lambda submitter starts becomes a planner. It reads the structure of the source
-over HTTP without downloading it and divides the video at boundaries that are whole multiples of a
+The job that the Lambda submitter starts becomes a planner. It reads the structure of the source over
+HTTP without downloading it and divides the video at boundaries that are whole multiples of a
 six-second group of pictures, counted in frames so that a rate such as 29.97 frames per second does
 not accumulate a fractional error. It then submits the jobs of Table~\ref{tab:chunked-jobs} to the
 same AWS Batch service.
@@ -153,27 +127,25 @@ Finalizer & 1 & Default & Runs after every chunk has ended; joins the playlists,
 \end{table}
 
 Three properties of this design are deliberate. The chunk array goes to a second, lower-priority
-job queue that shares the Fargate Spot environment of the main queue, so that a short video
-submitted while a long one is encoding is scheduled ahead of its remaining chunks and does not wait
-for all of them. The number of chunks follows the number of tasks that can run at once, about three
-chunks per slot and none shorter than about a minute, so a larger quota produces smaller chunks.
-And the planner declines to split a source that cannot be split safely, which means a variable frame
-rate, an unknown duration, or audio and video that differ by more than 0.25~seconds; such a video
-falls back to the single-container path and is not failed.
+job queue that shares the Fargate Spot environment, so a short video submitted while a long one is
+encoding runs ahead of the remaining chunks. The number of chunks follows the number of tasks that
+can run at once, about three chunks per slot and none shorter than about a minute, so a larger quota
+produces smaller chunks. And the planner does not split a source that cannot be split safely, meaning
+a variable frame rate, an unknown duration, or audio and video that differ by more than 0.25~seconds;
+such a video falls back to the single-container path and is not failed.
 
-While a chunked video is encoding, its child jobs periodically touch the \texttt{updatedAt} field
-of the video. The reconciler that returns a video stuck in \texttt{PROCESSING} for more than six
-hours to a consistent state would otherwise mistake a long and healthy encode for a stuck one. How
-this path behaves, including where adding vCPUs stops helping, is measured in
-Section~\ref{sec:chunked-evaluation}.
+While a chunked video is encoding, its child jobs periodically touch the \texttt{updatedAt} field of
+the video, because the reconciler that resets a video stuck in \texttt{PROCESSING} for more than six
+hours would otherwise mistake a long, healthy encode for a stuck one. How this path performs is
+measured in Section~\ref{sec:chunked-evaluation}.
 
 \section{Database Design}
 \label{sec:database-design}
 
-The persistence layer uses MongoDB Atlas with eight collections. Three of them,
-\texttt{User}, \texttt{Video} and \texttt{Comment}, model the platform itself and are shown in
-Figure~\ref{fig:erd}. The other five exist to moderate and operate it, and are described after the
-state machine of the video.
+The persistence layer uses MongoDB Atlas with eight collections. Three of them, \texttt{User},
+\texttt{Video} and \texttt{Comment}, model the platform itself and are shown in Figure~\ref{fig:erd};
+Table~\ref{tab:core-collections} lists their keys, indexes and constraints. The other five exist to
+moderate and operate the platform and are described after the state machine of the video.
 
 % Xoay ngang: bảng VIDEO có mười chín thuộc tính kèm ghi chú. Đặt vừa bề rộng
 % vùng chữ thì tên trường rơi xuống khoảng 5pt.
@@ -184,20 +156,35 @@ state machine of the video.
 \label{fig:erd}
 \end{sidewaysfigure}
 
-The \texttt{Video} document carries a \texttt{status} field that acts as a state machine with
-four values. A record begins as \texttt{UPLOADING} when the pre-signed URL is issued, moves to
-\texttt{PROCESSING} once the upload is confirmed and the job is submitted, and finally reaches
-either \texttt{READY} or \texttt{ERROR}. Modelling the lifecycle explicitly rather than
-inferring it from the presence of other fields makes the interface straightforward: the client
-simply renders a different state for each value, and a video that failed to transcode is
-distinguishable from one that is merely slow.
+\begin{table}[H]
+\centering
+\caption{Keys, indexes and constraints of the core collections}
+\label{tab:core-collections}
+\footnotesize
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{0.16\textwidth} >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X}
+\toprule
+\textbf{COLLECTION} & \textbf{KEYS AND REFERENCES} & \textbf{INDEXES} & \textbf{CONSTRAINTS} \\
+\midrule
+\texttt{User} & \texttt{\_id}; \texttt{username} and \texttt{email} unique; \texttt{googleId} unique where present (sparse) & The three unique indexes & Username of 3 to 30 characters; e-mail stored in lower case and checked for form; password of at least 8 characters, required unless the account has a Google identity; role one of four, \texttt{user} by default \\
+\texttt{Video} & \texttt{\_id}; \texttt{user} refers to \texttt{User} and is required; \texttt{likes} and \texttt{dislikes} hold \texttt{User} identifiers & Visibility, status and creation time for the catalogue; owner with creation time, and owner with views, for channel pages; status; category; tags; moderation state, and open reports, for the review queue & Title required, at most 100 characters; description at most 5000; category one of seven fixed values; status one of four; visibility public, unlisted or private \\
+\texttt{Comment} & \texttt{\_id}; \texttt{video} refers to \texttt{Video} and \texttt{user} to \texttt{User}, both required & The video, to list a video's comments & Content required, at most 1000 characters \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+The \texttt{Video} document carries a \texttt{status} field that acts as a state machine with four
+values. A record begins as \texttt{UPLOADING} when the pre-signed URL is issued, moves to
+\texttt{PROCESSING} once the upload is confirmed and the job is submitted, and finally reaches either
+\texttt{READY} or \texttt{ERROR}. Modelling the lifecycle explicitly, rather than inferring it from
+other fields, makes the interface simple: the client renders one state per value, and a video that
+failed to transcode is distinguishable from one that is merely slow.
 
 A second state, independent of the first, lives in the \texttt{moderation} sub-document of
-\texttt{Video}: the verdict (\texttt{approved}, \texttt{flagged} or \texttt{blocked}), whether it
-came from the machine or from a person, the labels that were its evidence, and, written exactly once
-and before any person first changes the verdict, \texttt{autoStatus}, the machine's own conclusion
-(Section~\ref{sec:moderation-design}). The five collections that support moderation are summarised
-in Table~\ref{tab:moderation-collections} and shown in Figure~\ref{fig:erd-moderation}.
+\texttt{Video}: the verdict (\texttt{approved}, \texttt{flagged} or \texttt{blocked}), whether it came
+from the machine or from a person, the labels that were its evidence, and \texttt{autoStatus}, the
+machine's own conclusion, written exactly once before any person first changes the verdict
+(Section~\ref{sec:moderation-design}). The five collections that support moderation are summarised in
+Table~\ref{tab:moderation-collections} and shown in Figure~\ref{fig:erd-moderation}.
 
 \begin{table}[H]
 \centering
@@ -227,84 +214,60 @@ operation; every video field refers to \texttt{Video} and every user field to \t
 \label{fig:erd-moderation}
 \end{sidewaysfigure}
 
-Likes and dislikes are stored as arrays of user identifiers embedded within the video document
-rather than as a separate collection. The denormalisation is justified at this scale because the
-counts are always read together with the video, and because a single user can appear at most once
-in each array, so the arrays cannot grow through repeated interaction by the same person.
+Likes and dislikes are stored as arrays of user identifiers inside the video document rather than
+as a separate collection, because the counts are always read with the video and a user can appear at
+most once in each array. This holds at the scale of the project only. On a widely viewed video the
+arrays grow towards MongoDB's document size limit, and a listing of twelve videos reads every
+identifier in all twenty-four arrays merely to show counts. The usual remedy, a separate collection
+with a compound unique index on video and user plus a counter on the video, is the right structure
+for popular content; it was not adopted because of scale, not because the embedded form is better.
 
-It should not be justified more strongly than that. Uniqueness bounds each array by the number of
-distinct users, which is a bound only in the formal sense; on a widely viewed video it is exactly
-the growth that a document store is poorly suited to hold, against MongoDB's document size limit.
-The cost is also paid on reads that do not want it, since a listing of twelve videos retrieves
-every identifier in all twenty-four arrays merely to display counts. The conventional remedy is a
-separate collection with a compound unique index on video and user, plus a denormalised counter on
-the video. That is the right structure for a system expecting popular content, and the reason it
-was not adopted here is scale rather than principle. That is a different claim from the design
-being correct in general, and it is recorded as such.
-
-Indexes are defined to match the actual query patterns. A compound index on visibility, status,
-and creation time supports the home page listing, which always filters on the first two fields
-and sorts on the third.
-
-Search is the exception. The collection carried a text index on title and description, described as supporting
-the search feature, but no query ever used it: search is implemented as a case-insensitive regular
-expression matched against title, description and tags, and MongoDB cannot serve an unanchored
-regular expression from an index. Every search was a full collection scan, and the index cost
-write throughput and storage while serving nothing. The index has been removed rather than the
-query rewritten, because switching to a text search would change the feature's behaviour and not
-merely its cost: the regular expression matches substrings inside words and covers the tags field,
-neither of which a text index does. At the scale of this project a full scan is acceptable.
+Search matches a case-insensitive regular expression against the title, description and tags. No
+index can serve an unanchored regular expression, so every search scans the collection, which is
+acceptable at this scale. A text index would be faster but would change the behaviour, since it
+matches neither parts of words nor the tags; an unused text index that the schema once declared was
+therefore removed.
 
 \section{Content Protection Design}
 \label{sec:content-protection}
 
-Protecting private content requires two complementary mechanisms, because each addresses a
-different threat.
+Protecting private content requires two mechanisms, because each addresses a different threat.
 
-Origin Access Control makes the processed S3 bucket entirely private and grants read access
-exclusively to the CloudFront distribution through a bucket policy. This prevents a viewer from
-bypassing the content delivery network and fetching objects directly from S3, which would both
-circumvent any access control implemented at the edge and incur higher data transfer charges.
+Origin Access Control makes the processed S3 bucket private and grants read access only to the
+CloudFront distribution through a bucket policy. A viewer therefore cannot bypass the content
+delivery network and fetch objects from S3 directly, which would both escape any access control at
+the edge and incur higher transfer charges.
 
-Origin Access Control alone, however, does not determine \emph{who} may retrieve content
-through CloudFront. Without a second mechanism, any person holding a manifest URL can download
-the video regardless of its visibility setting, which would make the private mode ineffective
-in practice. The system therefore adds CloudFront Signed Cookies backed by a trusted key group
-\cite{awscloudfrontprivate}. The backend verifies the requester's permission using exactly the
-same service function that governs the API response, signs a policy scoped to the directory of
-that single video, and sets the resulting cookies on the response. CloudFront rejects any
-request lacking a valid signature with HTTP 403 at the edge.
+Origin Access Control alone does not decide \emph{who} may retrieve content through CloudFront.
+Without a second mechanism, anyone holding a manifest URL could download a video whatever its
+visibility, which would make the private mode ineffective. The system therefore adds CloudFront
+Signed Cookies backed by a trusted key group \cite{awscloudfrontprivate}. The backend checks the
+requester's permission with the same service function that governs the API response, signs a policy
+scoped to the directory of that one video, and sets the cookies on the response; CloudFront refuses
+any request without a valid signature with HTTP 403 at the edge. Figure~\ref{fig:playback-sequence}
+shows the exchange.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{images/17-playback-sequence.png}
+\caption{\textit{Sequence diagram of playback authorisation: the backend issues Signed Cookies for
+one video, and CloudFront checks them on every request}}
+\label{fig:playback-sequence}
+\end{figure}
 
 Signed cookies were chosen over signed URLs because of the structure of HLS. A playback session
-retrieves a manifest and then hundreds of individual segment files, each as a separate request.
-Signing each URL individually would require rewriting every entry inside the manifest,
-typically using an edge function, which adds considerable complexity and cost. A single set of
-cookies covers the entire directory and is attached automatically by the browser to every
-subsequent request.
+fetches a manifest and then hundreds of segments, each as a separate request. Signing each URL would
+require rewriting every entry of the manifest, typically in an edge function, which adds complexity
+and cost, whereas one set of cookies covers the whole directory and the browser attaches it to every
+request. The policy is a custom policy rather than a canned one, because a canned policy does not
+allow a wildcard in the resource path, and the required scope is the directory of one video: its
+manifest and all its segments, and nothing more.
 
-The policy is signed as a custom policy rather than a canned policy. This distinction is not
-cosmetic: a canned policy does not permit wildcards in the resource path, whereas the required
-scope is an entire directory. The custom policy expresses the resource as a pattern covering
-the manifest and all segments of one specific video, which grants exactly the access needed and
-no more.
-
-One consequence of this design deserves stating precisely, because it is easy to describe the
-scheme as protecting private videos and thereby understate it. The edge does not distinguish
-one visibility level from another: \emph{every} manifest and segment requires a valid signature,
-and a request without one is refused whatever the video's visibility. What visibility governs is
-the authorisation decision made earlier, when the backend decides whether to issue cookies at
-all. All three levels are thus protected identically at the edge and differ only in who can
-obtain the credential.
-
-That uniformity has a limit that the design has to accommodate. A cookie authorises exactly one
-video's directory, whereas a catalogue page renders thumbnails for many videos at once, and no
-single cookie can cover them. Rather than weaken the policy scope to span the whole bucket, the
-distribution carves out a separate cache behaviour for the thumbnail path that requires no
-signature. The justification is that a thumbnail is not the asset the mechanism exists to
-protect: it is a single low-resolution still, already shown to anyone permitted to see the video
-in a listing, and treating it as public costs nothing that the scheme was designed to prevent.
-The narrower point is that the protected unit is the stream, not every byte associated with a
-video.
+The edge does not distinguish one visibility level from another. Every manifest and segment requires
+a valid signature, and visibility decides only whether the backend issues the cookies at all. A
+cookie covers one video, while a catalogue page shows the thumbnails of many, so the thumbnail path
+has its own cache behaviour that needs no signature. A thumbnail is a single low-resolution still
+already shown in listings; the protected unit is the stream, not every byte that belongs to a video.
 
 \section{Content Moderation and Operations Design}
 \label{sec:moderation-design}
@@ -316,6 +279,16 @@ through, which are false negatives. The design therefore stacks four layers, eac
 correct the one before it: automatic screening, reports from viewers, review by staff, and a random
 audit of what was approved. It also records every human decision together with what the machine had
 concluded, so that the error rates of the earlier layers can be estimated and not assumed.
+Figure~\ref{fig:moderation-sequence} follows one video through screening, a report, a decision and an
+appeal; the subsections below explain each step.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\textwidth]{images/19-moderation-sequence.png}
+\caption{\textit{Sequence diagram of moderation: automatic screening, a viewer's report, an
+operator's decision and the owner's appeal}}
+\label{fig:moderation-sequence}
+\end{figure}
 
 \subsection{Automatic Screening}
 \label{sec:screening-design}
@@ -333,10 +306,10 @@ concrete reason: the video operation accepts stored videos only if they are enco
 an MPEG-4 or MOV container and are at most 10~GB \cite{awsrekognitionlimits}, whereas the platform
 accepts MKV, WebM and AVI uploads of up to 20~GiB, and FFmpeg in the container can decode all of
 them. The image operation also runs synchronously inside a job that is already running, so it needs
-no notification topic and no polling, and its cost has a ceiling: at the Singapore list price of 0.00125~USD per
-image, for the first million images of the month, a video costs at most 0.15~USD. The price of this choice is that sparse sampling can miss
-content that appears for less than the interval between two samples, which is why screening is the
-first layer and not the only one.
+no notification topic and no polling, and its cost has a ceiling: at the Singapore list price of
+0.00125~USD per image, for the first million images of the month, a video costs at most 0.15~USD.
+The price of this choice is that sparse sampling can miss content that appears for less than the
+interval between two samples, which is why screening is the first layer and not the only one.
 
 Each label returned for a frame is looked up in a policy table that maps it to one of three actions
 (Table~\ref{tab:label-policy}). The table sets policy at the coarse levels of the label taxonomy
@@ -370,13 +343,12 @@ so that an unavailable service produces a delay and not a publication.
 \subsection{Moderation States and Visibility}
 
 The verdict is stored as \texttt{approved}, \texttt{flagged} or \texttt{blocked}, independently of
-the transcoding status of Section~\ref{sec:database-design}. Whether a video has finished encoding
-says nothing about whether it may be shown, and a video can be \texttt{READY} and still hidden. A
-flagged video appears in no listing and is visible only to its owner and to staff. A blocked video
-can be played by staff alone, and its owner can appeal the removal. The filter that implements this
-is one function used by every public query path, for the reason given for authorisation in
-Section~\ref{sec:backend-impl}: copies of a rule drift apart. A video uploaded before moderation
-existed carries no verdict and is treated as approved.
+the transcoding status of Section~\ref{sec:database-design}: a video can be \texttt{READY} and still
+hidden. A flagged video appears in no listing and is visible only to its owner and to staff. A
+blocked video can be played by staff alone, and its owner can appeal the removal. The filter that
+implements this is one function used by every public query path, for the reason given for
+authorisation in Section~\ref{sec:backend-impl}: copies of a rule drift apart. A video uploaded
+before moderation existed carries no verdict and is treated as approved.
 
 \subsection{Review, Appeals and Audit}
 \label{sec:review-design}
@@ -393,9 +365,9 @@ removals were reversed because the content was a game points to the threshold th
 Each decision is appended to an event log that records who decided and in which role, the verdict
 before and after, the conclusion the machine had reached, the reason code, and the outcome class of
 Table~\ref{tab:outcome-classes}. The machine's conclusion is copied onto the video once, immediately
-before a person first changes the verdict. Without that snapshot the first human decision would
-overwrite the very fact that is needed to say whether the machine was right. No route edits or
-deletes an event, because the auditor's work depends on the log being intact.
+before a person first changes the verdict; without that snapshot the first human decision would
+overwrite the very fact needed to say whether the machine was right. No route edits or deletes an
+event, because the auditor's work depends on the log being intact.
 
 \begin{table}[H]
 \centering
@@ -437,14 +409,14 @@ The console reports four figures, each with its denominator and a 95\% Wilson co
 \cite{wilson1927}: the share of automatic removals that staff reversed, which is the false positive
 rate; the share of flags that staff confirmed, which is the precision of the flag; the share of each
 group that has been reviewed at all, which is coverage; and the false negative rate. The Wilson
-interval is used because the counts are small, and unlike the normal approximation it stays within
-zero and one and remains usable when the observed rate is near zero. The false negative rate comes
-only from the random audit and never from viewer reports, which would bias it low. A video that no
-one has reviewed is reported as unverified and enters no rate. Confirming a removal that the machine
-made is a separate action in the console, because such a video goes straight to the Removed list,
-where the only other action is to restore it. Without the confirmation the removals that staff had
-reviewed would be those they reversed, and the false positive rate would be computed over
-reversals alone; with it, a confirmed removal is a true positive and stays in the denominator.
+interval suits small counts, because unlike the normal approximation it stays between zero and one
+and remains usable when the observed rate is near zero. The false negative rate comes only from the
+random audit and never from viewer reports, which would bias it low, and a video that no one has
+reviewed enters no rate. Confirming a removal that the machine made is a separate action, because
+such a video goes straight to the Removed list, where the only other action is to restore it.
+Without the confirmation, the reviewed removals would be only those that staff reversed and the
+false positive rate would be computed over reversals alone; with it, a confirmed removal is a true
+positive and stays in the denominator.
 
 \subsection{Roles and Permissions}
 \label{sec:roles-design}
@@ -485,52 +457,58 @@ the auditor can read.
 \subsection{Verifying the Owner of an Account}
 \label{sec:verification-design}
 
-Registration checks that an e-mail address is well formed and nothing more, so anyone can register
-with an address that belongs to someone else. Two harms follow. The registrant can upload, the most
-expensive operation of the system, under another person's address, which makes uploads anonymous in
-practice. And when the real owner of the address later signs in with Google, the account is already
-taken by someone who knows its password. The design therefore asks each new account to prove that it
-can receive mail at its address, and lets only verified accounts upload.
+Registration checks only that an e-mail address is well formed, so anyone can register with an
+address that belongs to someone else. Two harms follow. The registrant can upload, the most expensive
+operation of the system, under another person's address, which makes uploads anonymous in practice.
+And when the real owner later signs in with Google, the account is already held by someone who knows
+its password. The design therefore asks each new account to prove that it receives mail at its
+address, and lets only verified accounts upload. Figure~\ref{fig:verification-sequence} shows both
+ways of proving it.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{images/18-verification-sequence.png}
+\caption{\textit{Sequence diagram of account verification: following the e-mailed link, or signing
+in with Google at the same address}}
+\label{fig:verification-sequence}
+\end{figure}
 
 After registration the backend generates a random token of 32 bytes, stores only its SHA-256 hash with
-an expiry of 24 hours, and e-mails a link that carries the token itself, as is done for the tokens of
-a password reset. The link opens a page of the single page application, and that page sends the token
-in a POST request, so that a mail client that previews links by fetching them cannot verify the
-account by itself. The server consumes the token in one conditional update, so two clicks on the same
-link cannot both succeed. An account that has not verified its address can still browse, like and
-comment, but the upload endpoint refuses it with a distinct error code, which the interface turns
-into a reminder with a button that sends the link again, limited to five mails per hour for each
-account and, whoever asks, to five per hour for each recipient address.
+an expiry of 24 hours, and e-mails a link that carries the token itself, as it does for a password
+reset. The link opens a page of the single page application, and that page sends the token in a POST
+request, so a mail client that previews links by fetching them cannot verify the account by itself.
+The server consumes the token in one conditional update, so two clicks on the same link cannot both
+succeed. An unverified account can still browse, like and comment, but the upload endpoint refuses it
+with a distinct error code, which the interface turns into a reminder with a button that sends the
+link again, limited to five mails per hour for each account and, whoever asks, to five per hour for
+each recipient address.
 
 Three events count as proof of ownership: following the link; signing in with Google, whose identity
 token carries an address that Google has verified; and completing a password reset, since the reset
 link also goes only to the mailbox. A Google sign-in whose address matches an unverified local account
-takes that account over. The password is removed, every token issued earlier is invalidated through
-the password-change timestamp, and any pending verification or reset token is deleted, so that
-whoever registered first cannot keep access. An account that is already verified is never merged
-automatically: its owner must sign in with the password and link Google from the settings page.
+takes that account over: the password is removed, every token issued earlier is invalidated through
+the password-change timestamp, and any pending verification or reset token is deleted, so whoever
+registered first cannot keep access. A verified account is never merged automatically; its owner must
+sign in with the password and link Google from the settings page.
 
 \section{Interface Design}
 \label{sec:interface-design}
 
-Figure~\ref{fig:user-flow} sets out the paths a user can take through the application, and it is
-worth reading before the component-level discussion that follows, because two of its properties
-constrain the design.
+Figure~\ref{fig:user-flow} sets out the paths a user can take through the application. Two of its
+properties constrain the design.
 
 The first is that the catalogue and the watch page are reachable without an account. Browsing,
 searching, filtering by category and playing a public video all work for an anonymous visitor, and
-authentication is demanded only at the point where an action requires an identity, which in
-practice means uploading, commenting, reacting, or managing one's own channel. A visitor who
-reaches the upload page without a session is therefore diverted through sign-in or registration
-and returned to it, rather than being asked to sign in on arrival.
+authentication is demanded only where an action requires an identity: uploading, commenting,
+reacting, or managing one's own channel. A visitor who reaches the upload page without a session is
+diverted through sign-in or registration and returned to it, rather than asked to sign in on arrival.
 
-The second is that the upload path does not end where the user's involvement ends. Once the
-browser has transferred the file directly to Amazon S3, the interface returns control immediately
-and the video enters the \texttt{PROCESSING} state, in which it is visible only to its owner on
-the channel management view. Only when the pipeline marks it \texttt{READY} does it join the
-public catalogue. The interface consequently has to represent a video that exists but cannot yet
-be played, which is why the state machine of Section~\ref{sec:database-design} is modelled
-explicitly rather than inferred. The same holds after the pipeline has finished: a video that
+The second is that the upload path does not end where the user's involvement ends. Once the browser
+has sent the file to Amazon S3, the interface returns control at once and the video enters the
+\texttt{PROCESSING} state, in which only its owner sees it, on the channel management view. Only when
+the pipeline marks it \texttt{READY} does it join the catalogue. The interface therefore has to show
+a video that exists but cannot yet be played, which is why the state machine of
+Section~\ref{sec:database-design} is explicit. The same holds after the pipeline: a video that
 screening held back is visible to its owner and not in the catalogue until a person approves it.
 
 \begin{figure}[htbp]
@@ -540,36 +518,73 @@ screening held back is visible to its owner and not in the catalogue until a per
 \label{fig:user-flow}
 \end{figure}
 
-The frontend is a single page application composed of functional React components with hooks,
-using React Context for authentication and theme state. Redux was considered unnecessary at
-this scale, since the shared state consists only of the current user and the selected theme.
+The frontend is a single page application of functional React components with hooks, using React
+Context for authentication and theme state. Redux was unnecessary at this scale, since the shared
+state is only the current user and the selected theme.
 
-The interface is available in Vietnamese and English, selected by a control in the header and
-remembered in the browser. One consequence of adding a second language is worth recording,
-because it constrains the data model rather than only the presentation layer. Video categories
-are stored in the database as Vietnamese strings, and the schema validates each new video against
-exactly those strings, so translating a category would have made both the catalogue filter and
-the upload form reject valid input. The display label and the stored value are therefore kept
-apart: the client renders a translated label while always sending the original value to the API.
-The same separation applies to messages the API returns, which are selected from the request's
-\texttt{Accept-Language} header rather than being fixed at the point where the error is raised.
+The interface is available in Vietnamese and English, chosen by a control in the header and
+remembered in the browser. Adding a second language constrained the data model as well as the
+presentation. Video categories are stored as Vietnamese strings, and the schema validates each new
+video against exactly those strings, so translating a category would have made the catalogue filter
+and the upload form reject valid input. The display label and the stored value are therefore kept
+apart: the client shows a translated label but always sends the original value. Messages from the API
+are likewise chosen from the request's \texttt{Accept-Language} header.
 
-The video player is implemented as a custom component rather than relying on the browser's
-native controls. The reason is that native controls cannot be extended: the browser renders its
-own separate menu for playback speed and picture-in-picture, which cannot be merged with the
-quality selector that HLS.js exposes. Presenting the user with two unrelated menus would be
-confusing, so the component reimplements play and pause, seeking, volume, fullscreen, playback
-speed, picture-in-picture, and rendition selection within a single settings menu.
+The video player is a custom component rather than the browser's native controls, because native
+controls cannot be extended: the browser has its own menu for playback speed and picture-in-picture,
+which cannot be merged with the quality selector of HLS.js. To avoid two unrelated menus, the
+component reimplements play and pause, seeking, volume, fullscreen, playback speed,
+picture-in-picture and rendition selection within one settings menu.
 
-The player also determines when a view is counted. Rather than incrementing the counter when
-the page loads, which would allow the count to be inflated by repeated refreshes, the component
-notifies the page only after playback has passed a threshold of several seconds, and the server
-additionally ignores repeated reports from the same viewer within a thirty-minute window and
-never counts the owner's own views.
+The player also decides when a view is counted. Instead of incrementing the counter when the page
+loads, which repeated refreshes could inflate, the component notifies the page only after playback
+has passed a threshold of several seconds; the server also ignores repeated reports from the same
+viewer within thirty minutes and never counts the owner's own views.
 
 The operations console is part of the same application, at its own address and reachable only by
 staff. Its tabs are the review queue, the removed videos, appeals, audit samples, the rates, the
-event log and the users, and a person sees only the tabs that the permissions of their role allow,
-so an operator never sees the rates and an auditor never sees a decision button. Thumbnails of
-videos under review are shown blurred until a reviewer chooses to reveal them, so that reading the
-queue does not by itself expose staff to the content.
+event log and the users, and a person sees only the tabs that the permissions of their role allow, so
+an operator never sees the rates and an auditor never sees a decision button. Thumbnails of videos
+under review stay blurred until a reviewer reveals them, so that reading the queue does not by itself
+expose staff to the content.
+
+\section{API Design}
+\label{sec:api-design}
+
+The backend exposes a REST API under \texttt{/api} with four route groups: authentication, videos,
+users and administration. Requests and responses are JSON, and a response carries a success flag
+with either the data or an error message and, where the interface must react to it, an error code
+such as \texttt{EMAIL\_NOT\_VERIFIED}. A signed-in request carries a JSON Web Token in the
+\texttt{Authorization} header. A general rate limit covers every route, with stricter limits on
+authentication, upload, reports and appeals, and request bodies are limited to 100~kB, since video
+data never passes through the API. Table~\ref{tab:api-routes} lists the endpoints by purpose.
+
+\begin{table}[H]
+\centering
+\caption{Endpoints of the REST API, grouped by purpose}
+\label{tab:api-routes}
+\footnotesize
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{0.17\textwidth} >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}p{0.25\textwidth}}
+\toprule
+\textbf{GROUP} & \textbf{ENDPOINTS} & \textbf{ACCESS} \\
+\midrule
+Authentication, \texttt{/api/auth} & \texttt{POST} \texttt{/register}, \texttt{/login}, \texttt{/google}, \texttt{/logout}, \texttt{/forgot-password}, \texttt{/reset-password/:token}, \texttt{/verify-email/:token} & Public, with the authentication rate limit \\
+Own account & \texttt{GET /me}; \texttt{PUT /change-password}; \texttt{POST} \texttt{/link-google}, \texttt{/resend-verification} & Signed in \\
+Catalogue, \texttt{/api/videos} & \texttt{GET} \texttt{/}, \texttt{/:id}, \texttt{/:id/related}, \texttt{/user/:userId}, \texttt{/:id/comments}, \texttt{/upload-config} & Public; a private video only for its owner \\
+Playback & \texttt{GET /:id/playback-auth}, which sets the Signed Cookies; \texttt{POST /:id/view} & Public, under the same access rule \\
+Upload & \texttt{POST /initiate-upload}; \texttt{PATCH /:id/confirm-upload}; \texttt{POST} \texttt{/:id/multipart/parts}, \texttt{/:id/multipart/complete} & Signed in with a verified e-mail address; upload rate limit \\
+Own videos & \texttt{PUT /:id}; \texttt{DELETE /:id} & The owner \\
+Interaction & \texttt{POST} \texttt{/:id/like}, \texttt{/:id/dislike}, \texttt{/:id/comments}, \texttt{/:id/report}; \texttt{DELETE /comments/:commentId}; \texttt{POST} and \texttt{GET} \texttt{/:id/appeal} & Signed in; reports and appeals rate limited \\
+Profiles, \texttt{/api/users} & \texttt{GET /:id}; \texttt{POST /avatar/presign}; \texttt{PUT /avatar} & Public profile; avatar for the signed-in user \\
+Moderation, \texttt{/api/admin} & \texttt{GET} \texttt{/videos}, \texttt{/videos/:id/reports}, \texttt{/stats}; \texttt{PATCH /videos/:id/moderation}; \texttt{GET /appeals}; \texttt{PATCH /appeals/:id}; \texttt{POST /audit/sample}; \texttt{GET /audit}; \texttt{PATCH /audit/:id} & Permissions \texttt{moderation:review}, \texttt{:appeals}, \texttt{:sample} and \texttt{:audit} \\
+Administration & \texttt{GET /users}; \texttt{PATCH /users/:id/role}; \texttt{GET} \texttt{/role-changes}, \texttt{/metrics}, \texttt{/events} & Permissions \texttt{users:manage}, \texttt{metrics:read} and \texttt{events:read} \\
+Health & \texttt{GET /} & Public; includes the database connection \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Two conventions follow from the design. Every video endpoint applies the access rule of
+Section~\ref{sec:backend-impl}, so a private video that the requester may not see returns not-found
+rather than forbidden, which does not reveal that it exists. And no endpoint carries video bytes: an
+upload is a pair of calls around a direct transfer to Amazon S3, and playback is one call that issues
+cookies for CloudFront.
