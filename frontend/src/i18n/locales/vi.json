@@ -298,7 +298,13 @@
     "speed": "Tốc độ phát",
     "speedNormal": "Chuẩn",
     "quality": "Chất lượng",
-    "fullscreen": "Toàn màn hình"
+    "fullscreen": "Toàn màn hình",
+    "contextMenu": "Menu trình phát",
+    "loop": "Phát lặp lại",
+    "copyUrl": "Sao chép URL của video",
+    "copyUrlAtTime": "Sao chép URL tại thời điểm hiện tại",
+    "linkCopied": "Đã sao chép liên kết",
+    "copyFailed": "Không sao chép được liên kết"
   },
   "settings": {
     "avatarSection": "Ảnh của bạn",

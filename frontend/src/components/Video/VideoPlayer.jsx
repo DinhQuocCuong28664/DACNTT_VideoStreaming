@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import Hls from 'hls.js';
 import {
@@ -13,10 +13,19 @@ import {
   FiChevronLeft,
   FiChevronRight,
   FiCheck,
+  FiRepeat,
+  FiLink,
+  FiClock,
 } from 'react-icons/fi';
+import { withStartTime } from '../../utils/startTime';
 import './VideoPlayer.css';
 
 const PLAYBACK_RATES = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
+
+/** Gap kept between the right-click menu and the player's edges (px). */
+const CONTEXT_MENU_GAP = 8;
+/** How long the small in-player notice ("Link copied") stays (ms). */
+const NOTICE_MS = 2000;
 
 /**
  * Giới hạn số lần tự khôi phục trước khi bỏ cuộc và báo lỗi cho người dùng.
@@ -80,6 +89,13 @@ const VideoPlayer = ({
    * thay vì bắt người xem tải lại trang.
    */
   onAuthExpired,
+  /** Seconds to start from, read from the link's `?t=` by the watch page. */
+  startTime = null,
+  /**
+   * Link to this video's watch page. Enables "Copy video URL" and "Copy video
+   * URL at current time" in the right-click menu.
+   */
+  shareUrl = null,
 }) => {
   const { t } = useTranslation();
 
@@ -126,6 +142,16 @@ const VideoPlayer = ({
   const [hoverTime, setHoverTime] = useState(0);
   const [hoverPos, setHoverPos] = useState(0);
   const [isHoveringProgress, setIsHoveringProgress] = useState(false);
+
+  // Right-click menu: the point that opened it, in player coordinates
+  const [contextMenu, setContextMenu] = useState(null);
+  const [isLooping, setIsLooping] = useState(false);
+  const [notice, setNotice] = useState(null);
+  const contextMenuRef = useRef(null);
+  const noticeTimerRef = useRef(null);
+  // Until this time, a click inside the player is swallowed (see the menu's
+  // dismiss effect): the click that closes the menu must not also pause.
+  const swallowClickUntilRef = useRef(0);
 
   // Giữ tham chiếu callback luôn mới mà không phải gắn lại event listener
   useEffect(() => {
@@ -333,8 +359,12 @@ const VideoPlayer = ({
       // Video ngắn hơn ngưỡng thì xem hết là đủ: so với min(ngưỡng, độ dài),
       // nếu không video 3 giây sẽ không bao giờ có lượt xem. Trước khi có
       // metadata, duration là NaN, nên tạm dùng nguyên ngưỡng.
+      //
+      // Only while playing: a link with `?t=` seeks before anything plays, and
+      // that seek fires timeupdate too. Without this check, merely opening a
+      // shared "at current time" link would count a view.
       const threshold = Math.min(viewThresholdSeconds, video.duration || Infinity);
-      if (video.currentTime >= threshold) reportViewOnce();
+      if (!video.paused && video.currentTime >= threshold) reportViewOnce();
     };
     const onLoadedMetadata = () => setDuration(video.duration || 0);
     const onDurationChange = () => setDuration(video.duration || 0);
@@ -394,6 +424,88 @@ const VideoPlayer = ({
     document.addEventListener('click', onDocClick);
     return () => document.removeEventListener('click', onDocClick);
   }, [showSettings]);
+
+  // ── Start position from the link's ?t= ────────────
+  // Also runs when only `t` changes on the same video (a pasted link to
+  // another moment), then it seeks right away.
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !(startTime > 0)) return undefined;
+    const seek = () => {
+      const end = video.duration;
+      // A `t` past the end lands just before the end instead.
+      video.currentTime = Number.isFinite(end) && end > 0 ? Math.min(startTime, Math.max(end - 1, 0)) : startTime;
+    };
+    if (video.readyState >= 1) {
+      seek();
+      return undefined;
+    }
+    video.addEventListener('loadedmetadata', seek, { once: true });
+    return () => video.removeEventListener('loadedmetadata', seek);
+  }, [src, startTime]);
+
+  // ── Right-click menu ──────────────────────────────
+  // Clamp the menu inside the player and move focus into it. Runs before
+  // paint, and writes the position straight to the element, so the menu
+  // never shows at the raw click point first.
+  useLayoutEffect(() => {
+    const menu = contextMenuRef.current;
+    const wrapper = wrapperRef.current;
+    if (!contextMenu || !menu || !wrapper) return;
+    const maxX = wrapper.clientWidth - menu.offsetWidth - CONTEXT_MENU_GAP;
+    const maxY = wrapper.clientHeight - menu.offsetHeight - CONTEXT_MENU_GAP;
+    menu.style.left = `${Math.max(CONTEXT_MENU_GAP, Math.min(contextMenu.x, maxX))}px`;
+    menu.style.top = `${Math.max(CONTEXT_MENU_GAP, Math.min(contextMenu.y, maxY))}px`;
+    menu.querySelector('[role^="menuitem"]')?.focus({ preventScroll: true });
+  }, [contextMenu]);
+
+  // Close on a press outside the menu, Esc, leaving the window, resizing or
+  // switching fullscreen. A press inside the player only closes the menu:
+  // its click is swallowed so it does not also pause or seek.
+  useEffect(() => {
+    if (!contextMenu) return undefined;
+    const close = () => setContextMenu(null);
+    const onPointerDown = (e) => {
+      // A right press is left to the contextmenu handler (second right-click
+      // opens the browser's own menu).
+      if (e.button === 2 || contextMenuRef.current?.contains(e.target)) return;
+      if (wrapperRef.current?.contains(e.target)) swallowClickUntilRef.current = performance.now() + 1000;
+      close();
+    };
+    const onKeyDown = (e) => {
+      if (e.key === 'Escape') close();
+    };
+    document.addEventListener('pointerdown', onPointerDown, true);
+    document.addEventListener('keydown', onKeyDown);
+    document.addEventListener('fullscreenchange', close);
+    window.addEventListener('blur', close);
+    window.addEventListener('resize', close);
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown, true);
+      document.removeEventListener('keydown', onKeyDown);
+      document.removeEventListener('fullscreenchange', close);
+      window.removeEventListener('blur', close);
+      window.removeEventListener('resize', close);
+    };
+  }, [contextMenu]);
+
+  // Registered for the player's lifetime, not only while the menu is open:
+  // the menu is already closed (and its listeners gone) by the time the click
+  // that closed it arrives. Capture on document runs before React's handlers.
+  useEffect(() => {
+    const onClickCapture = (e) => {
+      if (performance.now() > swallowClickUntilRef.current) return;
+      swallowClickUntilRef.current = 0;
+      if (!wrapperRef.current?.contains(e.target)) return;
+      e.stopPropagation();
+      e.preventDefault();
+    };
+    document.addEventListener('click', onClickCapture, true);
+    return () => {
+      document.removeEventListener('click', onClickCapture, true);
+      clearTimeout(noticeTimerRef.current);
+    };
+  }, []);
 
   // ── Fullscreen state tracking ─────────────────────
   useEffect(() => {
@@ -555,6 +667,88 @@ const VideoPlayer = ({
     handleActivity();
   };
 
+  const showNotice = (message) => {
+    clearTimeout(noticeTimerRef.current);
+    setNotice(message);
+    noticeTimerRef.current = setTimeout(() => setNotice(null), NOTICE_MS);
+  };
+
+  const handleContextMenu = (e) => {
+    // A second right-click while the menu is open gets the browser's own
+    // menu, as on YouTube.
+    if (contextMenu) {
+      setContextMenu(null);
+      return;
+    }
+    e.preventDefault();
+    const rect = wrapperRef.current.getBoundingClientRect();
+    setShowSettings(false);
+    setContextMenu({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+  };
+
+  /** Close the menu and give focus back to the player, so shortcuts keep working. */
+  const closeContextMenu = () => {
+    setContextMenu(null);
+    wrapperRef.current?.focus({ preventScroll: true });
+  };
+
+  const handleContextMenuKeyDown = (e) => {
+    // Keys inside the menu must not reach the player's shortcuts (space,
+    // arrows, m, f) on the wrapper.
+    e.stopPropagation();
+    const items = Array.from(contextMenuRef.current?.querySelectorAll('[role^="menuitem"]') || []);
+    const index = items.indexOf(document.activeElement);
+    const focusAt = (i) => items[(i + items.length) % items.length]?.focus();
+    switch (e.key) {
+      case 'Escape':
+        e.preventDefault();
+        closeContextMenu();
+        break;
+      case 'ArrowDown':
+        e.preventDefault();
+        focusAt(index + 1);
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        focusAt(index - 1);
+        break;
+      case 'Home':
+        e.preventDefault();
+        focusAt(0);
+        break;
+      case 'End':
+        e.preventDefault();
+        focusAt(items.length - 1);
+        break;
+      case 'Tab':
+        e.preventDefault();
+        closeContextMenu();
+        break;
+      default:
+        break;
+    }
+  };
+
+  const toggleLoop = () => {
+    const video = videoRef.current;
+    if (video) {
+      video.loop = !video.loop;
+      setIsLooping(video.loop);
+    }
+    closeContextMenu();
+  };
+
+  const copyVideoUrl = async (atCurrentTime) => {
+    closeContextMenu();
+    const seconds = atCurrentTime ? videoRef.current?.currentTime : 0;
+    try {
+      await navigator.clipboard.writeText(withStartTime(shareUrl, seconds));
+      showNotice(t('player.linkCopied'));
+    } catch {
+      showNotice(t('player.copyFailed'));
+    }
+  };
+
   /**
    * Nhãn chất lượng theo cỡ khung 16:9 tương đương, như cách YouTube đặt tên.
    *
@@ -591,6 +785,7 @@ const VideoPlayer = ({
       onMouseMove={handleActivity}
       onMouseLeave={() => isPlaying && setShowControls(false)}
       onKeyDown={handleKeyDown}
+      onContextMenu={handleContextMenu}
       tabIndex={0}
     >
       <video
@@ -610,6 +805,62 @@ const VideoPlayer = ({
       {playbackError && (
         <div className="video-error-overlay" role="alert">
           <p>{playbackError}</p>
+        </div>
+      )}
+
+      {/* Inside the player rather than the page's toast, so it also shows in fullscreen. */}
+      <div className="player-notice-region" role="status" aria-live="polite">
+        {notice && <div className="player-notice">{notice}</div>}
+      </div>
+
+      {contextMenu && (
+        <div
+          ref={contextMenuRef}
+          className="player-context-menu"
+          role="menu"
+          aria-label={t('player.contextMenu')}
+          onKeyDown={handleContextMenuKeyDown}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+        >
+          <button
+            type="button"
+            role="menuitemcheckbox"
+            aria-checked={isLooping}
+            tabIndex={-1}
+            className="player-context-item"
+            onClick={toggleLoop}
+          >
+            <FiRepeat aria-hidden="true" />
+            <span>{t('player.loop')}</span>
+            {isLooping && <FiCheck className="player-context-check" aria-hidden="true" />}
+          </button>
+          {shareUrl && (
+            <>
+              <button
+                type="button"
+                role="menuitem"
+                tabIndex={-1}
+                className="player-context-item"
+                onClick={() => copyVideoUrl(false)}
+              >
+                <FiLink aria-hidden="true" />
+                <span>{t('player.copyUrl')}</span>
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                tabIndex={-1}
+                className="player-context-item"
+                onClick={() => copyVideoUrl(true)}
+              >
+                <FiClock aria-hidden="true" />
+                <span>{t('player.copyUrlAtTime')}</span>
+              </button>
+            </>
+          )}
         </div>
       )}
 

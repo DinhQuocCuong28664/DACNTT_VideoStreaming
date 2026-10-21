@@ -301,7 +301,13 @@
     "speed": "Playback speed",
     "speedNormal": "Normal",
     "quality": "Quality",
-    "fullscreen": "Fullscreen"
+    "fullscreen": "Fullscreen",
+    "contextMenu": "Player menu",
+    "loop": "Loop",
+    "copyUrl": "Copy video URL",
+    "copyUrlAtTime": "Copy video URL at current time",
+    "linkCopied": "Link copied",
+    "copyFailed": "Could not copy the link"
   },
   "settings": {
     "avatarSection": "Your picture",

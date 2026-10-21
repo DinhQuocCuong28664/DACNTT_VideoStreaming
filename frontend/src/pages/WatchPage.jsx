@@ -26,6 +26,7 @@ import ReportDialog from '../components/Video/ReportDialog';
 import AppealBox from '../components/Video/AppealBox';
 import { can } from '../utils/roles';
 import { formatViews, formatDate, timeAgo } from '../utils/format';
+import { parseStartTime } from '../utils/startTime';
 import './WatchPage.css';
 
 const WatchPage = () => {
@@ -336,6 +337,8 @@ const WatchPage = () => {
   const canReport =
     video.status === 'READY' && !isOwnVideo && moderationStatus !== 'flagged' && !isRemoved;
   const locale = i18n.resolvedLanguage === 'en' ? 'en-US' : 'vi-VN';
+  // `?t=90` or `?t=1m30s` from a shared "at current time" link
+  const startTime = parseStartTime(new URLSearchParams(location.search).get('t'));
 
   const canDelete = (c) =>
     currentUser && (currentUser._id === c.user?._id || currentUser._id === user._id);
@@ -364,6 +367,8 @@ const WatchPage = () => {
               poster={video.thumbnailUrl}
               onViewThreshold={handleViewThreshold}
               onAuthExpired={handleAuthExpired}
+              startTime={startTime}
+              shareUrl={`${window.location.origin}/watch/${video._id}`}
             />
           ) : (
             <div className="player-placeholder">
