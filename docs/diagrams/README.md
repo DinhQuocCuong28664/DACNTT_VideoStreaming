@@ -8,7 +8,7 @@ Thư mục này chứa các sơ đồ dùng cho báo cáo đồ án. Ảnh PNG x
 | `02-transcoding-sequence.png` | Sequence Diagram quy trình chuyển mã Event-Driven | 4.2 |
 | `03-cicd-pipeline.png` | Bảy workflow CI/CD, đường dẫn kích hoạt và cổng chất lượng hai tầng | 5.1 |
 | `04-database-erd.png` | ERD của MongoDB (User, Video, Comment) | 4.3 |
-| `05-use-case.png` | Sơ đồ Use Case của người dùng nền tảng: 3 tác nhân, 15 use case, ký hiệu UML chuẩn | 3.1 |
+| `05-use-case.png` | Sơ đồ Use Case của người dùng nền tảng: 3 tác nhân, 17 use case, ký hiệu UML chuẩn | 3.1 |
 | `06-hls-abr.png` | Các tệp HLS sinh ra từ một video nguồn và thứ tự player tải | 2.2 |
 | `07-compute-models.png` | So sánh cụm luôn bật với container serverless, kèm thanh tỉ lệ giờ tính tiền | 2.1 |
 | `08-user-flow.png` | Luồng người dùng từ lúc vào trang tới khi video được công bố | 4.8 |
