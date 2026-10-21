@@ -288,6 +288,22 @@ button, input, select, textarea {
   background: var(--bg-tertiary);
 }
 
+/* Destructive action such as Delete. In dark mode the fill stays the light
+   theme red: white text on #ff4e45 is only about 3:1, on #cc0000 about 5.9:1
+   (WCAG AA). */
+.btn-danger {
+  background: var(--danger);
+  color: #ffffff;
+}
+
+.btn-danger:hover:not(:disabled) {
+  filter: brightness(0.92);
+}
+
+[data-theme='dark'] .btn-danger {
+  background: #cc0000;
+}
+
 .btn-lg {
   min-height: 44px;
   padding: 0 1.5rem;

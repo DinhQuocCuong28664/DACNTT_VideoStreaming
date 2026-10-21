@@ -9,6 +9,7 @@ import {
   MdErrorOutline,
 } from 'react-icons/md';
 import Avatar from '../components/Common/Avatar';
+import ConfirmDialog from '../components/Common/ConfirmDialog';
 import useToast from '../components/Common/Toast';
 import { useAuth } from '../context/useAuth';
 import videoApi from '../api/videoApi';
@@ -37,6 +38,7 @@ const ChannelPage = () => {
   const [descExpanded, setDescExpanded] = useState(false);
   const [editingVideo, setEditingVideo] = useState(null);
   const [activeMenuId, setActiveMenuId] = useState(null);
+  const [pendingDelete, setPendingDelete] = useState(null);
   const [toast, showToast] = useToast();
 
   const isOwner = Boolean(currentUser && currentUser._id === userId);
@@ -135,15 +137,24 @@ const ChannelPage = () => {
 
   useRefreshWhilePending(hasPendingVideos, refreshPipelineFields);
 
-  const handleDelete = async (videoId) => {
+  const handleDelete = (video, e) => {
+    // Move focus to the menu's trigger before the menu unmounts, so the
+    // confirm dialog hands focus back there when it closes.
+    e.currentTarget.closest('.owner-menu')?.querySelector('.owner-menu-trigger')?.focus();
     setActiveMenuId(null);
-    if (!window.confirm(t('channel.confirmDelete'))) return;
+    setPendingDelete(video);
+  };
+
+  const confirmDelete = async () => {
+    const videoId = pendingDelete._id;
     try {
       await videoApi.deleteVideo(videoId);
       setVideos((prev) => prev.filter((v) => v._id !== videoId));
       showToast(t('channel.deleted'));
     } catch (err) {
       showToast(t('channel.deleteFailed', { message: err.response?.data?.message || err.message }));
+    } finally {
+      setPendingDelete(null);
     }
   };
 
@@ -220,7 +231,7 @@ const ChannelPage = () => {
               );
             })}
             <div className="dropdown-divider" />
-            <button type="button" className="dropdown-item" onClick={() => handleDelete(video._id)}>
+            <button type="button" className="dropdown-item" onClick={(e) => handleDelete(video, e)}>
               <MdOutlineDelete />
               <span>{t('channel.deleteVideo')}</span>
             </button>
@@ -392,6 +403,17 @@ const ChannelPage = () => {
           video={editingVideo}
           onClose={() => setEditingVideo(null)}
           onSaved={handleSaved}
+        />
+      )}
+
+      {pendingDelete && (
+        <ConfirmDialog
+          title={t('channel.deleteVideo')}
+          message={t('channel.confirmDelete', { title: pendingDelete.title })}
+          confirmLabel={t('common.delete')}
+          danger
+          onConfirm={confirmDelete}
+          onClose={() => setPendingDelete(null)}
         />
       )}
 

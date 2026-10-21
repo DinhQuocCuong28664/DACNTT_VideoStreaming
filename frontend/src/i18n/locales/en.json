@@ -121,7 +121,7 @@
   "channel": {
     "videos": "Videos",
     "empty": "This channel doesn't have any videos yet.",
-    "confirmDelete": "Delete this video?",
+    "confirmDelete": "“{{title}}” and its comments will be deleted permanently. This cannot be undone.",
     "deleteFailed": "Could not delete the video: {{message}}",
     "visibilityFailed": "Could not change visibility: {{message}}",
     "deleteVideo": "Delete video",
@@ -242,7 +242,8 @@
     "mascotLabel": "VidShare mascot, click to boop"
   },
   "watch": {
-    "confirmDeleteComment": "Delete this comment?",
+    "confirmDeleteComment": "Delete this comment permanently?",
+    "deleteCommentFailed": "Could not delete the comment. Please try again.",
     "transcoding": "This video is being processed. Check back in a few minutes.",
     "processingFailed": "Processing this video failed",
     "queued": "This video is waiting to be processed.",
@@ -377,6 +378,7 @@
   "common": {
     "cancel": "Cancel",
     "close": "Close",
+    "delete": "Delete",
     "required": "required"
   },
   "moderationStatus": {

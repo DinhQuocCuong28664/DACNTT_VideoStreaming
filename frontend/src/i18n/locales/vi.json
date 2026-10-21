@@ -120,7 +120,7 @@
   "channel": {
     "videos": "Video",
     "empty": "Kênh này chưa có video nào.",
-    "confirmDelete": "Bạn có chắc muốn xóa video này?",
+    "confirmDelete": "“{{title}}” và các bình luận của video sẽ bị xoá vĩnh viễn. Không thể hoàn tác.",
     "deleteFailed": "Xóa video thất bại: {{message}}",
     "visibilityFailed": "Đổi chế độ hiển thị thất bại: {{message}}",
     "deleteVideo": "Xóa video",
@@ -241,7 +241,8 @@
     "mascotLabel": "Linh vật VidShare, bấm để trêu"
   },
   "watch": {
-    "confirmDeleteComment": "Bạn có chắc muốn xóa bình luận này?",
+    "confirmDeleteComment": "Xoá vĩnh viễn bình luận này?",
+    "deleteCommentFailed": "Không xoá được bình luận. Vui lòng thử lại.",
     "transcoding": "Video đang được xử lý. Vui lòng quay lại sau vài phút.",
     "processingFailed": "Xử lý video thất bại",
     "queued": "Video đang chờ được xử lý.",
@@ -374,6 +375,7 @@
   "common": {
     "cancel": "Huỷ",
     "close": "Đóng",
+    "delete": "Xoá",
     "required": "bắt buộc"
   },
   "moderationStatus": {
