@@ -291,6 +291,7 @@ const ChannelPage = () => {
               <VideoCard
                 video={video}
                 showAvatar={false}
+                showMenu={!isOwner}
                 thumbnailOverlay={isOwner ? visibilityBadge(video) : null}
               />
               {isOwner && renderOwnerControls(video)}

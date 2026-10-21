@@ -66,7 +66,12 @@
     "monthsAgo": "{{count}} tháng trước",
     "views_other": "{{value}} lượt xem",
     "underReview": "Đang rà soát",
-    "removed": "Đã bị gỡ"
+    "removed": "Đã bị gỡ",
+    "actions": "Menu thao tác",
+    "share": "Chia sẻ",
+    "report": "Báo cáo",
+    "linkCopied": "Đã sao chép liên kết",
+    "copyFailed": "Không sao chép được liên kết"
   },
   "upload": {
     "dropzone": "Kéo và thả tệp video để tải lên",

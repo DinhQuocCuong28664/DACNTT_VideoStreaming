@@ -67,7 +67,12 @@
     "views_one": "{{value}} view",
     "views_other": "{{value}} views",
     "underReview": "Under review",
-    "removed": "Removed"
+    "removed": "Removed",
+    "actions": "Action menu",
+    "share": "Share",
+    "report": "Report",
+    "linkCopied": "Link copied to clipboard",
+    "copyFailed": "Could not copy the link"
   },
   "upload": {
     "dropzone": "Drag and drop a video file to upload",
