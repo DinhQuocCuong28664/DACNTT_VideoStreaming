@@ -274,11 +274,13 @@ Requirements & FR-06, FR-08 \\
 Precondition & None. \\
 Main flow &
   1. The visitor opens the catalogue. \newline
-  2. The server returns, newest first and twelve per page, the videos that are public, \texttt{READY} and not held back or removed by moderation. \newline
-  3. The visitor types a query or chooses a category tab. \newline
-  4. The server matches the query against the title, description and tags without regard to case, within the chosen category. \\
+  2. The server returns, newest first, the first twelve videos that are public, \texttt{READY} and not held back or removed by moderation. \newline
+  3. As the visitor scrolls near the end of the list, the page fetches the next twelve and appends them, so the catalogue scrolls without page numbers. \newline
+  4. The visitor types a query or chooses a category tab, and the list starts again from the first twelve. \newline
+  5. The server matches the query against the title, description and tags without regard to case, within the chosen category. \\
 Alternative flows &
-  4a. Nothing matches: the page shows an empty result with a message. \\
+  3a. Loading the next videos fails: the page shows a button to try again. \newline
+  5a. Nothing matches: the page shows an empty result with a message. \\
 Postcondition & None; the catalogue is read only. \\
 \bottomrule
 \end{tabularx}
