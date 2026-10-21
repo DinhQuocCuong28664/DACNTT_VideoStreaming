@@ -1,29 +1,47 @@
 \chapter{Requirements Analysis}
 \label{chap:requirements}
 
+This chapter identifies who uses the system and what each group needs, states the functional and
+non-functional requirements that follow, and models them as use cases, each specified step by step.
+
 \section{Stakeholders and User Requirements}
 \label{sec:stakeholders}
 
-Four groups interact with the system, and their differing needs shape the requirements.
+The system serves three kinds of people: those who watch videos, those who upload them, and the
+staff who moderate and run the platform. Table~\ref{tab:stakeholders} lists each group, what it
+needs, and the requirements of Sections~\ref{sec:functional-requirements} and
+\ref{sec:nonfunctional-requirements} that answer those needs.
 
-The \emph{anonymous visitor} arrives without an account. This group needs to browse public
-videos, search and filter by category, and watch content immediately, because requiring
-registration before any content can be seen would deter adoption. The \emph{registered user}
-additionally needs to upload videos, control whether each video is public, unlisted or
-private, manage
-the videos on their own channel, and interact through likes and comments. The
-\emph{system administrator}, in the context of this project the development team itself,
-needs the platform to be observable and deployable without manual intervention. Finally, the
-\emph{operations staff} decide whether uploaded content may be shown: they need a queue of the
-videos that the automatic screening could not settle, a way to hear an owner's appeal, and figures
-that tell them how often the screening is wrong.
+\begin{table}[H]
+\centering
+\caption{Stakeholders, their needs and the requirements that serve them}
+\label{tab:stakeholders}
+\small
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{0.21\textwidth} X >{\raggedright\arraybackslash}p{0.22\textwidth}}
+\toprule
+\textbf{STAKEHOLDER} & \textbf{NEEDS} & \textbf{REQUIREMENTS} \\
+\midrule
+Anonymous visitor & Browse, search and filter public videos and start watching at once, without registering, on any bandwidth & FR-05, FR-08, FR-10, FR-11, NFR-01 \\
+Registered user & Upload large files without waiting for processing; decide who can see each video; manage the channel; like, comment and report; appeal a removal & FR-01 to FR-04, FR-06, FR-07, FR-09, FR-13, FR-15, NFR-05 \\
+Operator & A queue of the videos that screening held back or viewers reported; a way to decide with a reason and to resolve appeals & FR-14, FR-15 \\
+Auditor & The error rates of the screening, with the uncertainty of each, and a log of decisions that cannot be altered & FR-16 \\
+Administrator & Assign the staff roles and draw random audit samples & FR-16, FR-17 \\
+System operator (the development team) & A platform that is observable, reproducible and deployable without manual steps, and that costs nothing while idle & NFR-02 to NFR-04, NFR-07, NFR-08 \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+The visitor's need to watch without an account is deliberate: requiring registration before any
+content can be seen would deter adoption, so authentication is asked for only where an action needs
+an identity. The registered user plays two parts, viewer and uploader, and the staff roles are kept
+apart so that the person who reads the error rates is not the person whose decisions produce them
+(Section~\ref{sec:roles-design}).
 
 \section{Functional Requirements}
 \label{sec:functional-requirements}
 
-Table~\ref{tab:functional-requirements} enumerates the functional requirements derived from the
-stakeholder analysis. Each requirement is given an identifier so that it can be traced through
-the design and implementation chapters.
+Table~\ref{tab:functional-requirements} lists the functional requirements of the platform. Each has
+an identifier so that it can be traced through the use cases, the design and the evaluation.
 
 \begin{table}[H]
 \centering
@@ -71,19 +89,17 @@ FR-17 & Role management & An administrator assigns the roles operator, auditor a
 \end{tabularx}
 \end{table}
 
-Requirement FR-03 deserves particular comment because it shapes the architecture more than any
-other functional requirement. Routing a multi-gigabyte upload through the backend would
-consume server memory and bandwidth proportional to the number of concurrent uploads and would
-make the API server the bottleneck of the entire platform. Issuing a time-limited pre-signed
-URL and letting the browser transfer the file directly to Amazon S3 removes that bottleneck
-entirely: the backend handles only a small JSON request regardless of file size.
+Requirement FR-03 shapes the architecture more than any other. Routing a multi-gigabyte upload
+through the backend would consume server memory and bandwidth in proportion to the number of
+concurrent uploads and make the API server the bottleneck of the platform. A time-limited pre-signed
+URL lets the browser send the file directly to Amazon S3, so the backend handles only a small JSON
+request whatever the size of the file.
 
 \section{Non-Functional Requirements}
 \label{sec:nonfunctional-requirements}
 
-The non-functional requirements are stated in measurable terms wherever possible, so that
-Chapter~\ref{chap:evaluation} can report whether they were met; they are listed in
-Table~\ref{tab:nonfunctional-requirements}.
+The non-functional requirements are listed in Table~\ref{tab:nonfunctional-requirements}.
+Section~\ref{sec:nfr-evidence} sets each of them against the evidence of Chapter~\ref{chap:evaluation}.
 
 \begin{table}[H]
 \centering
@@ -106,20 +122,20 @@ NFR-08 & Maintainability & Changes must pass automated tests and security scanni
 \end{tabularx}
 \end{table}
 
-Requirement NFR-05 is worth distinguishing from ordinary access control. Restricting an API
-response is straightforward, but a video is not delivered by the API: it is delivered by a
-content delivery network as hundreds of individual segment files. An access control scheme that
-protects only the API therefore leaves the actual content unprotected, a gap that
-Section~\ref{sec:content-protection} addresses explicitly.
+NFR-05 goes beyond ordinary access control. Restricting an API response is straightforward, but a
+video is not delivered by the API: a content delivery network delivers it as hundreds of segment
+files. Access control that protects only the API therefore leaves the content itself unprotected,
+which is the gap Section~\ref{sec:content-protection} closes.
 
 \section{Use Case Model}
 \label{sec:use-cases}
 
+\subsection{Use Case Diagrams}
+\label{sec:use-case-diagrams}
+
 Figure~\ref{fig:use-case} presents the use cases of the people who use the platform. Three actors
-appear: the anonymous visitor, the authenticated user, and the transcoding system itself, which is
-modelled as an actor because it initiates processing autonomously in response to events rather than
-in response to a direct user action. Verifying the e-mail address is the use case that lets a new
-account upload (requirement FR-01).
+appear: the anonymous visitor, the registered user, and the transcoding system, which is modelled as
+an actor because it starts processing in response to events rather than to a user's action.
 
 \begin{figure}[htbp]
 \centering
@@ -128,21 +144,17 @@ account upload (requirement FR-01).
 \label{fig:use-case}
 \end{figure}
 
-The diagram makes visible an important property of the design: the transcoding use cases are
-not invoked by the user at all. The user's upload action triggers them indirectly through the
-event chain, which is why they are attached to the system actor rather than to the human
-actors. This separation is what allows the browser to return control to the user immediately
-after the upload completes, without waiting for processing to finish.
+The transcoding use cases are not invoked by the user at all. The upload triggers them indirectly
+through the chain of events, which is why they attach to the system actor, and it is also what lets
+the browser return control to the user as soon as the upload ends.
 
-Figure~\ref{fig:use-case-staff} adds the use cases of moderation and operation, which are
-requirements FR-12 to FR-17 (Table~\ref{tab:functional-requirements-moderation}), designed in
-Section~\ref{sec:moderation-design}. They are drawn apart because adding them to
-Figure~\ref{fig:use-case} would make that figure taller than a page. Three more actors appear, the
-roles operator, auditor and administrator. The use cases of each role stand together, and an
-administrator can also do everything an operator or an auditor can, which is why each association is
-drawn once. The transcoding system keeps its place as an actor because the screening runs inside the
-transcoder. Three things lead to a decision that only staff can take: what the screening holds back,
-a report from a viewer, and an appeal from the owner of a removed video.
+Figure~\ref{fig:use-case-staff} adds the use cases of moderation and operation, requirements FR-12
+to FR-17, designed in Section~\ref{sec:moderation-design}. They are drawn apart because adding them to
+Figure~\ref{fig:use-case} would make it taller than a page. Three more actors appear, the roles
+operator, auditor and administrator; an administrator can also do everything an operator or an
+auditor can, so each association is drawn once. The transcoding system stays an actor because the
+screening runs inside the transcoder. Three things lead to a decision that only staff can take: what
+the screening holds back, a report from a viewer, and an appeal from the owner of a removed video.
 
 \begin{figure}[htbp]
 \centering
@@ -151,31 +163,399 @@ a report from a viewer, and an appeal from the owner of a removed video.
 \label{fig:use-case-staff}
 \end{figure}
 
-Table~\ref{tab:usecase-upload} specifies the most architecturally significant use case in
-detail.
+\subsection{Use Case Specifications}
+\label{sec:use-case-specs}
+
+The use cases of the two diagrams are specified in Tables~\ref{tab:uc-register} to
+\ref{tab:uc-role}. Closely related use cases of the diagrams are specified together, for example
+liking, commenting and sharing as one interaction, so that fourteen specifications cover the
+twenty-eight use cases. Each lists its actor, the requirements it serves, the main flow and the
+alternative flows, numbered after the step they branch from, and was checked against the code of
+the routes and services it describes.
 
 \begin{table}[H]
 \centering
-\caption{Use case specification: upload a video}
+\caption{Use case UC-01: register and verify the e-mail address}
+\label{tab:uc-register}
+\small
+\begin{tabularx}{\textwidth}{p{0.20\textwidth} X}
+\toprule
+\textbf{FIELD} & \textbf{CONTENT} \\
+\midrule
+Actor & Anonymous visitor \\
+Requirements & FR-01 \\
+Precondition & No account uses the chosen username or e-mail address. \\
+Main flow &
+  1. The visitor enters a username, an e-mail address and a password. \newline
+  2. The server checks the password against common passwords, the visitor's own details and the breach service. \newline
+  3. The server creates an unverified account, stores the hash of a verification token valid for 24 hours, and returns a session token. \newline
+  4. The server e-mails a link that carries the token. \newline
+  5. The visitor opens the link; the page posts the token, and the server marks the address verified in one conditional update. \\
+Alternative flows &
+  1a. The username or the address is taken: the server answers 409 and creates nothing. \newline
+  2a. The password is refused: the server answers 400 with a reason that the form shows. \newline
+  4a. Five mails already went to the address this hour: the account is created, the mail is skipped, and the link can be sent again later. \newline
+  5a. The link is malformed, used or expired: the server answers 400 and the user can ask for a new link. \\
+Postcondition & The account exists; once the address is verified, it may upload. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Signing in, with a password or with Google, is specified in Table~\ref{tab:uc-login}.
+
+\begin{table}[H]
+\centering
+\caption{Use case UC-02: log in}
+\label{tab:uc-login}
+\small
+\begin{tabularx}{\textwidth}{p{0.20\textwidth} X}
+\toprule
+\textbf{FIELD} & \textbf{CONTENT} \\
+\midrule
+Actor & Registered user \\
+Requirements & FR-01, NFR-06 \\
+Precondition & The user has an account. \\
+Main flow &
+  1. The user enters the e-mail address and the password. \newline
+  2. The server compares the password with the stored hash. \newline
+  3. The server returns a JSON Web Token, which the client sends in the \texttt{Authorization} header of later requests. \\
+Alternative flows &
+  1a. The user signs in with Google instead: the server verifies the Google identity token; an unknown address creates a verified account, an unverified local account with the same address is taken over, and a verified one is refused with \texttt{EMAIL\_IN\_USE} (Figure~\ref{fig:verification-sequence}). \newline
+  1b. More than ten attempts in fifteen minutes from one address: the server answers 429. \newline
+  2a. The address or the password is wrong: the server answers 401 with the same message for both, so the reply does not reveal which one was wrong. \\
+Postcondition & The user holds a session token. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Table~\ref{tab:uc-reset} covers a forgotten password; its reply never reveals whether an
+address has an account.
+
+\begin{table}[H]
+\centering
+\caption{Use case UC-03: reset a forgotten password}
+\label{tab:uc-reset}
+\small
+\begin{tabularx}{\textwidth}{p{0.20\textwidth} X}
+\toprule
+\textbf{FIELD} & \textbf{CONTENT} \\
+\midrule
+Actor & Registered user who is not signed in \\
+Requirements & FR-02 \\
+Precondition & None. \\
+Main flow &
+  1. The user enters the e-mail address. \newline
+  2. The server gives the same generic answer whether or not an account exists; if one does, it stores the hash of a single-use token valid for fifteen minutes and e-mails a link. \newline
+  3. The user opens the link and enters a new password. \newline
+  4. The server checks the token and the password policy, stores the new password, marks the address verified, and returns a session token. \\
+Alternative flows &
+  2a. Five mails already went to the address this hour: the same generic answer, and no new token. \newline
+  4a. The token is invalid or expired: the server answers 400 and the password is unchanged. \newline
+  4b. The new password is refused by the policy: the server answers 400. \\
+Postcondition & The password is changed, and tokens issued before the change are no longer accepted. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Two use cases are open to every visitor: browsing the catalogue (Table~\ref{tab:uc-browse})
+and watching a video (Table~\ref{tab:uc-watch}).
+
+\begin{table}[H]
+\centering
+\caption{Use case UC-04: browse and search the catalogue}
+\label{tab:uc-browse}
+\small
+\begin{tabularx}{\textwidth}{p{0.20\textwidth} X}
+\toprule
+\textbf{FIELD} & \textbf{CONTENT} \\
+\midrule
+Actor & Anonymous visitor or registered user \\
+Requirements & FR-06, FR-08 \\
+Precondition & None. \\
+Main flow &
+  1. The visitor opens the catalogue. \newline
+  2. The server returns, newest first and twelve per page, the videos that are public, \texttt{READY} and not held back or removed by moderation. \newline
+  3. The visitor types a query or chooses a category tab. \newline
+  4. The server matches the query against the title, description and tags without regard to case, within the chosen category. \\
+Alternative flows &
+  4a. Nothing matches: the page shows an empty result with a message. \\
+Postcondition & None; the catalogue is read only. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Use case UC-05: watch a video}
+\label{tab:uc-watch}
+\small
+\begin{tabularx}{\textwidth}{p{0.20\textwidth} X}
+\toprule
+\textbf{FIELD} & \textbf{CONTENT} \\
+\midrule
+Actor & Viewer, signed in or not \\
+Requirements & FR-05, FR-06, FR-10, FR-11, NFR-01, NFR-05 \\
+Precondition & The viewer has the link of the video. \\
+Main flow &
+  1. The viewer opens the watch page. \newline
+  2. The server returns the video, applying the access rule of Section~\ref{sec:backend-impl}. \newline
+  3. The page requests playback authorisation and receives Signed Cookies for that video (Figure~\ref{fig:playback-sequence}). \newline
+  4. The player loads the master playlist from CloudFront and switches renditions as the bandwidth changes. \newline
+  5. After five seconds of playback the page reports a view, which the server counts unless the same viewer was counted within thirty minutes or the viewer owns the video. \newline
+  6. A sidebar lists related videos from the same category and uploader. \\
+Alternative flows &
+  2a. The video is private and the viewer is not its owner: the server answers not-found. \newline
+  2b. The video was removed, or is held back for review: the server answers 403 with a distinct code, and the page shows a screen that explains it. \newline
+  4a. The cookies expire during playback: the player asks for new cookies and reloads the source. \\
+Postcondition & The view count may have grown by one. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Table~\ref{tab:uc-interact} groups the interactions of a signed-in viewer.
+
+\begin{table}[H]
+\centering
+\caption{Use case UC-06: like, comment on and share a video}
+\label{tab:uc-interact}
+\small
+\begin{tabularx}{\textwidth}{p{0.20\textwidth} X}
+\toprule
+\textbf{FIELD} & \textbf{CONTENT} \\
+\midrule
+Actor & Registered user \\
+Requirements & FR-09 \\
+Precondition & The user is signed in and may see the video. \\
+Main flow &
+  1. The user presses like or dislike. \newline
+  2. The server adds the user to that list and removes the user from the other in one update; pressing again removes the reaction. \newline
+  3. The user writes a comment of at most 1000 characters. \newline
+  4. The server stores it, and the page shows it at the top of the list. \newline
+  5. The user presses Share, and the page copies the link of the video. \\
+Alternative flows &
+  3a. The comment is empty or too long: the server refuses it. \newline
+  4a. The author of a comment, or the owner of the video, deletes it; anyone else is refused with 403. \\
+Postcondition & The reaction counts and the comments are updated. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Uploading, the use case that shapes the architecture most, is specified in
+Table~\ref{tab:usecase-upload}, and managing the uploaded videos in Table~\ref{tab:uc-manage}.
+
+\begin{table}[H]
+\centering
+\caption{Use case UC-07: upload a video}
 \label{tab:usecase-upload}
 \small
 \begin{tabularx}{\textwidth}{p{0.20\textwidth} X}
 \toprule
 \textbf{FIELD} & \textbf{CONTENT} \\
 \midrule
-Identifier & UC-07 \\
-Actor & Authenticated user \\
+Actor & Registered user \\
+Requirements & FR-01, FR-03, FR-04 \\
 Precondition & The user holds a valid JSON Web Token and a verified e-mail address. \\
-Trigger & The user selects a video file and submits the upload form. \\
 Main flow &
-  1. The client validates the file type and size locally. \newline
+  1. The user selects a video file and submits the upload form; the client checks the file type and size. \newline
   2. The client calls the initiate-upload endpoint with the file metadata. \newline
   3. The server validates the metadata, creates a database record with status \texttt{UPLOADING}, and returns a pre-signed URL valid for fifteen minutes. \newline
   4. The browser transfers the file directly to the raw S3 bucket. \newline
   5. The client confirms completion and the record moves to \texttt{PROCESSING}. \newline
   6. The transcoding pipeline runs asynchronously and eventually sets the record to \texttt{READY}. \\
-Alternative flow & If the file type is not an accepted video format or the size exceeds the limit, the server rejects the request before issuing a URL, and no orphan record is created. For a file larger than 512~MiB, step 3 returns a URL for each part of 32~MiB instead, and the server checks the stored parts before the object is assembled. If the e-mail address is not verified, the server refuses the request with the code \texttt{EMAIL\_NOT\_VERIFIED} and the interface offers to send the link again. \\
-Postcondition & The video appears on the user's channel, initially as processing and subsequently as ready to play. \\
+Alternative flows &
+  3a. The file type is not an accepted video format or the size exceeds the limit: the server refuses before issuing a URL, and no orphan record is created. \newline
+  3b. The file is larger than 512~MiB: step 3 returns a URL for each part of 32~MiB, and the server checks the stored parts before the object is assembled. \newline
+  3c. The e-mail address is not verified: the server refuses with \texttt{EMAIL\_NOT\_VERIFIED}, and the interface offers to send the link again. \\
+Postcondition & The video appears on the user's channel, first as processing and then as ready to play. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Use case UC-08: manage one's own videos}
+\label{tab:uc-manage}
+\small
+\begin{tabularx}{\textwidth}{p{0.20\textwidth} X}
+\toprule
+\textbf{FIELD} & \textbf{CONTENT} \\
+\midrule
+Actor & Registered user who owns the videos \\
+Requirements & FR-06, FR-07 \\
+Precondition & The user is signed in. \\
+Main flow &
+  1. The user opens the channel management view, which lists every own video with its status, including those still processing. \newline
+  2. The user edits the title, description, category, tags or visibility of a video, and the server applies the change. \newline
+  3. The user deletes a video. \newline
+  4. The server removes the source file, the renditions and the thumbnail, the comments and the reports, and then the record. \\
+Alternative flows &
+  2a. The video does not belong to the user: the server answers not-found. \newline
+  4a. The video is still uploading: its multipart upload is aborted first. \\
+Postcondition & The catalogue and the watch page reflect the change. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Table~\ref{tab:uc-transcode} specifies the use case of the transcoding system, which no
+person starts.
+
+\begin{table}[H]
+\centering
+\caption{Use case UC-09: transcode a video automatically}
+\label{tab:uc-transcode}
+\small
+\begin{tabularx}{\textwidth}{p{0.20\textwidth} X}
+\toprule
+\textbf{FIELD} & \textbf{CONTENT} \\
+\midrule
+Actor & Transcoding system \\
+Requirements & FR-04, FR-12, NFR-02, NFR-03 \\
+Precondition & An upload has been confirmed and the record is \texttt{PROCESSING}. \\
+Main flow &
+  1. Amazon S3 emits an event, which Amazon SQS buffers. \newline
+  2. The Lambda submitter submits an AWS Batch job and deletes the message. \newline
+  3. The job checks that the video is not already \texttt{READY} and reads the source. \newline
+  4. A video shorter than five minutes is encoded in one container; a longer one is split into chunks encoded in parallel (Section~\ref{sec:chunked-design}). \newline
+  5. The job writes the renditions, the master playlist and the thumbnail, screens the frames, and sets \texttt{READY} with the verdict in one conditional write. \newline
+  6. The owner receives an e-mail saying that the video is ready, under review or removed, according to the verdict. \\
+Alternative flows &
+  3a. A duplicate job finds the video \texttt{READY} and stops. \newline
+  5a. FFmpeg rejects the content: the record becomes \texttt{ERROR} and the owner is notified. \newline
+  5b. An infrastructure fault occurs: AWS Batch retries the job up to three attempts, after which an alert carries the reason. \\
+Postcondition & The video is \texttt{READY}, and public if screening approved it, or \texttt{ERROR}. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+The remaining use cases belong to moderation. A viewer's report (Table~\ref{tab:uc-report})
+and the screening both lead to an operator's decision (Table~\ref{tab:uc-decide}).
+
+\begin{table}[H]
+\centering
+\caption{Use case UC-10: report a video}
+\label{tab:uc-report}
+\small
+\begin{tabularx}{\textwidth}{p{0.20\textwidth} X}
+\toprule
+\textbf{FIELD} & \textbf{CONTENT} \\
+\midrule
+Actor & Registered user \\
+Requirements & FR-13 \\
+Precondition & The user is signed in and may see the video. \\
+Main flow &
+  1. The user chooses Report and one of eight reasons, such as sexual, violent, hateful or spam, with optional details. \newline
+  2. The server records the report and increases the video's count of open reports, which places the video in the review queue. \\
+Alternative flows &
+  1a. The video is the user's own: the server answers 400. \newline
+  1b. Too many reports in a short time: the server answers 429. \newline
+  2a. The user already has an open report on this video: no second report is created. \\
+Postcondition & An open report waits for an operator. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Use case UC-11: decide on a video}
+\label{tab:uc-decide}
+\small
+\begin{tabularx}{\textwidth}{p{0.20\textwidth} X}
+\toprule
+\textbf{FIELD} & \textbf{CONTENT} \\
+\midrule
+Actor & Operator or administrator \\
+Requirements & FR-14, FR-16 \\
+Precondition & The person holds the permission to review. \\
+Main flow &
+  1. The operator opens the review queue of held-back and reported videos, most reported first, and may play a video and read its reports. \newline
+  2. The operator approves or removes the video with a reason code from the closed list for that decision. \newline
+  3. The server copies the machine's verdict into \texttt{autoStatus} if no person has decided before, sets the verdict, closes the open reports and appends an event with its outcome class (Table~\ref{tab:outcome-classes}). \\
+Alternative flows &
+  2a. For a video that the machine removed, the operator confirms the removal, which counts as a true positive. \newline
+  2b. The reason code does not belong to the decision: the server answers 400. \newline
+  3a. An operator tries to change an administrator's decision: the server answers 403. \\
+Postcondition & The video is shown or hidden accordingly, and the decision is in the log. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+The owner of a removed video can then appeal (Table~\ref{tab:uc-appeal}).
+
+\begin{table}[H]
+\centering
+\caption{Use case UC-12: appeal a removal}
+\label{tab:uc-appeal}
+\small
+\begin{tabularx}{\textwidth}{p{0.20\textwidth} X}
+\toprule
+\textbf{FIELD} & \textbf{CONTENT} \\
+\midrule
+Actors & Owner of the video; operator \\
+Requirements & FR-15 \\
+Precondition & The video has been removed, and its owner has not yet appealed this decision. \\
+Main flow &
+  1. The owner writes an appeal of at most 500 characters on the removed video. \newline
+  2. The server records it, one per decision. \newline
+  3. An operator reads the appeal, watches the video, and upholds or rejects it with a note. \newline
+  4. Upholding approves the video with the reason ``appeal upheld'', which restores it; rejecting keeps the removal. \\
+Alternative flows &
+  1a. The requester does not own the video: the server answers not-found. \newline
+  1b. The video is not removed: the server answers 400. \newline
+  2a. The decision has already been appealed: the server answers 409. \\
+Postcondition & The appeal is resolved, and the owner sees the outcome on the video. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Table~\ref{tab:uc-audit} specifies the random audit that estimates what the screening misses,
+and Table~\ref{tab:uc-role} the assignment of roles.
+
+\begin{table}[H]
+\centering
+\caption{Use case UC-13: audit a random sample and read the error rates}
+\label{tab:uc-audit}
+\small
+\begin{tabularx}{\textwidth}{p{0.20\textwidth} X}
+\toprule
+\textbf{FIELD} & \textbf{CONTENT} \\
+\midrule
+Actors & Administrator; operator; auditor \\
+Requirements & FR-16 \\
+Precondition & Each person holds the permission for their step. \\
+Main flow &
+  1. The administrator draws a sample of 1 to 100 videos among those that the machine approved, that have no open report and that were never sampled. \newline
+  2. An operator watches each sampled video and labels it pass or fail. \newline
+  3. A video labelled fail is removed with the reason ``audit failed''. \newline
+  4. The auditor reads the four rates of Section~\ref{sec:moderation-design}, each with its 95\% interval and sample size, and the decision log. \\
+Alternative flows &
+  1a. The size is outside 1 to 100: the server answers 400. \newline
+  2a. The sample was already labelled: the server answers 404. \\
+Postcondition & The false negative rate includes the new labels. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Use case UC-14: assign a role}
+\label{tab:uc-role}
+\small
+\begin{tabularx}{\textwidth}{p{0.20\textwidth} X}
+\toprule
+\textbf{FIELD} & \textbf{CONTENT} \\
+\midrule
+Actor & Administrator \\
+Requirements & FR-17 \\
+Precondition & The person is signed in as an administrator. \\
+Main flow &
+  1. The administrator opens the Users tab and finds the user. \newline
+  2. The administrator chooses user, operator, auditor or administrator. \newline
+  3. The server changes the role and appends a record of who changed whom, from which role to which. \newline
+  4. The change takes effect on the user's next request, since the role is read from the database every time. \\
+Alternative flows &
+  2a. The administrator chooses their own account: the server answers 403. \newline
+  2b. The change would demote the last administrator: the server answers 409. \\
+Postcondition & The role is changed and the change is logged. \\
 \bottomrule
 \end{tabularx}
 \end{table}
