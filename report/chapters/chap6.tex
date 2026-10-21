@@ -150,32 +150,13 @@ media segment, recording the elapsed time for each stage. The measurement is rep
 mean, median, and 95th percentile values can be reported, because a single sample is
 meaningless when network latency varies and the first request is typically an edge cache miss.
 
-\begin{table}[H]
-\centering
-\caption{Time-to-First-Frame measurement results}
-\label{tab:ttff-results}
-\small
-\begin{tabularx}{\textwidth}{X r r r r r}
-\toprule
-\textbf{STAGE} & \textbf{MEAN} & \textbf{MEDIAN} & \textbf{P95} & \textbf{MIN} & \textbf{MAX} \\
-\midrule
-Master playlist    & 95.55  & 82.49  & 355.02 & 76.61 & 355.02 \\
-Rendition playlist & 88.62  & 82.40  & 207.32 & 77.62 & 207.32 \\
-First segment      & 108.76 & 87.04  & 322.20 & 78.41 & 322.20 \\
-\midrule
-\textbf{Total TTFF} & \textbf{292.93} & \textbf{251.52} & \textbf{884.54} & \textbf{242.23} & \textbf{884.54} \\
-\bottomrule
-\end{tabularx}
-\end{table}
-
-\noindent\textit{Note: values in milliseconds, $n=20$ samples, measured against a video served
-directly from the S3 bucket, before the CloudFront distribution described in
-Section~\ref{sec:challenges} was deployed. These
-figures therefore represent origin latency without any CDN, and they serve here as the baseline
-against which Section~\ref{sec:cdn-measurement} compares the deployed system. The mean
-(292.93~ms) exceeds the median (251.52~ms) because one outlier sample (884.54~ms) inflates both
-the mean and the P95/max columns, which coincide with the single-sample maximum at this sample
-size.}
+Measured against a video served directly from the S3 bucket, before the CloudFront distribution
+described in Section~\ref{sec:challenges} was deployed, twenty samples gave a median
+Time-to-First-Frame of 251.52~ms. That is origin latency without any CDN, and it serves here as the
+baseline against which Section~\ref{sec:cdn-measurement} compares the deployed system. The mean
+(292.93~ms) exceeds the median because one outlier sample (884.54~ms) inflates both the mean and
+the 95th percentile, which coincides with the single-sample maximum at this sample size. The
+statistics of each of the three stages are in Table~\ref{tab:ttff-results} (Appendix~\ref{app:measurement-tables}).
 
 \subsection{Measuring the Deployed CDN, and a Configuration That Inverted It}
 \label{sec:cdn-measurement}
@@ -201,34 +182,22 @@ per-gigabyte rate, and in doing so it removed the entire benefit the component e
 for the only population that uses it.
 
 Changing both distributions to \texttt{PriceClass\_200}, which includes the Asian edge locations,
-moved delivery to \texttt{SGN50} in Ho Chi Minh City and produced Table~\ref{tab:ttff-cloudfront}.
+moved delivery to \texttt{SGN50} in Ho Chi Minh City and produced the result in Figure~\ref{fig:ttff-cdn}.
 
-\begin{table}[H]
+\begin{figure}[H]
 \centering
-\caption{Time-to-First-Frame through CloudFront after the price class correction}
-\label{tab:ttff-cloudfront}
-\small
-\begin{tabularx}{\textwidth}{X r r r r r}
-\toprule
-\textbf{STAGE} & \textbf{MEAN} & \textbf{MEDIAN} & \textbf{P95} & \textbf{MIN} & \textbf{MAX} \\
-\midrule
-Master playlist    & 28.65  & 8.37   & 263.43  & 6.54  & 263.43 \\
-Rendition playlist & 29.29  & 7.93   & 348.78  & 5.89  & 348.78 \\
-First segment      & 112.75 & 87.36  & 487.31  & 68.87 & 487.31 \\
-\midrule
-\textbf{Total TTFF} & \textbf{170.69} & \textbf{110.32} & \textbf{1099.51} & \textbf{83.17} & \textbf{1099.51} \\
-\midrule
-\textit{Warm cache only} ($n=18$) & \textit{108.49} & \textit{107.57} & \textit{159.25} & \textit{83.17} & \textit{159.25} \\
-\bottomrule
-\end{tabularx}
-\end{table}
+\includegraphics[width=\textwidth]{images/11-chart-ttff-cdn.png}
+\caption{\textit{Median time to first frame in three delivery configurations, and the median of each stage where it was measured}}
+\label{fig:ttff-cdn}
+\end{figure}
 
-\noindent\textit{Note: values in milliseconds, $n=20$ samples with Signed Cookies attached. Two
-samples were edge cache misses
-and eighteen were hits; the final row reports only the samples that hit at all three stages,
-which is the steady state a viewer of an already-watched video experiences. The P95 and maximum of
-the full sample coincide with the colder of the two misses, as at this sample size the 95th
-percentile is the single slowest observation.}
+\noindent\textit{Note: $n=20$ samples per configuration, with Signed Cookies attached to the two
+CloudFront ones. Of the twenty samples through the Ho Chi Minh City edge, eighteen hit the cache at
+all three stages and two missed; the median of those eighteen is 107.57~ms. The 727.69~ms figure is
+the median recorded when the fault was found: the file holding that run was overwritten by the
+measurement taken after the correction, so the time of each of its stages is not shown. The mean,
+95th percentile, minimum and maximum of every stage are in Table~\ref{tab:ttff-cloudfront}
+(Appendix~\ref{app:measurement-tables}).}
 
 The comparison against the two earlier figures is stark. The median falls from 727.69~ms through
 the European edge to 110.32~ms through the local one, a factor of 6.6, and now sits 2.3 times
@@ -252,38 +221,22 @@ five. The same three-stage probe, with Signed Cookies attached, was deployed as 
 function to five regions, invoked for twenty iterations each, and deleted afterwards. Placing the
 client inside AWS regions makes the comparison between locations clean, because the only variable
 that changes is geography; the caveat this introduces is discussed below.
-Table~\ref{tab:ttff-multiregion} reports the results.
+Figure~\ref{fig:ttff-regions} reports the results.
 
-\begin{table}[H]
+\begin{figure}[H]
 \centering
-\caption{Time-to-First-Frame by client location, before and after \texttt{PriceClass\_All}}
-\label{tab:ttff-multiregion}
-\small
-\begin{tabularx}{\textwidth}{X l r l r r}
-\toprule
-& \multicolumn{2}{c}{\textbf{PRICECLASS\_200}} & \multicolumn{3}{c}{\textbf{PRICECLASS\_ALL}} \\
-\cmidrule(lr){2-3} \cmidrule(lr){4-6}
-\textbf{CLIENT LOCATION} & \textbf{EDGE} & \textbf{MEDIAN} & \textbf{EDGE} & \textbf{MEDIAN} & \textbf{WARM} \\
-\midrule
-N. Virginia, United States & IAD61 & 55.23   & n/a   & n/a   & n/a \\
-Dublin, Ireland            & DUB2  & 55.91   & DUB2  & 55.68 & 55.68 \\
-Singapore                  & SIN3  & 56.89   & SIN3  & 53.20 & 53.20 \\
-Tokyo, Japan               & NRT12 & 59.68   & n/a   & n/a   & n/a \\
-Sydney, Australia          & n/a   & n/a     & SYD3  & 52.30 & 43.36 \\
-S\~{a}o Paulo, Brazil      & CPT51 & \textbf{1196.10} & GRU1 & \textbf{36.79} & \textbf{36.49} \\
-\midrule
-Ho Chi Minh City (consumer) & SGN50 & 110.32 & n/a   & n/a   & n/a \\
-\bottomrule
-\end{tabularx}
-\end{table}
+\includegraphics[width=\textwidth]{images/12-chart-ttff-regions.png}
+\caption{\textit{Median time to first frame by client location, before and after \texttt{PriceClass\_All}}}
+\label{fig:ttff-regions}
+\end{figure}
 
-\noindent\textit{Note: values in milliseconds, $n=20$ per location and per configuration. WARM
-reports the median over samples that hit the
-edge cache at all three stages. Entries marked n/a were not measured in that configuration: the
-first run predated the Sydney probe, and the second re-measured only the two locations that could
-change plus two controls. The Ho Chi Minh City row is the local measurement of
-Table~\ref{tab:ttff-cloudfront}, taken from a consumer connection rather than from inside an AWS
-region, and is included for comparison rather than as a like-for-like sample.}
+\noindent\textit{Note: values in milliseconds, $n=20$ per location and per configuration. A location
+has a single bar where it was measured in only one configuration: the first run predated the Sydney
+probe, and the second re-measured only the two locations that could change plus two controls. The Ho
+Chi Minh City bar is the local measurement of Figure~\ref{fig:ttff-cdn}, taken from a consumer
+connection rather than from inside an AWS region, and is included for comparison rather than as a
+like-for-like sample. The median over the samples that hit the edge cache at all three stages is in
+Table~\ref{tab:ttff-multiregion} (Appendix~\ref{app:measurement-tables}).}
 
 Under \texttt{PriceClass\_200}, four of the five locations were indistinguishable, clustering
 between 55 and 60~ms and each served by an edge in its own region. That uniformity is the property
@@ -301,7 +254,7 @@ to one where this system happens to have no users.
 
 Both distributions were therefore moved to \texttt{PriceClass\_All}, which excludes nothing, and
 the affected locations were re-measured. Brazil is now served by \texttt{GRU1} in S\~{a}o Paulo
-itself at a median of 36.79~ms, a thirty-two-fold improvement and the fastest figure in the table;
+itself at a median of 36.79~ms, a thirty-two-fold improvement and the fastest value measured;
 Sydney, the other previously excluded region, is served by \texttt{SYD3} at 52.30~ms. The two
 control locations moved by less than 4~ms, confirming that nothing else changed. Delivery is now
 uniform across every location measured.
@@ -314,12 +267,12 @@ no cost to weigh against it, there is no reason to retain a region served an ord
 worse. Were traffic ever to exceed that allowance, this is the first setting that should be
 revisited, since South America and Oceania carry the highest per-gigabyte rates in the schedule.
 
-One methodological limit applies to the whole table. These probes ran inside AWS regions, reaching
+One methodological limit applies to every bar. These probes ran inside AWS regions, reaching
 edges over well-provisioned network paths, which is why four of them report around 55~ms while the
 consumer connection in Ho Chi Minh City reports 110~ms to an edge in the same city. The figures
 therefore measure edge proximity under favourable conditions, not what a residential viewer in
 each location would experience; the last-mile difference is roughly a factor of two on this
-evidence. Within that limit, the table establishes what a single vantage point could not: delivery
+evidence. Within that limit, the measurement establishes what a single vantage point could not: delivery
 is uniform wherever the price class reaches, and an order of magnitude worse where it does not.
 
 \subsection{Playback Under Constrained Bandwidth, and a Manifest That Understated Itself}
@@ -512,44 +465,19 @@ three profiles of every source encounter the same ordering and its effect cancel
 compared. Order does not cancel between the profiles of a single source, exactly as in the
 single-source measurement.
 
-\begin{table}[H]
+\begin{figure}[H]
 \centering
-\caption{Playback quality across three sources of differing visual complexity}
-\label{tab:qoe-multisource}
-\footnotesize
-\begin{tabularx}{\textwidth}{X r r r}
-\toprule
-\textbf{METRIC} & \textbf{LOW} & \textbf{MEDIUM} & \textbf{HIGH} \\
-\midrule
-\multicolumn{4}{l}{\textit{Unthrottled}} \\
-Rebuffering ratio, mean     & 0.00\%  & 0.00\%  & 0.00\%  \\
-Rebuffering ratio, max      & 0.00\%  & 0.00\%  & 0.00\%  \\
-Runs exhibiting a stall     & 0/5     & 0/5     & 0/5     \\
-Startup delay, median (s)   & 1.46    & 1.34    & 1.21    \\
-Average bitrate (kbit/s)    & 1644    & 1830    & 1664    \\
-\midrule
-\multicolumn{4}{l}{\textit{Fast 3G}} \\
-Rebuffering ratio, mean     & 0.22\%  & 2.30\%  & 0.11\%  \\
-Rebuffering ratio, max      & 0.60\%  & 5.81\%  & 0.55\%  \\
-Runs exhibiting a stall     & 2/5     & 2/5     & 1/5     \\
-Startup delay, median (s)   & 1.22    & 1.15    & 1.12    \\
-Average bitrate (kbit/s)    & 1477    & 1316    & 1246    \\
-\midrule
-\multicolumn{4}{l}{\textit{Slow 3G}} \\
-Rebuffering ratio, mean     & 4.91\%  & 5.80\%  & 4.84\%  \\
-Rebuffering ratio, max      & 13.14\% & 13.73\% & 13.37\% \\
-Runs exhibiting a stall     & 3/5     & 3/5     & 3/5     \\
-Startup delay, median (s)   & 3.76    & 1.87    & 3.84    \\
-Average bitrate (kbit/s)    & 1070    & 1224    & 845     \\
-\bottomrule
-\end{tabularx}
-\end{table}
+\includegraphics[width=\textwidth]{images/13-chart-qoe-sources.png}
+\caption{\textit{Rebuffering ratio and average bitrate for three sources of differing visual complexity under three network profiles}}
+\label{fig:qoe-sources}
+\end{figure}
 
-\noindent\textit{Note: five recorded runs per cell after two discarded warm-up runs, 120~s of
+\noindent\textit{Note: five recorded runs per combination after two discarded warm-up runs, 120~s of
 playback each, at a device pixel ratio of one. Source durations are 4:23, 4:23, and 4:40, all
-longer than the measurement window.}
+longer than the measurement window. The number of runs that stalled and the median startup delay
+are in Table~\ref{tab:qoe-multisource} (Appendix~\ref{app:measurement-tables}).}
 
-Complexity does not order the result. Under fast 3G the mean rebuffering ratio runs 0.22\%,
+Figure~\ref{fig:qoe-sources} gives the result for the nine combinations, and complexity does not order it. Under fast 3G the mean rebuffering ratio runs 0.22\%,
 2.30\%, and 0.11\% across low, medium, and high, so the most demanding source is the least affected
 and the middle source the worst. Under slow 3G the three land within a single percentage point of
 one another, and under the unthrottled profile all three are identically zero. A fifteenfold
@@ -756,7 +684,7 @@ definitions and compute settings as production but a separate database and separ
 buckets. Capacity is the Fargate vCPU quota available to the compute environment: 8~vCPU of
 Fargate Spot, which is the production quota, or 16~vCPU when an On-Demand environment of 8~vCPU was
 attached behind it. Each chunk runs in a 4~vCPU / 8~GB task, the size selected by the comparison in
-Table~\ref{tab:chunk-config}. Latency is measured, as in the previous section, from the moment the
+Figure~\ref{fig:chunk-config}. Latency is measured, as in the previous section, from the moment the
 upload finishes to the moment the record reaches \texttt{READY}, taking the return of the upload
 command as the end of the upload. The 25-minute source is a 1080p H.264 file of 2.75~GiB with an
 AAC track. The four-hour source was built by repeating a 1,600-second 1080p test-pattern clip nine
@@ -781,21 +709,23 @@ times faster, even though planning, audio encoding and finalisation take roughly
 fixed cost. Below that length the fixed cost would be more than half of the processing time, so
 shorter videos keep the single job.
 
-\begin{table}[H]
+\begin{figure}[H]
 \centering
-\caption{A 25-minute video on the chunked path, by chunk configuration and capacity}
-\label{tab:chunk-config}
-\small
-\input{generated/tab-chunk-config-25min.tex}
-\end{table}
+\includegraphics[width=\textwidth]{images/14-chart-chunk-config.png}
+\caption{\textit{A 25-minute video on the chunked path: time to READY and compute by chunk configuration and capacity}}
+\label{fig:chunk-config}
+\end{figure}
 
-\noindent\textit{Note: the first four rows were timed from the creation of the first job and the
-later rows from the end of the upload, which differ by about half a minute. The vCPU-seconds of the
-first five rows count chunk jobs only; the later rows count every job of the video. Rows are in
-chronological order of measurement. The first column gives the number of chunks and the vCPU of each; $^{\dagger}$ marks the run on the production environment. PHASE is the time from the first chunk start to the last chunk end, SLOTS the
-number of chunks encoded at once, VCPU-S the vCPU-seconds, and OD stands for On-Demand.}
+\noindent\textit{Note: the first four bars were timed from the creation of the first job and the
+later ones from the end of the upload, which differ by about half a minute. Bars are in order of
+measurement within each capacity; $\dagger$ marks the run on the production environment. The pale
+part of a time bar is what remains of the time to READY after the chunk phase, that is planning,
+audio and finalisation, and its order relative to the chunks is not shown. The vCPU-seconds of the
+hatched bars count chunk jobs only and those of the plain bars count every job of the video, so the
+two kinds are not comparable with each other. The phase lengths and the remaining columns are in
+Table~\ref{tab:chunk-config} (Appendix~\ref{app:measurement-tables}).}
 
-Table~\ref{tab:chunk-config} follows the same 25-minute video through the changes made to the
+Figure~\ref{fig:chunk-config} follows the same 25-minute video through the changes made to the
 chunked path. The first deployment cut the video into five chunks of five minutes on 1~vCPU tasks
 and took 36.3 minutes; five chunks used only five of the eight available vCPU, and chunks of
 identical size ran between 18.2 and 32.6 minutes because Fargate Spot hosts are not uniform.
@@ -809,15 +739,18 @@ finalisation take about three minutes whatever the capacity, and each of the twe
 pays a container start-up. For a single video of this length, additional capacity is therefore
 close to saturation.
 
-\begin{table}[H]
+\begin{figure}[H]
 \centering
-\caption{A four-hour video at two capacities}
-\label{tab:four-hour-breakdown}
-\small
-\input{generated/tab-four-hour-breakdown.tex}
-\end{table}
+\includegraphics[width=\textwidth]{images/15-chart-four-hour.png}
+\caption{\textit{A four-hour video: time from the end of the upload to READY, by step, at 16 and at 8 vCPU}}
+\label{fig:four-hour}
+\end{figure}
 
-Table~\ref{tab:four-hour-breakdown} reports the requirement that motivated the path. At the
+\noindent\textit{Note: the pale segment at the end of each bar is the part of the time to READY that
+belongs to none of the four steps, the queueing and hand-over between jobs. Steps too short to hold
+a label are given, in minutes, in Table~\ref{tab:four-hour-breakdown} (Appendix~\ref{app:measurement-tables}).}
+
+Figure~\ref{fig:four-hour} reports the requirement that motivated the path. At the
 production capacity of 8~vCPU a four-hour video reached \texttt{READY} 135.3 minutes after its
 upload finished, and with 16~vCPU, which doubles the number of chunks encoded at once, 85.3
 minutes. Both are far inside the two-hour limit of a job, because no chunk ran longer than seven
@@ -828,19 +761,20 @@ busy through many rounds and the fixed phases are a small share of the total. Th
 was 15.1 vCPU-hours at 8~vCPU and 17.3 at 16~vCPU, so doubling the capacity cost about 15\% more
 compute for 37\% less time.
 
-\begin{table}[H]
+\begin{figure}[H]
 \centering
-\caption{Four 25-minute videos submitted together, by capacity}
-\label{tab:concurrent-four}
-\small
-\input{generated/tab-concurrent-four-videos.tex}
-\end{table}
+\includegraphics[width=\textwidth]{images/16-chart-concurrent-four.png}
+\caption{\textit{Four 25-minute videos submitted together: when each waited, encoded and finalised, at 8 and at 16 vCPU}}
+\label{fig:concurrent-four}
+\end{figure}
 
-\noindent\textit{Note: in the 8~vCPU rows the four videos were uploaded together over one
-connection and timed from the first job creation. In the 16~vCPU rows the arrival was produced by
-server-side copies of one uploaded file, so all four events reached the pipeline within a second. START and END are the first chunk start and the last chunk end, and ORDER is the order of completion.}
+\noindent\textit{Note: in the 8~vCPU runs the four videos were uploaded together over one connection
+and timed from the first job creation. In the 16~vCPU runs the arrival was produced by server-side
+copies of one uploaded file, so all four events reached the pipeline within a second. Videos are
+numbered in the order of completion. The start and end of the chunk phase of each video are in
+Table~\ref{tab:concurrent-four} (Appendix~\ref{app:measurement-tables}).}
 
-When four 25-minute videos arrived together (Table~\ref{tab:concurrent-four}), 8~vCPU finished them
+When four 25-minute videos arrived together (Figure~\ref{fig:concurrent-four}), 8~vCPU finished them
 one after another at 21.0, 38.7, 62.9 and 73.3 minutes, a throughput of 1.4 times real time, and
 16~vCPU finished them at 17.7, 25.7, 36.1 and 44.3 minutes, 2.3 times real time. Capacity
 therefore shortened the batch by a factor of 1.65 for twice the vCPU, closer to proportional than

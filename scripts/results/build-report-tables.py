@@ -10,6 +10,9 @@ Nguồn duy nhất của số liệu hiệu năng chuyển mã là các tệp JS
 
   - report/generated/*.tex   chỉ phần `tabularx`; chương báo cáo bọc quanh bằng
                              \\begin{table}, \\caption (đề bảng nằm TRÊN) và \\label
+  - report/generated/chart-*.json   số liệu của ba biểu đồ đo hiệu năng, lấy từ đúng các lượt đo
+                             của bảng cùng tên; docs/diagrams/svg/1x-chart-*.mjs đọc chúng, nên
+                             biểu đồ và bảng không thể lệch nhau
   - docs/results/INDEX.md    bảng "bảng báo cáo -> tệp số liệu" và danh sách lượt đo
 
 Số trong báo cáo vì thế không gõ tay: sửa JSON rồi chạy lại script này.
@@ -70,6 +73,12 @@ def env_name(run):
     return {"production": "production", "staging": "staging"}.get(run["environment"], run["environment"])
 
 
+def _fargate_kind(r):
+    cap = r.get("capacity") or {}
+    spot, od = int(cap.get("spot_max_vcpus") or 0), int(cap.get("ondemand_max_vcpus") or 0)
+    return "Spot + OD" if spot and od else ("Spot" if spot else ("On-Demand" if od else "n/a"))
+
+
 def table_scaling_25min(runs):
     """Một video 25 phút, đường chia đoạn, từng cấu hình đoạn."""
     picked = [
@@ -90,9 +99,7 @@ def table_scaling_25min(runs):
         vs = r.get("vcpu_seconds")
         total = capacity(r)
         slots = chunk.get("slots") or (total // chunk["vcpu"] if total and chunk.get("vcpu") else None)
-        cap = r.get("capacity") or {}
-        spot, od = int(cap.get("spot_max_vcpus") or 0), int(cap.get("ondemand_max_vcpus") or 0)
-        kind = "Spot + OD" if spot and od else ("Spot" if spot else ("On-Demand" if od else "n/a"))
+        kind = _fargate_kind(r)
         # Dấu dao (†) đánh dấu lượt đo ở môi trường production; chú thích nằm dưới bảng trong chương.
         env = "$^{\\dagger}$" if r.get("environment") == "production" else ""
         rows.append([
@@ -259,6 +266,80 @@ def table_legacy_timing():
     return table("X r r r r r", header, rows), [{"_file": LEGACY.relative_to(ROOT).as_posix(), "id": "transcode-timing", "date": "2026-08"}]
 
 
+def _num(seconds):
+    """Số phút đúng như bảng in ra (làm tròn một chữ số), để biểu đồ và bảng khớp từng chữ số."""
+    return float(minutes(seconds))
+
+
+def chart_chunk_config(picked):
+    rows = []
+    for r in picked:
+        chunk, t = r["chunk"], r["timings_s"]
+        total = _capacity(r)
+        vs = r.get("vcpu_seconds")
+        rows.append({
+            "chunks": chunk["count"],
+            "chunk_vcpu": chunk["vcpu"],
+            "production": r.get("environment") == "production",
+            "fargate": _fargate_kind(r),
+            "capacity_vcpu": total or None,
+            "phase_min": _num(t["chunks"]) if t.get("chunks") else None,
+            "ready_min": _num(t["end_to_end"]),
+            "vcpu_seconds": vs or None,
+            # chunks_only: chỉ cộng các job chunk; all_jobs: cộng mọi job của video (xem ghi chú dưới bảng).
+            "vcpu_seconds_scope": r.get("vcpu_seconds_scope") if vs else None,
+        })
+    return rows
+
+
+def chart_concurrent_four(picked):
+    return [
+        {
+            "capacity_vcpu": _capacity(r),
+            "order": r["queue_position"],
+            "start_min": _num(r["timings_s"]["chunks_start"]),
+            "end_min": _num(r["timings_s"]["chunks_end"]),
+            "ready_min": _num(r["timings_s"]["end_to_end"]),
+        }
+        for r in picked
+    ]
+
+
+def chart_four_hours(picked):
+    rows = []
+    for r in picked:
+        t, c = r["timings_s"], r["chunk"]
+        audio = t.get("audio")
+        if audio is None and "audio_64k" in t and "audio_128k" in t:
+            audio = max(t["audio_64k"], t["audio_128k"])
+        steps = [t.get("planner"), audio, t.get("chunks"), t.get("finalize")]
+        rows.append({
+            "capacity_vcpu": _capacity(r),
+            "chunks": c["count"],
+            "chunk_vcpu": c["vcpu"],
+            "planner_min": _num(steps[0]) if steps[0] is not None else None,
+            "audio_min": _num(steps[1]) if steps[1] is not None else None,
+            "chunks_min": _num(steps[2]) if steps[2] is not None else None,
+            "finalize_min": _num(steps[3]) if steps[3] is not None else None,
+            # Phần READY không thuộc bốn bước: hàng đợi và chuyển giao giữa các job.
+            "between_steps_min": _num(t["end_to_end"] - sum(s for s in steps if s is not None)),
+            "ready_min": _num(t["end_to_end"]),
+            "vcpu_hours": round((r.get("vcpu_seconds") or 0) / 3600, 1),
+        })
+    return rows
+
+
+# Bảng nguồn -> (tệp JSON biểu đồ, hàm dựng, mô tả, nơi dùng)
+CHARTS = {
+    "tab-chunk-config-25min.tex": ("chart-chunk-config-25min.json", chart_chunk_config,
+                                    "25-minute video, time to READY and compute by chunk configuration"),
+    "tab-concurrent-four-videos.tex": ("chart-concurrent-four-videos.json", chart_concurrent_four,
+                                        "Four 25-minute videos submitted together, per video"),
+    "tab-four-hour-breakdown.tex": ("chart-four-hour-breakdown.json", chart_four_hours,
+                                     "Four-hour video, minutes per step at each capacity"),
+}
+
+
 TABLES = [
     ("tab-chunk-config-25min.tex", "25-minute video, chunked path, by chunk configuration", table_scaling_25min,
      "Chương đánh giá, mục chuyển mã chia đoạn"),
@@ -281,6 +362,10 @@ def build():
         if text:
             outputs[name] = text
             used_by[name] = used
+            if name in CHARTS:
+                chart_name, chart_fn, _desc = CHARTS[name]
+                outputs[chart_name] = json.dumps(chart_fn(used), indent=2, ensure_ascii=False) + "\n"
+                used_by[chart_name] = used
     text, used = table_legacy_timing()
     if text:
         outputs["tab-transcode-timing-single-job.tex"] = text
@@ -290,6 +375,8 @@ def build():
 
 def build_index(runs, outputs, used_by):
     titles = {n: (t, w) for n, t, _f, w in TABLES}
+    for _table, (chart_name, _fn, desc) in CHARTS.items():
+        titles[chart_name] = (desc, "Biểu đồ trong chương đánh giá")
     titles["tab-transcode-timing-single-job.tex"] = (
         "Single-job path, 100 MB to 1 GB, 1 vCPU against 4 vCPU", "Chương đánh giá, mục thời gian chuyển mã theo dung lượng")
     lines = [
@@ -300,7 +387,7 @@ def build_index(runs, outputs, used_by):
         "",
         "## Bảng của báo cáo và nguồn của chúng",
         "",
-        "| Tệp bảng (`report/generated/`) | Nội dung | Dùng ở | Lượt đo nguồn |",
+        "| Tệp sinh ra (`report/generated/`) | Nội dung | Dùng ở | Lượt đo nguồn |",
         "|---|---|---|---|",
     ]
     for name in sorted(outputs):
