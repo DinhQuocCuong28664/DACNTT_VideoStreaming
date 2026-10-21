@@ -144,3 +144,25 @@ constant (Section~\ref{sec:pipeline-evaluation}), and time to first frame from r
 connections rather than from AWS regions (Section~\ref{sec:multiregion-measurement}). Further
 ahead, GPU-enabled serverless encoding \cite{gpuserverless2024} and a more efficient codec such as
 HEVC or AV1 next to H.264 would raise throughput and reduce bandwidth.
+
+\section{Task Distribution}
+\label{sec:task-distribution}
+
+Table~\ref{tab:task-distribution} shows how the work was divided between the two members of the
+team. Each member was responsible for the parts listed and for the chapters of the report that
+describe them.
+
+\begin{table}[H]
+\centering
+\caption{Task distribution between the members of the team}
+\label{tab:task-distribution}
+\small
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{0.22\textwidth} p{0.13\textwidth} >{\raggedright\arraybackslash}X}
+\toprule
+\textbf{MEMBER} & \textbf{STUDENT ID} & \textbf{RESPONSIBILITIES} \\
+\midrule
+Dinh Quoc Cuong (team leader) & 523H0008 & Overall architecture; the transcoder and the chunk-parallel path; the AWS infrastructure in Terraform (S3, SQS, Lambda, Batch, CloudFront); the CI/CD and DevSecOps pipeline; the measurements and the evaluation; Chapters~\ref{chap:design} to \ref{chap:evaluation} of the report \\
+Vo Huynh Minh Duc & 523H0014 & The React frontend (catalogue, watch page and player, upload, channel management, moderation console, two languages); the account, comment and interaction APIs; testing and diagrams; Chapters~\ref{chap:introduction} to \ref{chap:requirements} and \ref{chap:conclusion} of the report \\
+\bottomrule
+\end{tabularx}
+\end{table}
