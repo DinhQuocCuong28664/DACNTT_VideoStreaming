@@ -128,7 +128,7 @@
     "confirmDelete": "“{{title}}” và các bình luận của video sẽ bị xoá vĩnh viễn. Không thể hoàn tác.",
     "deleteFailed": "Xóa video thất bại: {{message}}",
     "visibilityFailed": "Đổi chế độ hiển thị thất bại: {{message}}",
-    "deleteVideo": "Xóa video",
+    "deleteVideo": "Xoá video",
     "setVisibilityTo": "Chuyển sang {{mode}}",
     "editVideo": "Chỉnh sửa video",
     "editModalTitle": "Chi tiết video",
