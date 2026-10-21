@@ -1,41 +1,27 @@
 \chapter*{Abstract}
 \addcontentsline{toc}{chapter}{Abstract}
 
-Modern video sharing platforms must solve a common core problem: when a user uploads a
-source file in an arbitrary format, codec, or resolution, the system has to transcode it
-automatically into HTTP Live Streaming (HLS) so that browsers can play it with adaptive
-quality. Provisioning a dedicated server cluster or a Kubernetes system that runs
-continuously purely to wait for transcoding work is wasteful, because upload traffic is
-inherently bursty and the infrastructure sits idle most of the time. Conversely, when many
-users upload simultaneously, the system must scale out to process hundreds of videos in
-parallel.
+A video sharing platform must turn every upload, in any format, codec or resolution, into HTTP
+Live Streaming (HLS) renditions that a browser can play at adaptive quality. Transcoding is a bursty
+workload: a server cluster kept running to wait for uploads pays for idle capacity most of the time,
+yet the platform must still absorb many uploads arriving at once.
 
-This project presents the design, implementation, and evaluation of a complete video
-sharing platform whose transcoding subsystem is built on a Serverless Container
-and Event-Driven architecture. Uploading a file to Amazon S3 emits an event that
-is buffered in Amazon SQS and dispatched by an AWS Lambda job submitter to AWS Batch
-running on AWS Fargate. A container packaging FFmpeg is created only when there is work to
-do, produces up to six renditions from 144p to 1080p together with a master playlist and
-a thumbnail, uploads the result to a processed bucket, updates the metadata in MongoDB
-Atlas, and then terminates. Videos of five minutes or more are encoded as parallel chunks, and four
-hours of video was ready in 135 minutes at 8~vCPU. Content is delivered through Amazon CloudFront with Origin
-Access Control, and every stream is gated at the edge by CloudFront Signed Cookies, so that a
-viewer without a valid signature is rejected even when they know the exact manifest URL; a
-video's visibility setting governs who the backend will issue those cookies to, not whether
-the gate applies. Content is screened automatically and reviewed in a console that
-records each decision.
+This project designs, builds and evaluates a complete video sharing platform whose transcoding runs
+on serverless containers driven by events. An upload to Amazon S3 emits an event that Amazon SQS
+buffers and an AWS Lambda function submits to AWS Batch on AWS Fargate, where a container packaging
+FFmpeg exists only while it works: it produces up to six renditions from 144p to 1080p, a master
+playlist and a thumbnail, and then terminates. Videos of five minutes or more are split into chunks
+encoded in parallel. Amazon CloudFront delivers the streams, and Origin Access Control together with
+CloudFront Signed Cookies keeps a private video unreachable even to someone who knows its manifest
+URL. Uploads are screened with Amazon Rekognition, and staff review doubtful videos in a console
+whose recorded decisions make the error rates of the screening measurable. The infrastructure is
+described in thirteen Terraform modules, and seven GitHub Actions workflows run the tests, the
+security scans and the deployment.
 
-The entire AWS infrastructure is described as code using thirteen independent Terraform
-modules and can be provisioned with a single command. Seven GitHub Actions workflows
-automate linting, unit testing, static security analysis, container image scanning,
-infrastructure validation, and deployment, with a two-tier quality gate that blocks a pull
-request whenever a fixable critical vulnerability is detected.
-
-The system is evaluated along four dimensions: quality of experience, measured both as
-Time-to-First-Frame and, by driving the deployed player in a headless browser under emulated
-network conditions, as rebuffering ratio, bitrate switching and the bitrate a viewer actually
-receives; transcoding pipeline latency across 100~MB, 500~MB, and 1~GB inputs,
-scalability under a concurrent upload stress test, and operating cost compared against a
-traditional always-on Amazon EC2 deployment. The cost analysis shows that, for the
-architecture-dependent portion of the bill, the serverless approach removes almost all idle
-resource waste, although this advantage narrows as sustained utilisation increases.
+Measured on the deployed system, a four-hour video was ready 135 minutes after its upload at the
+production quota of 8~vCPU, and one hundred clips submitted at once were all processed without a
+failure. Measuring the time to first frame exposed a content delivery configuration that served
+Vietnam from Europe; correcting it cut the median from 727.69~ms to 110.32~ms. For the part of the
+bill that the architecture controls, the estimated monthly cost is 3.40~USD against 133.35~USD for
+an always-on instance. The saving comes from removing idle capacity, and it narrows as sustained
+utilisation rises.
