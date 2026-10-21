@@ -1,0 +1,32 @@
+sequenceDiagram
+    autonumber
+    actor Viewer as Browser
+    participant API as Backend API
+    participant DB as MongoDB
+    participant CF as CloudFront
+    participant S3 as S3 Processed
+
+    Viewer->>API: GET /videos/:id/<br/>playback-auth
+    API->>DB: Read video
+    API->>API: Access rule:<br/>visibility, moderation
+    alt Not allowed
+        API-->>Viewer: 404 private,<br/>403 removed
+    else Allowed
+        API->>API: Sign policy<br/>videos/{id}/*, 2 h
+        API-->>Viewer: 3 CloudFront cookies,<br/>Path=/videos/{id}/
+    end
+
+    Viewer->>CF: GET master.m3u8<br/>with cookies
+    CF->>CF: Verify signature,<br/>trusted key group
+    alt Valid cookie
+        CF->>S3: Cache miss:<br/>GET via OAC
+        S3-->>CF: Playlist
+        CF-->>Viewer: 200 playlist
+        loop Every segment
+            Viewer->>CF: GET segment
+            CF-->>Viewer: 200 segment
+        end
+    else Missing or expired
+        CF-->>Viewer: 403 at the edge
+        Note over Viewer,API: Player asks for new<br/>cookies, reloads source
+    end

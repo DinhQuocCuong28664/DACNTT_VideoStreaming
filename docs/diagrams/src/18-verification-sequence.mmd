@@ -1,0 +1,31 @@
+sequenceDiagram
+    autonumber
+    actor User as Browser
+    participant Google as Google
+    participant API as Backend API
+    participant DB as MongoDB
+    participant Mail as Mail server
+
+    User->>API: POST /auth/register
+    API->>API: Password policy,<br/>breach lookup
+    API->>DB: Unverified user,<br/>token hash, 24 h
+    API->>Mail: Link with raw token,<br/>max 5/h per address
+    API-->>User: 201, session token
+    Note over User,API: Browse, like, comment,<br/>but no upload until verified
+
+    alt Follows the link
+        User->>API: POST /auth/<br/>verify-email/:token
+        API->>DB: Conditional update:<br/>hash, not expired
+        API-->>User: 200, verified
+    else Google sign-in, same address
+        User->>Google: Sign in
+        Google-->>User: ID token
+        User->>API: POST /auth/google
+        API->>Google: Verify ID token
+        alt Local account unverified
+            API->>DB: Take over: no password,<br/>old tokens revoked
+            API-->>User: 200, session token
+        else Already verified
+            API-->>User: 409 EMAIL_IN_USE
+        end
+    end
