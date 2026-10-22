@@ -34,4 +34,12 @@ describe('thứ tự route của video', () => {
       expect(layer.route.stack[0].handle).toBe(auth);
     }
   });
+
+  it('reporting a comment requires sign-in and uses POST', () => {
+    const auth = require('../src/middleware/auth');
+    const index = indexOf('/comments/:commentId/report', 'post');
+    expect(index).toBeGreaterThanOrEqual(0);
+    const layer = videoRouter.stack.filter((l) => l.route)[index];
+    expect(layer.route.stack[0].handle).toBe(auth);
+  });
 });

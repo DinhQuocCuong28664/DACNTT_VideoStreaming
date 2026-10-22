@@ -12,6 +12,7 @@ const {
   decideVideo,
 } = require('../controllers/moderationController');
 const { listAppeals, resolveAppeal } = require('../controllers/appealController');
+const { listReportedComments, resolveCommentReports } = require('../controllers/commentReportController');
 const { createSample, listSamples, labelSample } = require('../controllers/auditController');
 const { listUsers, changeRole, listRoleChanges } = require('../controllers/userAdminController');
 
@@ -27,6 +28,13 @@ router.patch(
   requirePermission('moderation:review'),
   validateRequest(['decision', 'reasonCode']),
   decideVideo
+);
+router.get('/comments', requirePermission('moderation:review'), listReportedComments);
+router.patch(
+  '/comments/:id',
+  requirePermission('moderation:review'),
+  validateRequest(['decision']),
+  resolveCommentReports
 );
 router.get('/appeals', requirePermission('moderation:appeals'), listAppeals);
 router.patch('/appeals/:id', requirePermission('moderation:appeals'), validateRequest(['decision']), resolveAppeal);

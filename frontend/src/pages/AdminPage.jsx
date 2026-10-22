@@ -18,6 +18,7 @@ import useToast from '../components/Common/Toast';
 import { LoadMoreFooter } from '../components/Video/VideoListParts';
 import GuardedThumb from '../components/Admin/GuardedThumb';
 import AppealsPanel from '../components/Admin/AppealsPanel';
+import CommentReportsPanel from '../components/Admin/CommentReportsPanel';
 import AuditPanel from '../components/Admin/AuditPanel';
 import MetricsPanel from '../components/Admin/MetricsPanel';
 import EventsPanel from '../components/Admin/EventsPanel';
@@ -39,12 +40,16 @@ const PAGE_SIZE = 20;
 const TABS = [
   { key: 'review', permission: 'moderation:review', queue: true },
   { key: 'blocked', permission: 'moderation:review', queue: true },
+  { key: 'comments', permission: 'moderation:review' },
   { key: 'appeals', permission: 'moderation:appeals' },
   { key: 'audit', permission: 'moderation:audit' },
   { key: 'metrics', permission: 'metrics:read' },
   { key: 'events', permission: 'events:read' },
   { key: 'users', permission: 'users:manage' },
 ];
+
+/** Tabs that show a count from /admin/stats, and the stats field it comes from. */
+const TAB_COUNTS = { review: 'review', blocked: 'blocked', comments: 'reportedComments' };
 
 const nameOf = (user) => user?.displayName || user?.username || '?';
 
@@ -436,6 +441,7 @@ const AdminPage = () => {
   let panel = null;
   if (activeVisible) {
     if (active.queue) panel = <QueuePanel key={tab} tab={tab} onDecided={loadStats} />;
+    else if (tab === 'comments') panel = <CommentReportsPanel onChanged={loadStats} />;
     else if (tab === 'appeals') panel = <AppealsPanel onChanged={loadStats} />;
     else if (tab === 'audit') panel = <AuditPanel onChanged={loadStats} />;
     else if (tab === 'metrics') panel = <MetricsPanel />;
@@ -474,7 +480,9 @@ const AdminPage = () => {
             onClick={() => setTab(key)}
           >
             {t(`admin.tab.${key}`)}
-            {stats && (key === 'review' || key === 'blocked') && <span className="admin-tab-count tabular-nums">{stats[key]}</span>}
+            {stats && TAB_COUNTS[key] && (
+              <span className="admin-tab-count tabular-nums">{stats[TAB_COUNTS[key]]}</span>
+            )}
           </button>
         ))}
       </div>

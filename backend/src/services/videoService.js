@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const Video = require('../models/Video');
 const Comment = require('../models/Comment');
+const CommentReport = require('../models/CommentReport');
 const Report = require('../models/Report');
 const s3Service = require('./s3Service');
 const { publicListingFilter } = require('../utils/moderation');
@@ -473,46 +474,138 @@ const toggleDislike = async (videoId, userId) => {
   return { ...counts, hasDisliked: active };
 };
 
-/**
- * Get comments for a video (enforces visibility & READY status checks)
- */
-const getComments = async (videoId, page = 1, limit = 20, requesterUser = null) => {
-  await getVideoById(videoId, requesterUser);
+const COMMENT_AUTHOR_FIELDS = 'username displayName avatar';
 
-  const skip = (page - 1) * limit;
-
-  const [comments, total] = await Promise.all([
-    Comment.find({ video: videoId })
-      .populate('user', 'username displayName avatar')
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit),
-    Comment.countDocuments({ video: videoId }),
-  ]);
-
-  return { comments, total };
+const assertCommentId = (commentId) => {
+  if (!mongoose.Types.ObjectId.isValid(commentId)) {
+    const error = new Error('Invalid comment ID');
+    error.statusCode = 400;
+    throw error;
+  }
 };
 
 /**
- * Add a new comment (enforces visibility & READY status checks)
+ * One page of a keyset (cursor) listing. Asks for one document more than the
+ * page holds to learn whether another page exists; the cursor is the `_id` of
+ * the last document returned. ObjectIds grow with creation time, so `_id`
+ * order is posting order, and a comment added, deleted or pinned between two
+ * requests does not shift the next page the way `skip` would.
  */
-const addComment = async (videoId, userId, content) => {
+const cursorPage = (docs, limit) => {
+  const items = docs.slice(0, limit);
+  const nextCursor = docs.length > limit ? items[items.length - 1]._id : null;
+  return { items, nextCursor };
+};
+
+const assertCursor = (cursor) => {
+  if (cursor !== null && !mongoose.Types.ObjectId.isValid(cursor)) {
+    const error = new Error('Invalid cursor');
+    error.statusCode = 400;
+    throw error;
+  }
+};
+
+/**
+ * Top-level comments of a video, newest first (enforces visibility & READY
+ * status checks). The first page (no `before`) starts with the pinned
+ * comment, which the pages leave out so it never appears twice. `total`
+ * counts replies too: it is the number shown in the heading.
+ */
+const getComments = async (videoId, { limit = 20, before = null } = {}, requesterUser = null) => {
+  assertCursor(before);
+  const video = await getVideoById(videoId, requesterUser);
+  const pinnedId = video.pinnedComment || null;
+
+  const filter = { video: videoId, parentComment: null };
+  if (pinnedId || before) {
+    filter._id = {};
+    if (pinnedId) filter._id.$ne = pinnedId;
+    if (before) filter._id.$lt = before;
+  }
+
+  const [docs, total, pinned] = await Promise.all([
+    Comment.find(filter).populate('user', COMMENT_AUTHOR_FIELDS).sort({ _id: -1 }).limit(limit + 1),
+    Comment.countDocuments({ video: videoId }),
+    pinnedId && !before
+      ? Comment.findOne({ _id: pinnedId, video: videoId, parentComment: null }).populate('user', COMMENT_AUTHOR_FIELDS)
+      : null,
+  ]);
+  const { items, nextCursor } = cursorPage(docs, limit);
+
+  return {
+    comments: pinned ? [pinned, ...items] : items,
+    pinnedCommentId: pinnedId,
+    total,
+    nextCursor,
+  };
+};
+
+/**
+ * Replies to one top-level comment, oldest first so a conversation reads in
+ * order; `after` is the cursor from the previous page. Applies the visibility
+ * rule of the comment's video.
+ */
+const getReplies = async (commentId, { limit = 20, after = null } = {}, requesterUser = null) => {
+  assertCommentId(commentId);
+  assertCursor(after);
+  const parent = await Comment.findById(commentId).select('video parentComment');
+  if (!parent || parent.parentComment) {
+    const error = new Error('Comment not found');
+    error.statusCode = 404;
+    throw error;
+  }
+  await getVideoById(parent.video, requesterUser);
+
+  const filter = { parentComment: commentId };
+  if (after) filter._id = { $gt: after };
+  const [docs, total] = await Promise.all([
+    Comment.find(filter).populate('user', COMMENT_AUTHOR_FIELDS).sort({ _id: 1 }).limit(limit + 1),
+    Comment.countDocuments({ parentComment: commentId }),
+  ]);
+  const { items, nextCursor } = cursorPage(docs, limit);
+  return { replies: items, total, nextCursor };
+};
+
+/**
+ * Add a comment, or a reply when `parentId` is given (enforces visibility &
+ * READY status checks). Replies are one level deep: replying to a reply files
+ * the new comment under the same top-level comment.
+ */
+const addComment = async (videoId, userId, content, parentId = null) => {
   await getVideoById(videoId, { _id: userId });
+
+  let parent = null;
+  if (parentId) {
+    assertCommentId(parentId);
+    const target = await Comment.findById(parentId).select('video parentComment');
+    if (!target || target.video.toString() !== videoId.toString()) {
+      const error = new Error('Comment not found');
+      error.statusCode = 404;
+      throw error;
+    }
+    parent = target.parentComment || target._id;
+  }
 
   const comment = await Comment.create({
     video: videoId,
     user: userId,
     content,
+    parentComment: parent,
   });
 
-  return await comment.populate('user', 'username displayName avatar');
+  if (parent) await Comment.updateOne({ _id: parent }, { $inc: { replyCount: 1 } });
+
+  return await comment.populate('user', COMMENT_AUTHOR_FIELDS);
 };
 
 /**
- * Delete a comment (Author of comment OR Video owner can delete)
+ * Delete a comment (Author of comment OR Video owner can delete).
+ *
+ * Deleting a top-level comment deletes its replies too and unpins it;
+ * deleting a reply lowers its parent's reply count.
  */
 const deleteComment = async (commentId, userId) => {
-  const comment = await Comment.findById(commentId).populate('video', 'user');
+  const comment = await Comment.findById(commentId).populate('video', 'user pinnedComment');
   if (!comment) {
     const error = new Error('Comment not found');
     error.statusCode = 404;
@@ -528,8 +621,68 @@ const deleteComment = async (commentId, userId) => {
     throw error;
   }
 
-  await Comment.findByIdAndDelete(commentId);
+  await removeComment(comment);
   return comment;
+};
+
+/**
+ * Delete a loaded comment with everything that hangs off it, whoever asked
+ * (author, video owner, or staff acting on a report). `comment.video` must be
+ * populated with `pinnedComment`.
+ *
+ * A top-level comment takes its replies with it and is unpinned; a reply
+ * lowers its parent's reply count. Open reports of the deleted comments go
+ * too, as with a deleted video; resolved reports stay as the record of the
+ * staff decision.
+ */
+const removeComment = async (comment) => {
+  const commentId = comment._id;
+  const removedIds = [commentId];
+
+  await Comment.findByIdAndDelete(commentId);
+
+  if (comment.parentComment) {
+    await Comment.updateOne({ _id: comment.parentComment, replyCount: { $gt: 0 } }, { $inc: { replyCount: -1 } });
+  } else {
+    const replies = await Comment.find({ parentComment: commentId }).select('_id');
+    removedIds.push(...replies.map((r) => r._id));
+    await Comment.deleteMany({ parentComment: commentId });
+    if (comment.video && comment.video.pinnedComment && comment.video.pinnedComment.toString() === commentId.toString()) {
+      await Video.updateOne({ _id: comment.video._id, pinnedComment: comment.video.pinnedComment }, { $set: { pinnedComment: null } });
+    }
+  }
+  await CommentReport.deleteMany({ comment: { $in: removedIds }, status: 'open' });
+};
+
+/**
+ * Pin a top-level comment of one's own video, or unpin with null. Only the
+ * owner of the video may pin; a reply cannot be pinned.
+ */
+const setPinnedComment = async (videoId, userId, commentId) => {
+  if (!mongoose.Types.ObjectId.isValid(videoId)) {
+    const error = new Error('Invalid video ID');
+    error.statusCode = 400;
+    throw error;
+  }
+  const video = await Video.findOne({ _id: videoId, user: userId }).select('_id');
+  if (!video) {
+    const error = new Error('Video not found or not owned by user');
+    error.statusCode = 404;
+    throw error;
+  }
+
+  if (commentId) {
+    assertCommentId(commentId);
+    const comment = await Comment.findOne({ _id: commentId, video: videoId, parentComment: null }).select('_id');
+    if (!comment) {
+      const error = new Error('Only a top-level comment of this video can be pinned');
+      error.statusCode = 400;
+      throw error;
+    }
+  }
+
+  await Video.updateOne({ _id: videoId }, { $set: { pinnedComment: commentId || null } });
+  return { pinnedCommentId: commentId || null };
 };
 
 /**
@@ -592,6 +745,7 @@ const deleteVideo = async (videoId, userId) => {
   // 3. Delete comments and reports
   await Comment.deleteMany({ video: videoId });
   await Report.deleteMany({ video: videoId });
+  await CommentReport.deleteMany({ video: videoId });
 
   // 4. Delete DB record
   await Video.findByIdAndDelete(videoId);
@@ -747,8 +901,12 @@ module.exports = {
   toggleLike,
   toggleDislike,
   getComments,
+  getReplies,
   addComment,
   deleteComment,
+  removeComment,
+  COMMENT_AUTHOR_FIELDS,
+  setPinnedComment,
   updateVideo,
   deleteVideo,
   registerView,

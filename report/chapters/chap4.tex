@@ -537,9 +537,10 @@ component reimplements play and pause, seeking, volume, fullscreen, playback spe
 picture-in-picture and rendition selection within one settings menu.
 
 The player also decides when a view is counted. Instead of incrementing the counter when the page
-loads, which repeated refreshes could inflate, the component notifies the page only after five
-seconds of playback; the server also ignores repeated reports from the same
-viewer within thirty minutes and never counts the owner's own views.
+loads, which repeated refreshes could inflate, the component adds up the time actually played,
+leaving out seeks, and notifies the page after thirty seconds, or at the end of a video shorter
+than that; the server also ignores repeated reports from the same viewer within thirty minutes
+and never counts the owner's own views.
 
 The operations console is part of the same application, at its own address and reachable only by
 staff. Its tabs are the review queue, the removed videos, appeals, audit samples, the rates, the

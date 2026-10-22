@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const Video = require('../models/Video');
 const Report = require('../models/Report');
+const Comment = require('../models/Comment');
 const ModerationEvent = require('../models/ModerationEvent');
 const AuditSample = require('../models/AuditSample');
 const videoService = require('./videoService');
@@ -150,14 +151,16 @@ const listQueue = async (tab = 'review', page = 1, limit = 20, { includeEmail = 
 };
 
 const getStats = async () => {
-  const [review, blocked, openReports, autoBlocked] = await Promise.all([
+  const [review, blocked, openReports, autoBlocked, reportedComments] = await Promise.all([
     Video.countDocuments(QUEUE_TABS.review.filter),
     Video.countDocuments(QUEUE_TABS.blocked.filter),
     Report.countDocuments({ status: 'open' }),
     Video.countDocuments({ 'moderation.status': 'blocked', 'moderation.source': 'auto' }),
+    // Comments waiting in the reported-comments tab (commentReportService).
+    Comment.countDocuments({ openReports: { $gt: 0 } }),
   ]);
 
-  return { review, blocked, openReports, autoBlocked };
+  return { review, blocked, openReports, autoBlocked, reportedComments };
 };
 
 /** Toàn bộ báo cáo của một video (tối đa 100 gần nhất), mở lẫn đã xử lý. */

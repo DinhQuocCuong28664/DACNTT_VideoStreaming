@@ -277,7 +277,28 @@
     "ownerRemovedNotice": "Video của bạn đã bị gỡ vì vi phạm nguyên tắc cộng đồng và không phát được nữa. Chỉ bạn thấy trang này.",
     "ownerUnderReviewNotice": "Video của bạn đang chờ đội ngũ vận hành rà soát. Chỉ bạn thấy video này cho tới khi rà soát xong.",
     "adminNotice": "Bạn đang xem với quyền quản trị viên. Trạng thái kiểm duyệt: {{status}}.",
-    "moderationNote": "Ghi chú của quản trị viên: {{note}}"
+    "moderationNote": "Ghi chú của quản trị viên: {{note}}",
+    "commentFailed": "Không đăng được bình luận. Vui lòng thử lại.",
+    "commentsLoadFailed": "Không tải thêm được bình luận.",
+    "reply": "Phản hồi",
+    "replyPlaceholder": "Thêm phản hồi...",
+    "replyAriaLabel": "Viết phản hồi",
+    "repliesCount_one": "{{count}} phản hồi",
+    "repliesCount_other": "{{count}} phản hồi",
+    "repliesLoadFailed": "Không tải được các phản hồi.",
+    "loadingReplies": "Đang tải phản hồi...",
+    "moreReplies": "Hiện thêm phản hồi",
+    "moreComments": "Hiện thêm bình luận",
+    "loadingComments": "Đang tải...",
+    "confirmDeleteThread_one": "Xoá vĩnh viễn bình luận này cùng phản hồi của nó?",
+    "confirmDeleteThread_other": "Xoá vĩnh viễn bình luận này cùng {{count}} phản hồi?",
+    "pin": "Ghim",
+    "unpin": "Bỏ ghim",
+    "pinnedBy": "Được {{name}} ghim",
+    "pinned": "Đã ghim bình luận",
+    "unpinned": "Đã bỏ ghim bình luận",
+    "pinFailed": "Không đổi được bình luận đã ghim.",
+    "reportComment": "Báo cáo"
   },
   "player": {
     "authFailed": "Không xác thực được phiên xem video. Vui lòng tải lại trang.",
@@ -340,7 +361,19 @@
     },
     "themeHelp": "Chủ đề của thiết bị đi theo cài đặt của hệ điều hành.",
     "languageSection": "Ngôn ngữ",
-    "languageHelp": "Đổi ngôn ngữ của menu và nút bấm, không đổi tiêu đề video."
+    "languageHelp": "Đổi ngôn ngữ của menu và nút bấm, không đổi tiêu đề video.",
+    "profileSection": "Hồ sơ",
+    "usernameHelp": "Bạn đổi được tên người dùng hai lần trong 14 ngày. Liên kết kênh của bạn không đổi.",
+    "usernameChangesLeft_one": "Còn {{count}} lần đổi trong đợt này.",
+    "usernameChangesLeft_other": "Còn {{count}} lần đổi trong đợt này.",
+    "usernameLocked": "Bạn đã dùng hết hai lần đổi. Bạn đổi lại được tên người dùng vào {{date}}.",
+    "displayNameHelp": "Hiện trên kênh của bạn. Để trống thì hiện tên người dùng.",
+    "channelDescriptionLabel": "Mô tả kênh",
+    "saveProfile": "Lưu",
+    "savingProfile": "Đang lưu...",
+    "profileSaved": "Đã lưu hồ sơ của bạn.",
+    "profileFailed": "Không lưu được hồ sơ. Vui lòng thử lại.",
+    "profileLoadFailed": "Không tải được hồ sơ. Thay đổi có thể không được lưu."
   },
   "landing": {
     "heroSubtitle": "Tải lên một lần, VidShare tự chuyển mã thành các mức chất lượng từ 144p đến 1080p rồi phát qua CDN toàn cầu.",
@@ -414,7 +447,15 @@
     "submitting": "Đang gửi...",
     "success": "Cảm ơn bạn đã báo cáo. Đội ngũ vận hành sẽ xem xét video này.",
     "already": "Bạn đã báo cáo video này rồi. Đội ngũ vận hành đang xem xét.",
-    "failed": "Không gửi được báo cáo: {{message}}"
+    "failed": "Không gửi được báo cáo: {{message}}",
+    "comment": {
+      "title": "Báo cáo bình luận",
+      "question": "Bình luận này có vấn đề gì?",
+      "detailsPlaceholder": "Ví dụ: chứa đường dẫn tới trang lừa đảo",
+      "hint": "Người viết sẽ không biết ai đã báo cáo. Đội ngũ vận hành sẽ xem xét và gỡ bình luận nếu vi phạm.",
+      "success": "Cảm ơn bạn đã báo cáo. Đội ngũ vận hành sẽ xem xét bình luận này.",
+      "already": "Bạn đã báo cáo bình luận này rồi. Đội ngũ vận hành đang xem xét."
+    }
   },
   "admin": {
     "title": "Kiểm duyệt nội dung",
@@ -480,7 +521,8 @@
       "audit": "Kiểm tra mẫu",
       "metrics": "Độ chính xác",
       "events": "Nhật ký quyết định",
-      "users": "Đội ngũ"
+      "users": "Đội ngũ",
+      "comments": "Bình luận"
     },
     "signedInAs": "Đang đăng nhập với vai trò {{role}}",
     "roles": {
@@ -587,6 +629,19 @@
       "role": "Vai trò",
       "change": "Thay đổi",
       "changedToast": "{{name}} giờ là {{role}}"
+    },
+    "comments": {
+      "intro": "Bình luận bị người xem báo cáo, nhiều báo cáo nhất lên đầu. Giữ lại thì đóng các báo cáo; gỡ thì xoá bình luận cùng các phản hồi. Các quyết định này không tính vào số liệu độ chính xác của kiểm duyệt video.",
+      "empty": "Không có bình luận nào bị báo cáo",
+      "by": "Bình luận của {{name}}",
+      "isReply": "phản hồi",
+      "keep": "Giữ bình luận",
+      "remove": "Gỡ bình luận",
+      "confirmRemove": "Gỡ bình luận này với mọi người?",
+      "confirmRemoveThread_one": "Gỡ bình luận này cùng phản hồi của nó với mọi người?",
+      "confirmRemoveThread_other": "Gỡ bình luận này cùng {{count}} phản hồi với mọi người?",
+      "keptToast": "Đã giữ bình luận và đóng các báo cáo",
+      "removedToast": "Đã gỡ bình luận"
     }
   },
   "appeal": {

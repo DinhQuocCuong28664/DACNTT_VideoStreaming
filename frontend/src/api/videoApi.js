@@ -47,14 +47,24 @@ export const videoApi = {
   toggleDislike: (id) =>
     axiosClient.post(`/videos/${id}/dislike`),
 
-  getComments: (id, page = 1, limit = 20) =>
-    axiosClient.get(`/videos/${id}/comments`, { params: { page, limit } }),
+  // Pages by cursor: pass the `nextCursor` of the previous response as `before`.
+  getComments: (id, before = null, limit = 20) =>
+    axiosClient.get(`/videos/${id}/comments`, { params: before ? { before, limit } : { limit } }),
 
-  addComment: (id, content) =>
-    axiosClient.post(`/videos/${id}/comments`, { content }),
+  // `parentId` makes the comment a reply; a reply to a reply is filed under
+  // the same top-level comment by the server.
+  addComment: (id, content, parentId = null) =>
+    axiosClient.post(`/videos/${id}/comments`, parentId ? { content, parentId } : { content }),
+
+  getReplies: (commentId, after = null, limit = 20) =>
+    axiosClient.get(`/videos/comments/${commentId}/replies`, { params: after ? { after, limit } : { limit } }),
 
   deleteComment: (commentId) =>
     axiosClient.delete(`/videos/comments/${commentId}`),
+
+  // Owner only; `commentId` null unpins.
+  setPinnedComment: (id, commentId) =>
+    axiosClient.put(`/videos/${id}/pinned-comment`, { commentId }),
 
   updateVideo: (id, data) =>
     axiosClient.put(`/videos/${id}`, data),
@@ -65,6 +75,9 @@ export const videoApi = {
   /** reason: một trong REPORT_REASONS ở backend (src/utils/moderation.js) */
   reportVideo: (id, reason, details = '') =>
     axiosClient.post(`/videos/${id}/report`, { reason, details }),
+
+  reportComment: (commentId, reason, details = '') =>
+    axiosClient.post(`/videos/comments/${commentId}/report`, { reason, details }),
 
   /** Chủ video khiếu nại một video bị gỡ (một lần cho mỗi quyết định). */
   createAppeal: (id, message) => axiosClient.post(`/videos/${id}/appeal`, { message }),

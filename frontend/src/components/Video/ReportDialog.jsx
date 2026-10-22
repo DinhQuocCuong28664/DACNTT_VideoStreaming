@@ -12,9 +12,14 @@ const DETAILS_MAX = 500;
 /**
  * Hộp thoại báo cáo video kiểu YouTube: chọn một lý do, thêm mô tả nếu muốn.
  * Gửi xong thì đóng và để trang gọi hiện thông báo; lỗi hiện ngay trong hộp.
+ *
+ * With `commentId` it reports that comment instead of the video: same
+ * reasons, its own title and wording.
  */
-const ReportDialog = ({ videoId, onClose, onReported }) => {
+const ReportDialog = ({ videoId, commentId, onClose, onReported }) => {
   const { t } = useTranslation();
+  const forComment = Boolean(commentId);
+  const text = (key) => t(forComment ? `report.comment.${key}` : `report.${key}`);
   const [reason, setReason] = useState('');
   const [details, setDetails] = useState('');
   const [sending, setSending] = useState(false);
@@ -26,7 +31,9 @@ const ReportDialog = ({ videoId, onClose, onReported }) => {
     setSending(true);
     setError('');
     try {
-      const res = await videoApi.reportVideo(videoId, reason, details.trim());
+      const res = forComment
+        ? await videoApi.reportComment(commentId, reason, details.trim())
+        : await videoApi.reportVideo(videoId, reason, details.trim());
       onReported(Boolean(res.data?.data?.alreadyReported));
     } catch (err) {
       setError(err.response?.data?.message || err.message);
@@ -38,7 +45,7 @@ const ReportDialog = ({ videoId, onClose, onReported }) => {
     <Modal onClose={onClose} labelledBy="report-dialog-title" busy={sending} className="report-modal">
       <form className="dialog" onSubmit={handleSubmit}>
         <div className="dialog-header">
-          <h2 id="report-dialog-title" className="dialog-title">{t('report.title')}</h2>
+          <h2 id="report-dialog-title" className="dialog-title">{text('title')}</h2>
           <button
             type="button"
             className="btn-icon"
@@ -58,7 +65,7 @@ const ReportDialog = ({ videoId, onClose, onReported }) => {
           )}
 
           <fieldset className="report-reasons" disabled={sending}>
-            <legend className="radio-group-title">{t('report.question')}</legend>
+            <legend className="radio-group-title">{text('question')}</legend>
             <div className="radio-group">
               {REASONS.map((key) => (
                 <label key={key} className="radio-row">
@@ -86,12 +93,12 @@ const ReportDialog = ({ videoId, onClose, onReported }) => {
               value={details}
               onChange={(e) => setDetails(e.target.value)}
               maxLength={DETAILS_MAX}
-              placeholder={t('report.detailsPlaceholder')}
+              placeholder={text('detailsPlaceholder')}
               disabled={sending}
             />
           </label>
 
-          <p className="field-help">{t('report.hint')}</p>
+          <p className="field-help">{text('hint')}</p>
         </div>
 
         <div className="dialog-footer">

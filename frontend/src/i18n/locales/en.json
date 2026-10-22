@@ -280,7 +280,28 @@
     "ownerRemovedNotice": "Your video was removed for breaking the community guidelines and can no longer be played. Only you can see this page.",
     "ownerUnderReviewNotice": "Your video is waiting for a moderator to review it. Only you can see it until the review is done.",
     "adminNotice": "You are viewing this as an administrator. Moderation status: {{status}}.",
-    "moderationNote": "Moderator note: {{note}}"
+    "moderationNote": "Moderator note: {{note}}",
+    "commentFailed": "Could not post the comment. Please try again.",
+    "commentsLoadFailed": "Could not load more comments.",
+    "reply": "Reply",
+    "replyPlaceholder": "Add a reply...",
+    "replyAriaLabel": "Write a reply",
+    "repliesCount_one": "{{count}} reply",
+    "repliesCount_other": "{{count}} replies",
+    "repliesLoadFailed": "Could not load the replies.",
+    "loadingReplies": "Loading replies...",
+    "moreReplies": "Show more replies",
+    "moreComments": "Show more comments",
+    "loadingComments": "Loading...",
+    "confirmDeleteThread_one": "Delete this comment and its reply permanently?",
+    "confirmDeleteThread_other": "Delete this comment and its {{count}} replies permanently?",
+    "pin": "Pin",
+    "unpin": "Unpin",
+    "pinnedBy": "Pinned by {{name}}",
+    "pinned": "Comment pinned",
+    "unpinned": "Comment unpinned",
+    "pinFailed": "Could not change the pinned comment.",
+    "reportComment": "Report"
   },
   "player": {
     "authFailed": "Could not authorise this playback session. Please reload the page.",
@@ -343,7 +364,19 @@
     },
     "themeHelp": "Device theme follows your system setting.",
     "languageSection": "Language",
-    "languageHelp": "Changes the language of menus and buttons, not of video titles."
+    "languageHelp": "Changes the language of menus and buttons, not of video titles.",
+    "profileSection": "Profile",
+    "usernameHelp": "You can change your username twice in 14 days. Your channel link stays the same.",
+    "usernameChangesLeft_one": "{{count}} change left in this period.",
+    "usernameChangesLeft_other": "{{count}} changes left in this period.",
+    "usernameLocked": "You have used both changes. You can change your username again on {{date}}.",
+    "displayNameHelp": "Shown on your channel. Leave it empty to show your username.",
+    "channelDescriptionLabel": "Channel description",
+    "saveProfile": "Save",
+    "savingProfile": "Saving...",
+    "profileSaved": "Your profile has been saved.",
+    "profileFailed": "Could not save your profile. Please try again.",
+    "profileLoadFailed": "Could not load your profile. Changes may not be saved."
   },
   "landing": {
     "heroSubtitle": "Upload once and VidShare transcodes it into quality levels from 144p to 1080p, then streams it through a global CDN.",
@@ -417,7 +450,15 @@
     "submitting": "Sending...",
     "success": "Thanks for reporting. Our moderators will review this video.",
     "already": "You have already reported this video. Our moderators are reviewing it.",
-    "failed": "Couldn't send the report: {{message}}"
+    "failed": "Couldn't send the report: {{message}}",
+    "comment": {
+      "title": "Report comment",
+      "question": "What is wrong with this comment?",
+      "detailsPlaceholder": "For example: it links to a scam site",
+      "hint": "The author will not know who reported it. Moderators review the comment and remove it if it breaks the rules.",
+      "success": "Thanks for reporting. Moderators will review this comment.",
+      "already": "You have already reported this comment. Moderators are reviewing it."
+    }
   },
   "admin": {
     "title": "Content moderation",
@@ -484,7 +525,8 @@
       "audit": "Spot check",
       "metrics": "Accuracy",
       "events": "Decision log",
-      "users": "Team"
+      "users": "Team",
+      "comments": "Comments"
     },
     "signedInAs": "Signed in as {{role}}",
     "roles": {
@@ -591,6 +633,19 @@
       "role": "Role",
       "change": "Change",
       "changedToast": "{{name}} is now {{role}}"
+    },
+    "comments": {
+      "intro": "Comments that viewers reported, most reported first. Keeping a comment closes its reports; removing it deletes the comment and its replies. These decisions do not count toward the video accuracy figures.",
+      "empty": "No reported comments",
+      "by": "Comment by {{name}}",
+      "isReply": "reply",
+      "keep": "Keep comment",
+      "remove": "Remove comment",
+      "confirmRemove": "Remove this comment for everyone?",
+      "confirmRemoveThread_one": "Remove this comment and its reply for everyone?",
+      "confirmRemoveThread_other": "Remove this comment and its {{count}} replies for everyone?",
+      "keptToast": "Comment kept, reports closed",
+      "removedToast": "Comment removed"
     }
   },
   "appeal": {

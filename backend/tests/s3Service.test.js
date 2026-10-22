@@ -253,7 +253,10 @@ describe('Key ảnh đại diện', () => {
   });
 
   it('isAvatarKeyOf chỉ nhận key đúng dạng trong thư mục của chính người dùng', () => {
-    expect(s3Service.isAvatarKeyOf('u1', 'avatars/u1/1790000000000.webp')).toBe(true);
+    expect(s3Service.isAvatarKeyOf('u1', 'avatars/u1/1790000000000.png')).toBe(true);
+    expect(s3Service.isAvatarKeyOf('u1', 'avatars/u1/1790000000000.jpg')).toBe(true);
+    // Rekognition cannot screen WebP, so no new WebP avatar is accepted.
+    expect(s3Service.isAvatarKeyOf('u1', 'avatars/u1/1790000000000.webp')).toBe(false);
     expect(s3Service.isAvatarKeyOf('u1', 'avatars/u1/1790000000000.html')).toBe(false);
     expect(s3Service.isAvatarKeyOf('u1', 'avatars/u2/1790000000000.png')).toBe(false);
     expect(s3Service.isAvatarKeyOf('u1', 'avatars/u1/../u2/1.png')).toBe(false);
