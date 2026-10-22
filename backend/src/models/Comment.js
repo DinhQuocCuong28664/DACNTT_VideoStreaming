@@ -35,6 +35,11 @@ const commentSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    /** Open viewer reports (CommentReport); above 0 puts the comment in the staff queue. */
+    openReports: {
+      type: Number,
+      default: 0,
+    },
   },
   {
     timestamps: true,
@@ -45,6 +50,12 @@ const commentSchema = new mongoose.Schema(
 // oldest first. Both lists page by `_id` (keyset pagination).
 commentSchema.index({ video: 1, parentComment: 1, _id: -1 });
 commentSchema.index({ parentComment: 1, _id: 1 });
+// The staff queue of reported comments, most reported first. Partial, so the
+// index only holds the few comments that have open reports.
+commentSchema.index(
+  { openReports: -1, _id: -1 },
+  { partialFilterExpression: { openReports: { $gt: 0 } } }
+);
 
 commentSchema.methods.toJSON = function () {
   const comment = this.toObject();

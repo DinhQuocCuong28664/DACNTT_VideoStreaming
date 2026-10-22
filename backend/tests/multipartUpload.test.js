@@ -9,6 +9,7 @@ const limits = require('../src/config/uploadLimits');
 jest.mock('../src/models/Video');
 jest.mock('../src/models/Comment');
 jest.mock('../src/models/Report');
+jest.mock('../src/models/CommentReport');
 jest.mock('../src/services/s3Service');
 
 const MiB = 1024 * 1024;

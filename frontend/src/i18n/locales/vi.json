@@ -297,7 +297,8 @@
     "pinnedBy": "Được {{name}} ghim",
     "pinned": "Đã ghim bình luận",
     "unpinned": "Đã bỏ ghim bình luận",
-    "pinFailed": "Không đổi được bình luận đã ghim."
+    "pinFailed": "Không đổi được bình luận đã ghim.",
+    "reportComment": "Báo cáo"
   },
   "player": {
     "authFailed": "Không xác thực được phiên xem video. Vui lòng tải lại trang.",
@@ -446,7 +447,15 @@
     "submitting": "Đang gửi...",
     "success": "Cảm ơn bạn đã báo cáo. Đội ngũ vận hành sẽ xem xét video này.",
     "already": "Bạn đã báo cáo video này rồi. Đội ngũ vận hành đang xem xét.",
-    "failed": "Không gửi được báo cáo: {{message}}"
+    "failed": "Không gửi được báo cáo: {{message}}",
+    "comment": {
+      "title": "Báo cáo bình luận",
+      "question": "Bình luận này có vấn đề gì?",
+      "detailsPlaceholder": "Ví dụ: chứa đường dẫn tới trang lừa đảo",
+      "hint": "Người viết sẽ không biết ai đã báo cáo. Đội ngũ vận hành sẽ xem xét và gỡ bình luận nếu vi phạm.",
+      "success": "Cảm ơn bạn đã báo cáo. Đội ngũ vận hành sẽ xem xét bình luận này.",
+      "already": "Bạn đã báo cáo bình luận này rồi. Đội ngũ vận hành đang xem xét."
+    }
   },
   "admin": {
     "title": "Kiểm duyệt nội dung",
@@ -512,7 +521,8 @@
       "audit": "Kiểm tra mẫu",
       "metrics": "Độ chính xác",
       "events": "Nhật ký quyết định",
-      "users": "Đội ngũ"
+      "users": "Đội ngũ",
+      "comments": "Bình luận"
     },
     "signedInAs": "Đang đăng nhập với vai trò {{role}}",
     "roles": {
@@ -619,6 +629,19 @@
       "role": "Vai trò",
       "change": "Thay đổi",
       "changedToast": "{{name}} giờ là {{role}}"
+    },
+    "comments": {
+      "intro": "Bình luận bị người xem báo cáo, nhiều báo cáo nhất lên đầu. Giữ lại thì đóng các báo cáo; gỡ thì xoá bình luận cùng các phản hồi. Các quyết định này không tính vào số liệu độ chính xác của kiểm duyệt video.",
+      "empty": "Không có bình luận nào bị báo cáo",
+      "by": "Bình luận của {{name}}",
+      "isReply": "phản hồi",
+      "keep": "Giữ bình luận",
+      "remove": "Gỡ bình luận",
+      "confirmRemove": "Gỡ bình luận này với mọi người?",
+      "confirmRemoveThread_one": "Gỡ bình luận này cùng phản hồi của nó với mọi người?",
+      "confirmRemoveThread_other": "Gỡ bình luận này cùng {{count}} phản hồi với mọi người?",
+      "keptToast": "Đã giữ bình luận và đóng các báo cáo",
+      "removedToast": "Đã gỡ bình luận"
     }
   },
   "appeal": {

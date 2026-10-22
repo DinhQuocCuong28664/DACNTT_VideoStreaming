@@ -1,9 +1,18 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { MdExpandLess, MdExpandMore, MdMoreVert, MdOutlineDelete, MdOutlinePushPin, MdPushPin } from 'react-icons/md';
+import {
+  MdExpandLess,
+  MdExpandMore,
+  MdMoreVert,
+  MdOutlineDelete,
+  MdOutlinedFlag,
+  MdOutlinePushPin,
+  MdPushPin,
+} from 'react-icons/md';
 import Avatar from '../Common/Avatar';
 import ConfirmDialog from '../Common/ConfirmDialog';
+import ReportDialog from './ReportDialog';
 import useToast from '../Common/Toast';
 import { useAuth } from '../../context/useAuth';
 import videoApi from '../../api/videoApi';
@@ -170,6 +179,7 @@ const CommentSection = ({ videoId, videoOwner }) => {
   const [replyingTo, setReplyingTo] = useState(null);
   const [openMenu, setOpenMenu] = useState(null);
   const [pendingDelete, setPendingDelete] = useState(null);
+  const [reporting, setReporting] = useState(null);
 
   const isVideoOwner = Boolean(currentUser && videoOwner && currentUser._id === videoOwner._id);
   const ownerName = videoOwner?.username ? `@${videoOwner.username}` : '';
@@ -394,15 +404,39 @@ const CommentSection = ({ videoId, videoOwner }) => {
         icon: MdOutlineDelete,
         label: t('watch.deleteComment'),
         onSelect: (e) => {
-          // Focus the menu's trigger before the menu unmounts, so the dialog
-          // hands focus back there when it closes.
-          e.currentTarget.closest('.comment-menu')?.querySelector('.comment-menu-trigger')?.focus();
+          focusTrigger(e);
           setOpenMenu(null);
           setPendingDelete(comment);
         },
       });
     }
+    // Anyone but the author may report; a guest is sent to sign in first.
+    if (currentUser?._id !== comment.user?._id) {
+      actions.push({
+        key: 'report',
+        icon: MdOutlinedFlag,
+        label: t('watch.reportComment'),
+        onSelect: (e) => {
+          setOpenMenu(null);
+          if (!isAuthenticated) return goToLogin();
+          focusTrigger(e);
+          setReporting(comment);
+          return undefined;
+        },
+      });
+    }
     return actions;
+  };
+
+  // Focus the menu's trigger before the menu unmounts, so a dialog opened
+  // from the menu hands focus back there when it closes.
+  const focusTrigger = (e) => {
+    e.currentTarget.closest('.comment-menu')?.querySelector('.comment-menu-trigger')?.focus();
+  };
+
+  const handleReported = (alreadyReported) => {
+    setReporting(null);
+    showToast(alreadyReported ? t('report.comment.already') : t('report.comment.success'));
   };
 
   const renderItem = (comment, extra = null) => (
@@ -517,6 +551,9 @@ const CommentSection = ({ videoId, videoOwner }) => {
           onConfirm={confirmDelete}
           onClose={() => setPendingDelete(null)}
         />
+      )}
+      {reporting && (
+        <ReportDialog commentId={reporting._id} onClose={() => setReporting(null)} onReported={handleReported} />
       )}
       {toast}
     </section>

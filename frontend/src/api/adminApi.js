@@ -17,6 +17,11 @@ export const adminApi = {
   decide: (videoId, decision, reasonCode, note = '') =>
     axiosClient.patch(`/admin/videos/${videoId}/moderation`, { decision, reasonCode, note }),
 
+  // Reported comments (moderation:review)
+  getReportedComments: (page = 1, limit = 20) => axiosClient.get('/admin/comments', { params: { page, limit } }),
+  /** decision: 'dismiss' | 'remove' */
+  resolveCommentReports: (commentId, decision) => axiosClient.patch(`/admin/comments/${commentId}`, { decision }),
+
   // Khiếu nại của chủ video
   getAppeals: (status = 'open', page = 1, limit = 20) =>
     axiosClient.get('/admin/appeals', { params: { status, page, limit } }),

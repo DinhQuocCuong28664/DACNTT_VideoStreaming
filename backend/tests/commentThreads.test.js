@@ -5,6 +5,7 @@ const Comment = require('../src/models/Comment');
 
 jest.mock('../src/models/Video');
 jest.mock('../src/models/Comment');
+jest.mock('../src/models/CommentReport');
 jest.mock('../src/services/s3Service');
 
 const id = () => new mongoose.Types.ObjectId();
@@ -198,6 +199,7 @@ describe('Comment threads and pinning', () => {
   describe('deleteComment', () => {
     beforeEach(() => {
       Comment.findByIdAndDelete.mockResolvedValue({});
+      Comment.find.mockReturnValue(chain([]));
       Comment.deleteMany.mockResolvedValue({});
       Comment.updateOne.mockResolvedValue({});
       Video.updateOne.mockResolvedValue({});
@@ -211,7 +213,7 @@ describe('Comment threads and pinning', () => {
 
       await videoService.deleteComment(commentId.toString(), ownerId);
 
-      expect(Comment.deleteMany).toHaveBeenCalledWith({ parentComment: commentId.toString() });
+      expect(Comment.deleteMany).toHaveBeenCalledWith({ parentComment: commentId });
       expect(Video.updateOne).toHaveBeenCalledWith({ _id: videoId, pinnedComment: commentId }, { $set: { pinnedComment: null } });
     });
 

@@ -7,6 +7,7 @@ const s3Service = require('../src/services/s3Service');
 // Mock dependencies
 jest.mock('../src/models/Video');
 jest.mock('../src/models/Comment');
+jest.mock('../src/models/CommentReport');
 jest.mock('../src/services/s3Service');
 
 describe('videoService Unit Tests', () => {
@@ -127,6 +128,11 @@ describe('videoService Unit Tests', () => {
       user: commentAuthorId,
       video: { _id: 'vid123', user: videoOwnerId },
     };
+
+    // A top-level comment: deleting it looks up its replies.
+    beforeEach(() => {
+      Comment.find.mockReturnValue({ select: jest.fn().mockResolvedValue([]) });
+    });
 
     it('should allow comment author to delete comment', async () => {
       Comment.findById.mockReturnValue({

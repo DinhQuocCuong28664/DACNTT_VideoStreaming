@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const Video = require('../models/Video');
 const Comment = require('../models/Comment');
+const CommentReport = require('../models/CommentReport');
 const Report = require('../models/Report');
 const s3Service = require('./s3Service');
 const { publicListingFilter } = require('../utils/moderation');
@@ -620,17 +621,37 @@ const deleteComment = async (commentId, userId) => {
     throw error;
   }
 
+  await removeComment(comment);
+  return comment;
+};
+
+/**
+ * Delete a loaded comment with everything that hangs off it, whoever asked
+ * (author, video owner, or staff acting on a report). `comment.video` must be
+ * populated with `pinnedComment`.
+ *
+ * A top-level comment takes its replies with it and is unpinned; a reply
+ * lowers its parent's reply count. Open reports of the deleted comments go
+ * too, as with a deleted video; resolved reports stay as the record of the
+ * staff decision.
+ */
+const removeComment = async (comment) => {
+  const commentId = comment._id;
+  const removedIds = [commentId];
+
   await Comment.findByIdAndDelete(commentId);
 
   if (comment.parentComment) {
     await Comment.updateOne({ _id: comment.parentComment, replyCount: { $gt: 0 } }, { $inc: { replyCount: -1 } });
   } else {
+    const replies = await Comment.find({ parentComment: commentId }).select('_id');
+    removedIds.push(...replies.map((r) => r._id));
     await Comment.deleteMany({ parentComment: commentId });
     if (comment.video && comment.video.pinnedComment && comment.video.pinnedComment.toString() === commentId.toString()) {
       await Video.updateOne({ _id: comment.video._id, pinnedComment: comment.video.pinnedComment }, { $set: { pinnedComment: null } });
     }
   }
-  return comment;
+  await CommentReport.deleteMany({ comment: { $in: removedIds }, status: 'open' });
 };
 
 /**
@@ -724,6 +745,7 @@ const deleteVideo = async (videoId, userId) => {
   // 3. Delete comments and reports
   await Comment.deleteMany({ video: videoId });
   await Report.deleteMany({ video: videoId });
+  await CommentReport.deleteMany({ video: videoId });
 
   // 4. Delete DB record
   await Video.findByIdAndDelete(videoId);
@@ -882,6 +904,8 @@ module.exports = {
   getReplies,
   addComment,
   deleteComment,
+  removeComment,
+  COMMENT_AUTHOR_FIELDS,
   setPinnedComment,
   updateVideo,
   deleteVideo,
