@@ -57,9 +57,13 @@ commentSchema.index(
   { partialFilterExpression: { openReports: { $gt: 0 } } }
 );
 
+// The report count is for staff only: shown to everyone it would tell a
+// reporter, or a group reporting together, whether their reports landed. The
+// staff queue reads comments with `.lean()`, which skips this method.
 commentSchema.methods.toJSON = function () {
   const comment = this.toObject();
   delete comment.__v;
+  delete comment.openReports;
   return comment;
 };
 
