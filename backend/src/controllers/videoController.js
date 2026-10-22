@@ -233,16 +233,21 @@ const toggleDislike = async (req, res, next) => {
   }
 };
 
+// A cursor from the query string; `?before=a&before=b` arrives as an array and
+// is treated as absent.
+const cursorParam = (value) => (typeof value === 'string' && value ? value : null);
+
 /**
  * @route   GET /api/videos/:id/comments
- * @desc    Get comments for video
+ * @desc    Top-level comments, newest first; `?before=<nextCursor>` for the next page
  * @access  Public
  */
 const getComments = async (req, res, next) => {
   try {
-    const { page, limit } = parsePaging(req.query, 20);
+    const { limit } = parsePaging(req.query, 20);
+    const before = cursorParam(req.query.before);
 
-    const result = await videoService.getComments(req.params.id, page, limit, req.user);
+    const result = await videoService.getComments(req.params.id, { limit, before }, req.user);
 
     res.status(200).json({
       success: true,
@@ -260,17 +265,48 @@ const getComments = async (req, res, next) => {
  */
 const addComment = async (req, res, next) => {
   try {
-    const { content } = req.body;
-    if (!content || !content.trim()) {
+    const { content, parentId } = req.body;
+    if (typeof content !== 'string' || !content.trim()) {
       return res.status(400).json({ success: false, message: 'Content is required' });
     }
 
-    const comment = await videoService.addComment(req.params.id, req.user._id, content);
+    const comment = await videoService.addComment(req.params.id, req.user._id, content, parentId || null);
 
     res.status(201).json({
       success: true,
       data: { comment },
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @route   GET /api/videos/comments/:commentId/replies
+ * @desc    Replies to one top-level comment, oldest first; `?after=<nextCursor>` for the next page
+ * @access  Public (same visibility rule as the video)
+ */
+const getReplies = async (req, res, next) => {
+  try {
+    const { limit } = parsePaging(req.query, 20);
+    const after = cursorParam(req.query.after);
+    const result = await videoService.getReplies(req.params.commentId, { limit, after }, req.user);
+    res.status(200).json({ success: true, data: result });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @route   PUT /api/videos/:id/pinned-comment
+ * @desc    Pin a top-level comment of one's own video, or unpin with null
+ * @access  Private (video owner)
+ */
+const setPinnedComment = async (req, res, next) => {
+  try {
+    const { commentId } = req.body || {};
+    const result = await videoService.setPinnedComment(req.params.id, req.user._id, commentId || null);
+    res.status(200).json({ success: true, data: result });
   } catch (error) {
     next(error);
   }
@@ -404,8 +440,10 @@ module.exports = {
   toggleLike,
   toggleDislike,
   getComments,
+  getReplies,
   addComment,
   deleteComment,
+  setPinnedComment,
   updateVideo,
   deleteVideo,
 };

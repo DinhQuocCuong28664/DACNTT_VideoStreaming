@@ -93,6 +93,13 @@ const videoSchema = new mongoose.Schema(
       default: 'public',
     },
 
+    /** A top-level comment the owner pinned above the others, or null. */
+    pinnedComment: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Comment',
+      default: null,
+    },
+
     /**
      * Kiểm duyệt nội dung.
      *

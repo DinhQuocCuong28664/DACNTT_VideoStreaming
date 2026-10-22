@@ -8,24 +8,22 @@ import {
   MdThumbDown,
   MdOutlineShare,
   MdCheck,
-  MdMoreVert,
   MdErrorOutline,
-  MdOutlineDelete,
   MdOutlinedFlag,
   MdBlock,
   MdOutlineShield,
 } from 'react-icons/md';
 import Avatar from '../components/Common/Avatar';
-import ConfirmDialog from '../components/Common/ConfirmDialog';
 import useToast from '../components/Common/Toast';
 import { useAuth } from '../context/useAuth';
 import videoApi from '../api/videoApi';
 import VideoPlayer from '../components/Video/VideoPlayer';
+import CommentSection from '../components/Video/CommentSection';
 import VideoCard from '../components/Video/VideoCard';
 import ReportDialog from '../components/Video/ReportDialog';
 import AppealBox from '../components/Video/AppealBox';
 import { can } from '../utils/roles';
-import { formatViews, formatDate, timeAgo } from '../utils/format';
+import { formatViews, formatDate } from '../utils/format';
 import { parseStartTime } from '../utils/startTime';
 import './WatchPage.css';
 
@@ -56,14 +54,6 @@ const WatchPage = () => {
   const [hasLiked, setHasLiked] = useState(false);
   const [hasDisliked, setHasDisliked] = useState(false);
 
-  // Comment state
-  const [comments, setComments] = useState([]);
-  const [newComment, setNewComment] = useState('');
-  const [postingComment, setPostingComment] = useState(false);
-  const [composerFocused, setComposerFocused] = useState(false);
-  const [openCommentMenu, setOpenCommentMenu] = useState(null);
-  const [pendingDeleteComment, setPendingDeleteComment] = useState(null);
-
   // Related videos state
   const [relatedVideos, setRelatedVideos] = useState([]);
   const [relatedFilter, setRelatedFilter] = useState('all');
@@ -71,15 +61,14 @@ const WatchPage = () => {
   const [descExpanded, setDescExpanded] = useState(false);
 
   useEffect(() => {
-    const fetchVideoAndComments = async () => {
+    const fetchVideo = async () => {
       setLoading(true);
       setDescExpanded(false);
       setRelatedFilter('all');
       setUnavailable(null);
       try {
-        const [videoRes, commentsRes, relatedRes] = await Promise.all([
+        const [videoRes, relatedRes] = await Promise.all([
           videoApi.getVideoById(id),
-          videoApi.getComments(id),
           videoApi.getRelatedVideos(id, 10).catch(() => ({ data: { data: { videos: [] } } })),
         ]);
 
@@ -92,8 +81,6 @@ const WatchPage = () => {
         // API chỉ trả số lượng; lựa chọn của chính người xem nằm ở viewerReaction.
         setHasLiked(v.viewerReaction === 'like');
         setHasDisliked(v.viewerReaction === 'dislike');
-
-        setComments(commentsRes.data.data.comments || []);
 
         // Xin CloudFront Signed Cookie TRƯỚC khi dựng trình phát. Nếu khởi tạo
         // HLS.js trước, các yêu cầu tải manifest đầu tiên sẽ bị CloudFront từ
@@ -116,14 +103,14 @@ const WatchPage = () => {
         if (code === 'VIDEO_REMOVED' || code === 'VIDEO_UNDER_REVIEW') {
           setUnavailable(code);
         } else {
-          console.error('Failed to load video or comments:', err);
+          console.error('Failed to load video:', err);
         }
       } finally {
         setLoading(false);
       }
     };
 
-    fetchVideoAndComments();
+    fetchVideo();
   }, [id, currentUser, isAdmin]);
 
   // Video còn đang xử lý — tự động kiểm tra lại định kỳ để chuyển sang phát
@@ -155,22 +142,6 @@ const WatchPage = () => {
 
     return () => clearInterval(interval);
   }, [id, video?.status, isAdmin]);
-
-  // Đóng menu ba chấm của bình luận khi bấm ra ngoài hoặc nhấn Esc.
-  useEffect(() => {
-    if (!openCommentMenu) return undefined;
-    const close = (e) => {
-      if (e.type === 'keydown' && e.key !== 'Escape') return;
-      if (e.type === 'mousedown' && e.target.closest('.comment-menu')) return;
-      setOpenCommentMenu(null);
-    };
-    document.addEventListener('mousedown', close);
-    document.addEventListener('keydown', close);
-    return () => {
-      document.removeEventListener('mousedown', close);
-      document.removeEventListener('keydown', close);
-    };
-  }, [openCommentMenu]);
 
   /**
    * Được trình phát gọi một lần sau khi video đã phát đủ ngưỡng thời gian.
@@ -229,45 +200,6 @@ const WatchPage = () => {
       if (hasLiked) setHasLiked(false);
     } catch (err) {
       console.error('Failed to toggle dislike:', err);
-    }
-  };
-
-  const handleAddComment = async (e) => {
-    e.preventDefault();
-    if (!newComment.trim()) return;
-    if (!isAuthenticated) return goToLogin();
-
-    setPostingComment(true);
-    try {
-      const res = await videoApi.addComment(id, newComment.trim());
-      setComments([res.data.data.comment, ...comments]);
-      setNewComment('');
-      setComposerFocused(false);
-    } catch (err) {
-      console.error('Failed to post comment:', err);
-    } finally {
-      setPostingComment(false);
-    }
-  };
-
-  const handleDeleteComment = (commentId, e) => {
-    // Move focus to the menu's trigger before the menu unmounts, so the
-    // confirm dialog hands focus back there when it closes.
-    e.currentTarget.closest('.comment-menu')?.querySelector('.comment-menu-trigger')?.focus();
-    setOpenCommentMenu(null);
-    setPendingDeleteComment(commentId);
-  };
-
-  const confirmDeleteComment = async () => {
-    const commentId = pendingDeleteComment;
-    try {
-      await videoApi.deleteComment(commentId);
-      setComments((prev) => prev.filter((c) => c._id !== commentId));
-    } catch (err) {
-      console.error('Failed to delete comment:', err);
-      showToast(t('watch.deleteCommentFailed'));
-    } finally {
-      setPendingDeleteComment(null);
     }
   };
 
@@ -339,9 +271,6 @@ const WatchPage = () => {
   const locale = i18n.resolvedLanguage === 'en' ? 'en-US' : 'vi-VN';
   // `?t=90` or `?t=1m30s` from a shared "at current time" link
   const startTime = parseStartTime(new URLSearchParams(location.search).get('t'));
-
-  const canDelete = (c) =>
-    currentUser && (currentUser._id === c.user?._id || currentUser._id === user._id);
 
   const fromChannel = relatedVideos.filter((v) => v.user?._id === user._id);
   const shownRelated = relatedFilter === 'channel' ? fromChannel : relatedVideos;
@@ -493,112 +422,7 @@ const WatchPage = () => {
             )}
           </div>
 
-          {/* Bình luận */}
-          <section className="comments-section" aria-labelledby="comments-heading">
-            <h2 id="comments-heading" className="comments-heading">
-              {t('watch.commentsHeading', { count: comments.length })}
-            </h2>
-
-            {isAuthenticated ? (
-              <form onSubmit={handleAddComment} className="comment-form">
-                <Avatar
-                  src={currentUser?.avatar}
-                  className="comment-avatar"
-                  fallbackClassName="avatar-placeholder comment-avatar"
-                >
-                  {currentUser?.username?.charAt(0).toUpperCase()}
-                </Avatar>
-                <div className="comment-form-body">
-                  <input
-                    type="text"
-                    className="comment-input"
-                    placeholder={t('watch.commentPlaceholder')}
-                    value={newComment}
-                    onChange={(e) => setNewComment(e.target.value)}
-                    onFocus={() => setComposerFocused(true)}
-                    aria-label={t('watch.commentAriaLabel')}
-                  />
-                  {(composerFocused || newComment) && (
-                    <div className="comment-form-actions">
-                      <button
-                        type="button"
-                        className="btn btn-plain"
-                        onClick={() => {
-                          setNewComment('');
-                          setComposerFocused(false);
-                        }}
-                      >
-                        {t('common.cancel')}
-                      </button>
-                      <button
-                        type="submit"
-                        className="btn btn-primary"
-                        disabled={postingComment || !newComment.trim()}
-                      >
-                        {postingComment ? t('watch.commentSubmitting') : t('watch.commentSubmit')}
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </form>
-            ) : (
-              <p className="comment-login-hint">
-                <Link to="/login" state={{ from: location.pathname }}>
-                  {t('nav.login')}
-                </Link>{' '}
-                {t('watch.loginPrompt')}
-              </p>
-            )}
-
-            <div className="comment-list">
-              {comments.map((c) => (
-                <article key={c._id} className="comment-item">
-                  <Avatar
-                    src={c.user?.avatar}
-                    className="comment-avatar"
-                    fallbackClassName="avatar-placeholder comment-avatar"
-                  >
-                    {c.user?.username?.charAt(0).toUpperCase() || '?'}
-                  </Avatar>
-                  <div className="comment-body">
-                    <p className="comment-head">
-                      <Link to={`/channel/${c.user?._id}`} className="comment-author">
-                        @{c.user?.username}
-                      </Link>
-                      {c.createdAt && <span className="comment-time">{timeAgo(t, c.createdAt)}</span>}
-                    </p>
-                    <p className="comment-text">{c.content}</p>
-                  </div>
-                  {canDelete(c) && (
-                    <div className="comment-menu">
-                      <button
-                        type="button"
-                        className="btn-icon comment-menu-trigger"
-                        onClick={() => setOpenCommentMenu(openCommentMenu === c._id ? null : c._id)}
-                        aria-label={t('watch.commentActions')}
-                        aria-expanded={openCommentMenu === c._id}
-                        aria-haspopup="menu"
-                      >
-                        <MdMoreVert />
-                      </button>
-                      {openCommentMenu === c._id && (
-                        <div className="menu-panel comment-menu-panel" role="menu">
-                          <button
-                            type="button"
-                            className="dropdown-item"
-                            onClick={(e) => handleDeleteComment(c._id, e)}
-                          >
-                            <MdOutlineDelete />
-                            <span>{t('watch.deleteComment')}</span>
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </article>
-              ))}
-            </div>
-          </section>
+          <CommentSection videoId={id} videoOwner={user} />
         </div>
 
         {/* Cột phải: video tiếp theo */}
@@ -637,16 +461,6 @@ const WatchPage = () => {
 
       {reportOpen && (
         <ReportDialog videoId={id} onClose={() => setReportOpen(false)} onReported={handleReported} />
-      )}
-      {pendingDeleteComment && (
-        <ConfirmDialog
-          title={t('watch.deleteComment')}
-          message={t('watch.confirmDeleteComment')}
-          confirmLabel={t('common.delete')}
-          danger
-          onConfirm={confirmDeleteComment}
-          onClose={() => setPendingDeleteComment(null)}
-        />
       )}
       {toast}
     </div>
