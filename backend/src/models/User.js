@@ -70,6 +70,24 @@ const userSchema = new mongoose.Schema(
       default: 0,
     },
     /**
+     * Recent username changes, newest last, at most ten kept. The profile
+     * service allows two changes in fourteen days, as YouTube does for
+     * handles, and reads the window from here. Channel links use the user id,
+     * so an old username needs no redirect and is free for others at once.
+     */
+    usernameChanges: {
+      type: [
+        {
+          _id: false,
+          from: String,
+          to: String,
+          changedAt: Date,
+        },
+      ],
+      default: undefined,
+      select: false,
+    },
+    /**
      * Vai trò (xem utils/roles.js). `admin`, `operator` và `auditor` mở trang vận
      * hành /admin với quyền khác nhau.
      *
@@ -193,6 +211,7 @@ userSchema.methods.toJSON = function () {
   delete user.resetPasswordExpire;
   delete user.emailVerificationToken;
   delete user.emailVerificationExpire;
+  delete user.usernameChanges;
   delete user.__v;
   // Giao diện chỉ cần biết kết quả, không cần tự suy ra từ googleId.
   user.emailVerified = this.hasVerifiedEmail();

@@ -69,6 +69,23 @@
   min-width: 0;
 }
 
+.settings-profile-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  max-width: 560px;
+}
+
+.settings-profile-form .field-help {
+  margin-top: var(--space-xs);
+}
+
+.settings-profile-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-sm);
+}
+
 .settings-desc {
   margin-bottom: var(--space-md);
   font-size: var(--font-size-sm);

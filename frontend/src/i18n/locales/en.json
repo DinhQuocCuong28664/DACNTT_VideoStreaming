@@ -343,7 +343,19 @@
     },
     "themeHelp": "Device theme follows your system setting.",
     "languageSection": "Language",
-    "languageHelp": "Changes the language of menus and buttons, not of video titles."
+    "languageHelp": "Changes the language of menus and buttons, not of video titles.",
+    "profileSection": "Profile",
+    "usernameHelp": "You can change your username twice in 14 days. Your channel link stays the same.",
+    "usernameChangesLeft_one": "{{count}} change left in this period.",
+    "usernameChangesLeft_other": "{{count}} changes left in this period.",
+    "usernameLocked": "You have used both changes. You can change your username again on {{date}}.",
+    "displayNameHelp": "Shown on your channel. Leave it empty to show your username.",
+    "channelDescriptionLabel": "Channel description",
+    "saveProfile": "Save",
+    "savingProfile": "Saving...",
+    "profileSaved": "Your profile has been saved.",
+    "profileFailed": "Could not save your profile. Please try again.",
+    "profileLoadFailed": "Could not load your profile. Changes may not be saved."
   },
   "landing": {
     "heroSubtitle": "Upload once and VidShare transcodes it into quality levels from 144p to 1080p, then streams it through a global CDN.",

@@ -340,7 +340,19 @@
     },
     "themeHelp": "Chủ đề của thiết bị đi theo cài đặt của hệ điều hành.",
     "languageSection": "Ngôn ngữ",
-    "languageHelp": "Đổi ngôn ngữ của menu và nút bấm, không đổi tiêu đề video."
+    "languageHelp": "Đổi ngôn ngữ của menu và nút bấm, không đổi tiêu đề video.",
+    "profileSection": "Hồ sơ",
+    "usernameHelp": "Bạn đổi được tên người dùng hai lần trong 14 ngày. Liên kết kênh của bạn không đổi.",
+    "usernameChangesLeft_one": "Còn {{count}} lần đổi trong đợt này.",
+    "usernameChangesLeft_other": "Còn {{count}} lần đổi trong đợt này.",
+    "usernameLocked": "Bạn đã dùng hết hai lần đổi. Bạn đổi lại được tên người dùng vào {{date}}.",
+    "displayNameHelp": "Hiện trên kênh của bạn. Để trống thì hiện tên người dùng.",
+    "channelDescriptionLabel": "Mô tả kênh",
+    "saveProfile": "Lưu",
+    "savingProfile": "Đang lưu...",
+    "profileSaved": "Đã lưu hồ sơ của bạn.",
+    "profileFailed": "Không lưu được hồ sơ. Vui lòng thử lại.",
+    "profileLoadFailed": "Không tải được hồ sơ. Thay đổi có thể không được lưu."
   },
   "landing": {
     "heroSubtitle": "Tải lên một lần, VidShare tự chuyển mã thành các mức chất lượng từ 144p đến 1080p rồi phát qua CDN toàn cầu.",

@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const User = require('../models/User');
 const s3Service = require('../services/s3Service');
+const profileService = require('../services/profileService');
 const { MAX_AVATAR_SIZE_BYTES } = require('../middleware/validateRequest');
 
 /**
@@ -100,4 +101,41 @@ const updateAvatar = async (req, res, next) => {
   }
 };
 
-module.exports = { getPublicProfile, presignAvatarUpload, updateAvatar };
+/**
+ * @route   GET /api/users/me/profile
+ * @desc    The signed-in user's editable profile and how many username changes are left
+ * @access  Private
+ */
+const getOwnProfile = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user._id).select('+usernameChanges');
+    if (!user) {
+      const error = new Error('User not found');
+      error.statusCode = 404;
+      throw error;
+    }
+    res.status(200).json({
+      success: true,
+      data: { user, username: profileService.usernameAllowance(user.usernameChanges) },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * @route   PATCH /api/users/me
+ * @desc    Change the username, display name or channel description
+ * @access  Private
+ */
+const updateOwnProfile = async (req, res, next) => {
+  try {
+    const { username, displayName, channelDescription } = req.body || {};
+    const result = await profileService.updateProfile(req.user._id, { username, displayName, channelDescription });
+    res.status(200).json({ success: true, data: result });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { getPublicProfile, presignAvatarUpload, updateAvatar, getOwnProfile, updateOwnProfile };

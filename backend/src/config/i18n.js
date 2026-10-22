@@ -47,6 +47,9 @@ const MESSAGES = {
     'auth.emailNotVerified': 'Bạn cần xác minh email trước khi tải video lên.',
     'rate.tooManyVerificationEmails':
       'Bạn đã yêu cầu quá nhiều email xác minh trong một giờ. Vui lòng thử lại sau.',
+    'profile.usernameTaken': 'Tên người dùng này đã có người dùng.',
+    'profile.usernameLimit': 'Bạn chỉ đổi được tên người dùng hai lần trong 14 ngày. Vui lòng thử lại sau.',
+    'profile.changedMeanwhile': 'Hồ sơ vừa được đổi ở nơi khác. Vui lòng tải lại trang rồi thử lại.',
   },
   en: {
     'cors.forbiddenOrigin': 'Origin not allowed by the CORS policy: {origin}',
@@ -79,6 +82,9 @@ const MESSAGES = {
     'auth.emailNotVerified': 'Please verify your email address before uploading videos.',
     'rate.tooManyVerificationEmails':
       'You have requested too many verification emails in the past hour. Please try again later.',
+    'profile.usernameTaken': 'This username is already taken.',
+    'profile.usernameLimit': 'You can change your username twice in 14 days. Please try again later.',
+    'profile.changedMeanwhile': 'Your profile was just changed elsewhere. Please reload the page and try again.',
   },
 };
 

@@ -9,6 +9,11 @@ export const userApi = {
 
   updateAvatar: (key) => axiosClient.put('/users/avatar', { key }),
 
+  getOwnProfile: () => axiosClient.get('/users/me/profile'),
+
+  // Only the fields being changed: username, displayName, channelDescription.
+  updateProfile: (changes) => axiosClient.patch('/users/me', changes),
+
   // POST thẳng lên S3 bằng presigned POST — dùng axios thuần (không phải
   // axiosClient) vì URL trỏ ra ngoài origin API, không cần header
   // Authorization/interceptor 401 (quyền truy cập nằm trong các trường policy

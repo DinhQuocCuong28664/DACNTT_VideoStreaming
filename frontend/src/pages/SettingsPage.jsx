@@ -8,6 +8,7 @@ import { useTheme } from '../context/useTheme';
 import userApi from '../api/userApi';
 import GoogleSignInButton from '../components/Auth/GoogleSignInButton';
 import ResendVerificationButton from '../components/Auth/ResendVerificationButton';
+import ProfileSection from '../components/Settings/ProfileSection';
 import { formatDate } from '../utils/format';
 import './SettingsPage.css';
 
@@ -69,8 +70,6 @@ const AccountTab = () => {
   };
 
   const rows = [
-    [t('settings.usernameLabel'), user?.username],
-    [t('settings.displayNameLabel'), user?.displayName || user?.username],
     ['Email', user?.email],
     user?.createdAt && [t('settings.memberSince'), formatDate(i18n.resolvedLanguage, user.createdAt)],
   ].filter(Boolean);
@@ -119,6 +118,8 @@ const AccountTab = () => {
           </div>
         </div>
       </section>
+
+      <ProfileSection />
 
       <section className="settings-section">
         <h2 className="settings-section-title">{t('settings.accountSection')}</h2>
