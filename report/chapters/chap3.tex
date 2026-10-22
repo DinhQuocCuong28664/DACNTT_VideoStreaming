@@ -303,7 +303,7 @@ Main flow &
   2. The server returns the video, applying the access rule of Section~\ref{sec:backend-impl}. \newline
   3. The page requests playback authorisation and receives Signed Cookies for that video (Figure~\ref{fig:playback-sequence}). \newline
   4. The player loads the master playlist from CloudFront and switches renditions as the bandwidth changes. \newline
-  5. After five seconds of playback the page reports a view, which the server counts unless the same viewer was counted within thirty minutes or the viewer owns the video. \newline
+  5. After thirty seconds of actual playback, or at the end of a shorter video, the page reports a view, which the server counts unless the same viewer was counted within thirty minutes or the viewer owns the video. \newline
   6. A sidebar lists related videos from the same category and uploader. \\
 Alternative flows &
   2a. The video is private and the viewer is not its owner: the server answers not-found. \newline
