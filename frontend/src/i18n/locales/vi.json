@@ -66,7 +66,12 @@
     "monthsAgo": "{{count}} tháng trước",
     "views_other": "{{value}} lượt xem",
     "underReview": "Đang rà soát",
-    "removed": "Đã bị gỡ"
+    "removed": "Đã bị gỡ",
+    "actions": "Menu thao tác",
+    "share": "Chia sẻ",
+    "report": "Báo cáo",
+    "linkCopied": "Đã sao chép liên kết",
+    "copyFailed": "Không sao chép được liên kết"
   },
   "upload": {
     "dropzone": "Kéo và thả tệp video để tải lên",
@@ -120,10 +125,10 @@
   "channel": {
     "videos": "Video",
     "empty": "Kênh này chưa có video nào.",
-    "confirmDelete": "Bạn có chắc muốn xóa video này?",
+    "confirmDelete": "“{{title}}” và các bình luận của video sẽ bị xoá vĩnh viễn. Không thể hoàn tác.",
     "deleteFailed": "Xóa video thất bại: {{message}}",
     "visibilityFailed": "Đổi chế độ hiển thị thất bại: {{message}}",
-    "deleteVideo": "Xóa video",
+    "deleteVideo": "Xoá video",
     "setVisibilityTo": "Chuyển sang {{mode}}",
     "editVideo": "Chỉnh sửa video",
     "editModalTitle": "Chi tiết video",
@@ -241,7 +246,8 @@
     "mascotLabel": "Linh vật VidShare, bấm để trêu"
   },
   "watch": {
-    "confirmDeleteComment": "Bạn có chắc muốn xóa bình luận này?",
+    "confirmDeleteComment": "Xoá vĩnh viễn bình luận này?",
+    "deleteCommentFailed": "Không xoá được bình luận. Vui lòng thử lại.",
     "transcoding": "Video đang được xử lý. Vui lòng quay lại sau vài phút.",
     "processingFailed": "Xử lý video thất bại",
     "queued": "Video đang chờ được xử lý.",
@@ -292,7 +298,13 @@
     "speed": "Tốc độ phát",
     "speedNormal": "Chuẩn",
     "quality": "Chất lượng",
-    "fullscreen": "Toàn màn hình"
+    "fullscreen": "Toàn màn hình",
+    "contextMenu": "Menu trình phát",
+    "loop": "Phát lặp lại",
+    "copyUrl": "Sao chép URL của video",
+    "copyUrlAtTime": "Sao chép URL tại thời điểm hiện tại",
+    "linkCopied": "Đã sao chép liên kết",
+    "copyFailed": "Không sao chép được liên kết"
   },
   "settings": {
     "avatarSection": "Ảnh của bạn",
@@ -374,6 +386,7 @@
   "common": {
     "cancel": "Huỷ",
     "close": "Đóng",
+    "delete": "Xoá",
     "required": "bắt buộc"
   },
   "moderationStatus": {

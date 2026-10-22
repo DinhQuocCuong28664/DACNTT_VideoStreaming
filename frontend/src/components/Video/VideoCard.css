@@ -4,11 +4,86 @@
    ============================================ */
 
 .video-card {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 12px;
   min-width: 0;
   color: var(--text-primary);
+}
+
+/* The title link covers the whole card, so a click on the thumbnail or the
+   text opens the video. Its containing block is .video-card: nothing between
+   the two may be positioned, or the link would shrink to that box. */
+.video-card-link::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-md);
+}
+
+.video-card-link:focus-visible {
+  outline: none;
+}
+
+.video-card-link:focus-visible::after {
+  outline: 2px solid var(--ring);
+  outline-offset: 4px;
+}
+
+/* ── Three-dot menu (VideoCardMenu) ──
+   A flex item at the end of the info row. Positioned, and later in the tree
+   than the title link, so it paints above the link's overlay without a
+   z-index; the open menu gets one so its panel covers the cards below. */
+.video-card-menu {
+  position: relative;
+  flex-shrink: 0;
+  margin: -8px -12px 0 auto;
+}
+
+.video-card-menu.is-open {
+  z-index: 40;
+}
+
+.video-card-info:has(> .video-card-menu) .video-card-details {
+  flex: 1;
+  padding-right: 0;
+}
+
+.video-card-menu-trigger {
+  width: 36px;
+  height: 36px;
+  font-size: 1.5rem;
+  opacity: 0;
+}
+
+.video-card:hover .video-card-menu-trigger,
+.video-card:focus-within .video-card-menu-trigger,
+.video-card-menu-trigger[aria-expanded='true'] {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .video-card-menu-trigger {
+    opacity: 1;
+  }
+}
+
+.video-card-menu-panel {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  min-width: 200px;
+}
+
+.video-card-menu-panel[data-placement='top'] {
+  top: auto;
+  bottom: 100%;
+}
+
+.video-card-menu-panel .dropdown-item {
+  min-height: 40px;
+  white-space: nowrap;
 }
 
 .video-card-thumbnail {
@@ -143,6 +218,13 @@
   padding-right: 0;
 }
 
+/* Side-by-side variants: the info column takes the rest of the row, so the
+   three-dot menu sits at the card's right edge. */
+.video-card-compact .video-card-info,
+.video-card-row .video-card-info {
+  flex: 1;
+}
+
 .video-card-compact .video-card-title {
   font-size: var(--font-size-sm);
   line-height: 20px;
@@ -210,6 +292,12 @@
 
   .video-card-grid .video-card-info {
     padding: 0 0 0 0;
+  }
+
+  /* The link overlay follows the edge-to-edge thumbnail. */
+  .video-card-grid .video-card-link::after {
+    inset: 0 calc(-1 * var(--space-md));
+    border-radius: 0;
   }
 
   .video-card-row {

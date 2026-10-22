@@ -13,7 +13,7 @@ import { useEffect, useRef } from 'react';
  * đóng. Esc và bấm ra nền tối chỉ gọi `onClose`; khi `busy` (đang gửi) thì bỏ
  * qua cả hai để không đóng mất một yêu cầu đang chạy.
  */
-const Modal = ({ onClose, labelledBy, className = '', busy = false, children }) => {
+const Modal = ({ onClose, labelledBy, describedBy, className = '', busy = false, children }) => {
   const ref = useRef(null);
 
   useEffect(() => {
@@ -46,6 +46,7 @@ const Modal = ({ onClose, labelledBy, className = '', busy = false, children }) 
       ref={ref}
       className={`modal ${className}`}
       aria-labelledby={labelledBy}
+      aria-describedby={describedBy}
       onCancel={handleCancel}
       onClick={handleClick}
     >

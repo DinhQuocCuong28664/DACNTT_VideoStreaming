@@ -131,14 +131,75 @@ const VideoUpload = () => {
     setStep(2);
   };
 
-  const handleDrop = (e) => {
-    e.preventDefault();
-    setDragActive(false);
-    const dropped = e.dataTransfer.files[0];
-    if (dropped) {
-      handleFileSelect({ target: { files: [dropped] } });
-    }
-  };
+  // The window-level drop handler below is registered once per step, so it
+  // reads the latest handleFileSelect (which closes over form state) from a ref.
+  const handleFileSelectRef = useRef(handleFileSelect);
+  useEffect(() => {
+    handleFileSelectRef.current = handleFileSelect;
+  });
+
+  /**
+   * File drops are handled on the whole window, not only on the dropzone.
+   *
+   * The user can open the system file chooser and then drag a file out of it
+   * onto the page. That chooser sits over the middle of the window, right on
+   * top of the dropzone, so the drop lands somewhere else on the page. Before,
+   * nothing there cancelled the drag, and the browser's default for a dropped
+   * file is to open it: the tab left VidShare to play the raw video. A web page
+   * has no way to close the system chooser itself; what it can do is take the
+   * file wherever it is dropped and never let the browser open it.
+   *
+   * On step 1 a drop anywhere picks the file. On later steps (and while the
+   * email is unverified) drops are refused, so a stray drop can neither
+   * replace the file nor navigate away in the middle of an upload.
+   *
+   * dragenter/dragleave fire for every element the pointer crosses; a depth
+   * counter keeps the highlight from flickering over the dropzone's children.
+   */
+  const dragDepthRef = useRef(0);
+  const acceptsDrop = step === 1 && !needsVerification;
+
+  useEffect(() => {
+    const carriesFiles = (e) => Array.from(e.dataTransfer?.types || []).includes('Files');
+
+    const onDragEnter = (e) => {
+      if (!carriesFiles(e)) return;
+      dragDepthRef.current += 1;
+      if (acceptsDrop) setDragActive(true);
+    };
+    const onDragOver = (e) => {
+      if (!carriesFiles(e)) return;
+      // Cancelling dragover is what stops the browser from opening the file.
+      e.preventDefault();
+      e.dataTransfer.dropEffect = acceptsDrop ? 'copy' : 'none';
+    };
+    const onDragLeave = (e) => {
+      if (!carriesFiles(e)) return;
+      dragDepthRef.current = Math.max(0, dragDepthRef.current - 1);
+      if (dragDepthRef.current === 0) setDragActive(false);
+    };
+    const onDrop = (e) => {
+      if (!carriesFiles(e)) return;
+      e.preventDefault();
+      dragDepthRef.current = 0;
+      setDragActive(false);
+      const dropped = e.dataTransfer.files[0];
+      if (acceptsDrop && dropped) handleFileSelectRef.current({ target: { files: [dropped] } });
+    };
+
+    window.addEventListener('dragenter', onDragEnter);
+    window.addEventListener('dragover', onDragOver);
+    window.addEventListener('dragleave', onDragLeave);
+    window.addEventListener('drop', onDrop);
+    return () => {
+      window.removeEventListener('dragenter', onDragEnter);
+      window.removeEventListener('dragover', onDragOver);
+      window.removeEventListener('dragleave', onDragLeave);
+      window.removeEventListener('drop', onDrop);
+      dragDepthRef.current = 0;
+      setDragActive(false);
+    };
+  }, [acceptsDrop]);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -380,12 +441,6 @@ const VideoUpload = () => {
                 openPicker();
               }
             }}
-            onDrop={handleDrop}
-            onDragOver={(e) => {
-              e.preventDefault();
-              setDragActive(true);
-            }}
-            onDragLeave={() => setDragActive(false)}
           >
             {errorBanner}
             <span className="dropzone-circle">

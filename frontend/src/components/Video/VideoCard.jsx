@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { FiPlay } from 'react-icons/fi';
 import Avatar from '../Common/Avatar';
+import VideoCardMenu from './VideoCardMenu';
 import { formatViews, formatDuration, timeAgo } from '../../utils/format';
 import './VideoCard.css';
 
@@ -14,8 +15,14 @@ import './VideoCard.css';
  *
  * Trang kênh tắt `showAvatar` (mọi video cùng một kênh) và dùng
  * `thumbnailOverlay` để gắn nhãn chế độ hiển thị lên ảnh bìa.
+ *
+ * The card is a plain element whose title link is stretched over the whole
+ * card (see `.video-card-link::after`), so the thumbnail and the text are still
+ * one click target while the three-dot menu button sits outside the link: a
+ * button inside an `<a>` is invalid HTML. `showMenu={false}` hides that menu
+ * where the page has its own (the owner's channel page).
  */
-const VideoCard = ({ video, variant = 'grid', showAvatar = true, thumbnailOverlay = null }) => {
+const VideoCard = ({ video, variant = 'grid', showAvatar = true, showMenu = true, thumbnailOverlay = null }) => {
   const { t } = useTranslation();
   /**
    * Ảnh đại diện có thể tồn tại trong cơ sở dữ liệu nhưng không tải được:
@@ -39,7 +46,7 @@ const VideoCard = ({ video, variant = 'grid', showAvatar = true, thumbnailOverla
   );
 
   return (
-    <Link to={`/watch/${video._id}`} className={`video-card video-card-${variant}`}>
+    <div className={`video-card video-card-${variant}`}>
       <div className="video-card-thumbnail">
         {showThumbnail ? (
           <img
@@ -84,7 +91,11 @@ const VideoCard = ({ video, variant = 'grid', showAvatar = true, thumbnailOverla
         {variant === 'grid' && showAvatar && avatar}
 
         <div className="video-card-details">
-          <h3 className="video-card-title">{video.title}</h3>
+          <h3 className="video-card-title">
+            <Link to={`/watch/${video._id}`} className="video-card-link">
+              {video.title}
+            </Link>
+          </h3>
           {variant === 'row' ? (
             <>
               <p className="video-card-meta">{meta}</p>
@@ -103,8 +114,10 @@ const VideoCard = ({ video, variant = 'grid', showAvatar = true, thumbnailOverla
             </>
           )}
         </div>
+
+        {showMenu && <VideoCardMenu video={video} />}
       </div>
-    </Link>
+    </div>
   );
 };
 

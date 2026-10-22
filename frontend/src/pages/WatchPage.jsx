@@ -16,6 +16,7 @@ import {
   MdOutlineShield,
 } from 'react-icons/md';
 import Avatar from '../components/Common/Avatar';
+import ConfirmDialog from '../components/Common/ConfirmDialog';
 import useToast from '../components/Common/Toast';
 import { useAuth } from '../context/useAuth';
 import videoApi from '../api/videoApi';
@@ -25,6 +26,7 @@ import ReportDialog from '../components/Video/ReportDialog';
 import AppealBox from '../components/Video/AppealBox';
 import { can } from '../utils/roles';
 import { formatViews, formatDate, timeAgo } from '../utils/format';
+import { parseStartTime } from '../utils/startTime';
 import './WatchPage.css';
 
 const WatchPage = () => {
@@ -60,6 +62,7 @@ const WatchPage = () => {
   const [postingComment, setPostingComment] = useState(false);
   const [composerFocused, setComposerFocused] = useState(false);
   const [openCommentMenu, setOpenCommentMenu] = useState(null);
+  const [pendingDeleteComment, setPendingDeleteComment] = useState(null);
 
   // Related videos state
   const [relatedVideos, setRelatedVideos] = useState([]);
@@ -247,14 +250,24 @@ const WatchPage = () => {
     }
   };
 
-  const handleDeleteComment = async (commentId) => {
+  const handleDeleteComment = (commentId, e) => {
+    // Move focus to the menu's trigger before the menu unmounts, so the
+    // confirm dialog hands focus back there when it closes.
+    e.currentTarget.closest('.comment-menu')?.querySelector('.comment-menu-trigger')?.focus();
     setOpenCommentMenu(null);
-    if (!window.confirm(t('watch.confirmDeleteComment'))) return;
+    setPendingDeleteComment(commentId);
+  };
+
+  const confirmDeleteComment = async () => {
+    const commentId = pendingDeleteComment;
     try {
       await videoApi.deleteComment(commentId);
-      setComments(comments.filter((c) => c._id !== commentId));
+      setComments((prev) => prev.filter((c) => c._id !== commentId));
     } catch (err) {
       console.error('Failed to delete comment:', err);
+      showToast(t('watch.deleteCommentFailed'));
+    } finally {
+      setPendingDeleteComment(null);
     }
   };
 
@@ -324,6 +337,8 @@ const WatchPage = () => {
   const canReport =
     video.status === 'READY' && !isOwnVideo && moderationStatus !== 'flagged' && !isRemoved;
   const locale = i18n.resolvedLanguage === 'en' ? 'en-US' : 'vi-VN';
+  // `?t=90` or `?t=1m30s` from a shared "at current time" link
+  const startTime = parseStartTime(new URLSearchParams(location.search).get('t'));
 
   const canDelete = (c) =>
     currentUser && (currentUser._id === c.user?._id || currentUser._id === user._id);
@@ -352,6 +367,8 @@ const WatchPage = () => {
               poster={video.thumbnailUrl}
               onViewThreshold={handleViewThreshold}
               onAuthExpired={handleAuthExpired}
+              startTime={startTime}
+              shareUrl={`${window.location.origin}/watch/${video._id}`}
             />
           ) : (
             <div className="player-placeholder">
@@ -569,7 +586,7 @@ const WatchPage = () => {
                           <button
                             type="button"
                             className="dropdown-item"
-                            onClick={() => handleDeleteComment(c._id)}
+                            onClick={(e) => handleDeleteComment(c._id, e)}
                           >
                             <MdOutlineDelete />
                             <span>{t('watch.deleteComment')}</span>
@@ -620,6 +637,16 @@ const WatchPage = () => {
 
       {reportOpen && (
         <ReportDialog videoId={id} onClose={() => setReportOpen(false)} onReported={handleReported} />
+      )}
+      {pendingDeleteComment && (
+        <ConfirmDialog
+          title={t('watch.deleteComment')}
+          message={t('watch.confirmDeleteComment')}
+          confirmLabel={t('common.delete')}
+          danger
+          onConfirm={confirmDeleteComment}
+          onClose={() => setPendingDeleteComment(null)}
+        />
       )}
       {toast}
     </div>
