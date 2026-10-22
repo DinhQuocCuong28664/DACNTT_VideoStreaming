@@ -1,0 +1,38 @@
+%%{init: {"sequence": {"actorMargin": 25, "width": 120, "diagramMarginX": 10, "messageMargin": 18}}}%%
+sequenceDiagram
+    autonumber
+    actor User as Viewer or owner
+    actor Op as Operator
+    participant API as Backend API
+    participant DB as MongoDB
+    participant Job as Transcoding job
+    participant Rek as Rekognition
+
+    Job->>Job: 1 frame per 5 s,<br/>at most 120
+    Job->>Rek: Image moderation,<br/>3 at a time
+    Rek-->>Job: Labels, confidence
+    Job->>Job: Policy: approved,<br/>flagged, blocked
+    Job->>DB: READY and verdict,<br/>one conditional write
+    Note over DB,Job: Flagged, blocked:<br/>in no listing
+
+    opt A viewer reports
+        User->>API: POST /videos/:id/<br/>report
+        API->>DB: Report, one open<br/>per viewer
+    end
+
+    Op->>API: GET /admin/videos
+    API-->>Op: Review queue
+    Op->>API: PATCH .../moderation,<br/>decision, reason
+    API->>DB: Snapshot verdict once,<br/>set verdict, close reports
+    API->>DB: Append<br/>ModerationEvent
+
+    opt Owner appeals a removal
+        User->>API: POST /videos/:id/<br/>appeal
+        API->>DB: Appeal, one<br/>per decision
+        Op->>API: PATCH /admin/<br/>appeals/:id
+        alt Upheld
+            API->>DB: Approve:<br/>video restored
+        else Rejected
+            API->>DB: Removal kept
+        end
+    end

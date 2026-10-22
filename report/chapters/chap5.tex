@@ -1,182 +1,141 @@
 \chapter{Development and Testing}
 \label{chap:implementation}
 
+This chapter describes how the design of Chapter~\ref{chap:design} was implemented: the backend,
+the transcoder, the infrastructure code and the delivery pipeline. It then records the problems met
+while deploying the system and how each was solved, and ends with the automated tests.
+
 \section{Backend Implementation}
 \label{sec:backend-impl}
 
-The backend follows a layered structure in which routes delegate to controllers, controllers
-delegate to services, and only services interact with the data models. Business logic is kept
-out of route handlers so that it can be unit tested without an HTTP server.
+The backend follows a layered structure: routes delegate to controllers, controllers to services,
+and only services touch the data models. Keeping business logic out of route handlers lets it be
+unit tested without an HTTP server.
 
-Authorisation for video access is concentrated in a single service function. Every path that
-exposes a video, whether the detail endpoint, the like and comment endpoints, or the playback
-authorisation endpoint, calls that same function. This is a deliberate choice: duplicating the
-permission check across endpoints is the most common way for an access control gap to appear,
-because a later change updates one copy and not the others.
+Authorisation for video access lives in a single service function. Every path that exposes a
+video, whether the detail endpoint, the like and comment endpoints or the playback-authorisation
+endpoint, calls that function. Duplicating the check across endpoints is the most common way for an
+access control gap to appear, because a later change updates one copy and not the others.
 
-Operational authority follows the same principle. The four roles of the platform, user, operator,
-auditor and administrator, are mapped to permissions in a single table, and each route asks whether
-the requester holds a named permission, such as \texttt{moderation:review} or
-\texttt{metrics:read}, instead of comparing role names. Adding a role therefore means editing one
-table and not searching the code for comparisons. The requester's record, and with it the role, is
-read from the database on every request and is not copied into the token, so demoting a person takes
-effect at once and not when a token expires.
+Operational authority follows the same principle. The four roles, user, operator, auditor and
+administrator, are mapped to permissions in one table, and each route asks whether the requester
+holds a named permission, such as \texttt{moderation:review} or \texttt{metrics:read}, instead of
+comparing role names. The requester's role is read from the database on every request and is not
+copied into the token, so demoting a person takes effect at once rather than when a token expires.
 
-A decision is applied by one service function. It validates the reason code against the closed list
-for that decision, refuses to let an operator change a decision that an administrator made, copies
-the machine's verdict into \texttt{autoStatus} only if no earlier decision has done so, resolves the
-open reports on the video, dismissed on an approval and actioned on a removal, and then appends the
-event. The event is written after the decision has been applied. If writing it fails the decision
-stands and the failure is logged, because withdrawing a removal on account of a faulty log would be
-the worse outcome; the false positive rate, the precision of the flag and the coverage are
-computed from the video documents themselves, so a missing event does not skew them.
+A moderation decision is applied by one service function. It checks the reason code against the
+closed list for that decision, refuses to let an operator change a decision that an administrator
+made, copies the machine's verdict into \texttt{autoStatus} only if no earlier decision has done so,
+resolves the open reports on the video, and then appends the event. If writing the event fails, the
+decision stands and the failure is logged: withdrawing a removal because of a faulty log would be
+worse, and the error rates are computed from the video documents, so a missing event does not skew
+them.
 
-The upload flow validates metadata on the server before issuing a pre-signed URL. Client-side
-validation alone is insufficient, since a user can call the API directly and obtain a URL for
-an arbitrary file, effectively turning the project's storage bucket into free hosting for
-unrelated content. The server therefore checks the declared MIME type against an allow-list of
-video formats and rejects files above the configured ceiling, which has a hard limit of 20~GiB in
-the source and is set to 20~GiB in the deployed system. Files up to 512~MiB go through a single
-pre-signed POST whose policy fixes the object key, the content type and the size range. Larger
-files use an S3 multipart upload in parts of 32~MiB: the backend signs one URL per part for exactly
-that part's length, so the storage service itself refuses a part of any other size, and on
-completion it lists the parts that S3 holds before asking for the object to be assembled.
+The server validates upload metadata before issuing a pre-signed URL, because a user can call the
+API directly and would otherwise obtain a URL for any file, turning the storage bucket into free
+hosting. It checks the declared MIME type against an allow-list of video formats and refuses files
+above the configured ceiling; the single and multipart paths are those of
+Section~\ref{sec:upload-design}. Upload also requires a verified e-mail address. The upload guard,
+the profile the interface reads and the takeover of an account by a Google sign-in all read
+verification through one method of the user model, which treats an account with a Google identity
+as verified. The guard runs ahead of the upload rate limiter, so a refused request does not use up
+the hourly quota.
 
-Verification is a property of the account on which three places must agree: the guard of the upload
-route, the profile that the interface reads, and the takeover of an account by a Google sign-in. All
-three read it through one method of the user model, which treats an account with a Google identity as
-verified, and not through the stored field. The guard stands on the creation of the upload record,
-ahead of the upload rate limiter, so that a refused request does not use up the hourly quota; the
-later steps of a multipart upload need no guard of their own, because they act only on a record that
-the guarded step created.
+Several protections were added at the HTTP layer. Helmet sets the security headers. Cross-origin
+requests are limited to an explicit allow-list, which Signed Cookies also require, because the CORS
+specification forbids credentials together with a wildcard origin. Authentication endpoints allow
+ten attempts per fifteen minutes per address, which makes password guessing impractical without
+affecting legitimate users. The process refuses to start if the token signing secret is missing,
+turning a dangerous runtime failure into an obvious one.
 
-Several protective measures were added at the HTTP layer. Security headers are applied through
-Helmet. Cross-origin requests are restricted to an explicit allow-list rather than being
-accepted from any origin, which is also a prerequisite for signed cookies to work, because the
-CORS specification forbids credentials in combination with a wildcard origin. Authentication
-endpoints are rate limited to ten attempts per fifteen minutes per address, which makes
-password guessing impractical without affecting legitimate users. Finally, the process
-validates its required environment variables at startup and refuses to start if the token
-signing secret is missing, converting a dangerous runtime failure into an immediate and obvious
-one.
+A new password is checked in two stages, at registration, reset and change alike. The first is
+local: a list of the 131 passwords tried first, including common Vietnamese ones; obvious patterns
+such as \texttt{12345678} or a repeated character; a common word with a few digits added or letters
+swapped for digits; and the user's own name, e-mail prefix and the name of the service. The second
+asks the Pwned Passwords service whether the password appears in a known breach, by the k-anonymity
+protocol \cite{cloudflarekanon}: only the first five hexadecimal characters of its SHA-1 hash leave
+the server. A reply slower than two seconds, or a failed lookup, counts as no answer and lets the
+password through, so
+registration does not depend on an outside service. Both stages apply from eight characters, the
+length the user model already requires. This follows the guidance that a verifier compare a new
+secret with common, expected or compromised values instead of imposing composition rules
+\cite{nist80063b}.
 
-A new password is checked in two stages, at registration, reset and change alike. The first runs
-locally: a short list of the passwords tried first, 131 of them and including common Vietnamese ones;
-obvious patterns, such as one repeated character, runs like \texttt{12345678} or \texttt{abcdefgh} and a
-short block repeated; a common base word followed by a few digits or symbols, or with letters swapped
-for digits; and the user's own name, the start of their e-mail address and the name of the service. The
-second asks the Pwned Passwords service whether the password appears in a known breach, by the
-k-anonymity protocol \cite{cloudflarekanon}: only the first five hexadecimal characters of its SHA-1
-hash leave the server, and the reply lists the suffixes that share them. A reply that takes more than
-two seconds, or fails, counts as no answer and lets the password through, so that registration does
-not depend on an outside service. Both stages apply only from eight characters, the length the user
-model already requires, and a refusal is a 400 response with the code \texttt{PASSWORD\_TOO\_COMMON},
-\texttt{PASSWORD\_PERSONAL} or \texttt{PASSWORD\_BREACHED}, which the interface shows as a message. This
-follows the guidance that a verifier compare a new secret with commonly used, expected or compromised
-values and not impose composition rules \cite{nist80063b}.
-
-The per-address limit on authentication does not stop one mailbox from being flooded, because an
-attacker who changes address is counted afresh while the mail still comes from the project's own
-account. A second limit therefore counts the mails sent to one recipient, under a hash of the
-normalised address, with one count shared by verification and reset mail: five per hour. Beyond it,
-registration still creates the account and skips the mail, the interface offering to send it again;
-a request to send the link again is refused with a 429 response before a new token is issued; and a
-reset request returns the same generic reply as every other outcome, so it still does not reveal which
-addresses have an account, and issues no new token.
+The per-address limit on authentication does not stop one mailbox from being flooded, since an
+attacker who changes address is counted afresh. A second limit therefore counts the mails sent to one
+recipient, five per hour, shared by verification and reset mail. Beyond it, registration still
+creates the account but skips the mail, a request to resend the link is refused with a 429 response,
+and a reset request returns the same generic reply as every other outcome, so it still does not
+reveal which addresses have an account.
 
 \section{Transcoder Implementation}
 \label{sec:transcoder-impl}
 
-The transcoder is a Node.js worker packaged with FFmpeg in a Docker image built through a
-multi-stage build. The base image went through two upgrades over the course of the project.
-Node 18 was used initially but had to be abandoned because Mongoose 9 depends on the Web Crypto
-API, which is not fully available in that version, causing the container to fail when connecting
-to MongoDB Atlas. Node 20 was then adopted, and later replaced with \texttt{node:24-slim} once
-Node 20 reached end-of-life on 30 April 2026 and stopped receiving security patches; Node 24 was
-chosen over the newer Node 26 because it is the current Active LTS release, supported until April
-2028, whereas Node 26 had not yet entered its LTS phase at the time of the upgrade. The Alpine
-variant was avoided throughout because FFmpeg requires glibc.
+The transcoder is a Node.js worker packaged with FFmpeg in a Docker image built in several stages.
+Node 18 was abandoned because Mongoose 9 needs the Web Crypto API, which that version lacks, and
+Node 20 was later replaced with \texttt{node:24-slim} when Node 20 reached end of life on 30 April
+2026. Node 24 was preferred over Node 26 because it is the Active LTS release, supported until April
+2028. The Alpine variant was avoided because FFmpeg requires glibc.
 
-The heartbeat mechanism described in Section~\ref{sec:pipeline-design} is, in effect, a lease in
-the sense introduced by Burrows for the Chubby lock service \cite{burrows2006chubby}: a holder
-retains a resource by periodically renewing it before a timeout expires, and Burrows already
-identified the classical failure mode of that pattern: a lease can expire while its holder is
-merely stalled rather than dead, so a second holder may be granted the same resource while the
-first is still alive and will eventually act on it. A defect matching exactly this failure mode
-surfaced during a literature-driven review of the pipeline's reliability guarantees, discussed
-further in Section~\ref{sec:testing}: neither \texttt{updateVideoReady} nor
-\texttt{updateVideoError} checked the video's current status before writing, so a duplicate job
-triggered by an SQS redelivery could silently overwrite a successful result, and in the worst
-case could revert an already-\texttt{READY} video back to \texttt{ERROR}. Both functions were
-changed to a conditional \texttt{findOneAndUpdate} that only writes when the current status is
-not already \texttt{READY}, and \texttt{processVideo} now checks the video's status before
-downloading anything, so a duplicate delivery that arrives after the first job has already
-finished is rejected immediately instead of re-downloading and re-transcoding the source.
+A duplicate job must not overwrite a finished result. The heartbeat of Section~\ref{sec:pipeline-design}
+is in effect a lease in the sense of Burrows \cite{burrows2006chubby}, and Burrows identified its
+classical failure: a lease can expire while its holder is merely stalled, so a second holder is
+granted the same resource while the first is still alive. A review of the pipeline against this
+failure found that neither \texttt{updateVideoReady} nor \texttt{updateVideoError} checked the
+current status before writing, so a duplicate job could overwrite a successful result or even turn a
+\texttt{READY} video back into \texttt{ERROR}. Both are now a conditional \texttt{findOneAndUpdate}
+that writes only when the status is not already \texttt{READY}, and \texttt{processVideo} checks the
+status before downloading anything, so a late duplicate stops at once.
 
-A single FFmpeg invocation produces every rendition of the ladder that the source can fill,
-which is more efficient than separate invocations because the source is decoded only once. The
-ladder has six rungs, from 144p at 120~kbit/s to 1080p at 4~Mbit/s, and each rung fits the source
-inside its own frame without enlarging it: a 480p source yields a 360p rung and one at
-854$\times$480, not a 1080p rendition enlarged 2.25 times. Only the single-container path for a
-video longer than twenty minutes keeps the earlier three-rung ladder of 360p, 720p and 1080p, to
-stay within the time limit of a job. The command emits segments of six
-seconds, generates the per-rendition playlists, and the worker then writes the master playlist
-that lists the available bandwidths, codecs and resolutions. Those bandwidths and codec strings
-are derived from the encoded output rather than from the encoder settings: the bandwidth is the
-peak segment bit rate measured from the segments themselves, which
-Section~\ref{sec:qoe-playback} examines in detail, and the codec string is read out of each
-stream's sequence parameter set, since the constraint-set byte that RFC~6381 requires appears in
-neither the profile name nor the level number reported by a probe. A thumbnail is extracted in a
-separate pass.
+A single FFmpeg invocation produces every rendition that the source can fill, which decodes the
+source only once. The ladder has six rungs, from 144p at 120~kbit/s to 1080p at 4~Mbit/s, and each
+rung fits the source inside its frame without enlarging it: a 480p source yields a 360p rung and one
+at 854$\times$480, not a 1080p rendition enlarged 2.25 times. Only the single-container path for a
+video longer than twenty minutes keeps the earlier ladder of 360p, 720p and 1080p, to stay within the
+time limit of a job. The command writes six-second segments and the rendition playlists; the worker
+then writes the master playlist. Its bandwidth values are the peak segment bit rates measured from
+the segments (Section~\ref{sec:qoe-playback}), and its codec strings are read from each stream's
+sequence parameter set, since the constraint-set byte that RFC~6381 requires appears in neither the
+profile name nor the level reported by a probe. A thumbnail is extracted in a separate pass.
 
-The chunked path of Section~\ref{sec:chunked-design} runs the same container image under four
-commands. The planner computes the chunk boundaries with functions that perform no input or output,
-so the arithmetic can be tested directly: a boundary is a whole number of groups of pictures counted
-in frames, and every chunk, the first included, writes its timestamps from the same base offset, so
-that the playlists of independently encoded chunks join without a gap or a repeated segment. A chunk
-job reads only its own range of the source over HTTP and encodes every rendition of the ladder for
-it. The finalizer joins the playlists and, as the single-container path does, measures the bandwidth
-of each rendition from the segments and not from the encoder settings. Chunk jobs are submitted with
-a task size of their own, 4~vCPU and 8~GiB, because a four-vCPU task measured 14\% faster and used
-7\% fewer vCPU-seconds than a one-vCPU task; the size is checked against the table of valid Fargate
-combinations when the configuration is loaded, since Batch would otherwise reject the submission
-only after the video had been marked as processing.
+The chunked path of Section~\ref{sec:chunked-design} runs the same image under four commands. The
+planner computes chunk boundaries with functions that do no input or output, so the arithmetic is
+tested directly: a boundary is a whole number of groups of pictures counted in frames, and every
+chunk writes its timestamps from the same base offset, so independently encoded chunks join without
+a gap or a repeated segment. A chunk job reads only its own range of the source over HTTP and
+encodes every rendition for it, and the finalizer joins the playlists and measures each rendition's
+bandwidth from the segments. Chunk jobs use their own task size of 4~vCPU and 8~GiB, which measured
+14\% faster and used 7\% fewer vCPU-seconds than one vCPU; the size is checked against the valid
+Fargate combinations when the configuration loads, because Batch would otherwise reject the
+submission only after the video had been marked as processing.
 
-Content screening is one function that the single-container job and the finalizer both call, with
-the same policy and thresholds. It extracts the sampled frames with FFmpeg, sends them to
-Rekognition three at a time with retries and client-side rate limiting when the service throttles,
-applies the label policy of Section~\ref{sec:screening-design}, and returns the verdict together
-with its evidence labels and the share of planned frames that could be analysed. A failure inside
-the step is converted into a flagged verdict that carries the error, so that the video waits for a
-person and is neither lost nor published. Screening is on unless \texttt{MODERATION\_ENABLED} is
-explicitly set to false, so that a missing setting cannot silently publish every video.
+Content screening is one function, called by the single-container job and by the finalizer with the
+same policy and thresholds. It extracts the sampled frames with FFmpeg, sends them to Rekognition
+three at a time with retries and client-side rate limiting, applies the label policy of
+Section~\ref{sec:screening-design}, and returns the verdict with its evidence labels and the share of
+frames analysed. An error inside the step becomes a flagged verdict carrying the error, so the video
+waits for a person and is neither lost nor published. Screening is on unless
+\texttt{MODERATION\_ENABLED} is explicitly false, so a missing setting cannot publish every video
+unchecked.
 
-Failure handling is deliberate. When FFmpeg exits with a non-zero status, the error propagates
-to the top-level handler, which records the \texttt{ERROR} status in the database and, in
-\texttt{worker} mode, does \emph{not} delete the SQS message: leaving it in flight allows the
-visibility timeout to lapse so that the job is retried, and after the configured number of failed
-attempts the message is moved to the dead letter queue where it can be inspected rather than lost.
-
-As Section~\ref{sec:pipeline-design} establishes, however, the deployed system runs \texttt{batch}
-mode, where the container holds no message to retain. The retry and dead-letter behaviour just
-described therefore governs only the Lambda that submits jobs, not the transcoding itself, and the
-recording of \texttt{ERROR} in the database is the sole part of this paragraph that applies to a
-deployed transcoding failure. The gap this left, and its consequences for how such failures were
-detected, is examined in Section~\ref{sec:challenges}.
+When FFmpeg fails, the top-level handler records \texttt{ERROR} in the database. In \texttt{worker}
+mode it also leaves the SQS message in flight, so the message is redelivered and, after the
+configured attempts, moved to the dead letter queue. The deployed system runs \texttt{batch} mode
+(Section~\ref{sec:pipeline-design}), where the container holds no message, so only the
+\texttt{ERROR} record applies there; retry and alerting for that path are described in
+Section~\ref{sec:challenges}.
 
 \section{Infrastructure as Code}
 \label{sec:iac}
 
-The AWS environment is described by thirteen Terraform modules, summarised in
-Table~\ref{tab:terraform-modules}, and is described by three environment definitions:
-\texttt{dev}, which hosts the deployed system; \texttt{staging}, a reduced copy used to test a
-branch before it is merged; and \texttt{prod}, a variant that uses On-Demand Fargate capacity,
-keeps logs for thirty days and does not force-destroy buckets. Only the first two have been
-applied: the state of \texttt{prod} does not exist, and its definition was checked with
-\texttt{terraform validate} and never deployed. The \texttt{dev} environment, which serves real users,
-carries the same protection against a mistaken \texttt{terraform destroy}: its buckets and its
-registry cannot be force-deleted while they hold objects or images, and a deleted secret stays
-recoverable for seven days.
+The AWS environment is described by the thirteen Terraform modules of
+Table~\ref{tab:terraform-modules} and by three environment definitions: \texttt{dev}, which hosts
+the deployed system; \texttt{staging}, a reduced copy used to test a branch before it is merged; and
+\texttt{prod}, a variant with On-Demand Fargate capacity, thirty days of logs and buckets that cannot
+be force-destroyed. Only the first two have been applied; \texttt{prod} was checked with
+\texttt{terraform validate} and never deployed. Because \texttt{dev} serves real users, it carries the
+same protection against a mistaken \texttt{terraform destroy}: its buckets and registry cannot be
+force-deleted while they hold objects or images, and a deleted secret stays recoverable for seven days.
 
 \begin{table}[H]
 \centering
@@ -204,11 +163,10 @@ recoverable for seven days.
 \end{tabularx}
 \end{table}
 
-Two configuration details are worth highlighting. The S3 lifecycle policy transitions raw
-source files to Glacier after thirty days, since they are never read again once transcoding has
-succeeded but must be retained in case a re-encode becomes necessary. The cache policy assigns
-a long time-to-live to segments, which are immutable once produced, and a short one to
-manifests, which may change if the set of renditions changes.
+Two settings deserve mention. The S3 lifecycle policy moves raw source files to Glacier after thirty
+days, since they are not read again once transcoding has succeeded but must be kept in case a
+re-encode is needed. The cache policy gives segments, which never change, a long time-to-live and
+manifests, which change when the set of renditions changes, a short one.
 
 \section{CI/CD Pipeline and DevSecOps}
 \label{sec:cicd}
@@ -226,191 +184,116 @@ and the two-tier DevSecOps quality gate}}
 \label{fig:cicd}
 \end{sidewaysfigure}
 
-The security gate is structured in two tiers, and the reason is practical. Scanning at the
-combined critical and high severity levels and failing the build on any finding sounds
-rigorous, but in practice most high-severity findings originate in transitive dependencies for
-which no patch yet exists. A gate configured that way fails continuously for reasons the team
-cannot act upon, and the predictable result is that developers begin ignoring it. The pipeline
-therefore reports critical and high findings for visibility without blocking, and blocks only
-on critical findings for which a fix is available. This keeps the gate meaningful, because a
-failure now always corresponds to an action the team can actually take.
+The security gate has two tiers. Most high-severity findings come from transitive dependencies that
+have no patch yet, so a gate that failed on every critical or high finding would fail constantly for
+reasons the team cannot act on, and developers would learn to ignore it. The pipeline therefore
+reports critical and high findings without blocking, and blocks a merge only on a critical finding
+that has a fix. Every failure of the gate is thus something the team can act on.
 
-Static application security testing is performed with \texttt{eslint-plugin-security} rather
-than SonarQube. The rule set detects patterns such as command execution built from user input,
-regular expressions vulnerable to catastrophic backtracking, and cryptographically unsafe
-random number generation. The choice avoids operating a separate analysis server while still
-executing genuinely within the pipeline. Where a finding is a false positive, it is suppressed
-with an inline annotation that documents why, which forces each suppression to be justified
-rather than silently ignored.
+Static analysis uses \texttt{eslint-plugin-security} rather than SonarQube, which avoids running a
+separate analysis server. Its rules detect, for example, commands built from user input, regular
+expressions open to catastrophic backtracking and unsafe random number generation. A false positive
+is suppressed only with an inline comment stating why. Infrastructure code has its own workflow,
+which checks formatting, initialises without a remote backend so that no credentials are needed,
+validates both environments and scans the configuration for insecure settings.
 
-Infrastructure code is validated in its own workflow, which checks formatting, initialises
-without a remote backend so that no credentials are required, validates both environments, and
-scans the configuration for insecure settings.
-
-A later audit of the pipeline found a weakness in its own supply chain. All five workflows
-referenced the vulnerability scanner as \texttt{aquasecurity/trivy-action@master}. A branch
-reference resolves to whatever that repository's default branch contains at the moment a job runs,
-so a change made there, including one made by someone who had compromised the action, would
-execute inside this project's continuous integration, which holds AWS credentials. Every other
-action in the pipeline was already pinned at least to a major version tag. The references are now
-pinned to a release commit hash, with the version tag retained in a comment so that upgrades
-remain deliberate and readable.
-
-The same audit narrowed one permission. The Lambda that submits transcoding jobs held
-\texttt{batch:SubmitJob} on \texttt{Resource: "*"}, which allowed it to submit to any job queue
-in the account rather than the project's own. It is now scoped to the specific queue and job
-definition. The scoping is expressed through the naming convention rather than by referencing the
-Batch module's outputs, because the Batch module already depends on the IAM module for its roles
-and referring back would introduce a dependency cycle; both modules carry a note recording the
-coupling that this creates. The companion action \texttt{batch:DescribeJobs} keeps the wildcard,
-because it accepts arbitrary job identifiers and AWS provides no resource-level control for it,
-and the module records that reason in a comment so the wildcard is not mistaken for an oversight.
+A later audit of the pipeline tightened two points. All five workflows that ran the vulnerability
+scanner referenced \texttt{aquasecurity/trivy-action@master}, a branch whose content can change at any
+time, so a compromise of that repository would have run inside a pipeline holding AWS credentials.
+The references are now pinned to a release commit, with the version kept in a comment. The audit also
+found that the Lambda submitter held \texttt{batch:SubmitJob} on every resource; it is now limited
+to the project's job queue and job definition. \texttt{batch:DescribeJobs} keeps its wildcard because
+AWS offers no resource-level control for it, and the module says so in a comment.
 
 \section{Challenges During Development}
 \label{sec:challenges}
 
-Several difficulties arose between a design that was correct on paper and a system that behaved
-correctly once deployed. Each is recorded here with the resolution adopted, because those
-resolutions shaped parts of the final architecture.
+Several problems appeared between a design that was correct on paper and a system that behaved
+correctly once deployed. Table~\ref{tab:challenges} summarises them with their causes and
+resolutions; the two that changed the architecture are described after it.
 
-\subsection{Provisioning Blocked by Account Policy}
+\begin{table}[H]
+\centering
+\caption{Problems met during deployment, their causes and resolutions}
+\label{tab:challenges}
+\footnotesize
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{0.20\textwidth} >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X}
+\toprule
+\textbf{PROBLEM} & \textbf{CAUSE} & \textbf{RESOLUTION} \\
+\midrule
+Every playback request refused with \texttt{403} &
+The cookie authorised \texttt{videos/*/\{videoId\}/*}, but the transcoder writes under
+\texttt{videos/\{videoId\}/}; the unit test compared the function with a copy of its own output &
+Pattern corrected to \texttt{videos/\{videoId\}/*}; the test now asserts the transcoder's layout;
+verified end to end on the deployed distribution \\
+Thumbnails blocked in the catalogue &
+A cookie authorises one video, but a listing shows many thumbnails &
+An unsigned cache behaviour for the thumbnail path only \\
+Fixes served late by the frontend &
+The deployment workflow did not invalidate the frontend's CloudFront cache &
+The workflow invalidates it after every deployment \\
+Playback stopped after two hours behind an endless ``reconnecting'' message &
+Cookies expired; the handler called \texttt{startLoad()} without limit, while hls.js reports the first
+\texttt{403} as non-fatal and an expired cookie fails at the manifest &
+On a \texttt{403} the player refreshes the cookies and calls \texttt{loadSource()}, a bounded number
+of times, then shows a message the viewer can act on \\
+Every transcoding task failed with \texttt{Resource\allowbreak Initialization\allowbreak Error} &
+With e-mail unconfigured, the mail password secret existed without a value, and the job definition
+declared it because its ARN was not empty &
+The secret itself is now conditional; failure alerts carry \texttt{statusReason}, which would have
+shown the cause at once \\
+API outage (\texttt{522}) unseen by every alarm &
+Alarms watched only the pipeline; giving the backend a static address moved its IP while DNS still
+pointed at the old one &
+A scheduled check of the public domain every five minutes and an instance status-check alarm,
+self-hosted to avoid about 1.75~USD a month for a managed check \\
+The next \texttt{terraform apply} would rebuild the server &
+The image was resolved with \texttt{most\_recent = true}, so each Ubuntu release forced replacement
+and the loss of unmanaged state: environment file, nginx, TLS certificates and address &
+Changes to the image are ignored, so upgrades are deliberate, and an Elastic IP keeps the address \\
+\bottomrule
+\end{tabularx}
+\end{table}
 
-The content protection scheme of Section~\ref{sec:content-protection} was implemented and covered
-by unit tests well before it could be provisioned. Applying the Terraform configuration failed
-with an access-denied error, because AWS requires manual account verification before a new account
-may create CloudFront distributions, and the request filed to lift that restriction remained
-pending with no bound on how long it might take. Until it was resolved the processed-content
-bucket was reachable directly over the public internet, so the private visibility setting had no
-effect at the storage layer.
+\subsection{CloudFront in a Second Account}
 
-The restriction was worked around by provisioning the distribution in a second AWS account not
-subject to it. Terraform supports this without duplicating any module: the distribution, its
-Origin Access Control, its cache and response-header policies, and its Signed Cookie trusted key
-group were given an explicit \texttt{provider} argument pointing at the second account, while the
-buckets, Batch, Lambda and the database connection remained in the original one. Only the bucket
-policy could not move, since a bucket policy may be attached only by the account that owns the
-bucket. This required no special handling, because an Origin Access Control policy is expressed as
-a service principal together with an \texttt{AWS:SourceArn} condition naming the distribution, a
-form that is indifferent to which account owns the ARN. With the distribution in place, the
-temporary public bucket policy was removed and the bucket returned to being reachable only through
-CloudFront.
+The content protection of Section~\ref{sec:content-protection} was implemented and tested before it
+could be provisioned. AWS requires a manual verification before a new account may create CloudFront
+distributions, and the request to lift that restriction stayed pending with no date. Until then the
+processed-content bucket was reachable directly, so the private setting had no effect at the storage
+layer.
 
-\subsection{A Signed Cookie Policy That Matched Nothing}
-
-Exercising Signed Cookies against the new distribution revealed that every request returned
-\texttt{403 Forbidden}, whatever the video's visibility. The function building the resource
-pattern that a cookie authorises, \texttt{buildResourcePattern}, signed
-\texttt{videos/*/\{videoId\}/*}, with a wildcard segment between the prefix and the identifier,
-whereas the transcoder writes every rendition and the master playlist directly under
-\texttt{videos/\{videoId\}/}. Each cookie was therefore well formed and correctly signed, and
-authorised a resource that no viewer could request.
-
-The existing unit test did not detect this because it compared the function's output against a
-literal string copied from the function itself rather than against the transcoder's key layout, so
-it could confirm only that the function had not changed. The pattern was corrected to
-\texttt{videos/\{videoId\}/*} and the test rewritten to assert against the layout the transcoder
-actually produces. Signed Cookies were then verified end to end against the deployed system: a
-manifest request without a valid cookie is rejected at the edge, and the identical request
-succeeds once the playback-authorisation endpoint has issued cookies for that video.
-
-\subsection{Two Consequences of Gating Every Object}
-
-Gating the whole bucket behind Signed Cookies also gated video thumbnails, which a catalogue
-listing must render for many videos at once even though a cookie authorises exactly one. A
-separate unsigned cache behaviour was carved out for the thumbnail path, since a thumbnail is not
-the content the mechanism exists to protect.
-
-Separately, the frontend's own CloudFront distribution, added because an Amazon S3 website
-endpoint cannot return \texttt{200} for a single-page application's client-side routes on direct
-navigation, had no cache-invalidation step in its deployment workflow, so a fix already synced to
-the origin bucket continued to be served from the edge for hours afterwards. The workflow now
-invalidates that distribution immediately after every deployment.
-
-\subsection{Playback Across the Cookie Expiry Boundary}
-
-Signed Cookies are valid for two hours, and the watch page requested them once when it mounted.
-Crossing that boundary produced a \texttt{403} on the next segment, and the player's error handler
-responded to any fatal network error by calling \texttt{startLoad()} with no attempt counter and
-no delay, so an error that does not resolve on its own became an unbounded retry loop behind a
-``reconnecting'' message that never changed.
-
-Two properties of hls.js governed the fix. The library marks the first \texttt{403} as non-fatal
-while it retries internally, so the handler must inspect the status code before filtering on the
-fatal flag, or it discards the very error it exists to report. And \texttt{startLoad()} resumes
-segment loading, whereas an expired cookie fails at the manifest, so recovery requires re-invoking
-\texttt{loadSource()}. The handler now refreshes the cookies on a \texttt{403}, reloads the source,
-and gives up after a bounded number of attempts with a message the viewer can act on.
-
-\subsection{An Empty Secret That Stopped the Pipeline}
-
-Every transcoding task began failing at \texttt{ResourceInitializationError} before its entrypoint
-ran. The Terraform module for Secrets Manager created the entry holding the notification e-mail
-password unconditionally but populated its value only when a password had been configured, so
-leaving e-mail unconfigured produced a secret with no version carrying the \texttt{AWSCURRENT}
-label. The Batch module decided whether to declare that secret in the job definition by testing
-whether its ARN was non-empty, and the ARN of an empty secret is non-empty. The fix made the
-secret itself conditional, so that the unconfigured state is internally consistent: no secret, an
-empty ARN, and no declaration in the job definition.
-
-The defect persisted longer than it should have because the only jobs submitted while it was live
-belonged to the concurrency stress test, whose synthetic payloads were expected to fail. Checking
-the cause recorded in \texttt{statusReason} rather than the terminal state alone would have
-identified it immediately, and the alerting described next was changed to carry that field.
+The distribution was therefore provisioned in a second AWS account. Terraform needed no duplicated
+module: the distribution, its Origin Access Control, its cache and response-header policies and its
+trusted key group take an explicit \texttt{provider} argument pointing at the second account, while
+the buckets, Batch, Lambda and the database stay in the first. Only the bucket policy cannot move,
+since only the account owning a bucket can attach its policy. This needed no special handling,
+because an Origin Access Control policy names a service principal with an \texttt{AWS:SourceArn}
+condition on the distribution, whichever account owns it. With the distribution in place, the
+temporary public bucket policy was removed.
 
 \subsection{Retry and Alerting on the Deployed Path}
 
-Section~\ref{sec:pipeline-design} describes retry as delegated to SQS redelivery, which holds in
-\texttt{worker} mode. On the deployed path the Lambda submitter deletes the message once the job
-is submitted, so SQS no longer holds anything to redeliver, and the Batch job definition declared
-no \texttt{retryStrategy}. Nothing retried a failed job at any layer, and a transient fault such
-as a network error while downloading the source lost the video with no record beyond an
-\texttt{ERROR} row.
+On the deployed path the Lambda submitter deletes the SQS message once the job is submitted, so the
+queue has nothing to redeliver, and the job definition originally declared no retry strategy.
+Nothing retried a failed job at any layer, and a transient fault, such as a network error while
+downloading the source, lost the video with nothing but an \texttt{ERROR} record. Detection was no
+better: the alarm described as ``video transcoding failures detected'' watched the dead letter queue,
+which receives a message only when the Lambda fails to submit, so a job failing after submission was
+invisible to it.
 
-Detection had the same shape. The alarm whose description read ``video transcoding failures
-detected'' watched the depth of the dead letter queue, which receives a message only when the
-Lambda fails to submit, so a job that fails after submission is invisible to it. The job
-definition now declares three attempts, retrying infrastructure faults and exiting immediately
-when the exit status indicates that FFmpeg rejected the content, together with a two-hour timeout
-that bounds a process stalled on malformed input. Because AWS Batch publishes no CloudWatch metric
-for failed jobs, an EventBridge rule matches job state transitions to \texttt{FAILED} and
-publishes to the alert topic, with the notification carrying \texttt{statusReason}. The alarm
-description was corrected to state what it genuinely covers.
-
-\subsection{Monitoring the Service Rather Than the Server}
-
-Both of the alarms defined at that point watched the transcoding pipeline, the dead letter queue
-and the queue depth, and neither watched the backend API, which runs as a
-single process on a single instance. The gap surfaced when assigning the backend a static address
-moved its public IP while DNS still pointed at the released one, and the API returned
-\texttt{522} for several minutes. Every infrastructure indicator stayed green, because nothing at
-the infrastructure level was wrong.
-
-A scheduled function now calls the public domain every five minutes along the same path a viewer
-takes and publishes a metric that an alarm watches, with an instance status-check alarm alongside
-it. A self-hosted check was chosen over a managed one on cost, since a managed health check on an
-endpoint outside the provider costs roughly 1.75 USD per month against zero within the free tier,
-and the trade-off it accepts, that checks originate from a single location, is recorded with the
-implementation. The alarm's evaluation period is three times the check interval, so that each
-window holds several datapoints and one late execution cannot open a gap that the missing-data
-policy would read as a breach.
-
-\subsection{Infrastructure Drift in the Instance Definition}
-
-The AMI for the backend instance is resolved through a data source with
-\texttt{most\_recent = true}, and the \texttt{ami} attribute forces replacement when it changes, so
-every Ubuntu security release armed the next \texttt{terraform apply} to destroy and rebuild the
-running server. What would have been lost is the state Terraform does not manage: the environment
-file holding the database URI, signing key and mail credentials, the nginx configuration, the TLS
-certificates, the process manager's state, and the public address that DNS points at. Changes to
-the attribute are now ignored, which makes an image upgrade deliberate, and an Elastic IP keeps
-the address stable across any rebuild that does occur.
+The job definition now declares three attempts. It retries infrastructure faults, exits at once when
+the exit status shows that FFmpeg rejected the content, and has a two-hour timeout that bounds a
+process stalled on malformed input. Because AWS Batch publishes no CloudWatch metric for failed jobs,
+an EventBridge rule matches transitions to \texttt{FAILED} and publishes to the alert topic with the
+\texttt{statusReason} of the job, and the old alarm's description now states what it really covers.
 
 \section{Testing}
 \label{sec:testing}
 
-The automated test suite comprises 853 tests across 52 suites, 492 in 35 suites for the backend
-and 361 in 17 for the transcoder, and Tables~\ref{tab:test-coverage-backend} and
-\ref{tab:test-coverage-transcoder} group them by area.
+The automated suite holds 853 tests in 52 suites, 492 in 35 suites for the backend and 361 in 17 for
+the transcoder. Tables~\ref{tab:test-coverage-backend} and \ref{tab:test-coverage-transcoder} group
+them by area.
 
 \begin{table}[H]
 \centering
@@ -450,29 +333,17 @@ Content screening & 18 & The label policy including parent labels and the downgr
 \end{tabularx}
 \end{table}
 
-The visibility suite is the most important from a security standpoint, since it asserts that a
-private video is absent from the public listing, returns a not-found response rather than a
-forbidden one to non-owners, and remains accessible to its owner. Returning not-found is
-deliberate: a forbidden response would confirm that a video with that identifier exists, which
-leaks information.
+The visibility suite matters most for security. It asserts that a private video is absent from the
+public listing, remains accessible to its owner, and returns not-found rather than forbidden to anyone
+else, since a forbidden response would confirm that a video with that identifier exists.
 
-The value of testing was demonstrated concretely during development of the signing service.
-An initial implementation produced a canned policy, which the test suite immediately flagged
-because the resulting cookie set contained an expiry field instead of a policy field. Since
-canned policies do not support wildcard resources, that implementation would have failed for
-every video once deployed. The defect was caught before any infrastructure was provisioned.
-
-Testing caught a second defect in a similar way, this time surfaced not by writing a test first
-but by a literature review of the reliability guarantees the pipeline was implicitly assuming
-(Section~\ref{sec:transcoder-impl}). Once the conditional-write fix was implemented, six tests
-were written to pin down the exact contract: a normal write succeeds when the video is not yet
-\texttt{READY}; a write that loses the race to an earlier successful write is rejected and the
-function returns the winning record rather than throwing; and a late failure from a duplicate job
-can never revert an already-\texttt{READY} video to \texttt{ERROR}. As a falsifiability check, the
-same six tests were run against the original, unconditional implementation: four of the six
-failed, either because it never calls \texttt{findOneAndUpdate} at all or because it crashes
-outright when handed a plain record with no \texttt{save} method, which is exactly the shape a
-conditional read would have to return. The two that still passed were the not-found cases, which
-neither version distinguishes from a duplicate write. The result confirms both that the new tests
-are actually exercising the fixed code path and that the original implementation could not have
-satisfied the contract by construction, not merely by accident of the test data chosen.
+The suite caught two defects before they reached users. An early version of the signing service
+produced a canned policy, which the tests flagged because the cookie set held an expiry field
+instead of a policy field; canned policies do not allow wildcard resources, so every video would
+have failed to play once deployed. The second was the unconditional write of
+Section~\ref{sec:transcoder-impl}. Six tests now pin its contract: a normal write succeeds while the
+video is not yet \texttt{READY}, a write that loses the race returns the winning record instead of
+throwing, and a late failure can never turn a \texttt{READY} video into \texttt{ERROR}. Run against
+the original implementation, four of the six failed; the two that passed were the not-found cases,
+which neither version distinguishes. The tests therefore exercise the fixed code path rather than
+passing by accident of their data.

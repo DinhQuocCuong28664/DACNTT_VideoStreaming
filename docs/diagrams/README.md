@@ -8,16 +8,19 @@ Thư mục này chứa các sơ đồ dùng cho báo cáo đồ án. Ảnh PNG x
 | `02-transcoding-sequence.png` | Sequence Diagram quy trình chuyển mã Event-Driven | 4.2 |
 | `03-cicd-pipeline.png` | Bảy workflow CI/CD, đường dẫn kích hoạt và cổng chất lượng hai tầng | 5.1 |
 | `04-database-erd.png` | ERD của MongoDB (User, Video, Comment) | 4.3 |
-| `05-use-case.png` | Sơ đồ Use Case của người dùng nền tảng: 3 tác nhân, 15 use case, ký hiệu UML chuẩn | 3.1 |
+| `05-use-case.png` | Sơ đồ Use Case của người dùng nền tảng: 3 tác nhân, 17 use case, ký hiệu UML chuẩn | 3.1 |
 | `06-hls-abr.png` | Các tệp HLS sinh ra từ một video nguồn và thứ tự player tải | 2.2 |
 | `07-compute-models.png` | So sánh cụm luôn bật với container serverless, kèm thanh tỉ lệ giờ tính tiền | 2.1 |
-| `08-user-flow.png` | Luồng người dùng từ lúc vào trang tới khi video được công bố | 4.5 |
+| `08-user-flow.png` | Luồng người dùng từ lúc vào trang tới khi video được công bố | 4.8 |
 | `09-moderation-erd.png` | Năm collection phục vụ kiểm duyệt và vận hành (Report, ModerationEvent, Appeal, AuditSample, RoleChange) | 4.4 |
 | `10-use-case-staff.png` | Sơ đồ Use Case của kiểm duyệt và vận hành: operator, auditor, administrator cùng sàng lọc tự động, báo cáo và khiếu nại | 3.2 |
+| `17-playback-sequence.png` | Sequence Diagram cấp quyền phát: backend cấp Signed Cookie cho một video, CloudFront kiểm từng yêu cầu | 4.5 |
+| `18-verification-sequence.png` | Sequence Diagram xác thực tài khoản: theo liên kết trong thư, hoặc đăng nhập Google cùng địa chỉ | 4.7 |
+| `19-moderation-sequence.png` | Sequence Diagram kiểm duyệt: sàng lọc tự động, báo cáo của người xem, quyết định của operator, khiếu nại của chủ video | 4.6 |
 
 ## Tái sinh ảnh sau khi sửa sơ đồ
 
-Sau khi chỉnh sửa tệp `.mmd` trong `src/`, chạy lệnh sau tại thư mục gốc của dự án để xuất lại ảnh dựng bằng Mermaid (chỉ còn hình 4.2). Chín ảnh còn lại dựng bằng công cụ khác, lệnh riêng nằm ở mục kế tiếp:
+Sau khi chỉnh sửa tệp `.mmd` trong `src/`, chạy lệnh sau tại thư mục gốc của dự án để xuất lại ảnh dựng bằng Mermaid (bốn sơ đồ tuần tự: hình 4.2, 4.5, 4.6 và 4.7), rồi chép bản PNG sang `report/images/`. Các ảnh còn lại dựng bằng công cụ khác, lệnh riêng nằm ở mục kế tiếp. Ba sơ đồ 17 tới 19 phải giữ chữ in từ 6,2pt trở lên; cỡ đo tay của chúng ghi trong `check-print-size.mjs`. Sơ đồ 19 có dòng `%%{init: ...}%%` ở đầu để thu hẹp khoảng cách giữa các tác nhân, và trong nhãn không được dùng dấu `;` vì Mermaid coi đó là hết câu lệnh:
 
 ```bash
 for f in docs/diagrams/src/*.mmd; do npx --yes @mermaid-js/mermaid-cli -i "$f" -o "docs/diagrams/$(basename "$f" .mmd).png" -c docs/diagrams/mermaid-config.json -b white -s 3; done
@@ -32,7 +35,7 @@ Thư mục này dùng hai công cụ, chọn theo loại sơ đồ.
 **Mermaid** (`src/*.mmd`) chỉ còn dùng cho **sơ đồ tuần tự**, loại Mermaid làm
 tốt và không cần icon dịch vụ.
 
-Sơ đồ luồng người dùng (hình 4.5) đã chuyển sang bộ sinh SVG, không phải vì
+Sơ đồ luồng người dùng (hình 4.8) đã chuyển sang bộ sinh SVG, không phải vì
 trình bày mà vì **tỉ lệ khung**: `graph TB` xếp mọi thứ thành một cột dọc và
 không có cách nào bảo nó gấp lại, nên hình ra 1:2,15, phải đặt theo chiều cao
 trang, và chữ in ra chỉ còn 6,4pt. Xếp tay thành ba cột đưa tỉ lệ về 1:1,47 và

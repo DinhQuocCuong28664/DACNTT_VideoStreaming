@@ -32,6 +32,10 @@ const FLOOR = 6.2;
  */
 const MEASURED = {
   '02-transcoding-sequence': { pt: 6.40, note: 'Mermaid, cùng cỡ chữ 34 px như bản đo trước, ảnh rộng 5193 px' },
+  // Ba hình dưới: chữ nhỏ nhất 15 px trên khung SVG rộng bằng ảnh PNG chia 3 (-s 3).
+  '17-playback-sequence': { pt: 6.32, note: 'Mermaid, 15px trên khung 1076px, in 160mm' },
+  '18-verification-sequence': { pt: 6.40, note: 'Mermaid, 15px trên khung 1063px, in 160mm' },
+  '19-moderation-sequence': { pt: 6.24, note: 'Mermaid, 15px trên khung 1036px, in 152mm (0,95 textwidth)' },
 };
 
 const inc = /\\includegraphics\[(width|height)=([0-9.]*)\\(textwidth|textheight)\]\{images\/([^}]+)\.png\}/g;
