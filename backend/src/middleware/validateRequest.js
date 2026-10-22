@@ -115,7 +115,7 @@ const validateUploadMetadata = (req, res, next) => {
  * Danh sách định dạng ảnh được chấp nhận cho ảnh đại diện — cùng lý do bắt
  * buộc kiểm tra ở máy chủ như ALLOWED_VIDEO_MIME_TYPES ở trên.
  */
-const ALLOWED_AVATAR_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const ALLOWED_AVATAR_MIME_TYPES = ['image/jpeg', 'image/png'];
 
 /** Dung lượng tối đa ảnh đại diện: 5 MB — đủ cho ảnh chân dung, không cần nén trước */
 const MAX_AVATAR_SIZE_BYTES = 5 * 1024 * 1024;

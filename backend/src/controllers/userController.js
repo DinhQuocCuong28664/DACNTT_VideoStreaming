@@ -2,6 +2,17 @@ const mongoose = require('mongoose');
 const User = require('../models/User');
 const s3Service = require('../services/s3Service');
 const profileService = require('../services/profileService');
+const avatarModeration = require('../services/avatarModeration');
+const httpError = require('../utils/httpError');
+
+/** Deleting a refused avatar must not hide the reason it was refused. */
+const deleteAvatarQuietly = async (bucket, key) => {
+  try {
+    await s3Service.deleteObject(bucket, key);
+  } catch (err) {
+    console.error(`Could not delete refused avatar ${key}: ${err.message}`);
+  }
+};
 const { MAX_AVATAR_SIZE_BYTES } = require('../middleware/validateRequest');
 
 /**
@@ -77,11 +88,28 @@ const updateAvatar = async (req, res, next) => {
     // Chỉ chấp nhận key nằm đúng trong "thư mục" của chính người dùng đang
     // đăng nhập — chặn việc client gửi key tùy ý trỏ vào ảnh của người khác
     // hoặc file bất kỳ khác trong bucket tĩnh dùng chung — và đúng dạng
-    // {timestamp}.{jpg|png|webp} mà presignAvatarUpload sinh ra.
+    // {timestamp}.{jpg|png} mà presignAvatarUpload sinh ra.
     if (!s3Service.isAvatarKeyOf(req.user._id.toString(), key)) {
       const error = new Error('Invalid avatar key');
       error.statusCode = 400;
       throw error;
+    }
+
+    // Screen the picture before it is attached to the account. The static
+    // bucket serves avatars publicly, so a refused or unscreened image is
+    // deleted at once rather than left reachable at its URL.
+    const bucket = process.env.S3_STATIC_BUCKET_NAME;
+    let verdict;
+    try {
+      verdict = await avatarModeration.checkAvatar({ bucket, key });
+    } catch (err) {
+      await deleteAvatarQuietly(bucket, key);
+      throw err;
+    }
+    if (!verdict.allowed) {
+      await deleteAvatarQuietly(bucket, key);
+      const messageKey = verdict.reason === 'unreadable' ? 'avatar.unreadable' : 'avatar.rejected';
+      throw httpError.localized(422, messageKey, 'AVATAR_REJECTED');
     }
 
     const publicUrl = s3Service.getAvatarPublicUrl(key);

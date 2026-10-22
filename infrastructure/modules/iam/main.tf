@@ -341,14 +341,36 @@ resource "aws_iam_role_policy" "ec2_backend_s3" {
         Resource = ["${var.raw_bucket_arn}/*"]
       }
       ], var.static_bucket_arn == "" ? [] : [
-      # Ảnh đại diện: backend chỉ ký presigned POST vào avatars/, không cần
-      # đọc, xoá hay liệt kê gì trong bucket host frontend.
+      # Avatars: the backend signs presigned POSTs into avatars/, lets
+      # Rekognition read the uploaded image (DetectModerationLabels with an
+      # S3Object needs s3:GetObject from the caller), and deletes a refused
+      # image. Nothing outside avatars/ in the frontend bucket.
       {
         Effect   = "Allow"
-        Action   = ["s3:PutObject"]
+        Action   = ["s3:PutObject", "s3:GetObject", "s3:DeleteObject"]
         Resource = ["${var.static_bucket_arn}/avatars/*"]
       }
     ])
+  })
+}
+
+# Avatar screening (backend/src/services/avatarModeration.js). As for the
+# transcoder above, DetectModerationLabels with the stock model has no
+# resource to scope to, so Resource is "*"; the policy grants one read-only
+# action and creates nothing.
+resource "aws_iam_role_policy" "ec2_backend_rekognition" {
+  name = "${var.project_name}-ec2-backend-rekognition-policy"
+  role = aws_iam_role.ec2_backend.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = ["rekognition:DetectModerationLabels"]
+        Resource = "*"
+      }
+    ]
   })
 }
 

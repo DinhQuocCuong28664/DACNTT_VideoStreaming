@@ -167,10 +167,11 @@ const abortMultipartUpload = ({ key, uploadId }) =>
  * key avatars/{userId}/{ts}.html. Bucket này cũng là bucket CloudFront phục vụ
  * zelostech.site, nên một tệp HTML ở đó chạy ngay trên origin của ứng dụng.
  */
+// JPEG and PNG only: Rekognition screens avatars and reads no other format
+// (services/avatarModeration.js). The browser converts WebP to PNG first.
 const AVATAR_EXTENSIONS = {
   'image/jpeg': 'jpg',
   'image/png': 'png',
-  'image/webp': 'webp',
 };
 
 /**
@@ -190,7 +191,7 @@ const generateAvatarKey = (userId, mimeType) => {
 const isAvatarKeyOf = (userId, key) =>
   typeof key === 'string' &&
   key.startsWith(`avatars/${userId}/`) &&
-  /^\d+\.(jpg|png|webp)$/.test(key.slice(`avatars/${userId}/`.length));
+  /^\d+\.(jpg|png)$/.test(key.slice(`avatars/${userId}/`.length));
 
 /**
  * Presigned POST để tải ảnh đại diện thẳng lên bucket tĩnh công khai

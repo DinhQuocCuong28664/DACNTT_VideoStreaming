@@ -50,6 +50,9 @@ const MESSAGES = {
     'profile.usernameTaken': 'Tên người dùng này đã có người dùng.',
     'profile.usernameLimit': 'Bạn chỉ đổi được tên người dùng hai lần trong 14 ngày. Vui lòng thử lại sau.',
     'profile.changedMeanwhile': 'Hồ sơ vừa được đổi ở nơi khác. Vui lòng tải lại trang rồi thử lại.',
+    'avatar.rejected': 'Ảnh này không phù hợp làm ảnh đại diện. Vui lòng chọn ảnh khác.',
+    'avatar.unreadable': 'Không đọc được ảnh này. Hãy dùng ảnh JPEG hoặc PNG, mỗi chiều ít nhất 80 điểm ảnh.',
+    'avatar.checkUnavailable': 'Chưa kiểm tra được ảnh lúc này. Ảnh đại diện cũ được giữ nguyên, vui lòng thử lại sau.',
   },
   en: {
     'cors.forbiddenOrigin': 'Origin not allowed by the CORS policy: {origin}',
@@ -85,6 +88,9 @@ const MESSAGES = {
     'profile.usernameTaken': 'This username is already taken.',
     'profile.usernameLimit': 'You can change your username twice in 14 days. Please try again later.',
     'profile.changedMeanwhile': 'Your profile was just changed elsewhere. Please reload the page and try again.',
+    'avatar.rejected': 'This picture cannot be used as an avatar. Please choose another one.',
+    'avatar.unreadable': 'This picture could not be read. Use a JPEG or PNG image at least 80 pixels on each side.',
+    'avatar.checkUnavailable': 'The picture could not be checked right now. Your current avatar is kept; please try again later.',
   },
 };
 

@@ -10,9 +10,9 @@ import GoogleSignInButton from '../components/Auth/GoogleSignInButton';
 import ResendVerificationButton from '../components/Auth/ResendVerificationButton';
 import ProfileSection from '../components/Settings/ProfileSection';
 import { formatDate } from '../utils/format';
+import { PICKABLE_AVATAR_TYPES, prepareAvatarFile } from '../utils/avatarImage';
 import './SettingsPage.css';
 
-const ALLOWED_AVATAR_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const MAX_AVATAR_SIZE_BYTES = 5 * 1024 * 1024;
 
 const TABS = [
@@ -38,23 +38,33 @@ const AccountTab = () => {
   };
 
   const handleAvatarFileChange = async (e) => {
-    const file = e.target.files?.[0];
+    const picked = e.target.files?.[0];
     e.target.value = ''; // cho phép chọn lại đúng file đó lần sau nếu cần
-    if (!file) return;
+    if (!picked) return;
 
     setAvatarError('');
 
-    if (!ALLOWED_AVATAR_TYPES.includes(file.type)) {
+    if (!PICKABLE_AVATAR_TYPES.includes(picked.type)) {
       setAvatarError(t('settings.avatarBadType'));
-      return;
-    }
-    if (file.size > MAX_AVATAR_SIZE_BYTES) {
-      setAvatarError(t('settings.avatarTooLarge'));
       return;
     }
 
     setUploading(true);
     try {
+      // WebP is redrawn as PNG here: the server screens avatars with a service
+      // that reads JPEG and PNG only.
+      let file;
+      try {
+        file = await prepareAvatarFile(picked);
+      } catch {
+        setAvatarError(t('settings.avatarBadType'));
+        return;
+      }
+      if (file.size > MAX_AVATAR_SIZE_BYTES) {
+        setAvatarError(t('settings.avatarTooLarge'));
+        return;
+      }
+
       const presignRes = await userApi.presignAvatarUpload(file.name, file.type, file.size);
       const { upload, key } = presignRes.data.data;
 
