@@ -125,6 +125,10 @@ describe('Comment reports', () => {
 
       expect(Comment.find).toHaveBeenCalledWith({ openReports: { $gt: 0 } });
       expect(query.sort).toHaveBeenCalledWith({ openReports: -1, _id: -1 });
+      // lean() returns plain objects, so the staff queue keeps the count that
+      // Comment#toJSON hides from viewers.
+      expect(query.lean).toHaveBeenCalled();
+      expect(result.comments[0].openReports).toBe(3);
       expect(result.comments[0].reportReasons).toEqual({ spam: 2, harassment: 1 });
       expect(result.pagination).toEqual({ page: 1, limit: 20, total: 1, pages: 1 });
     });
