@@ -18,6 +18,7 @@ import {
   FiClock,
 } from 'react-icons/fi';
 import { withStartTime } from '../../utils/startTime';
+import { VIEW_SECONDS, addWatched, reachedView } from '../../utils/viewProgress';
 import './VideoPlayer.css';
 
 const PLAYBACK_RATES = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
@@ -77,7 +78,7 @@ const VideoPlayer = ({
   src,
   poster,
   onViewThreshold,
-  viewThresholdSeconds = 5,
+  viewThresholdSeconds = VIEW_SECONDS,
   // CloudFront giờ đã bật Signed Cookie (enable_signed_urls=true), CORS
   // response trả đúng Access-Control-Allow-Credentials: true nên phải gửi
   // kèm cookie thì CDN mới cấp quyền phát video (kể cả video public).
@@ -111,6 +112,10 @@ const VideoPlayer = ({
   const hideControlsTimer = useRef(null);
   // Bảo đảm lượt xem chỉ được báo cáo một lần cho mỗi phiên phát
   const viewReportedRef = useRef(false);
+  // Seconds of this video actually watched, and the playhead at the last
+  // timeupdate, for the view rule in utils/viewProgress.js.
+  const watchedRef = useRef(0);
+  const lastTimeRef = useRef(null);
   const onViewThresholdRef = useRef(onViewThreshold);
   const onAuthExpiredRef = useRef(onAuthExpired);
 
@@ -165,6 +170,8 @@ const VideoPlayer = ({
   // Đặt lại trạng thái khi chuyển sang video khác
   useEffect(() => {
     viewReportedRef.current = false;
+    watchedRef.current = 0;
+    lastTimeRef.current = null;
     networkRetriesRef.current = 0;
     mediaRecoveriesRef.current = 0;
     authRefreshesRef.current = 0;
@@ -353,18 +360,18 @@ const VideoPlayer = ({
     const onTimeUpdate = () => {
       setCurrentTime(video.currentTime);
 
-      // Ghi nhận lượt xem sau khi người dùng đã thực sự xem đủ ngưỡng thời gian.
-      // Cách này tránh việc chỉ tải trang cũng được tính là một lượt xem.
-      //
-      // Video ngắn hơn ngưỡng thì xem hết là đủ: so với min(ngưỡng, độ dài),
-      // nếu không video 3 giây sẽ không bao giờ có lượt xem. Trước khi có
-      // metadata, duration là NaN, nên tạm dùng nguyên ngưỡng.
-      //
-      // Only while playing: a link with `?t=` seeks before anything plays, and
-      // that seek fires timeupdate too. Without this check, merely opening a
-      // shared "at current time" link would count a view.
-      const threshold = Math.min(viewThresholdSeconds, video.duration || Infinity);
-      if (!video.paused && video.currentTime >= threshold) reportViewOnce();
+      // A view needs thirty seconds actually watched, or the whole of a
+      // shorter video (utils/viewProgress.js). Only time that passes while the
+      // video plays is added, so loading the page, opening a `?t=` link or
+      // seeking forward never counts by itself.
+      const playing = !video.paused && !video.seeking;
+      watchedRef.current = addWatched(watchedRef.current, lastTimeRef.current, video.currentTime, playing);
+      lastTimeRef.current = video.currentTime;
+      if (reachedView(watchedRef.current, video.duration, viewThresholdSeconds)) reportViewOnce();
+    };
+    // After a seek the next step starts from the new position.
+    const onSeeked = () => {
+      lastTimeRef.current = video.currentTime;
     };
     const onLoadedMetadata = () => setDuration(video.duration || 0);
     const onDurationChange = () => setDuration(video.duration || 0);
@@ -375,11 +382,11 @@ const VideoPlayer = ({
     };
     const onPlay = () => setIsPlaying(true);
     const onPause = () => setIsPlaying(false);
-    // timeupdate cuối cùng có thể dừng ngay trước mốc kết thúc (ví dụ 2.95 của
-    // 3 giây), nên phát hết video cũng là một cách đạt ngưỡng.
+    // Reaching the end counts only if enough was watched on the way: a seek to
+    // the last second followed by `ended` must not make a view.
     const onEnded = () => {
       setIsPlaying(false);
-      reportViewOnce();
+      if (reachedView(watchedRef.current, video.duration, viewThresholdSeconds)) reportViewOnce();
     };
     const onVolumeChange = () => {
       setVolume(video.volume);
@@ -389,6 +396,7 @@ const VideoPlayer = ({
     const onLeavePiP = () => setIsPiP(false);
 
     video.addEventListener('timeupdate', onTimeUpdate);
+    video.addEventListener('seeked', onSeeked);
     video.addEventListener('loadedmetadata', onLoadedMetadata);
     video.addEventListener('durationchange', onDurationChange);
     video.addEventListener('progress', onProgress);
@@ -401,6 +409,7 @@ const VideoPlayer = ({
 
     return () => {
       video.removeEventListener('timeupdate', onTimeUpdate);
+      video.removeEventListener('seeked', onSeeked);
       video.removeEventListener('loadedmetadata', onLoadedMetadata);
       video.removeEventListener('durationchange', onDurationChange);
       video.removeEventListener('progress', onProgress);
