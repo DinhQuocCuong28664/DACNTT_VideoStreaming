@@ -32,6 +32,7 @@ const EMPTY_FORM = {
   category: UPLOAD_CATEGORIES[0].value,
   tags: '',
   visibility: 'public',
+  hasViolence: false,
 };
 
 /**
@@ -283,6 +284,7 @@ const VideoUpload = () => {
         fileSize: file.size,
         tags: tagsArray,
         visibility: formData.visibility,
+        hasViolence: formData.hasViolence,
       });
 
       const { video, upload, multipart } = initRes.data.data;
@@ -542,6 +544,26 @@ const VideoUpload = () => {
                         />
                       </label>
                       <p className="field-help">{t('upload.tagsHelp')}</p>
+                    </div>
+
+                    <div className="studio-checkbox-field" style={{ marginTop: '16px' }}>
+                      <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          name="hasViolence"
+                          checked={formData.hasViolence}
+                          onChange={(e) => setFormData({ ...formData, hasViolence: e.target.checked })}
+                          style={{ marginTop: '4px', cursor: 'pointer', width: '16px', height: '16px' }}
+                        />
+                        <div>
+                          <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-primary)' }}>
+                            {t('upload.violenceLabel')}
+                          </span>
+                          <p className="field-help" style={{ margin: '2px 0 0', fontSize: '0.825rem', color: 'var(--text-secondary)' }}>
+                            {t('upload.violenceHelp')}
+                          </p>
+                        </div>
+                      </label>
                     </div>
                   </>
                 ) : (

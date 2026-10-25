@@ -12,6 +12,7 @@ import {
   MdOutlinedFlag,
   MdBlock,
   MdOutlineShield,
+  MdWarningAmber,
 } from 'react-icons/md';
 import Avatar from '../components/Common/Avatar';
 import useToast from '../components/Common/Toast';
@@ -43,6 +44,11 @@ const WatchPage = () => {
   // hình giải thích thay vì đưa người xem sang trang 404 chung chung.
   const [unavailable, setUnavailable] = useState(null);
   const [reportOpen, setReportOpen] = useState(false);
+  const [warningDismissed, setWarningDismissed] = useState(false);
+
+  useEffect(() => {
+    setWarningDismissed(false);
+  }, [id]);
   const [toast, showToast] = useToast();
   // Xem và phát được video bị gỡ: admin và operator (không phải auditor). Tên biến giữ nguyên để
   // không phải sửa các chỗ dùng bên dưới.
@@ -290,6 +296,37 @@ const WatchPage = () => {
               <MdBlock className="player-placeholder-icon" aria-hidden="true" />
               <p>{t('watch.removedTitle')}</p>
             </div>
+          ) : video.hasViolence && !warningDismissed ? (
+            <div className="player-placeholder player-violence-warning">
+              {video.thumbnailUrl && (
+                <div
+                  className="violence-warning-backdrop"
+                  style={{ backgroundImage: `url(${video.thumbnailUrl})` }}
+                  aria-hidden="true"
+                />
+              )}
+              <div className="violence-warning-content">
+                <MdWarningAmber className="violence-warning-icon" aria-hidden="true" />
+                <h2 className="violence-warning-title">{t('watch.violenceWarningTitle')}</h2>
+                <p className="violence-warning-desc">{t('watch.violenceWarningDesc')}</p>
+                <div className="violence-warning-actions">
+                  <button
+                    type="button"
+                    className="btn btn-primary violence-proceed-btn"
+                    onClick={() => setWarningDismissed(true)}
+                  >
+                    {t('watch.proceedButton')}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-plain violence-back-btn"
+                    onClick={() => navigate(-1)}
+                  >
+                    {t('watch.goBackButton')}
+                  </button>
+                </div>
+              </div>
+            </div>
           ) : isReady ? (
             <VideoPlayer
               src={videoSrc}
@@ -336,7 +373,14 @@ const WatchPage = () => {
             </div>
           )}
 
-          <h1 className="watch-title">{video.title}</h1>
+          <h1 className="watch-title">
+            {video.title}
+            {video.hasViolence && (
+              <span className="watch-violence-chip" title={t('watch.violenceWarningBadge')}>
+                <MdWarningAmber aria-hidden="true" /> {t('watch.violenceWarningBadge')}
+              </span>
+            )}
+          </h1>
 
           {/* Hàng kênh và nút thao tác. Dự án không có tính năng đăng ký kênh,
               nên không có nút Subscribe như YouTube. */}

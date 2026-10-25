@@ -43,6 +43,7 @@ const initiateUpload = async (userId, videoData) => {
     fileSize: videoData.fileSize || 0,
     tags: videoData.tags || [],
     visibility: videoData.visibility || 'public',
+    hasViolence: Boolean(videoData.hasViolence),
     status: 'UPLOADING',
   });
 
@@ -697,10 +698,14 @@ const updateVideo = async (videoId, userId, updateData) => {
     throw error;
   }
 
-  const allowedFields = ['title', 'description', 'category', 'tags', 'visibility'];
+  const allowedFields = ['title', 'description', 'category', 'tags', 'visibility', 'hasViolence'];
   for (const field of allowedFields) {
     if (updateData[field] !== undefined) {
-      video[field] = updateData[field];
+      if (field === 'hasViolence') {
+        video.hasViolence = Boolean(updateData.hasViolence);
+      } else {
+        video[field] = updateData[field];
+      }
     }
   }
 

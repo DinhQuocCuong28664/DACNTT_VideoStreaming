@@ -84,6 +84,11 @@ const VideoCard = ({ video, variant = 'grid', showAvatar = true, showMenu = true
         {video.status === 'READY' && video.moderation?.status === 'flagged' && (
           <span className="video-status-badge">{t('videoCard.underReview')}</span>
         )}
+        {video.hasViolence && (
+          <span className="video-status-badge video-status-badge-violence">
+            {t('videoCard.violenceBadge')}
+          </span>
+        )}
         {thumbnailOverlay}
       </div>
 

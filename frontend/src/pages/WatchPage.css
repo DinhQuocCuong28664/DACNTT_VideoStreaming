@@ -511,3 +511,105 @@
     flex-wrap: nowrap;
   }
 }
+
+
+/* ── Màn hình Cảnh báo Nội dung Bạo lực (Violence Warning Interstitial) ── */
+.player-violence-warning {
+  position: relative;
+  overflow: hidden;
+  background-color: #0f172a;
+}
+
+.violence-warning-backdrop {
+  position: absolute;
+  inset: -20px;
+  background-size: cover;
+  background-position: center;
+  filter: blur(25px) brightness(0.25);
+  transform: scale(1.1);
+  z-index: 1;
+}
+
+.violence-warning-content {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  max-width: 480px;
+  padding: var(--space-xl) var(--space-md);
+  margin: auto;
+}
+
+.violence-warning-icon {
+  font-size: 3.5rem;
+  color: #f59e0b;
+  margin-bottom: var(--space-md);
+  filter: drop-shadow(0 2px 8px rgba(245, 158, 11, 0.4));
+}
+
+.violence-warning-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: var(--space-sm);
+}
+
+.violence-warning-desc {
+  font-size: 0.925rem;
+  color: #cbd5e1;
+  line-height: 1.5;
+  margin-bottom: var(--space-lg);
+}
+
+.violence-warning-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.violence-proceed-btn {
+  background-color: #dc2626 !important;
+  color: #ffffff !important;
+  font-weight: 600;
+  padding: 8px 18px;
+  border-radius: 20px;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.violence-proceed-btn:hover {
+  background-color: #b91c1c !important;
+}
+
+.violence-back-btn {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff !important;
+  padding: 8px 16px;
+  border-radius: 20px;
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.violence-back-btn:hover {
+  background: rgba(255, 255, 255, 0.2) !important;
+}
+
+.watch-violence-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  vertical-align: middle;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  margin-left: 10px;
+  border-radius: 12px;
+  background: rgba(220, 38, 38, 0.15);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}

@@ -20,6 +20,7 @@ const EditVideoDialog = ({ video, onClose, onSaved }) => {
   const [description, setDescription] = useState(video.description || '');
   const [category, setCategory] = useState(video.category || UPLOAD_CATEGORIES[0].value);
   const [visibility, setVisibility] = useState(video.visibility || 'public');
+  const [hasViolence, setHasViolence] = useState(Boolean(video.hasViolence));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -36,7 +37,7 @@ const EditVideoDialog = ({ video, onClose, onSaved }) => {
     setSaving(true);
     setError('');
     try {
-      const res = await videoApi.updateVideo(video._id, { title, description, category, visibility });
+      const res = await videoApi.updateVideo(video._id, { title, description, category, visibility, hasViolence });
       onSaved(res.data.data.video);
     } catch (err) {
       setError(err.response?.data?.message || err.message);
@@ -117,6 +118,26 @@ const EditVideoDialog = ({ video, onClose, onSaved }) => {
             </label>
 
             <VisibilityPicker value={visibility} onChange={setVisibility} name="edit-visibility" />
+
+            <div className="studio-checkbox-field" style={{ marginTop: '16px' }}>
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  name="hasViolence"
+                  checked={hasViolence}
+                  onChange={(e) => setHasViolence(e.target.checked)}
+                  style={{ marginTop: '4px', cursor: 'pointer', width: '16px', height: '16px' }}
+                />
+                <div>
+                  <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-primary)' }}>
+                    {t('channel.editViolenceLabel')}
+                  </span>
+                  <p className="field-help" style={{ margin: '2px 0 0', fontSize: '0.825rem', color: 'var(--text-secondary)' }}>
+                    {t('channel.editViolenceHelp')}
+                  </p>
+                </div>
+              </label>
+            </div>
           </div>
 
           <aside className="edit-video-preview">

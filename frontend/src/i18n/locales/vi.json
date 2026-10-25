@@ -71,7 +71,8 @@
     "share": "Chia sẻ",
     "report": "Báo cáo",
     "linkCopied": "Đã sao chép liên kết",
-    "copyFailed": "Không sao chép được liên kết"
+    "copyFailed": "Không sao chép được liên kết",
+    "violenceBadge": "Cảnh báo"
   },
   "upload": {
     "dropzone": "Kéo và thả tệp video để tải lên",
@@ -111,7 +112,9 @@
     "step": {
       "details": "Chi tiết",
       "visibility": "Chế độ hiển thị"
-    }
+    },
+    "violenceLabel": "Cảnh báo nội dung bạo lực / nhạy cảm",
+    "violenceHelp": "Đánh dấu nếu video chứa cảnh bạo lực hoặc hình ảnh không phù hợp với trẻ em. Người xem sẽ thấy màn hình cảnh báo trước khi phát."
   },
   "visibility": {
     "public": "Công khai",
@@ -158,7 +161,9 @@
       "latest": "Mới nhất",
       "popular": "Phổ biến",
       "oldest": "Cũ nhất"
-    }
+    },
+    "editViolenceLabel": "Cảnh báo nội dung bạo lực / nhạy cảm",
+    "editViolenceHelp": "Hiển thị màn hình cảnh báo người xem trước khi phát video."
   },
   "auth": {
     "or": "hoặc",
@@ -298,7 +303,12 @@
     "pinned": "Đã ghim bình luận",
     "unpinned": "Đã bỏ ghim bình luận",
     "pinFailed": "Không đổi được bình luận đã ghim.",
-    "reportComment": "Báo cáo"
+    "reportComment": "Báo cáo",
+    "violenceWarningTitle": "Cảnh báo: Nội dung bạo lực / nhạy cảm",
+    "violenceWarningDesc": "Video này được đánh dấu có chứa hình ảnh bạo lực hoặc nội dung nhạy cảm. Người xem cần cân nhắc trước khi xem.",
+    "violenceWarningBadge": "Cảnh báo bạo lực",
+    "proceedButton": "Tôi hiểu và muốn tiếp tục",
+    "goBackButton": "Quay lại"
   },
   "player": {
     "authFailed": "Không xác thực được phiên xem video. Vui lòng tải lại trang.",

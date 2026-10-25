@@ -110,6 +110,13 @@ const updateVideoReady = async (videoId, { hlsUrl, thumbnailUrl, duration, moder
     update['moderation.modelVersion'] = moderation.modelVersion;
     update['moderation.error'] = moderation.error;
     update['moderation.checkedAt'] = new Date();
+
+    const hasViolenceDetected = Array.isArray(moderation.labels) && moderation.labels.some(
+      (l) => l.name === 'Violence' || l.name === 'Graphic Violence' || l.parentName === 'Violence'
+    );
+    if (hasViolenceDetected) {
+      update.hasViolence = true;
+    }
   }
 
   const video = await Video.findOneAndUpdate(

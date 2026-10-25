@@ -441,3 +441,13 @@
     width: 100%;
   }
 }
+
+
+.video-status-badge-violence {
+  background: rgba(220, 38, 38, 0.9) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(254, 202, 202, 0.4);
+  font-weight: 600;
+  top: 8px;
+  right: 8px;
+}

@@ -93,6 +93,16 @@ const videoSchema = new mongoose.Schema(
       default: 'public',
     },
 
+    /**
+     * Cảnh báo nội dung bạo lực / nhạy cảm (Content Warning).
+     * Được bật bởi người dùng khi tải lên/chỉnh sửa, hoặc do hệ thống
+     * AI Rekognition tự động phát hiện trong quá trình chuyển mã.
+     */
+    hasViolence: {
+      type: Boolean,
+      default: false,
+    },
+
     /** A top-level comment the owner pinned above the others, or null. */
     pinnedComment: {
       type: mongoose.Schema.Types.ObjectId,
