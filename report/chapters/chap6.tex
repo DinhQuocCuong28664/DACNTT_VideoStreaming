@@ -645,6 +645,23 @@ its jobs never reached that state. At eight-way concurrency, 826~seconds for 100
 container provisioning, image pull and result upload, rather than encoding, so for short uploads it is
 this fixed cost of about a minute, not the speed of FFmpeg, that decides how long a user waits.
 
+\subsection{Serverless Backend Concurrency and Latency Evaluation}
+\label{sec:backend-evaluation}
+
+The initial load test revealed a severe concurrency bottleneck in the monolithic Amazon EC2 baseline: when fifty virtual users submitted requests simultaneously, the single Node.js event loop became saturated, driving the mean request latency to 2388.52~ms and the 95th percentile to 3317.79~ms, with maximum response spikes exceeding 6.13 seconds in the k6 test suite. Furthermore, the virtual machine represented a single point of failure (SPOF) with persistent idle costs.
+
+To evaluate the performance of the serverless backend, empirical benchmarks were executed across cold start initialization, warm execution cycles, and concurrent burst loads (Table~\ref{tab:backend-comparison}).
+
+\begin{table}[H]
+\centering
+\caption{Architectural and performance comparison between monolithic EC2 and serverless Lambda}
+\label{tab:backend-comparison}
+\small
+\input{generated/tab-backend-comparison.tex}
+\end{table}
+
+A cold start of the Lambda function, which includes container spin-up, module evaluation, and initial Mongoose connection establishment, required 406.50~ms. Once initialized, warm invocations exhibited a median execution latency of only 0.12~ms and a 95th percentile of 0.47~ms, yielding end-to-end HTTP response times consistently under 50~ms. Under concurrent burst evaluation with 10, 50, and 100 simultaneous requests, the serverless handler maintained linear scaling without socket backlog degradation: at 50 concurrent requests, the median request duration was 4.10~ms, representing a dramatic reduction compared to the 2305.56~ms median observed on the EC2 instance. This demonstrates that delegating horizontal concurrency management to AWS Lambda microVMs eliminates application-tier bottlenecks while providing active Multi-AZ fault tolerance.
+
 \section{Cost Analysis}
 \label{sec:cost-analysis}
 
@@ -687,7 +704,7 @@ videos. With both costs added to both columns the totals are \$167.85 against \$
 about 77.4\%, which is the figure to quote for total cost of ownership; the saving on the part that
 the architecture controls is 97.5\%.
 
-The saving comes entirely from removing idle capacity. The always-on instance offers 2,920
+The saving comes entirely from removing idle capacity. Beyond the transcoding cluster, hosting the backend API on an always-on \texttt{t3.small} EC2 instance would contribute an additional \.58 monthly (\.98 compute plus \.60 for the 16~GB EBS root disk) even during zero-traffic idle periods. Transitioning the API to AWS Lambda completely eliminates this baseline expenditure: with monthly traffic estimated at 50,000 API calls, usage remains comfortably within the AWS Always Free Tier (1,000,000 requests and 3,200,000 seconds of compute monthly), yielding an operational cost of exactly \.00 for backend compute. The always-on instance offers 2,920
 vCPU-hours a month, four vCPUs for 730 hours, while the work needs about 105 of them, a utilisation of
 roughly 3.6\%. The advantage is therefore not universal: as sustained utilisation rises, per-second
 Fargate billing approaches and then exceeds the cost of a reserved instance. The architecture suits
@@ -715,7 +732,7 @@ NFR-03 Reliability & AWS Batch retries a failed job and raises an alert with the
 NFR-04 Cost efficiency & Compute is billed only while a job runs: 3.40~USD a month against 133.35~USD for an always-on instance. & \ref{sec:cost-analysis} \\
 NFR-05 Security of content & A request without a valid Signed Cookie is refused at the edge, as verified on the deployed distribution; the visibility test suite covers the API side. & \ref{sec:content-protection}, \ref{sec:challenges}, \ref{sec:testing} \\
 NFR-06 Security of the API & Authentication endpoints allow ten attempts per fifteen minutes per address, and cross-origin requests are limited to an allow-list. & \ref{sec:backend-impl} \\
-NFR-07 Reproducibility & Thirteen Terraform modules describe the environment, which is created with \texttt{terraform apply} from one directory. & \ref{sec:iac}, \ref{app:deploy} \\
+NFR-07 Reproducibility & Fourteen Terraform modules describe the environment, which is created with \texttt{terraform apply} from one directory. & \ref{sec:iac}, \ref{app:deploy} \\
 NFR-08 Maintainability & Seven workflows run tests and security scanning, and the security gate blocks a merge on fixable critical findings. & \ref{sec:cicd} \\
 \bottomrule
 \end{tabularx}
