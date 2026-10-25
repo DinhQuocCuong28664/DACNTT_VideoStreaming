@@ -251,6 +251,16 @@ resource "aws_iam_role_policy" "health_check" {
   })
 }
 
+resource "aws_cloudwatch_log_group" "health_check" {
+  count             = var.health_check_url != "" ? 1 : 0
+  name              = "/aws/lambda/${aws_lambda_function.health_check[0].function_name}"
+  retention_in_days = var.log_retention_days
+
+  tags = merge(var.tags, {
+    Name = "${var.project_name}-health-check-logs"
+  })
+}
+
 resource "aws_lambda_function" "health_check" {
   count            = var.health_check_url != "" ? 1 : 0
   function_name    = "${var.project_name}-health-check"

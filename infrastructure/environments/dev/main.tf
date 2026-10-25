@@ -203,6 +203,7 @@ module "batch" {
 # ── 11. Lambda Job Submitter ──────────────────────
 module "lambda" {
   source                    = "../../modules/lambda"
+  log_retention_days        = 7
   project_name              = "${var.project_name}-${var.environment}"
   lambda_role_arn           = module.iam.lambda_job_submitter_role_arn
   sqs_queue_arn             = module.sqs.queue_arn
