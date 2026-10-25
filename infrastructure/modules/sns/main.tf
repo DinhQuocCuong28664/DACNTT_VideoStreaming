@@ -2,11 +2,6 @@
 # Module: SNS — Notification Topics
 # ═══════════════════════════════════════════════════
 
-resource "aws_sns_topic" "transcode_complete" {
-  name = "${var.project_name}-transcode-complete"
-  tags = merge(var.tags, { Name = "${var.project_name}-transcode-complete" })
-}
-
 resource "aws_sns_topic" "dlq_alert" {
   name = "${var.project_name}-dlq-alert"
   tags = merge(var.tags, { Name = "${var.project_name}-dlq-alert" })

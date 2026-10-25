@@ -22,3 +22,9 @@ variable "tags" {
   type    = map(string)
   default = {}
 }
+
+variable "log_retention_days" {
+  description = "CloudWatch log retention in days for Lambda job submitter"
+  type        = number
+  default     = 7
+}
