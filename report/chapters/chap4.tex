@@ -716,16 +716,23 @@ Because video segments are immutable once written, CloudFront caches HLS transpo
 98 percent, effectively shielding the private S3 Processed bucket from request spikes and ensuring that
 concurrent viewers experience low Time-to-First-Frame (TTFF) without saturating origin network interfaces.
 
-\subsection{Application Layer Scaling and Future Evolution}
+\subsection{Application Layer Scaling and Serverless Evolution}
 
-While the transcoding and delivery tiers scale elastically, the backend application API currently
-operates on a single EC2 instance (\texttt{t3.small}) behind Cloudflare proxying. This design choice
-minimized operational complexity during initial development but represents the primary single point
-of failure (SPOF) and concurrency bottleneck of the platform.
+In the initial prototype baseline, the backend application API operated on a single Amazon EC2
+instance (\texttt{t3.small}) behind Cloudflare proxying. While that design minimized operational
+complexity during early prototyping, it formed the sole single point of failure (SPOF) and concurrency
+bottleneck of the system: failure of the virtual machine rendered the entire platform unreachable, and
+sudden bursts of concurrent requests saturated the single Node.js event loop.
 
-To scale the application tier to enterprise workloads, the architectural evolution path comprises:
-(1) migrating the Node.js API into an AWS ECS Fargate service spanning multiple Availability Zones
-behind an Application Load Balancer (ALB); (2) introducing an Amazon ElastiCache (Redis) in-memory
-caching layer to absorb view-counter deduplication, JWT blacklist validation, and hot video metadata
-queries; and (3) replacing MongoDB collection scans with dedicated full-text search indexing to
-prevent database CPU exhaustion under concurrent search queries.
+To achieve complete end-to-end serverless scalability and eliminate single points of failure, the
+application tier was evolved into an AWS Lambda serverless execution model using an HTTP adapter.
+The Express application is wrapped with the serverless framework adapter and deployed directly to AWS
+Lambda with Function URLs, providing automatic active-active horizontal scaling across three Availability
+Zones in the region. Cold start overhead is minimized through ephemeral container reuse, and database
+connection pooling overhead is eliminated by maintaining cached Mongoose connections across invocations
+when the connection state indicates an active socket. Background maintenance jobs, including stuck video
+reconciliation, are decoupled from HTTP request handling and triggered periodically via Amazon
+EventBridge rules. This migration completes the architectural vision of the project, establishing a
+hundred percent serverless, event-driven pipeline across the client, storage, application API, batch
+transcoding, and content delivery tiers. Remaining horizontal extensions comprise introducing an Amazon
+ElastiCache Redis in-memory cache for distributed view deduplication and database full-text search indexing.

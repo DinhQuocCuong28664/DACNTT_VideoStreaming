@@ -35,7 +35,7 @@ Sections~\ref{sec:pipeline-design}, \ref{sec:challenges} \\
 while a job runs. Videos of five minutes or more are split into chunks encoded in parallel, so a
 four-hour video was ready 135 minutes after its upload at 8~vCPU and 85 minutes at 16~vCPU. &
 Sections~\ref{sec:chunked-design}, \ref{sec:chunked-evaluation} \\
-4. CI/CD and IaC & Thirteen Terraform modules describe three environment definitions, and seven
+4. CI/CD and IaC & Fourteen Terraform modules describe three environment definitions, and seven
 GitHub Actions workflows run linting, tests, security scanning, infrastructure validation and
 deployment. The suite holds 853 automated tests in 52 suites. &
 Sections~\ref{sec:iac}, \ref{sec:cicd}, \ref{sec:testing} \\
@@ -101,11 +101,14 @@ is capped at five per hour, but the count lives in process memory and registrati
 CAPTCHA. Signed Cookies stay valid for two hours, so making a video private does not revoke
 cookies already issued, and the system has no digital rights management.
 
-\textbf{Operation.} Rate limits and view deduplication are held in process memory, which is
-correct only while the backend is one process. That process runs on one instance in one region and
-is the only single point of failure of the system. The CloudFront distributions live in a second
-AWS account, because the primary account was not permitted to create them, which splits the
-infrastructure across two sets of credentials.
+\textbf{Operation.} In the initial prototype baseline, the backend operated on a single EC2
+instance in one region as the sole single point of failure of the system. This architectural risk was
+successfully resolved by transitioning the API to AWS Lambda across multiple Availability Zones with
+Function URLs, achieving complete end-to-end serverless resilience and zero idle costs. Rate limits and
+view deduplication currently rely on in-memory state; future enterprise scaling will offload these counters
+to an Amazon ElastiCache Redis cluster. The CloudFront distributions live in a second AWS account, because
+the primary account was not permitted to create them, which splits the infrastructure across two sets of
+credentials.
 
 \textbf{Interface.} Tags can be set only at upload, and a thumbnail cannot be replaced. The
 account stores no language preference, so the e-mails sent by a transcoding job, which has no
