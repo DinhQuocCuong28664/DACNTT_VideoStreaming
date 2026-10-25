@@ -145,3 +145,10 @@ variable "backend_instance_type" {
   type        = string
   default     = "t3.micro"
 }
+
+# ── Serverless Backend Lambda (SPOF Elimination) ──
+variable "enable_lambda_backend" {
+  description = "Bật hàm Serverless Backend Lambda (chạy Multi-AZ, tự tắt 0đ khi không dùng, khử SPOF)"
+  type        = bool
+  default     = true
+}
