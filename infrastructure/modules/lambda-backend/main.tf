@@ -40,18 +40,18 @@ resource "aws_lambda_function" "backend_api" {
 
   environment {
     variables = {
-      NODE_ENV               = var.environment == "prod" ? "production" : "development"
-      MONGODB_URI            = var.mongodb_uri
-      JWT_SECRET             = var.jwt_secret
-      S3_RAW_BUCKET_NAME     = var.raw_bucket_name
+      NODE_ENV                 = var.environment == "prod" ? "production" : "development"
+      MONGODB_URI              = var.mongodb_uri
+      JWT_SECRET               = var.jwt_secret
+      S3_RAW_BUCKET_NAME       = var.raw_bucket_name
       S3_PROCESSED_BUCKET_NAME = var.processed_bucket_name
-      CLOUDFRONT_DOMAIN      = var.cloudfront_domain
-      CLOUDFRONT_KEY_PAIR_ID = var.cloudfront_key_pair_id
-      CLOUDFRONT_PRIVATE_KEY = var.cloudfront_private_key
-      CORS_ORIGINS           = var.cors_origins
-      FRONTEND_URL           = var.frontend_url
-      EMAIL_USER             = var.email_user
-      EMAIL_APP_PASSWORD     = var.email_app_password
+      CLOUDFRONT_DOMAIN        = var.cloudfront_domain
+      CLOUDFRONT_KEY_PAIR_ID   = var.cloudfront_key_pair_id
+      CLOUDFRONT_PRIVATE_KEY   = var.cloudfront_private_key
+      CORS_ORIGINS             = var.cors_origins
+      FRONTEND_URL             = var.frontend_url
+      EMAIL_USER               = var.email_user
+      EMAIL_APP_PASSWORD       = var.email_app_password
     }
   }
 
