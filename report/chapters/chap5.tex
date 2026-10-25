@@ -8,6 +8,9 @@ while deploying the system and how each was solved, and ends with the automated 
 \section{Backend Implementation}
 \label{sec:backend-impl}
 
+\subsection{Layered Services and Access Controls}
+\label{sec:backend-layers}
+
 The backend follows a layered structure: routes delegate to controllers, controllers to services,
 and only services touch the data models. Keeping business logic out of route handlers lets it be
 unit tested without an HTTP server.
@@ -67,6 +70,13 @@ recipient, five per hour, shared by verification and reset mail. Beyond it, regi
 creates the account but skips the mail, a request to resend the link is refused with a 429 response,
 and a reset request returns the same generic reply as every other outcome, so it still does not
 reveal which addresses have an account.
+
+\subsection{Serverless Execution Adapter and State Management}
+\label{sec:serverless-adapter}
+
+To bridge the Express application into AWS Lambda without altering established route controllers, the backend leverages the \texttt{@codegenie/serverless-express} adapter. Incoming HTTP requests via Lambda Function URLs are translated into standard Node.js request and response streams, processed through existing Express middleware, and converted back into API Gateway v2 payloads.
+
+A critical challenge in running Mongoose on serverless microVMs is connection churn: creating a new MongoDB Atlas TLS handshake on every invocation adds hundreds of milliseconds of latency and rapidly exhausts database connection pools. The backend addresses this by persisting connections across execution cycles: before invoking \texttt{connectDB()}, the adapter checks \texttt{mongoose.connection.readyState}. If an active connection exists (\texttt{readyState == 1}), the initialization step is bypassed entirely. Furthermore, background tasks such as orphaned upload cleanup and stuck video reconciliation, which previously ran via in-process \texttt{setInterval} timers on EC2, are decoupled into a dedicated event handler triggered hourly by an Amazon EventBridge schedule rule.
 
 \section{Transcoder Implementation}
 \label{sec:transcoder-impl}
@@ -128,7 +138,7 @@ Section~\ref{sec:challenges}.
 \section{Infrastructure as Code}
 \label{sec:iac}
 
-The AWS environment is described by the thirteen Terraform modules of
+The AWS environment is described by the fourteen Terraform modules of
 Table~\ref{tab:terraform-modules} and by three environment definitions: \texttt{dev}, which hosts
 the deployed system; \texttt{staging}, a reduced copy used to test a branch before it is merged; and
 \texttt{prod}, a variant with On-Demand Fargate capacity, thirty days of logs and buckets that cannot
@@ -156,6 +166,7 @@ force-deleted while they hold objects or images, and a deleted secret stays reco
 \texttt{monitoring} & CloudWatch log groups, alarms and dashboard, a scheduled health check of the public API, and a rule that alerts on failed Batch jobs \\
 \texttt{batch}      & Fargate Spot compute environment and an optional On-Demand one for overflow, the main and the lower-priority job queue, and the job definition \\
 \texttt{lambda}     & Job submitter function and its SQS event source mapping \\
+\texttt{lambda-backend} & Serverless Express API running on AWS Lambda with Function URLs, Multi-AZ high availability, and EventBridge background reconciler \\
 \texttt{cloudfront} & Distribution, Origin Access Control, cache policy, and the trusted key group used for signed cookies \\
 \texttt{backend-userdata} & Builds the start-up script of the backend instance from a single template, so that every environment runs the same script; creates no resources \\
 \texttt{cloudflare-ips} & The IPv4 ranges from which Cloudflare reaches the origin, used to restrict the backend's security group; creates no resources \\
