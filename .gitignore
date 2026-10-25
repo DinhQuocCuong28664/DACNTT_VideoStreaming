@@ -53,3 +53,5 @@ samples/
 # Không commit: chứa terraform state (có thể lộ giá trị nhạy cảm) và dữ liệu
 # nhị phân lớn. Giữ ngoài git, sao lưu riêng.
 backup-aws/
+
+backend/dist/

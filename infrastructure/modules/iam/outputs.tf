@@ -18,3 +18,8 @@ output "ec2_backend_instance_profile_name" {
   description = "Attach this instance profile to the EC2 instance running the backend API so it can read secrets from Secrets Manager (see scripts/ec2-userdata.sh)"
   value       = aws_iam_instance_profile.ec2_backend.name
 }
+
+output "lambda_backend_role_arn" {
+  description = "IAM role ARN for the serverless backend Lambda function"
+  value       = aws_iam_role.lambda_backend.arn
+}

@@ -61,3 +61,13 @@ output "mongodb_uri_secret_name" {
 output "jwt_secret_secret_name" {
   value = "${var.project_name}-${var.environment}/jwt-secret"
 }
+
+output "backend_lambda_function_url" {
+  description = "Public HTTPS Endpoint of the Serverless Backend API (Lambda Function URL)"
+  value       = try(module.lambda_backend[0].function_url, "")
+}
+
+output "backend_lambda_function_url_domain" {
+  description = "Domain of Lambda Function URL to configure Cloudflare CNAME record for api.zelostech.site"
+  value       = try(module.lambda_backend[0].function_url_domain, "")
+}
