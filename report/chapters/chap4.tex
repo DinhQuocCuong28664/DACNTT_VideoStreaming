@@ -213,33 +213,13 @@ synchronized video variants and audio tracks, illustrated in Figure~\ref{fig:hls
 
 \end{tikzpicture}%
 }
-\caption{\textit{Dedicated HLS Transcoding Pipeline, illustrating stream probing, multi-variant filtergraph scaling, synchronized GOP keyframe alignment, and AES-128 encrypted segment packaging}}
+\caption{\textit{Dedicated HLS Transcoding Pipeline, illustrating stream probing, multi-variant filtergraph scaling, synchronized GOP keyframe alignment, and AES-128 encrypted segment packaging (bitrates denote maximum rendition ceilings)}}
 \label{fig:hls-transcoding-pipeline}
 \end{figure}
 
-The pipeline executes through five distinct stages:
-\begin{enumerate}
-\item \textbf{Stream Inspection and Probing:} The worker executes \texttt{ffprobe} to extract video
-dimensions, frame rate, duration, and audio track layouts. If the source resolution is lower than
-1080p, the ladder is automatically bounded at the source's native resolution, preventing
-wasteful upscaling.
-\item \textbf{Single-Decode Multi-Scale Filtergraph:} The video stream is decoded exactly once.
-The uncompressed raw frames are piped through a multi-branch filtergraph that scales frames into
-the six standard resolution tiers (1080p down to 144p).
-\item \textbf{Strict Keyframe (GOP) Synchronization:} In ABR streaming, seamless bitrate switching
-requires all renditions to place instantaneous decoder refresh (IDR) keyframes at the exact same
-frame timestamps. FFmpeg is configured with \texttt{-g (fps*6) -keyint\_min (fps*6) -sc\_threshold 0},
-enforcing identical six-second segment boundaries across all ladder rungs.
-\item \textbf{AES-128 Envelope Encryption:} For copyright protection, the container generates a
-cryptographically secure 16-byte symmetric key via \texttt{crypto.randomBytes(16)} and configures
-FFmpeg's \texttt{-hls\_key\_info\_file}. Every \texttt{.ts} segment is encrypted with AES-128 CBC.
-The key delivery URI embedded in the variant playlists directs client players to the authorized
-endpoint (\texttt{/api/videos/:id/key}).
-\item \textbf{Hierarchical Playlist Assembly:} The HLS muxer generates variant playlists indexing
-the 6-second segments with precise \texttt{\#EXTINF:6.000000} duration tags. Finally, a master playlist
-(\texttt{master.m3u8}) is written, carrying the \texttt{\#EXT-X-STREAM-INF} descriptors declaring
-the resolution, codecs, and bandwidth ceilings of each rendition.
-\end{enumerate}
+The pipeline executes sequentially through five distinct transformation stages. First, in the stream inspection and probing stage, the worker invokes \texttt{ffprobe} to extract video dimensions, frame rate, duration, and audio track layouts. If the source resolution is lower than 1080p, the ladder is automatically bounded at the source's native resolution, preventing wasteful upscaling. Second, during single-decode multi-scale scaling, the input video stream is decoded exactly once into uncompressed raw frames; these frames are piped through a multi-branch filtergraph that scales them concurrently into the standard resolution tiers (from 1080p down to 144p).
+
+Third, to ensure seamless Adaptive Bitrate Switching (ABR), strict keyframe (GOP) synchronization is enforced: all renditions must place instantaneous decoder refresh (IDR) keyframes at identical frame timestamps. FFmpeg is configured with \texttt{-g (fps*6) -keyint\_min (fps*6) -sc\_threshold 0}, enforcing identical six-second segment boundaries across all ladder rungs. Fourth, for copyright protection, envelope encryption generates a cryptographically secure 16-byte symmetric key via \texttt{crypto.randomBytes(16)} and supplies it through FFmpeg's \texttt{-hls\_key\_info\_file}. Every \texttt{.ts} transport stream segment is encrypted using AES-128 in Cipher Block Chaining (CBC) mode, and the key delivery URI embedded in the variant playlists points client players to the authorized licensing endpoint (\texttt{/api/videos/:id/key}). Finally, the HLS muxer assembles the hierarchical playlists: variant playlists index the six-second segments with precise \texttt{\#EXTINF:6.000000} duration tags, and a master playlist (\texttt{master.m3u8}) is written with \texttt{\#EXT-X-STREAM-INF} descriptors declaring the resolution, codecs, and bandwidth ceilings of each rendition.
 
 
 \section{Database Design}
@@ -705,18 +685,18 @@ domains, as outlined below.
 
 Unlike conventional monolithic architectures that provision long-running virtual machines or EC2
 clusters for media processing, the transcoding tier operates entirely on AWS Batch with Fargate
-(Spot and On-Demand) compute environments. This achieves true scale-to-zero elasticity:
-\begin{itemize}
-\item \textbf{Idle Phase (Zero Cost):} When no videos are pending in Amazon SQS, the Batch compute
-environment provisions 0 vCPUs and 0 instances. Idle compute cost is mathematically zero.
-\item \textbf{Burst Scaling Phase:} When multiple users upload videos simultaneously, Amazon S3
-triggers event notifications into SQS. The Lambda job submitter consumes queue messages and
-enqueues tasks into the AWS Batch Job Queue. AWS Batch evaluates the backlog and scales Fargate
+(Spot and On-Demand) compute environments. This architecture achieves true scale-to-zero elasticity
+across three distinct operational states.
+
+During the idle phase, when no video transcode requests are pending in Amazon SQS, the Batch
+compute environment maintains zero vCPUs and zero active instances, ensuring that idle compute cost
+is mathematically zero. When burst traffic occurs as multiple users upload videos simultaneously,
+Amazon S3 triggers event notifications into SQS, and the Lambda job submitter enqueues tasks into
+the AWS Batch Job Queue. AWS Batch evaluates the queue backlog and automatically scales Fargate
 tasks horizontally, provisioning isolated container instances for each job up to the account quota.
-\item \textbf{Automatic Scale-Down:} Upon successful HLS generation and database synchronization,
-the container process exits with code 0. AWS Batch detects container termination and releases the
-Fargate infrastructure within minutes, eliminating idle compute expenses.
-\end{itemize}
+Finally, during automatic scale-down, each container exits with code zero immediately upon completing
+HLS packaging and database synchronization; AWS Batch detects container termination and tears down
+the underlying Fargate infrastructure within minutes, eliminating wasteful standby expenditure.
 
 \subsection{Chunk-Parallel Speedup for Long-Duration Media}
 
