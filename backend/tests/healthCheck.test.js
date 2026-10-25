@@ -8,7 +8,10 @@ const { buildHealthCheck } = require('../src/controllers/healthController');
  */
 const appWith = (readyState) => {
   const app = express();
-  app.get('/', buildHealthCheck(() => readyState));
+  const handler = buildHealthCheck(() => readyState);
+  app.get('/', handler);
+  app.get('/health', handler);
+  app.get('/api/health', handler);
   return app;
 };
 
@@ -18,6 +21,16 @@ describe('GET / — health check', () => {
 
     expect(res.status).toBe(200);
     expect(res.body.database).toBe('connected');
+  });
+
+  it('200 qua các endpoint alias /health và /api/health', async () => {
+    const resHealth = await request(appWith(1)).get('/health');
+    expect(resHealth.status).toBe(200);
+    expect(resHealth.body.database).toBe('connected');
+
+    const resApiHealth = await request(appWith(1)).get('/api/health');
+    expect(resApiHealth.status).toBe(200);
+    expect(resApiHealth.body.database).toBe('connected');
   });
 
   it('503 khi mất kết nối MongoDB', async () => {

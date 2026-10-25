@@ -78,6 +78,8 @@ app.use('/api', apiLimiter);
 
 // Health check (readiness, gồm cả kết nối MongoDB — xem healthController.js)
 app.get('/', healthCheck);
+app.get('/health', healthCheck);
+app.get('/api/health', healthCheck);
 
 // Mount routes
 app.use('/api/auth', authRoutes);
