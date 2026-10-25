@@ -8,6 +8,15 @@ data "archive_file" "lambda_zip" {
   output_path = "${path.module}/dist/job_submitter.zip"
 }
 
+resource "aws_cloudwatch_log_group" "job_submitter" {
+  name              = "/aws/lambda/${aws_lambda_function.job_submitter.function_name}"
+  retention_in_days = var.log_retention_days
+
+  tags = merge(var.tags, {
+    Name = "${var.project_name}-job-submitter-logs"
+  })
+}
+
 resource "aws_lambda_function" "job_submitter" {
   function_name = "${var.project_name}-job-submitter"
   description   = "SQS → AWS Batch Job Submitter for video transcoding"
