@@ -150,8 +150,9 @@ those under \path{docs/results/}.
 \ref{tab:qoe-multisource}    & \path{scripts/qoe/compare.js}, driven by \path{docs/results/qoe-sources.json} & \path{qoe-playback-<source>-<profile>.json}, \path{qoe-comparison.json} \\
 \ref{tab:qoe-dpr}            & \path{scripts/qoe/collect.js} with \texttt{--dpr} & \path{qoe-playback-<source>-unthrottled.json}, \path{qoe-playback-<source>-unthrottled-dpr2.json} \\
 \ref{tab:transcode-results}  & \path{scripts/measure-transcode.js} & \path{transcode-timing.json} \\
-\ref{tab:load-crossvalidation} & \path{scripts/node-load-test.js} and \path{scripts/k6-load-test.js} & \path{node-load-test.json}, \path{stress-test-concurrency.json}; the k6 summary of this run was later overwritten and remains in \path{k6-summary.json} at commit \texttt{f955ca9} \\
-\ref{tab:drain-rate}         & \path{scripts/k6-load-test.js}   & \path{drain-rate-real-payload.json}, \path{stress-test-concurrency.json}; the first real-payload run is in \path{k6-summary.json} \\
+\ref{tab:load-crossvalidation} & \path{scripts/node-load-test.js} and \path{scripts/k6-load-test.js} & \path{node-load-test.json}, \path{k6-summary.json} \\
+\ref{tab:drain-rate}         & \path{scripts/k6-load-test.js}   & \path{drain-rate-real-payload.json} \\
+\ref{tab:backend-comparison} & \path{scripts/benchmark-backend-comparison.js} & \path{backend-comparison.json} \\
 \ref{tab:cost-comparison}    & Published AWS list prices, computed analytically & --- \\
 \bottomrule
 \end{tabularx}

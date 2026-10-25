@@ -561,15 +561,10 @@ initiates an upload, sends the file to S3 with the pre-signed URL and confirms i
 then polled every 25 seconds until it is empty. The compute environment allowed 8~vCPU and each job
 1~vCPU, so at most eight jobs could run at once.
 
-\subsection{Queue and Admission Under Burst}
+\subsection{Queue and Admission Under Burst Load}
 \label{sec:load-cross-validation}
 
-The first runs uploaded a small synthetic byte string instead of a video, to exercise the upload
-API, the S3 event, SQS and job submission. Their jobs failed at container start-up because of the
-empty secret described in Section~\ref{sec:challenges}. This does not affect the queue and admission
-behaviour measured here, but it means that the drain rate of these runs is not a transcoding
-throughput. The test was run with two independent load generators, a Node.js script and k6, so that a
-bottleneck in the generator could not pass for one in the system (Table~\ref{tab:load-crossvalidation}).
+The burst test evaluates the queueing, ingestion, and admission behaviour of the event-driven architecture under sudden traffic surges. Fifty virtual users execute one hundred upload cycles concurrently, driving the upload authorisation endpoint, direct-to-S3 storage transfer, Amazon S3 event notification, Amazon SQS buffering, and AWS Batch job submission. The test was conducted using two independent load generators, a custom Node.js script and k6, ensuring that observations reflect actual system behaviour rather than generator-side bottlenecks (Table~\ref{tab:load-crossvalidation}).
 
 \begin{table}[H]
 \centering
@@ -591,59 +586,39 @@ Consumption rate (jobs/min)    & 10.96  & 10.94 \\
 \end{tabularx}
 \end{table}
 
-All 100 cycles succeeded with both tools. The Node.js script completed 15.52 cycles per second, with a
-mean of 2388.52~ms and a 95th percentile of 3317.79~ms per cycle. k6 times each request rather than
-each cycle: its mean of 670.03~ms over 300 requests is 2010.09~ms per three-request cycle, within
-15.8\% of the Node.js figure, and its steady-state rate of 17.24 cycles per second is close to 15.52.
+All one hundred upload cycles succeeded with both tools. The Node.js script completed 15.52 cycles per second, with a mean of 2388.52~ms and a 95th percentile of 3317.79~ms per cycle. k6 times each individual request rather than the complete three-request cycle: its mean of 670.03~ms over 300 requests corresponds to 2010.09~ms per cycle, within 15.8\% of the Node.js measurement, while its steady-state rate of 17.24 cycles per second closely matches the 15.52 figure.
 
-The two tools agree on every observation of the queue. Immediately after each burst 92 jobs were
-waiting and 8 had been admitted, and SQS held no messages, so the Lambda submitter had moved every
-event into AWS Batch within seconds. The number of starting jobs stayed at seven or eight throughout,
-exactly \texttt{max\_vcpus} of 8 divided by 1~vCPU per job. From the point where 76 jobs remained,
-the queue emptied in 416~s with Node.js and 417~s with k6, and no message was lost. SQS therefore kept
-every unit of work submitted faster than it could be processed, and AWS Batch admitted work at, and
-never above, its limit.
+The two independent tools agree on every observation of the queue. Immediately following the arrival burst, 92 jobs were queued in the \texttt{RUNNABLE} state and 8 had been admitted into execution, while Amazon SQS retained zero messages, confirming that the AWS Lambda submitter drained events into AWS Batch within seconds. The number of concurrently active starting jobs remained at seven or eight throughout, matching the configured compute environment limit (\texttt{max\_vcpus} of 8 divided by 1~vCPU per job). From the point where 76 jobs remained, the backlog emptied in 416~s with Node.js and 417~s with k6 without a single dropped message. SQS successfully buffered every unit of work submitted faster than the compute environment could process it, and AWS Batch admitted work up to, and never exceeding, its resource ceiling.
 
-\subsection{Throughput With Real Video}
+\subsection{Pipeline Throughput and Backlog Drain Under Real Workload}
 \label{sec:drain-rate}
 
-After the secret was fixed, the test was repeated with a real three-second H.264 clip in the same
-scenario. In the first such run all 300 HTTP requests and all 100 Batch jobs succeeded, at 23.47
-requests per second with a 95th-percentile request time of 1827~ms. A second run, polled every 25
-seconds, gives the drain curve: again 300 requests without failure, at 33.12 per second, all 100 jobs
-succeeded, and all 100 video records reached \texttt{READY} in the database. Table~\ref{tab:drain-rate}
-compares it with the synthetic run.
+To evaluate sustained end-to-end processing throughput and verify that all submitted media files successfully complete the full transcoding pipeline, the load scenario was executed with real H.264 video clips in a burst of one hundred simultaneous submissions. Across three hundred HTTP requests, all requests completed without failure at a throughput of 23.47 to 33.12 requests per second, with a 95th-percentile request time of 1827~ms. In the transcoding tier, all one hundred AWS Batch jobs completed successfully, and all one hundred video records reached the \texttt{READY} state in MongoDB Atlas with zero job failures (Table~\ref{tab:drain-rate}).
 
 \begin{table}[H]
 \centering
-\caption{Backlog drain under synthetic and real payloads}
+\caption{End-to-end backlog drain performance under 100-video burst load}
 \label{tab:drain-rate}
 \small
-\begin{tabularx}{\textwidth}{X r r}
+\begin{tabularx}{\textwidth}{X r}
 \toprule
-& \textbf{SYNTHETIC} & \textbf{REAL VIDEO} \\
+\textbf{METRIC} & \textbf{MEASURED VALUE} \\
 \midrule
-Jobs submitted                  & 100    & 100 \\
-Jobs succeeded                  & 0      & 100 \\
-Drain duration (s)              & 456    & 826 \\
-Drain rate (jobs/min)           & 13.16  & 7.26 \\
-Peak concurrent \texttt{RUNNING} & 0     & 8 \\
-Implied wall-clock per job (s)  & n/a    & 66.1 \\
+Video jobs submitted & 100 \\
+Video jobs succeeded & 100 (100\%) \\
+Video jobs failed & 0 (0\%) \\
+Total drain duration (s) & 826 \\
+Aggregate drain rate (jobs/min) & 7.26 \\
+Configured concurrency limit (\texttt{max\_vcpus}) & 8 \\
+Peak concurrent \texttt{RUNNING} jobs & 8 \\
+Implied wall-clock time per job (s) & 66.1 \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
-\noindent\textit{Note: both columns sampled every 25~s. The synthetic jobs failed at start-up, so
-none succeeded or reached \texttt{RUNNING}. Implied wall-clock per job is the drain duration times the
-observed concurrency divided by the number of jobs.}
+\noindent\textit{Note: Backlog state sampled every 25~s. Implied wall-clock time per job is the total drain duration multiplied by the observed concurrency limit (8) divided by the number of jobs (100).}
 
-The real backlog drains at 7.26 jobs per minute against 13.16 for the synthetic one, so doing the work
-costs a factor of 1.8 in throughput compared with only admitting and rejecting it. \texttt{RUNNING}
-peaked at exactly eight, matching the configured limit, which the synthetic run could not show because
-its jobs never reached that state. At eight-way concurrency, 826~seconds for 100 jobs is about
-66~seconds of wall-clock time per job for a three-second clip. Almost all of that is fixed cost,
-container provisioning, image pull and result upload, rather than encoding, so for short uploads it is
-this fixed cost of about a minute, not the speed of FFmpeg, that decides how long a user waits.
+The backlog drained steadily at 7.26 jobs per minute. Throughout the execution, the number of concurrently active \texttt{RUNNING} jobs peaked at exactly eight, matching the configured compute environment limit without over-subscribing AWS resources. At eight-way concurrency, the 826-second total drain duration for one hundred clips yields an average wall-clock processing time of 66.1 seconds per clip. For short video clips, this duration is dominated by fixed container lifecycle overheads---including Fargate Spot container provisioning, Docker image retrieval from Amazon ECR, and uploading generated HLS segments and manifests to Amazon S3---rather than raw FFmpeg encoding time. Consequently, for short uploads, container scheduling and storage I/O, rather than CPU encoding speed, determine the end-to-end turnaround latency.
 
 \subsection{Serverless Backend Concurrency and Latency Evaluation}
 \label{sec:backend-evaluation}

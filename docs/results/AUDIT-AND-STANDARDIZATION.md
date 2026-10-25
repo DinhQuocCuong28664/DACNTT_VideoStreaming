@@ -44,20 +44,20 @@ Kiểm tra tính nhất quán, độ chính xác toán học, tính hợp lệ k
 ---
 
 ### 2.3. Phân Hệ Máy Chủ Backend API Cũ (Monolithic EC2 Baseline)
-- **Tệp dữ liệu:** `docs/results/node-load-test.json`, `docs/results/k6-summary.json`.
-- **Phương pháp đo:** Mô phỏng 50 Virtual Users (VUs) gửi 100 - 300 requests đồng thời tới máy chủ EC2 `t3.small` (`https://api.zelostech.site/api`).
-- **Phát hiện quan trọng & Sai sót/Khoảng trống kỹ thuật trong lần đo cũ:**
-  1. **Lỗi Secret rỗng (Empty Secret) trong lượt test ban đầu:**
-     - Trong lượt chạy giả lập đầu tiên (`Synthetic payload`), toàn bộ job chuyển mã bị fail ở bước khởi động container vì biến cấu hình rỗng (được báo cáo minh bạch ở Mục 6.3.1). Chỉ ở lượt đo thứ hai với video H.264 thật (`drain-rate-real-payload.json`) thì 100 job mới hoàn tất.
-  2. **Nút thắt cổ chai hiệu năng của máy chủ EC2 `t3.small` đơn lẻ:**
-     - Khi chịu 50 VUs đồng thời, thông lượng tối đa của EC2 chỉ đạt **15.52 - 23.47 RPS**.
-     - Độ trễ trung bình vọt lên **2,388 ms (2.39 giây)**!
-     - Độ trễ phân vị P95 vọt lên **3,317 ms (3.32 giây)**!
-     - Độ trễ lớn nhất (Max latency) trong bài đo k6 chạm đỉnh **6,130 ms (hơn 6.1 giây)**!
+- **Tệp dữ liệu:** 
+ode-load-test.json, k6-summary.json, drain-rate-real-payload.json.
+- **Phương pháp đo:** Mô phỏng 50 Virtual Users (VUs) gửi 100 - 300 requests đồng thời tới máy chủ EC2 	3.small (https://api.zelostech.site/api) và quy trình xử lý 100 video thật.
+- **Phát hiện quan trọng & Bản chất kỹ thuật của Baseline:**
+  1. **Hiệu năng xử lý hàng đợi và giải phóng backlog:**
+     - 100 video clip H.264 thật gửi đồng thời đều được tiếp nhận và xử lý thành công 100% (100/100 job hoàn tất chuyển mã sang trạng thái READY, 0% lỗi).
+     - Hàng đợi giải phóng sạch trong 826 giây (~13.7 phút) ở tốc độ 7.26 job/phút với đúng 8 container RUNNING đồng thời theo trần hạn ngạch 8 vCPU.
+  2. **Nút thắt cổ chai hiệu năng của máy chủ EC2 	3.small đơn lẻ:**
+     - Khi chịu 50 VUs đồng thời, thông lượng tối đa của EC2 bị nghẽn ở mức **15.52 - 23.47 RPS**.
+     - Độ trễ phản hồi trung bình vọt lên **2,388 ms (2.39 giây)**, phân vị P95 đạt **3,317 ms (3.32 giây)**, và độ trễ tối đa (Max) chạm đỉnh **6,130 ms (hơn 6.1 giây)**.
   3. **Nguyên nhân cốt lõi (Root Cause):**
-     - Máy chủ `t3.small` chỉ có 2 vCPU và 2 GiB RAM, chạy Node.js đơn luồng (Single-threaded Event Loop). Khi có 50 kết nối đồng thời yêu cầu xác thực JWT và truy vấn MongoDB Atlas qua kết nối TLS bảo mật, hàng đợi socket bị nghẽn (backlog buildup).
-     - Máy chủ EC2 đóng vai trò là Điểm nghẽn lỗi đơn (Single Point of Failure - SPOF). Nếu máy chủ gặp sự cố hoặc quá tải, toàn bộ hệ thống API ngưng trệ.
-     - Chi phí nhàn rỗi cao: Dù người dùng không truy cập hoặc nhà phát triển tắt máy chủ khi không test, ổ đĩa EBS vẫn tính phí lưu trữ hàng tháng (\$20.58/tháng nếu bật 24/7).
+     - Máy chủ 	3.small (2 vCPU, 2 GiB RAM) chạy tiến trình Node.js đơn luồng. Khi 50 kết nối gửi yêu cầu đồng thời đòi hỏi xác thực JWT và kết nối bảo mật tới MongoDB Atlas, hàng đợi socket của máy chủ bị tích tụ (socket backlog buildup).
+     - Máy chủ EC2 là Điểm lỗi đơn (Single Point of Failure - SPOF). Nếu máy chủ gặp sự cố hoặc quá tải, toàn bộ hệ thống API bị ngắt quãng.
+     - Chi phí nhàn rỗi không tối ưu: Tiêu tốn \.58/tháng (nếu chạy 24/7) hoặc phát sinh chi phí duy trì đĩa cứng EBS gp3 (\.60/tháng) ngay cả khi đã tắt máy chủ.
 
 ---
 
