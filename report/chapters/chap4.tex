@@ -168,9 +168,9 @@ synchronized video variants and audio tracks, illustrated in Figure~\ref{fig:hls
   \node[box, right=0.8cm of probe, minimum width=2.3cm] (demux) {Demuxer \&\\Decoder};
 
   % Filtergraph ladder
-  \node[rung, above right=-0.1cm and 1.0cm of demux] (r1080) {1080p (5000 kbps)};
-  \node[rung, above=0.15cm of r1080] (r720) {720p (2800 kbps)};
-  \node[rung, below=0.15cm of r1080] (r480) {480p (1400 kbps)};
+  \node[rung, above right=1.6cm and 1.0cm of demux] (r1080) {1080p (5000 kbps)};
+  \node[rung, below=0.15cm of r1080] (r720) {720p (2800 kbps)};
+  \node[rung, below=0.15cm of r720] (r480) {480p (1400 kbps)};
   \node[rung, below=0.15cm of r480] (r360) {360p (800 kbps)};
   \node[rung, below=0.15cm of r360] (r240) {240p (400 kbps)};
   \node[rung, below=0.15cm of r240] (r144) {144p (200 kbps)};
@@ -190,15 +190,15 @@ synchronized video variants and audio tracks, illustrated in Figure~\ref{fig:hls
   \draw[arrow] (src) -- (probe);
   \draw[arrow] (probe) -- (demux);
 
-  \draw[arrow] (demux.east) -- (r720.west);
   \draw[arrow] (demux.east) -- (r1080.west);
+  \draw[arrow] (demux.east) -- (r720.west);
   \draw[arrow] (demux.east) -- (r480.west);
   \draw[arrow] (demux.east) -- (r360.west);
   \draw[arrow] (demux.east) -- (r240.west);
   \draw[arrow] (demux.east) -- (r144.west);
 
-  \draw[arrow] (r720.east) -- (align.west);
   \draw[arrow] (r1080.east) -- (align.west);
+  \draw[arrow] (r720.east) -- (align.west);
   \draw[arrow] (r480.east) -- (align.west);
   \draw[arrow] (r360.east) -- (align.west);
   \draw[arrow] (r240.east) -- (align.west);
