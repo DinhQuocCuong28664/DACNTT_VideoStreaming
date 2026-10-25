@@ -195,8 +195,13 @@ const VideoPlayer = ({
         // Bắt buộc để trình duyệt đính kèm CloudFront Signed Cookie vào mọi
         // yêu cầu tải manifest và segment. Thiếu thiết lập này, CloudFront sẽ
         // trả về 403 với các video được bảo vệ.
-        xhrSetup: (xhr) => {
+        xhrSetup: (xhr, url) => {
           xhr.withCredentials = withCredentials;
+          // Đính kèm Authorization header nếu có token khi trình phát tải khóa giải mã HLS AES-128
+          const token = localStorage.getItem('token');
+          if (token && url && url.includes('/key')) {
+            xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+          }
         },
       });
 

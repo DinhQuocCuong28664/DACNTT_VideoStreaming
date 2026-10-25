@@ -114,6 +114,20 @@ const videoSchema = new mongoose.Schema(
       max: 100,
     },
 
+    /**
+     * Khóa mã hoá HLS AES-128 (16 bytes = 32 ký tự hex).
+     * select: false để không bao giờ bị lộ trong các truy vấn thông thường hoặc toJSON.
+     * Chỉ được cấp qua endpoint riêng biệt GET /api/videos/:id/key khi có thẩm quyền.
+     */
+    encryptionKey: {
+      type: String,
+      select: false,
+    },
+    isEncrypted: {
+      type: Boolean,
+      default: false,
+    },
+
     /** A top-level comment the owner pinned above the others, or null. */
     pinnedComment: {
       type: mongoose.Schema.Types.ObjectId,
@@ -212,6 +226,7 @@ videoSchema.methods.toJSON = function () {
   const video = this.toObject();
   delete video.__v;
   delete video.multipartUploadId;
+  delete video.encryptionKey;
 
   // Chỉ trả số lượng, không trả danh sách ID người đã Like/Dislike: endpoint
   // xem video là công khai, nên trước đây bất kỳ ai cũng đọc được ai đã bấm

@@ -46,6 +46,15 @@ const config = {
   // Frontend — dùng để dựng link xem video trong email thông báo
   frontendUrl: process.env.FRONTEND_URL || 'http://localhost:5173',
 
+  // Mã hoá phân đoạn HLS AES-128 (RFC 8216) chống tải & phát trái phép file .ts
+  hlsEncryption: {
+    enabled: process.env.HLS_ENCRYPTION_ENABLED !== 'false',
+  },
+  keyDeliveryBaseUrl:
+    process.env.KEY_DELIVERY_BASE_URL ||
+    process.env.API_BASE_URL ||
+    (process.env.NODE_ENV === 'production' ? 'https://zelostech.site/api' : 'http://localhost:5000/api'),
+
   // Email (Gmail SMTP) — thông báo video sẵn sàng/thất bại
   email: {
     host: process.env.EMAIL_HOST || 'smtp.gmail.com',

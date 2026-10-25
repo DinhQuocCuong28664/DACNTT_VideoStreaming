@@ -117,6 +117,21 @@ const processVideo = async (videoId, rawS3Key, { force = false } = {}) => {
       console.warn('⚠️  MODERATION_ENABLED=false: this video will go public without content moderation.');
     }
 
+    // Chuẩn bị khóa AES-128 nếu bật mã hoá
+    const crypto = require('crypto');
+    let encryption = null;
+    let encryptionKeyHex = null;
+
+    if (config.hlsEncryption && config.hlsEncryption.enabled) {
+      const keyBytes = crypto.randomBytes(16);
+      encryptionKeyHex = keyBytes.toString('hex');
+      const keyUri = `${config.keyDeliveryBaseUrl}/videos/${videoId}/key`;
+      encryption = {
+        key: keyBytes,
+        uri: keyUri,
+      };
+    }
+
     // Step 3: Transcode to HLS (360p / 720p / 1080p)
     await updateVideoProgress(videoId, 25);
     const { duration, thumbnailPath } = await transcodeToHLS(inputPath, outputDir, {
@@ -124,6 +139,7 @@ const processVideo = async (videoId, rawS3Key, { force = false } = {}) => {
         const overall = Math.round(25 + ffmpegProgress * 0.65);
         updateVideoProgress(videoId, overall).catch(() => {});
       },
+      encryption,
     });
 
     // Step 4: Upload HLS output to S3 Processed Bucket
@@ -137,7 +153,14 @@ const processVideo = async (videoId, rawS3Key, { force = false } = {}) => {
     // Không có tệp thì không trỏ URL vào đó: giao diện tự hiện ảnh thay thế.
     const thumbnailUrl = thumbnailPath ? config.getPublicUrl(`${s3Prefix}/thumbnail.jpg`) : null;
 
-    const { updated } = await updateVideoReady(videoId, { hlsUrl, thumbnailUrl, duration, moderation });
+    const { updated } = await updateVideoReady(videoId, {
+      hlsUrl,
+      thumbnailUrl,
+      duration,
+      moderation,
+      encryptionKey: encryptionKeyHex,
+      isEncrypted: Boolean(encryption),
+    });
 
     const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
     console.log(`\n🎉 ════════════════════════════════════════`);

@@ -22,6 +22,8 @@ const videoSchema = new mongoose.Schema(
     visibility: String,
     hasViolence: Boolean,
     processingProgress: Number,
+    encryptionKey: String,
+    isEncrypted: Boolean,
     // Phải khai báo ở đây: Mongoose ở chế độ strict sẽ lặng lẽ bỏ các đường
     // dẫn không có trong schema khỏi lệnh cập nhật. Khớp với backend/src/models/Video.js.
     moderation: {
@@ -98,10 +100,14 @@ const disconnectDB = async () => {
  * (`moderation.status`...) thay vì cả object để không xoá mất
  * `moderation.openReports` do backend quản lý.
  */
-const updateVideoReady = async (videoId, { hlsUrl, thumbnailUrl, duration, moderation }) => {
+const updateVideoReady = async (videoId, { hlsUrl, thumbnailUrl, duration, moderation, encryptionKey, isEncrypted }) => {
   const update = { status: 'READY', hlsUrl };
   if (thumbnailUrl) update.thumbnailUrl = thumbnailUrl;
   if (duration) update.duration = duration;
+  if (encryptionKey) {
+    update.encryptionKey = encryptionKey;
+    update.isEncrypted = Boolean(isEncrypted);
+  }
   if (moderation) {
     update['moderation.status'] = moderation.status;
     update['moderation.source'] = 'auto';

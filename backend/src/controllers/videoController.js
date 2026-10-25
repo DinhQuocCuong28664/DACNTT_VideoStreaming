@@ -181,6 +181,29 @@ const getPlaybackAuth = async (req, res, next) => {
 };
 
 /**
+ * @route   GET /api/videos/:id/key
+ * @desc    Cấp khóa giải mã HLS AES-128 (16 bytes binary) cho trình phát
+ * @access  Public (với video public) / Private (với video private)
+ */
+const getVideoKey = async (req, res, next) => {
+  try {
+    const keyBuffer = await videoService.getVideoKey(req.params.id, req.user);
+
+    res.set({
+      'Content-Type': 'application/octet-stream',
+      'Content-Length': keyBuffer.length,
+      'Cache-Control': 'private, no-cache, no-store, must-revalidate',
+      'Access-Control-Allow-Origin': req.headers.origin || '*',
+      'Access-Control-Allow-Credentials': 'true',
+    });
+
+    return res.status(200).send(keyBuffer);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
  * @route   POST /api/videos/:id/view
  * @desc    Ghi nhận một lượt xem hợp lệ (có chống đếm trùng)
  * @access  Public (nhận diện người dùng đăng nhập nếu có token)
@@ -435,6 +458,7 @@ module.exports = {
   getAllVideos,
   getVideoById,
   getPlaybackAuth,
+  getVideoKey,
   registerView,
   getUserVideos,
   getRelatedVideos,

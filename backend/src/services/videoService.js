@@ -292,6 +292,35 @@ const getPlayableVideo = async (videoId, requesterUser = null) => {
 };
 
 /**
+ * Cấp khóa giải mã HLS AES-128 (16 bytes nhị phân) cho trình phát hợp lệ.
+ */
+const getVideoKey = async (videoId, requesterUser = null) => {
+  const video = await Video.findById(videoId).select('+encryptionKey');
+
+  if (!video) {
+    throw httpError(404, 'Video not found');
+  }
+
+  const isOwner = requesterUser && String(requesterUser._id) === String(video.user);
+  const isAdmin = isAdminUser(requesterUser);
+
+  if (video.visibility === 'private' && !isOwner && !isAdmin) {
+    throw httpError(403, 'This video is private', 'VIDEO_PRIVATE');
+  }
+
+  const moderationStatus = video.moderation && video.moderation.status;
+  if (moderationStatus === 'blocked' && !isAdmin) {
+    throw httpError(403, 'This video has been removed for violating the community guidelines', 'VIDEO_REMOVED');
+  }
+
+  if (!video.encryptionKey) {
+    throw httpError(404, 'No encryption key found for this video', 'KEY_NOT_FOUND');
+  }
+
+  return Buffer.from(video.encryptionKey, 'hex');
+};
+
+/**
  * Get all public READY videos (with optional Category & Search filtering)
  */
 const getAllVideos = async (page = 1, limit = 12, category = null, searchQuery = null) => {
@@ -898,6 +927,7 @@ module.exports = {
   completeMultipartUpload,
   getVideoById,
   getPlayableVideo,
+  getVideoKey,
   getAllVideos,
   getVideosByUser,
   USER_VIDEO_SORTS,

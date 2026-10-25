@@ -13,6 +13,7 @@ const {
   getAllVideos,
   getVideoById,
   getPlaybackAuth,
+  getVideoKey,
   registerView,
   getUserVideos,
   getRelatedVideos,
@@ -38,6 +39,7 @@ router.get('/user/:userId', optionalAuth, getUserVideos);
 router.get('/:id', optionalAuth, getVideoById);
 router.get('/:id/related', optionalAuth, getRelatedVideos);
 router.get('/:id/playback-auth', optionalAuth, getPlaybackAuth);
+router.get('/:id/key', optionalAuth, getVideoKey);
 router.post('/:id/view', optionalAuth, registerView);
 router.get('/:id/comments', optionalAuth, getComments);
 router.get('/comments/:commentId/replies', optionalAuth, getReplies);

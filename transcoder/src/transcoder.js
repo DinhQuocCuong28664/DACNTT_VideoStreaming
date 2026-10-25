@@ -115,7 +115,7 @@ const buildForceKeyFramesExpr = (segmentDuration = config.ffmpeg.segmentDuration
  *   │   └── ...
  *   └── thumbnail.jpg
  */
-const transcodeToHLS = async (inputPath, outputDir, { onProgress } = {}) => {
+const transcodeToHLS = async (inputPath, outputDir, { onProgress, encryption = null } = {}) => {
   console.log('\n🎬 ════════════════════════════════════════');
   console.log('   FFmpeg HLS Transcoding Starting...');
   console.log('════════════════════════════════════════\n');
@@ -140,11 +140,35 @@ const transcodeToHLS = async (inputPath, outputDir, { onProgress } = {}) => {
     fs.mkdirSync(dir, { recursive: true });
   }
 
+  // Chuẩn bị tệp thông tin khóa HLS AES-128 nếu có cấu hình mã hoá
+  let keyInfoPath = null;
+  let keyPath = null;
+  if (encryption && encryption.key && encryption.uri) {
+    keyPath = path.join(outputDir, 'enc.key');
+    keyInfoPath = path.join(outputDir, 'enc.keyinfo');
+    fs.writeFileSync(keyPath, encryption.key);
+    const keyInfoContent = `${encryption.uri}\n${keyPath}\n${encryption.iv ? encryption.iv + '\n' : ''}`;
+    fs.writeFileSync(keyInfoPath, keyInfoContent, 'utf-8');
+    console.log(`🔐 HLS AES-128 Encryption enabled. Key URI: ${encryption.uri}`);
+  }
+
   // Step 3: Build FFmpeg command for all renditions simultaneously
-  const args = buildFFmpegArgs(inputPath, outputDir, renditions, fps);
+  const args = buildFFmpegArgs(inputPath, outputDir, renditions, fps, keyInfoPath);
   console.log(`🔧 FFmpeg command: ffmpeg ${args.join(' ').substring(0, 200)}...`);
 
-  await runFFmpeg(args, duration, { onProgress });
+  try {
+    await runFFmpeg(args, duration, { onProgress });
+  } finally {
+    // Dọn dẹp tệp khóa nhị phân và keyinfo trên ổ đĩa để KHÔNG bị tải lên S3
+    if (keyInfoPath && fs.existsSync(keyInfoPath)) {
+      try {
+        fs.rmSync(keyInfoPath, { force: true });
+        if (keyPath && fs.existsSync(keyPath)) {
+          fs.rmSync(keyPath, { force: true });
+        }
+      } catch (_) {}
+    }
+  }
 
   // Step 4: Generate master playlist
   const codecsByRendition = await probeRenditionCodecs(outputDir, renditions);
@@ -202,7 +226,7 @@ const videoEncodeArgs = (r, { trimEnd, restartPts = false } = {}) => {
  * Build FFmpeg arguments for multi-rendition HLS output
  * Single-pass encoding with one input read → multiple outputs
  */
-const buildFFmpegArgs = (inputPath, outputDir, renditions, fps = DEFAULT_FPS) => {
+const buildFFmpegArgs = (inputPath, outputDir, renditions, fps = DEFAULT_FPS, keyInfoPath = null) => {
   const gopSize = computeGopSize(fps);
   const forceKeyFrames = buildForceKeyFramesExpr();
 
@@ -254,6 +278,7 @@ const buildFFmpegArgs = (inputPath, outputDir, renditions, fps = DEFAULT_FPS) =>
       '-f', 'hls',
       '-hls_time', String(config.ffmpeg.segmentDuration),
       '-hls_list_size', '0', // Include all segments
+      ...(keyInfoPath ? ['-hls_key_info_file', keyInfoPath] : []),
       '-hls_segment_filename', segmentPath,
       playlistPath
     );
