@@ -27,7 +27,7 @@ jest.mock('mongoose', () => {
   };
 });
 
-const { updateVideoReady, updateVideoError, markVideoProcessing } = require('../src/dbHandler');
+const { updateVideoReady, updateVideoError, markVideoProcessing, touchVideoProcessing, updateVideoProgress } = require('../src/dbHandler');
 
 describe('markVideoProcessing — đánh dấu job đã bắt đầu', () => {
   const videoId = '6a78c10f1c4541ef615cf01d';
@@ -232,5 +232,38 @@ describe('touchVideoProcessing — nhịp tim của job con', () => {
     mockVideoModel.findOneAndUpdate.mockResolvedValue(null);
     mockVideoModel.findById.mockResolvedValue(null);
     expect(await touchVideoProcessing(videoId)).toEqual({ alive: false, status: null });
+  });
+});
+
+describe('updateVideoProgress — cập nhật tiến độ chuyển mã', () => {
+  const videoId = '6a78c10f1c4541ef615cf01d';
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('làm tròn và giới hạn tiến độ trong khoảng 0-100', async () => {
+    mockVideoModel.findOneAndUpdate.mockResolvedValue({ _id: videoId, processingProgress: 45 });
+
+    const result = await updateVideoProgress(videoId, 45.4);
+
+    expect(mockVideoModel.findOneAndUpdate).toHaveBeenCalledWith(
+      { _id: videoId, status: { $ne: 'ERROR' } },
+      { $set: { processingProgress: 45 } },
+      { returnDocument: 'after' }
+    );
+    expect(result.updated).toBe(true);
+  });
+
+  it('chặn trần 100 khi tiến độ vượt quá', async () => {
+    mockVideoModel.findOneAndUpdate.mockResolvedValue({ _id: videoId, processingProgress: 100 });
+
+    await updateVideoProgress(videoId, 105);
+
+    expect(mockVideoModel.findOneAndUpdate).toHaveBeenCalledWith(
+      { _id: videoId, status: { $ne: 'ERROR' } },
+      { $set: { processingProgress: 100 } },
+      { returnDocument: 'after' }
+    );
   });
 });

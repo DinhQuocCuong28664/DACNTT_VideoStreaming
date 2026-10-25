@@ -311,7 +311,10 @@
     "violenceWarningDesc": "This video contains violence or material that some viewers may find disturbing. Viewer discretion is advised.",
     "violenceWarningBadge": "Violence Warning",
     "proceedButton": "I understand and wish to proceed",
-    "goBackButton": "Go Back"
+    "goBackButton": "Go Back",
+    "stagePreparing": "Preparing and moderating content...",
+    "stageTranscoding": "Transcoding multi-bitrate HLS streams...",
+    "stageFinalizing": "Packaging and finalizing cloud storage..."
   },
   "player": {
     "authFailed": "Could not authorise this playback session. Please reload the page.",

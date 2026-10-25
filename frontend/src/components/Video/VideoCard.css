@@ -451,3 +451,10 @@
   top: 8px;
   right: 8px;
 }
+
+
+.video-status-badge-processing {
+  background: rgba(16, 163, 127, 0.9) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(52, 211, 153, 0.4);
+}

@@ -115,7 +115,7 @@ const buildForceKeyFramesExpr = (segmentDuration = config.ffmpeg.segmentDuration
  *   │   └── ...
  *   └── thumbnail.jpg
  */
-const transcodeToHLS = async (inputPath, outputDir) => {
+const transcodeToHLS = async (inputPath, outputDir, { onProgress } = {}) => {
   console.log('\n🎬 ════════════════════════════════════════');
   console.log('   FFmpeg HLS Transcoding Starting...');
   console.log('════════════════════════════════════════\n');
@@ -144,7 +144,7 @@ const transcodeToHLS = async (inputPath, outputDir) => {
   const args = buildFFmpegArgs(inputPath, outputDir, renditions, fps);
   console.log(`🔧 FFmpeg command: ffmpeg ${args.join(' ').substring(0, 200)}...`);
 
-  await runFFmpeg(args, duration);
+  await runFFmpeg(args, duration, { onProgress });
 
   // Step 4: Generate master playlist
   const codecsByRendition = await probeRenditionCodecs(outputDir, renditions);
@@ -833,13 +833,15 @@ const assessEncodeProgress = (
 const formatSpan = (seconds) =>
   seconds < 7200 ? `${Math.round(seconds / 60)} phút` : `${(seconds / 3600).toFixed(1).replace('.', ',')} giờ`;
 
-const runFFmpeg = (args, totalDuration) => {
+const runFFmpeg = (args, totalDuration, { onProgress } = {}) => {
   return new Promise((resolve, reject) => {
     const proc = spawn('ffmpeg', args);
     const startTime = Date.now();
     const { maxEncodeSeconds, encodeGuard } = config.ffmpeg;
     let breachSince = null;
     let abortError = null;
+    let lastProgressReportTime = 0;
+    let lastReportedProgress = -1;
 
     proc.stderr.on('data', (data) => {
       const line = data.toString();
@@ -854,6 +856,16 @@ const runFFmpeg = (args, totalDuration) => {
         const now = Date.now();
         const elapsed = ((now - startTime) / 1000).toFixed(0);
         process.stdout.write(`\r   ⏳ Progress: ${progress.toFixed(1)}% | Elapsed: ${elapsed}s`);
+
+        if (typeof onProgress === 'function') {
+          if (now - lastProgressReportTime >= 2000 || Math.abs(progress - lastReportedProgress) >= 5) {
+            lastProgressReportTime = now;
+            lastReportedProgress = progress;
+            try {
+              onProgress(progress);
+            } catch (_) {}
+          }
+        }
 
         // Rào chắn thời gian: bỏ cuộc sớm khi chắc chắn không kịp, thay vì chạy
         // tới khi job bị dừng. Xem chú thích của `maxEncodeSeconds` trong config.

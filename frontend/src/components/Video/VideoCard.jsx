@@ -64,7 +64,12 @@ const VideoCard = ({ video, variant = 'grid', showAvatar = true, showMenu = true
           <span className="video-duration">{formatDuration(video.duration)}</span>
         )}
         {video.status === 'PROCESSING' && (
-          <span className="video-status-badge">{t('videoCard.processing')}</span>
+          <span className="video-status-badge video-status-badge-processing">
+            {t('videoCard.processing')}
+            {typeof video.processingProgress === 'number' && video.processingProgress > 0
+              ? ` (${video.processingProgress}%)`
+              : ''}
+          </span>
         )}
         {/* Chỉ chủ kênh nhìn thấy video hỏng, vì danh mục công khai chỉ liệt kê
             video đã READY. Không có nhãn này thì video chuyển mã thất bại trông

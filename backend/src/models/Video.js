@@ -103,6 +103,17 @@ const videoSchema = new mongoose.Schema(
       default: false,
     },
 
+    /**
+     * Tiến trình chuyển mã (%) khi video đang ở trạng thái PROCESSING.
+     * Cập nhật theo thời gian thực từ Fargate container (0% - 100%).
+     */
+    processingProgress: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 100,
+    },
+
     /** A top-level comment the owner pinned above the others, or null. */
     pinnedComment: {
       type: mongoose.Schema.Types.ObjectId,

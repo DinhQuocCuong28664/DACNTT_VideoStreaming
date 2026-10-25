@@ -343,10 +343,32 @@ const WatchPage = () => {
                   <MdErrorOutline className="player-placeholder-icon" aria-hidden="true" />
                   <p>{t('watch.processingFailed')}</p>
                 </>
+              ) : video.status === 'PROCESSING' ? (
+                <div className="processing-progress-box">
+                  <div className="spinner" />
+                  <p className="processing-status-text">
+                    {t('watch.transcoding')} {typeof video.processingProgress === 'number' && video.processingProgress > 0 ? `(${video.processingProgress}%)` : ''}
+                  </p>
+                  {typeof video.processingProgress === 'number' && video.processingProgress > 0 && (
+                    <div className="processing-progress-bar-container">
+                      <div
+                        className="processing-progress-bar-fill"
+                        style={{ width: `${Math.min(100, Math.max(5, video.processingProgress))}%` }}
+                      />
+                    </div>
+                  )}
+                  <p className="processing-status-subtext">
+                    {(video.processingProgress || 0) < 25
+                      ? t('watch.stagePreparing')
+                      : (video.processingProgress || 0) < 90
+                        ? t('watch.stageTranscoding')
+                        : t('watch.stageFinalizing')}
+                  </p>
+                </div>
               ) : (
                 <>
                   <div className="spinner" />
-                  <p>{video.status === 'PROCESSING' ? t('watch.transcoding') : t('watch.queued')}</p>
+                  <p>{t('watch.queued')}</p>
                 </>
               )}
             </div>

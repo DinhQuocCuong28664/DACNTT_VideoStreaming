@@ -116,15 +116,16 @@ const ChannelPage = () => {
       setVideos((prev) =>
         prev.map((v) => {
           const next = fresh.get(v._id);
-          if (!next || next.status === v.status) return v;
+          if (!next || (next.status === v.status && next.processingProgress === v.processingProgress)) return v;
           return {
             ...v,
             status: next.status,
             hlsUrl: next.hlsUrl,
             thumbnailUrl: next.thumbnailUrl,
             duration: next.duration,
-            // Kết quả kiểm duyệt được ghi cùng lúc với READY.
             moderation: next.moderation,
+            hasViolence: next.hasViolence,
+            processingProgress: next.processingProgress,
           };
         })
       );

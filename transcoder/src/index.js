@@ -11,6 +11,7 @@ const {
   updateVideoReady,
   updateVideoError,
   markVideoProcessing,
+  updateVideoProgress,
   getVideo,
 } = require('./dbHandler');
 const { pollMessages, parseS3Event, startHeartbeat, deleteMessage } = require('./sqsHandler');
@@ -90,6 +91,7 @@ const processVideo = async (videoId, rawS3Key, { force = false } = {}) => {
     // Video READY chỉ tới được đây bằng --force, và giữ nguyên READY.
     if (existingVideo.status !== 'READY') {
       await markVideoProcessing(videoId);
+      await updateVideoProgress(videoId, 5);
     }
 
     // Step 1: Create work directories
@@ -97,6 +99,7 @@ const processVideo = async (videoId, rawS3Key, { force = false } = {}) => {
     fs.mkdirSync(outputDir, { recursive: true });
 
     // Step 2: Download raw video from S3
+    await updateVideoProgress(videoId, 10);
     await downloadFromS3(config.s3RawBucket, rawS3Key, inputPath);
 
     // Step 2.5: Kiểm duyệt nội dung (Amazon Rekognition). Chạy trước chuyển
@@ -107,6 +110,7 @@ const processVideo = async (videoId, rawS3Key, { force = false } = {}) => {
     // bị từ chối nên kết quả kiểm duyệt cũng không có chỗ để ghi.
     let moderation = null;
     if (config.moderation.enabled && existingVideo?.status !== 'READY') {
+      await updateVideoProgress(videoId, 20);
       const { duration: probedDuration } = await probeVideo(inputPath);
       moderation = await moderateVideo(inputPath, probedDuration, workDir);
     } else if (!config.moderation.enabled) {
@@ -114,13 +118,21 @@ const processVideo = async (videoId, rawS3Key, { force = false } = {}) => {
     }
 
     // Step 3: Transcode to HLS (360p / 720p / 1080p)
-    const { duration, thumbnailPath } = await transcodeToHLS(inputPath, outputDir);
+    await updateVideoProgress(videoId, 25);
+    const { duration, thumbnailPath } = await transcodeToHLS(inputPath, outputDir, {
+      onProgress: (ffmpegProgress) => {
+        const overall = Math.round(25 + ffmpegProgress * 0.65);
+        updateVideoProgress(videoId, overall).catch(() => {});
+      },
+    });
 
     // Step 4: Upload HLS output to S3 Processed Bucket
+    await updateVideoProgress(videoId, 92);
     const s3Prefix = `videos/${videoId}`;
     await uploadDirectoryToS3(outputDir, config.s3ProcessedBucket, s3Prefix);
 
     // Step 5: Update MongoDB — status → READY
+    await updateVideoProgress(videoId, 100);
     const hlsUrl = config.getPublicUrl(`${s3Prefix}/master.m3u8`);
     // Không có tệp thì không trỏ URL vào đó: giao diện tự hiện ảnh thay thế.
     const thumbnailUrl = thumbnailPath ? config.getPublicUrl(`${s3Prefix}/thumbnail.jpg`) : null;

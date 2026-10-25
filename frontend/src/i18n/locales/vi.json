@@ -308,7 +308,10 @@
     "violenceWarningDesc": "Video này được đánh dấu có chứa hình ảnh bạo lực hoặc nội dung nhạy cảm. Người xem cần cân nhắc trước khi xem.",
     "violenceWarningBadge": "Cảnh báo bạo lực",
     "proceedButton": "Tôi hiểu và muốn tiếp tục",
-    "goBackButton": "Quay lại"
+    "goBackButton": "Quay lại",
+    "stagePreparing": "Đang chuẩn bị và kiểm duyệt nội dung...",
+    "stageTranscoding": "Đang chuyển mã HLS đa độ phân giải...",
+    "stageFinalizing": "Đang đóng gói và hoàn tất lưu trữ..."
   },
   "player": {
     "authFailed": "Không xác thực được phiên xem video. Vui lòng tải lại trang.",

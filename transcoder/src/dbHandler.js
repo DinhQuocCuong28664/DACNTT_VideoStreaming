@@ -20,6 +20,8 @@ const videoSchema = new mongoose.Schema(
     views: Number,
     tags: [String],
     visibility: String,
+    hasViolence: Boolean,
+    processingProgress: Number,
     // Phải khai báo ở đây: Mongoose ở chế độ strict sẽ lặng lẽ bỏ các đường
     // dẫn không có trong schema khỏi lệnh cập nhật. Khớp với backend/src/models/Video.js.
     moderation: {
@@ -221,6 +223,19 @@ const touchVideoProcessing = async (videoId) => {
 };
 
 /**
+ * Cập nhật tiến độ chuyển mã (%) từ worker Fargate vào MongoDB.
+ */
+const updateVideoProgress = async (videoId, progress) => {
+  const rounded = Math.min(100, Math.max(0, Math.round(progress)));
+  const video = await Video.findOneAndUpdate(
+    { _id: videoId, status: { $ne: 'ERROR' } },
+    { $set: { processingProgress: rounded } },
+    { returnDocument: 'after' }
+  );
+  return { video, updated: Boolean(video) };
+};
+
+/**
  * Get video by ID
  */
 const getVideo = async (videoId) => {
@@ -246,4 +261,5 @@ module.exports = {
   touchVideoProcessing,
   getVideo,
   getVideoWithUser,
+  updateVideoProgress,
 };
