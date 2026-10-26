@@ -16,12 +16,31 @@ export default {
       redirect: 'follow',
     };
 
-    // Only attach body for methods that allow it
     if (request.method !== 'GET' && request.method !== 'HEAD') {
       init.body = request.body;
     }
 
-    const newRequest = new Request(url.toString(), init);
-    return fetch(newRequest);
+    const response = await fetch(url.toString(), init);
+
+    // Clean up duplicate CORS headers returned by Lambda + Express
+    const responseHeaders = new Headers(response.headers);
+    const acao = responseHeaders.get('access-control-allow-origin');
+    if (acao && acao.includes(',')) {
+      responseHeaders.set('access-control-allow-origin', acao.split(',')[0].trim());
+    }
+    const acac = responseHeaders.get('access-control-allow-credentials');
+    if (acac && acac.includes(',')) {
+      responseHeaders.set('access-control-allow-credentials', 'true');
+    }
+    const vary = responseHeaders.get('vary');
+    if (vary && vary.includes(',')) {
+      responseHeaders.set('vary', 'Origin');
+    }
+
+    return new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: responseHeaders,
+    });
   },
 };
