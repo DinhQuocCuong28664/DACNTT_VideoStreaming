@@ -18,7 +18,19 @@ exports.handler = async (event, context) => {
   await connectDB();
 
   if (!serverlessExpressInstance) {
-    serverlessExpressInstance = serverlessExpress({ app });
+    serverlessExpressInstance = serverlessExpress({
+      app,
+      binarySettings: {
+        contentTypes: [
+          'application/octet-stream',
+          'image/*',
+          'video/*',
+          'audio/*',
+          'application/pdf',
+          'application/zip',
+        ],
+      },
+    });
   }
 
   return serverlessExpressInstance(event, context);
