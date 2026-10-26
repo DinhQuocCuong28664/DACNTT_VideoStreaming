@@ -118,7 +118,13 @@ const EditVideoDialog = ({ video, onClose, onSaved }) => {
               </select>
             </label>
 
-            <VisibilityPicker value={visibility} onChange={setVisibility} name="edit-visibility" />
+            <VisibilityPicker
+              value={visibility}
+              onChange={setVisibility}
+              name="edit-visibility"
+              showLegend
+              hideHeader
+            />
 
             <div className="studio-checkbox-field" style={{ marginTop: '16px' }}>
               <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer' }}>
