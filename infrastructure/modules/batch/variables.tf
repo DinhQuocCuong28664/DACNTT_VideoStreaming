@@ -185,6 +185,12 @@ variable "chunk_memory" {
   default = 2048
 }
 
+variable "key_delivery_base_url" {
+  type        = string
+  default     = "https://api.zelostech.site/api"
+  description = "Base URL for HLS AES-128 decryption key delivery"
+}
+
 variable "tags" {
   type    = map(string)
   default = {}

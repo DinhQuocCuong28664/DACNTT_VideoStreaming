@@ -157,6 +157,7 @@ resource "aws_batch_job_definition" "transcoder" {
         { name = "S3_PROCESSED_BUCKET_NAME", value = var.processed_bucket_name },
         { name = "SQS_QUEUE_URL", value = var.sqs_queue_url },
         { name = "CLOUDFRONT_DOMAIN", value = var.cloudfront_domain },
+        { name = "KEY_DELIVERY_BASE_URL", value = var.key_delivery_base_url },
         { name = "EMAIL_HOST", value = var.email_host },
         { name = "EMAIL_PORT", value = var.email_port },
         # Kiểm duyệt nội dung (transcoder/src/moderation.js). Ghi tường minh

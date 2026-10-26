@@ -53,7 +53,11 @@ const config = {
   keyDeliveryBaseUrl:
     process.env.KEY_DELIVERY_BASE_URL ||
     process.env.API_BASE_URL ||
-    (process.env.NODE_ENV === 'production' ? 'https://zelostech.site/api' : 'http://localhost:5000/api'),
+    (process.env.NODE_ENV === 'production' ||
+    (process.env.FRONTEND_URL && process.env.FRONTEND_URL.includes('zelostech.site')) ||
+    (process.env.CLOUDFRONT_DOMAIN && process.env.CLOUDFRONT_DOMAIN.includes('zelostech.site'))
+      ? 'https://api.zelostech.site/api'
+      : 'http://localhost:5000/api'),
 
   // Email (Gmail SMTP) — thông báo video sẵn sàng/thất bại
   email: {
