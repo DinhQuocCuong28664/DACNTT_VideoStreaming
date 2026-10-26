@@ -75,13 +75,15 @@ The AI development workflow in this repository is structured into 7 specialized 
   - Issue Pre-signed URLs for direct S3 upload with 15-minute expiration.
   - Handle video lifecycle status: `UPLOADING | PROCESSING | READY | ERROR`.
   - Enforce view-count validation rules: count a view only after 30 seconds of confirmed continuous playback.
+  - Enforce authoritative counter synchronization: synchronize counters (subscribers, views, reaction counts) using authoritative collection queries (`countDocuments`) upon modification rather than blind `$inc` / pipeline decrements, preventing counter drift and Mongoose pipeline crashes.
   - Manage user authentication, profile management, comment moderation, and report triage workflows.
 
 ### 3.4. 🎨 `@frontend-player` — Web UI & Adaptive Video Player Specialist
-- **Scope:** `frontend/` directory (React 18 SPA, HLS.js adaptive player, Tailwind / CSS).
+- **Scope:** `frontend/` directory (React 19 SPA, HLS.js adaptive player, Modern Vanilla CSS with YouTube Design System).
 - **Key Responsibilities:**
   - Video Player: Strictly use `hls.js` with Adaptive Bitrate Streaming (ABR), resolution selector, buffer monitoring, and stats tooltip.
   - Upload Interface: Multi-part direct upload to S3 using Pre-signed URLs with real-time upload speed, ETA counter, and cancel button.
+  - Styling Discipline (No Tailwind): Never use or paste Tailwind utility classes (`rounded-full`, `bg-neutral-*`, `dark:*`, `px-*`). The frontend strictly uses Modern Vanilla CSS with CSS Custom Properties (`frontend/src/index.css`) and component-scoped CSS files.
   - Channel Management & Watch Page: Video editing modal, comment section with reporting modal, related video recommendations sidebar, dark/light theme toggle.
 
 ### 3.5. ☁️ `@cloud-devops` — Cloud-Native & Serverless Infrastructure Specialist
@@ -138,3 +140,9 @@ The AI development workflow in this repository is structured into 7 specialized 
      ```bash
      cd report && pdflatex -interaction=nonstopmode main.tex && bibtex main && pdflatex -interaction=nonstopmode main.tex && pdflatex -interaction=nonstopmode main.tex
      ```
+5. **Frontend Styling Discipline (No Tailwind):**
+   - The frontend strictly uses Modern Vanilla CSS with YouTube Design System tokens (`frontend/src/index.css`) and component-scoped CSS files.
+   - **NEVER** write or paste Tailwind utility classes (`rounded-full`, `bg-neutral-*`, `dark:*`, `px-*`, etc.) into JSX components, as Tailwind is not installed.
+6. **Authoritative Counter Synchronization:**
+   - For counters representing entity relationships (subscribers, followers, reaction tallies), avoid drift-prone `$inc` / pipeline decrements without reconciliation.
+   - Always synchronize or reconcile directly from ground-truth collection documents (`countDocuments`) upon change to guarantee 100% data consistency and prevent counter drift.
