@@ -32,7 +32,8 @@
     "aboutVidShare": "Giới thiệu VidShare",
     "signInPrompt": "Đăng nhập để tải video lên, bình luận và thích video.",
     "languageRow": "Ngôn ngữ: {{lang}}",
-    "admin": "Kiểm duyệt"
+    "admin": "Kiểm duyệt",
+    "subscriptions": "Kênh đăng ký"
   },
   "categories": {
     "all": "Tất cả",
@@ -669,5 +670,17 @@
       "upheld": "Khiếu nại của bạn được chấp nhận và video đã được khôi phục.",
       "rejected": "Khiếu nại của bạn đã được xem xét và việc gỡ video được giữ nguyên."
     }
+  },
+  "subscription": {
+    "subscribe": "Đăng ký",
+    "subscribed": "Đã đăng ký",
+    "subscribers": "người đăng ký",
+    "subscribersCount": "{{count}} người đăng ký",
+    "subscribeSuccess": "Đã đăng ký kênh {{name}}",
+    "unsubscribeSuccess": "Đã hủy đăng ký kênh {{name}}",
+    "feedTitle": "Kênh đăng ký",
+    "feedSubtitle": "Video mới nhất từ các kênh bạn theo dõi",
+    "feedEmpty": "Chưa có video nào từ các kênh bạn đã đăng ký.",
+    "feedExplore": "Khám phá các video trên trang chủ"
   }
 }

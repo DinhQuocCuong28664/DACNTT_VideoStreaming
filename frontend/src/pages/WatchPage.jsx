@@ -22,6 +22,7 @@ import VideoPlayer from '../components/Video/VideoPlayer';
 import CommentSection from '../components/Video/CommentSection';
 import VideoCard from '../components/Video/VideoCard';
 import ReportDialog from '../components/Video/ReportDialog';
+import SubscribeButton from '../components/Channel/SubscribeButton';
 import AppealBox from '../components/Video/AppealBox';
 import { can } from '../utils/roles';
 import { formatViews, formatDate } from '../utils/format';
@@ -404,22 +405,29 @@ const WatchPage = () => {
             )}
           </h1>
 
-          {/* Hàng kênh và nút thao tác. Dự án không có tính năng đăng ký kênh,
-              nên không có nút Subscribe như YouTube. */}
+          {/* Hàng kênh và nút thao tác: Nút Subscribe phong cách YouTube */}
           <div className="watch-owner-row">
-            <Link to={`/channel/${user._id}`} className="watch-owner">
-              <Avatar
-                src={user.avatar}
-                className="watch-owner-avatar"
-                fallbackClassName="avatar-placeholder watch-owner-avatar"
-              >
-                {user.username?.charAt(0).toUpperCase() || '?'}
-              </Avatar>
-              <div className="watch-owner-text">
-                <p className="watch-owner-name">{channelName}</p>
-                <p className="watch-owner-handle">@{user.username}</p>
-              </div>
-            </Link>
+            <div className="watch-owner-meta">
+              <Link to={`/channel/${user._id}`} className="watch-owner">
+                <Avatar
+                  src={user.avatar}
+                  className="watch-owner-avatar"
+                  fallbackClassName="avatar-placeholder watch-owner-avatar"
+                >
+                  {user.username?.charAt(0).toUpperCase() || '?'}
+                </Avatar>
+                <div className="watch-owner-text">
+                  <p className="watch-owner-name">{channelName}</p>
+                  <p className="watch-owner-handle">@{user.username}</p>
+                </div>
+              </Link>
+
+              <SubscribeButton
+                channelId={user._id}
+                channelName={channelName}
+                initialSubscribersCount={user.subscribers}
+              />
+            </div>
 
             <div className="watch-actions">
               <div className="segmented-pill">
