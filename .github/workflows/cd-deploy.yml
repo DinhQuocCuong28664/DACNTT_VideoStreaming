@@ -49,7 +49,7 @@ jobs:
         run: |
           set -e
           cd backend
-          npm ci --omit=dev
+          npm ci --omit=dev --omit=optional
           zip -q -r ../backend_api.zip src package.json package-lock.json node_modules
           cd ..
           ls -lh backend_api.zip
