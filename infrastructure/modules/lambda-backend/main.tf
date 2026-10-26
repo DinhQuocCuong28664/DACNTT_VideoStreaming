@@ -71,11 +71,19 @@ resource "aws_lambda_function_url" "backend_api" {
   cors {
     allow_credentials = true
     allow_origins     = split(",", var.cors_origins)
-    allow_methods     = ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"]
+    allow_methods     = ["*"]
     allow_headers     = ["*"]
     expose_headers    = ["*"]
     max_age           = 86400
   }
+}
+
+resource "aws_lambda_permission" "backend_api_url_public" {
+  statement_id           = "FunctionURLAllowPublicAccess"
+  action                 = "lambda:InvokeFunctionUrl"
+  function_name          = aws_lambda_function.backend_api.function_name
+  principal              = "*"
+  function_url_auth_type = "NONE"
 }
 
 # ── Scheduled Video Reconciler (EventBridge) ──────────────────
