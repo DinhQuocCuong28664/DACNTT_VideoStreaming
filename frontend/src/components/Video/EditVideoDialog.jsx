@@ -22,8 +22,21 @@ const EditVideoDialog = ({ video, onClose, onSaved }) => {
   const [visibility, setVisibility] = useState(video.visibility || 'public');
   const [hasViolence, setHasViolence] = useState(Boolean(video.hasViolence));
   const [accessLevel, setAccessLevel] = useState(video.accessLevel || 'public');
+  const initialMode = video.accessLevel === 'members_only' ? 'members_only' : (video.visibility || 'public');
+  const [visibilityMode, setVisibilityMode] = useState(initialMode);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+
+  const handleModeChange = (newMode) => {
+    setVisibilityMode(newMode);
+    if (newMode === 'members_only') {
+      setVisibility('public');
+      setAccessLevel('members_only');
+    } else {
+      setVisibility(newMode);
+      setAccessLevel('public');
+    }
+  };
 
   useEffect(() => {
     const onKey = (e) => {
@@ -119,8 +132,8 @@ const EditVideoDialog = ({ video, onClose, onSaved }) => {
             </label>
 
             <VisibilityPicker
-              value={visibility}
-              onChange={setVisibility}
+              value={visibilityMode}
+              onChange={handleModeChange}
               name="edit-visibility"
               showLegend
               hideHeader
@@ -141,25 +154,6 @@ const EditVideoDialog = ({ video, onClose, onSaved }) => {
                   </span>
                   <p className="field-help" style={{ margin: '2px 0 0', fontSize: '0.825rem', color: 'var(--text-secondary)' }}>
                     {t('channel.editViolenceHelp')}
-                  </p>
-                </div>
-              </label>
-            </div>
-
-            <div className="field-group" style={{ marginTop: '12px' }}>
-              <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer' }}>
-                <input
-                  type="checkbox"
-                  checked={accessLevel === 'members_only'}
-                  onChange={(e) => setAccessLevel(e.target.checked ? 'members_only' : 'public')}
-                  style={{ marginTop: '3px', cursor: 'pointer' }}
-                />
-                <div>
-                  <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-primary)' }}>
-                    {t('membership.membersOnly')}
-                  </span>
-                  <p className="field-help" style={{ margin: '2px 0 0', fontSize: '0.825rem', color: 'var(--text-secondary)' }}>
-                    {t('membership.exclusiveVideos')}
                   </p>
                 </div>
               </label>

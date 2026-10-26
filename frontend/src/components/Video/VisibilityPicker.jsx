@@ -1,12 +1,13 @@
 import { useTranslation } from 'react-i18next';
 import { VISIBILITY_ICON } from './visibilityIcons';
 
-const MODES = ['public', 'unlisted', 'private'];
+const MODES = ['public', 'members_only', 'unlisted', 'private'];
 
 /**
  * Chọn chế độ hiển thị chuẩn YouTube Studio:
  * Giao diện thẻ phẳng với tiêu đề "Lưu hoặc xuất bản", mô tả và danh sách
- * radio có icon, loại bỏ hoàn toàn viền fieldset mặc định và hiện tượng lặp từ "Visibility".
+ * 4 lựa chọn (Public, Members only, Unlisted, Private) với icon trang nhã,
+ * loại bỏ hoàn toàn viền fieldset mặc định và không lặp tiêu đề.
  */
 const VisibilityPicker = ({
   value,

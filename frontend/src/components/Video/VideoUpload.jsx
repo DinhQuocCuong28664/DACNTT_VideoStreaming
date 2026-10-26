@@ -8,7 +8,6 @@ import {
   MdCheck,
   MdOutlineMovie,
   MdOutlineMarkEmailUnread,
-  MdStar,
 } from 'react-icons/md';
 import videoApi from '../../api/videoApi';
 import { useAuth } from '../../context/useAuth';
@@ -34,6 +33,7 @@ const EMPTY_FORM = {
   tags: '',
   visibility: 'public',
   accessLevel: 'public',
+  visibilityMode: 'public',
   hasViolence: false,
 };
 
@@ -66,6 +66,24 @@ const VideoUpload = () => {
   const [error, setError] = useState('');
   const [uploading, setUploading] = useState(false);
   const [maxFileSizeBytes, setMaxFileSizeBytes] = useState(FALLBACK_MAX_FILE_SIZE_BYTES);
+
+  const handleVisibilityChange = (mode) => {
+    if (mode === 'members_only') {
+      setFormData((prev) => ({
+        ...prev,
+        visibility: 'public',
+        accessLevel: 'members_only',
+        visibilityMode: 'members_only',
+      }));
+    } else {
+      setFormData((prev) => ({
+        ...prev,
+        visibility: mode,
+        accessLevel: 'public',
+        visibilityMode: mode,
+      }));
+    }
+  };
 
   // Trần tải lên do máy chủ quyết định và đổi được bằng cấu hình, nên đọc từ API
   // thay vì giữ một con số riêng ở đây rồi để hai bên lệch nhau.
@@ -584,36 +602,9 @@ const VideoUpload = () => {
                     </div>
 
                     <VisibilityPicker
-                      value={formData.visibility}
-                      onChange={(v) => setFormData({ ...formData, visibility: v })}
+                      value={formData.visibilityMode}
+                      onChange={handleVisibilityChange}
                     />
-
-                    <div className="visibility-membership-card">
-                      <div className="visibility-membership-header">
-                        <span className="visibility-membership-title">
-                          <MdStar style={{ color: '#00c3b2', fontSize: '1.25rem' }} aria-hidden="true" />
-                          {t('membership.audienceTitle')}
-                        </span>
-                        <p className="visibility-membership-desc">{t('membership.audienceDesc')}</p>
-                      </div>
-                      <label className="visibility-membership-toggle">
-                        <input
-                          type="checkbox"
-                          name="accessLevel"
-                          checked={formData.accessLevel === 'members_only'}
-                          onChange={(e) =>
-                            setFormData({
-                              ...formData,
-                              accessLevel: e.target.checked ? 'members_only' : 'public',
-                            })
-                          }
-                        />
-                        <div className="radio-row-text">
-                          <span className="visibility-membership-label">{t('membership.membersOnly')}</span>
-                          <span className="field-help" style={{ margin: 0 }}>{t('membership.exclusiveVideos')}</span>
-                        </div>
-                      </label>
-                    </div>
                   </>
                 )}
               </div>

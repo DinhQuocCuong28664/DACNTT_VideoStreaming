@@ -26,11 +26,12 @@ const { PART_URL_TTL_SECONDS } = require('../config/uploadLimits');
 //
 // Transcoder đã áp dụng đúng cách này từ trước (xem transcoder/src/s3Handler.js);
 // backend giữ nguyên lỗi cũ cho tới khi triển khai trên EC2 dùng IAM Role.
-const s3ClientConfig = { region: process.env.AWS_REGION };
+const s3ClientConfig = { region: process.env.AWS_REGION || 'ap-southeast-1' };
 if (process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) {
   s3ClientConfig.credentials = {
     accessKeyId: process.env.AWS_ACCESS_KEY_ID,
     secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+    ...(process.env.AWS_SESSION_TOKEN && { sessionToken: process.env.AWS_SESSION_TOKEN }),
   };
 }
 
