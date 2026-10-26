@@ -204,12 +204,19 @@ const videoEncodeArgs = (r, { trimEnd, restartPts = false } = {}) => {
     .filter(Boolean)
     .join(',');
 
+  const rateControlArgs = r.crf !== undefined
+    ? ['-crf', String(r.crf)]
+    : (r.videoBitrate ? ['-b:v', r.videoBitrate] : []);
+
+  const vbvArgs = [];
+  if (r.maxrate) vbvArgs.push('-maxrate', r.maxrate);
+  if (r.bufsize) vbvArgs.push('-bufsize', r.bufsize);
+
   return [
     '-vf', scaleFilter,
     '-c:v', 'libx264',
-    '-b:v', r.videoBitrate,
-    '-maxrate', r.maxrate,
-    '-bufsize', r.bufsize,
+    ...rateControlArgs,
+    ...vbvArgs,
     '-preset', 'fast',
     '-profile:v', 'main',
     // Ép 8-bit 4:2:0. Không có cờ này libx264 giữ định dạng màu của nguồn:

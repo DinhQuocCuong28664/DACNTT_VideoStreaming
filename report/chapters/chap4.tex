@@ -168,12 +168,12 @@ synchronized video variants and audio tracks, illustrated in Figure~\ref{fig:hls
   \node[box, right=0.8cm of probe, minimum width=2.3cm] (demux) {Demuxer \&\\Decoder};
 
   % Filtergraph ladder
-  \node[rung, above right=1.6cm and 1.0cm of demux] (r1080) {1080p (5000 kbps)};
-  \node[rung, below=0.15cm of r1080] (r720) {720p (2800 kbps)};
-  \node[rung, below=0.15cm of r720] (r480) {480p (1400 kbps)};
-  \node[rung, below=0.15cm of r480] (r360) {360p (800 kbps)};
-  \node[rung, below=0.15cm of r360] (r240) {240p (400 kbps)};
-  \node[rung, below=0.15cm of r240] (r144) {144p (200 kbps)};
+  \node[rung, above right=1.6cm and 1.0cm of demux] (r1080) {1080p (CRF 22, $\le$4.5M)};
+  \node[rung, below=0.15cm of r1080] (r720) {720p (CRF 23, $\le$2.2M)};
+  \node[rung, below=0.15cm of r720] (r480) {480p (CRF 24, $\le$1.1M)};
+  \node[rung, below=0.15cm of r480] (r360) {360p (CRF 25, $\le$600k)};
+  \node[rung, below=0.15cm of r360] (r240) {240p (CRF 26, $\le$350k)};
+  \node[rung, below=0.15cm of r240] (r144) {144p (CRF 28, $\le$180k)};
 
   % Keyframe Alignment & Packaging
   \node[enc, right=1.0cm of r480, minimum width=2.6cm] (align) {GOP Synchronizer\\(GOP = $6.0\,\text{s}$, IDR synced)};
@@ -218,6 +218,27 @@ synchronized video variants and audio tracks, illustrated in Figure~\ref{fig:hls
 \end{figure}
 
 The pipeline executes sequentially through five distinct transformation stages. First, in the stream inspection and probing stage, the worker invokes \texttt{ffprobe} to extract video dimensions, frame rate, duration, and audio track layouts. If the source resolution is lower than 1080p, the ladder is automatically bounded at the source's native resolution, preventing wasteful upscaling. Second, during single-decode multi-scale scaling, the input video stream is decoded exactly once into uncompressed raw frames; these frames are piped through a multi-branch filtergraph that scales them concurrently into the standard resolution tiers (from 1080p down to 144p).
+
+To balance bandwidth consumption and perceptual quality across heterogeneous content, the pipeline implements a Per-Resolution Capped-CRF bitrate ladder (Table~\ref{tab:capped-crf-ladder}) rather than fixed Constant Bitrate (CBR) or unconstrained Constant Rate Factor (CRF) encoding. A fixed CBR rate (such as 4.5~Mbit/s for 1080p) squanders S3 storage and CloudFront egress on low-complexity screen recordings, whereas uniform CRF encoding induces \textit{Spatial Aliasing Inversion}: downscaling sharp slide typography to 360p creates anti-aliasing edge blur and Gibbs ringing, causing the downscaled tier to paradoxically demand higher bitrate than the unscaled 1080p master and triggering Adaptive Bitrate (ABR) hunting in client players. By staggering target CRF values from 22 at 1080p to 28 at 144p and bounding each tier with Video Buffer Verifier (VBV) limits (\texttt{-maxrate} and \texttt{-bufsize}), adjacent ceilings maintain an orderly $1.7\times$--$2.0\times$ progression in strict accordance with Apple HLS Technical Note TN2224. The VBV buffer window ($T_{\text{buf}} = \text{bufsize} / \text{maxrate} = 2.0\,\text{s}$) smooths network bursts over six-second segments. In compliance with RFC~8216 \S4.3.4.2, post-encoding measurements extract the actual peak segment bit rates for the \texttt{BANDWIDTH} attribute in \texttt{master.m3u8}, allowing low-entropy 1080p streams to play over constrained 3G links without buffering.
+
+\begin{table}[H]
+\centering
+\caption{Per-Resolution Capped-CRF Bitrate Ladder Specification}
+\label{tab:capped-crf-ladder}
+\small
+\begin{tabularx}{\textwidth}{l c c c c c X}
+\toprule
+\textbf{TIER} & \textbf{RESOLUTION} & \textbf{CRF} & \textbf{MAXRATE} & \textbf{BUFSIZE} & \textbf{AUDIO} & \textbf{TARGET BITRATE REGIME} \\
+\midrule
+1080p & $1920\times 1080$ & 22 & $4500\,\text{kbps}$ & $9000\,\text{kbps}$ & $192\,\text{kbps}$ & $600$--$1200\,\text{kbps}$ (static) $\rightarrow$ $4500\,\text{kbps}$ (action) \\
+720p  & $1280\times 720$  & 23 & $2200\,\text{kbps}$ & $4400\,\text{kbps}$ & $128\,\text{kbps}$ & $400$--$800\,\text{kbps}$ (static) $\rightarrow$ $2200\,\text{kbps}$ (action) \\
+480p  & $854\times 480$   & 24 & $1100\,\text{kbps}$ & $2200\,\text{kbps}$ & $96\,\text{kbps}$  & $250$--$500\,\text{kbps}$ (static) $\rightarrow$ $1100\,\text{kbps}$ (action) \\
+360p  & $640\times 360$   & 25 & $600\,\text{kbps}$  & $1200\,\text{kbps}$ & $64\,\text{kbps}$  & $180$--$350\,\text{kbps}$ (static) $\rightarrow$ $600\,\text{kbps}$ (action) \\
+240p  & $426\times 240$   & 26 & $350\,\text{kbps}$  & $700\,\text{kbps}$  & $64\,\text{kbps}$  & $120$--$220\,\text{kbps}$ (static) $\rightarrow$ $350\,\text{kbps}$ (action) \\
+144p  & $256\times 144$   & 28 & $180\,\text{kbps}$  & $360\,\text{kbps}$  & $48\,\text{kbps}$  & $80$--$120\,\text{kbps}$ (static) $\rightarrow$ $180\,\text{kbps}$ (action) \\
+\bottomrule
+\end{tabularx}
+\end{table}
 
 Third, to ensure seamless Adaptive Bitrate Switching (ABR), strict keyframe (GOP) synchronization is enforced: all renditions must place instantaneous decoder refresh (IDR) keyframes at identical frame timestamps. FFmpeg is configured with \texttt{-g (fps*6) -keyint\_min (fps*6) -sc\_threshold 0}, enforcing identical six-second segment boundaries across all ladder rungs. Fourth, for copyright protection, envelope encryption generates a cryptographically secure 16-byte symmetric key via \texttt{crypto.randomBytes(16)} and supplies it through FFmpeg's \texttt{-hls\_key\_info\_file}. Every \texttt{.ts} transport stream segment is encrypted using AES-128 in Cipher Block Chaining (CBC) mode, and the key delivery URI embedded in the variant playlists points client players to the authorized licensing endpoint (\texttt{/api/videos/:id/key}). Finally, the HLS muxer assembles the hierarchical playlists: variant playlists index the six-second segments with precise \texttt{\#EXTINF:6.000000} duration tags, and a master playlist (\texttt{master.m3u8}) is written with \texttt{\#EXT-X-STREAM-INF} descriptors declaring the resolution, codecs, and bandwidth ceilings of each rendition.
 
