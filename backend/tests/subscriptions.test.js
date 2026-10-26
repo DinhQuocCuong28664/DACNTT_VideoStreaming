@@ -33,19 +33,17 @@ describe('Subscription Service Tests', () => {
       });
     });
 
-    it('creates subscription and atomically increments subscriber count', async () => {
+    it('creates subscription and updates subscriber count', async () => {
       User.exists.mockResolvedValue({ _id: channelId });
       Subscription.create.mockResolvedValue({ subscriber: subscriberId, channel: channelId });
+      Subscription.countDocuments.mockResolvedValue(10);
       User.findByIdAndUpdate.mockResolvedValue({ _id: channelId, subscribers: 10 });
 
       const result = await subscriptionService.subscribe(subscriberId, channelId);
 
       expect(Subscription.create).toHaveBeenCalledWith({ subscriber: subscriberId, channel: channelId });
-      expect(User.findByIdAndUpdate).toHaveBeenCalledWith(
-        channelId,
-        { $inc: { subscribers: 1 } },
-        { new: true, select: 'subscribers' }
-      );
+      expect(Subscription.countDocuments).toHaveBeenCalledWith({ channel: channelId });
+      expect(User.findByIdAndUpdate).toHaveBeenCalledWith(channelId, { subscribers: 10 });
       expect(result).toEqual({ isSubscribed: true, subscribersCount: 10 });
     });
 
@@ -54,12 +52,11 @@ describe('Subscription Service Tests', () => {
       const dupError = new Error('E11000 duplicate key');
       dupError.code = 11000;
       Subscription.create.mockRejectedValue(dupError);
-
-      User.findById.mockReturnValue({
-        select: jest.fn().mockResolvedValue({ _id: channelId, subscribers: 10 }),
-      });
+      Subscription.countDocuments.mockResolvedValue(10);
+      User.findByIdAndUpdate.mockResolvedValue({ _id: channelId, subscribers: 10 });
 
       const result = await subscriptionService.subscribe(subscriberId, channelId);
+      expect(Subscription.countDocuments).toHaveBeenCalledWith({ channel: channelId });
       expect(result).toEqual({ isSubscribed: true, subscribersCount: 10 });
     });
   });
@@ -72,26 +69,30 @@ describe('Subscription Service Tests', () => {
       });
     });
 
-    it('removes subscription and decrements subscriber count', async () => {
+    it('removes subscription and updates subscriber count', async () => {
       Subscription.findOneAndDelete.mockResolvedValue({ subscriber: subscriberId, channel: channelId });
+      Subscription.countDocuments.mockResolvedValue(9);
       User.findByIdAndUpdate.mockResolvedValue({ _id: channelId, subscribers: 9 });
 
       const result = await subscriptionService.unsubscribe(subscriberId, channelId);
 
       expect(Subscription.findOneAndDelete).toHaveBeenCalledWith({ subscriber: subscriberId, channel: channelId });
+      expect(Subscription.countDocuments).toHaveBeenCalledWith({ channel: channelId });
+      expect(User.findByIdAndUpdate).toHaveBeenCalledWith(channelId, { subscribers: 9 });
       expect(result).toEqual({ isSubscribed: false, subscribersCount: 9 });
     });
 
-    it('returns isSubscribed: false without decrementing if not currently subscribed', async () => {
+    it('returns isSubscribed: false even if not currently subscribed', async () => {
       Subscription.findOneAndDelete.mockResolvedValue(null);
-      User.findById.mockReturnValue({
-        select: jest.fn().mockResolvedValue({ _id: channelId, subscribers: 9 }),
-      });
+      Subscription.countDocuments.mockResolvedValue(0);
+      User.findByIdAndUpdate.mockResolvedValue({ _id: channelId, subscribers: 0 });
 
       const result = await subscriptionService.unsubscribe(subscriberId, channelId);
 
-      expect(User.findByIdAndUpdate).not.toHaveBeenCalled();
-      expect(result).toEqual({ isSubscribed: false, subscribersCount: 9 });
+      expect(Subscription.findOneAndDelete).toHaveBeenCalledWith({ subscriber: subscriberId, channel: channelId });
+      expect(Subscription.countDocuments).toHaveBeenCalledWith({ channel: channelId });
+      expect(User.findByIdAndUpdate).toHaveBeenCalledWith(channelId, { subscribers: 0 });
+      expect(result).toEqual({ isSubscribed: false, subscribersCount: 0 });
     });
   });
 

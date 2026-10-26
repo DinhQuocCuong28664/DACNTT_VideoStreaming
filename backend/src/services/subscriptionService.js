@@ -31,29 +31,21 @@ const subscribe = async (subscriberId, channelId) => {
       subscriber: subscriberId,
       channel: channelId,
     });
-
-    // Atomically increment subscriber count
-    const updatedChannel = await User.findByIdAndUpdate(
-      channelId,
-      { $inc: { subscribers: 1 } },
-      { new: true, select: 'subscribers' }
-    );
-
-    return {
-      isSubscribed: true,
-      subscribersCount: updatedChannel ? updatedChannel.subscribers : 0,
-    };
   } catch (err) {
-    if (err.code === 11000) {
-      // Already subscribed (idempotent duplicate key error)
-      const currentChannel = await User.findById(channelId).select('subscribers');
-      return {
-        isSubscribed: true,
-        subscribersCount: currentChannel ? currentChannel.subscribers : 0,
-      };
+    if (err.code !== 11000) {
+      throw err;
     }
-    throw err;
+    // Idempotent duplicate key error - continue to synchronize count
   }
+
+  // Authoritatively sync subscriber count from actual Subscription documents
+  const subscribersCount = await Subscription.countDocuments({ channel: channelId });
+  await User.findByIdAndUpdate(channelId, { subscribers: subscribersCount });
+
+  return {
+    isSubscribed: true,
+    subscribersCount,
+  };
 };
 
 /**
@@ -69,37 +61,18 @@ const unsubscribe = async (subscriberId, channelId) => {
     throw httpError(400, 'Cannot unsubscribe from your own channel', 'SELF_UNSUBSCRIPTION');
   }
 
-  const deleted = await Subscription.findOneAndDelete({
+  await Subscription.findOneAndDelete({
     subscriber: subscriberId,
     channel: channelId,
   });
 
-  if (deleted) {
-    // Atomically decrement subscriber count ensuring >= 0
-    const updatedChannel = await User.findByIdAndUpdate(
-      channelId,
-      [
-        {
-          $set: {
-            subscribers: {
-              $max: [0, { $subtract: ['$subscribers', 1] }],
-            },
-          },
-        },
-      ],
-      { new: true }
-    );
+  // Authoritatively sync subscriber count from actual Subscription documents
+  const subscribersCount = await Subscription.countDocuments({ channel: channelId });
+  await User.findByIdAndUpdate(channelId, { subscribers: subscribersCount });
 
-    return {
-      isSubscribed: false,
-      subscribersCount: updatedChannel ? updatedChannel.subscribers : 0,
-    };
-  }
-
-  const currentChannel = await User.findById(channelId).select('subscribers');
   return {
     isSubscribed: false,
-    subscribersCount: currentChannel ? currentChannel.subscribers : 0,
+    subscribersCount,
   };
 };
 
