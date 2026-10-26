@@ -98,11 +98,13 @@ that writes only when the status is not already \texttt{READY}, and \texttt{proc
 status before downloading anything, so a late duplicate stops at once.
 
 A single FFmpeg invocation produces every rendition that the source can fill, which decodes the
-source only once. The ladder has six rungs, from 144p at 120~kbit/s to 1080p at 4~Mbit/s, and each
-rung fits the source inside its frame without enlarging it: a 480p source yields a 360p rung and one
-at 854$\times$480, not a 1080p rendition enlarged 2.25 times. Only the single-container path for a
-video longer than twenty minutes keeps the earlier ladder of 360p, 720p and 1080p, to stay within the
-time limit of a job. The command writes six-second segments and the rendition playlists; the worker
+source only once. The ladder follows the Per-Resolution Capped-CRF specification of
+Table~\ref{tab:capped-crf-ladder}, spanning six rungs from 144p (CRF 28, maxrate 180~kbit/s) to 1080p
+(CRF 22, maxrate 4.5~Mbit/s). Each tier bounds encoder complexity via constrained VBV buffers
+(\texttt{-maxrate} and \texttt{-bufsize 2*maxrate}), and each rung fits the source inside its frame
+without enlarging it: a 480p source yields a 360p rung and one at 854$\times$480, not a 1080p
+rendition enlarged 2.25 times. Only the single-container path for a video longer than twenty minutes
+reduces to the three core rungs of 360p, 720p and 1080p, to stay within the time limit of a job. The command writes six-second segments and the rendition playlists; the worker
 then writes the master playlist. Its bandwidth values are the peak segment bit rates measured from
 the segments (Section~\ref{sec:qoe-playback}), and its codec strings are read from each stream's
 sequence parameter set, since the constraint-set byte that RFC~6381 requires appears in neither the
@@ -328,7 +330,7 @@ Moderation and operations console & 147 & Classification of each decision as a f
 
 \begin{table}[H]
 \centering
-\caption{Automated transcoder tests by area, 361 tests in 17 suites}
+\caption{Automated transcoder tests by area, 363 tests in 17 suites}
 \label{tab:test-coverage-transcoder}
 \small
 \begin{tabularx}{\textwidth}{p{0.27\textwidth} p{0.09\textwidth} X}
@@ -336,7 +338,7 @@ Moderation and operations console & 147 & Classification of each decision as a f
 \textbf{AREA} & \textbf{TESTS} & \textbf{FOCUS} \\
 \midrule
 Chunked pipeline & 184 & Chunk boundaries as multiples of the group of pictures counted in frames, the conditions that fall back to one container, command construction, playlist joining, submission to the lower-priority queue, task-size validation, and the planner, audio, chunk and finalizer jobs end to end \\
-Ladder, frame rate and encode guard & 78 & Rung selection from the source resolution and the reduced ladder for long videos; that the group of pictures follows the real frame rate, that a variable-frame-rate file cannot poison it, and that every rendition cuts at the same instant; giving up early when a video cannot be encoded within the budget of a job; the thumbnail \\
+Ladder, frame rate and encode guard & 80 & Rung selection from the source resolution and the reduced ladder for long videos; that the group of pictures follows the real frame rate, that a variable-frame-rate file cannot poison it, and that every rendition cuts at the same instant; giving up early when a video cannot be encoded within the budget of a job; the thumbnail \\
 Playlist metadata & 51 & That the declared bandwidth of each variant is the peak measured from the segments rather than a configured target, rounded upward as RFC 8216 requires, and that the codec string is read from the encoded stream and omitted rather than guessed \\
 Persistence and delivery & 30 & Conditional writes that prevent a duplicate job from overwriting a result, object storage access, and the content of the READY and ERROR notifications, which never expose raw failure detail to the viewer \\
 Content screening & 18 & The label policy including parent labels and the downgrade of animated content, the frame sampling plan, and holding back a video that could not be analysed fully \\

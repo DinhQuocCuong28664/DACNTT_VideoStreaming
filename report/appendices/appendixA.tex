@@ -80,7 +80,7 @@ be encoded in a form that the main profile does not allow and most browsers do n
 \begin{lstlisting}[language=bash]
 ffmpeg -i input.mp4 -hide_banner -loglevel warning -stats -y \
   -vf "scale=256:144,setsar=1" \
-  -c:v libx264 -b:v 120k -maxrate 150k -bufsize 240k \
+  -c:v libx264 -crf 28 -maxrate 180k -bufsize 360k \
   -preset fast -profile:v main -pix_fmt yuv420p \
   -g 144 -keyint_min 144 -sc_threshold 0 \
   -force_key_frames "expr:gte(t,n_forced*6)" \
@@ -88,13 +88,13 @@ ffmpeg -i input.mp4 -hide_banner -loglevel warning -stats -y \
   -f hls -hls_time 6 -hls_list_size 0 \
   -hls_segment_filename 144p/segment_%03d.ts  144p/playlist.m3u8 \
   \
-  -vf "scale=426:240,setsar=1" -c:v libx264 -b:v 240k -maxrate 300k -bufsize 480k \
+  -vf "scale=426:240,setsar=1" -c:v libx264 -crf 26 -maxrate 350k -bufsize 700k \
   -c:a aac -b:a 64k -f hls -hls_time 6 \
   -hls_segment_filename 240p/segment_%03d.ts  240p/playlist.m3u8 \
   \
-  ... 360p, 480p and 720p in the same form ... \
+  ... 360p (CRF 25), 480p (CRF 24) and 720p (CRF 23) in the same form ... \
   \
-  -vf "scale=1920:1080,setsar=1" -c:v libx264 -b:v 4000k -maxrate 5000k -bufsize 8000k \
+  -vf "scale=1920:1080,setsar=1" -c:v libx264 -crf 22 -maxrate 4500k -bufsize 9000k \
   -c:a aac -b:a 192k -f hls -hls_time 6 \
   -hls_segment_filename 1080p/segment_%03d.ts 1080p/playlist.m3u8
 \end{lstlisting}

@@ -177,70 +177,78 @@ const config = {
       margin: 1.25,
       sustainSeconds: 30,
     },
-    // Thang chất lượng, xếp TĂNG DẦN: thứ tự này quyết định thứ tự trong
-    // master.m3u8 và việc mức nào bị bỏ khi chạm trần kích thước nguồn
-    // (planRenditions). Ba mức 360p/720p/1080p là thang cũ, giữ nguyên từng con
-    // số để video mới không đổi chất lượng ở các mức đó.
+    // Thang chất lượng thích ứng: Per-Resolution Capped-CRF Ladder (Thang CRF So Le kết hợp Capped VBV)
     //
-    // 144p/240p/480p thêm sau cho mạng yếu và màn hình nhỏ. Bitrate lấy theo
-    // cùng đường cong với ba mức cũ (~0,055-0,065 bit/điểm ảnh/khung ở 30 fps)
-    // và để tổng bitrate hai mức liền kề cách nhau 1,5-2 lần như Apple khuyến
-    // nghị (TN2224): 168 → 304 → 464 → 846 → 1628 kbps. Chỗ hở 1628 → 4192
-    // (2,6 lần) giữa 720p và 1080p có từ thang cũ, chưa đổi.
+    // Thay vì gán cứng một bitrate CBR/ABR làm lãng phí dung lượng cho video tĩnh (slide, quay màn hình)
+    // hoặc làm vỡ hạt video hành động, hệ thống sử dụng Constrained VBR với mức CRF so le tăng dần
+    // từ 22 (1080p) lên 28 (144p).
+    //
+    // 1. Chống đảo ngược thang (Spatial Aliasing Inversion): Tăng CRF ở độ phân giải thấp đảm bảo
+    //    nhiễu viền mờ sau khi downscale không làm bitrate bậc thấp vượt bậc cao.
+    // 2. Tuân thủ Apple HLS Technical Note TN2224: Trần maxrate giữa 2 bậc liền kề giãn cách đều
+    //    đặn 1.7x - 2.0x, triệt tiêu hiện tượng ABR Thrashing trên hls.js.
+    // 3. Tỷ lệ vàng VBV Buffer (T_buf = bufsize / maxrate = 2.0s): Phù hợp hoàn hảo với phân đoạn HLS 6s,
+    //    điều tiết gói tin mượt mà qua CloudFront CDN.
     renditions: [
       {
         name: '144p',
         width: 256,
         height: 144,
-        videoBitrate: '120k',
+        crf: 28,
+        videoBitrate: '180k',
         audioBitrate: '48k',
-        maxrate: '150k',
-        bufsize: '240k',
+        maxrate: '180k',
+        bufsize: '360k',
       },
       {
         name: '240p',
         width: 426,
         height: 240,
-        videoBitrate: '240k',
+        crf: 26,
+        videoBitrate: '350k',
         audioBitrate: '64k',
-        maxrate: '300k',
-        bufsize: '480k',
+        maxrate: '350k',
+        bufsize: '700k',
       },
       {
         name: '360p',
         width: 640,
         height: 360,
-        videoBitrate: '400k',
+        crf: 25,
+        videoBitrate: '600k',
         audioBitrate: '64k',
-        maxrate: '500k',
-        bufsize: '800k',
+        maxrate: '600k',
+        bufsize: '1200k',
       },
       {
         name: '480p',
         width: 854,
         height: 480,
-        videoBitrate: '750k',
+        crf: 24,
+        videoBitrate: '1100k',
         audioBitrate: '96k',
-        maxrate: '1000k',
-        bufsize: '1500k',
+        maxrate: '1100k',
+        bufsize: '2200k',
       },
       {
         name: '720p',
         width: 1280,
         height: 720,
-        videoBitrate: '1500k',
+        crf: 23,
+        videoBitrate: '2200k',
         audioBitrate: '128k',
-        maxrate: '2000k',
-        bufsize: '3000k',
+        maxrate: '2200k',
+        bufsize: '4400k',
       },
       {
         name: '1080p',
         width: 1920,
         height: 1080,
-        videoBitrate: '4000k',
+        crf: 22,
+        videoBitrate: '4500k',
         audioBitrate: '192k',
-        maxrate: '5000k',
-        bufsize: '8000k',
+        maxrate: '4500k',
+        bufsize: '9000k',
       },
     ],
   },

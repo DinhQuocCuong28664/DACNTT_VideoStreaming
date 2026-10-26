@@ -58,11 +58,14 @@ describe('thang bitrate cấu hình', () => {
     expect(heights).toEqual([...heights].sort((a, b) => a - b));
   });
 
-  it('ba mức cũ giữ nguyên từng con số, để video mới không đổi chất lượng ở đó', () => {
+  it('mỗi mức cấu hình có CRF, maxrate, bufsize tương ứng theo thang Per-Resolution Capped-CRF', () => {
     const byName = Object.fromEntries(ladder.map((r) => [r.name, r]));
-    expect(byName['360p']).toMatchObject({ videoBitrate: '400k', audioBitrate: '64k', maxrate: '500k', bufsize: '800k' });
-    expect(byName['720p']).toMatchObject({ videoBitrate: '1500k', audioBitrate: '128k', maxrate: '2000k', bufsize: '3000k' });
-    expect(byName['1080p']).toMatchObject({ videoBitrate: '4000k', audioBitrate: '192k', maxrate: '5000k', bufsize: '8000k' });
+    expect(byName['144p']).toMatchObject({ crf: 28, maxrate: '180k', bufsize: '360k' });
+    expect(byName['240p']).toMatchObject({ crf: 26, maxrate: '350k', bufsize: '700k' });
+    expect(byName['360p']).toMatchObject({ crf: 25, maxrate: '600k', bufsize: '1200k' });
+    expect(byName['480p']).toMatchObject({ crf: 24, maxrate: '1100k', bufsize: '2200k' });
+    expect(byName['720p']).toMatchObject({ crf: 23, maxrate: '2200k', bufsize: '4400k' });
+    expect(byName['1080p']).toMatchObject({ crf: 22, maxrate: '4500k', bufsize: '9000k' });
   });
 
   it('tổng bitrate hai mức liền kề cách nhau 1,5–2 lần (Apple TN2224), trừ chỗ hở 720p → 1080p có từ thang cũ', () => {
@@ -105,10 +108,11 @@ describe('ladderForDuration — thang theo độ dài video', () => {
     expect(names(ladderForDuration(limit + 1))).toEqual(['360p', '720p', '1080p']);
   });
 
-  it('video nhiều giờ chỉ nhận thang cũ, với đúng các con số cũ', () => {
+  it('video nhiều giờ chỉ nhận thang 3 mức (360p, 720p, 1080p)', () => {
     const ladder = ladderForDuration(4 * 3600);
     expect(names(ladder)).toEqual(['360p', '720p', '1080p']);
-    expect(ladder.map((r) => r.videoBitrate)).toEqual(['400k', '1500k', '4000k']);
+    expect(ladder.map((r) => r.videoBitrate)).toEqual(['600k', '2200k', '4500k']);
+    expect(ladder.map((r) => r.crf)).toEqual([25, 23, 22]);
   });
 
   it('không đọc được thời lượng (0, NaN, undefined) thì chọn thang rẻ, vì không biết video có dài không', () => {
@@ -152,7 +156,8 @@ describe('planRenditions — chọn mức theo nguồn', () => {
     expect(sizes(plan)).toEqual(['144x256', '240x426', '360x640', '480x854', '576x1024']);
     const top = plan[plan.length - 1];
     expect(top.name).toBe('720p');
-    expect(top.videoBitrate).toBe('1500k');
+    expect(top.videoBitrate).toBe('2200k');
+    expect(top.crf).toBe(23);
   });
 
   it('video dọc dùng khung dọc, không đệm viền', () => {
@@ -212,11 +217,13 @@ describe('buildFFmpegArgs với kích thước đã tính', () => {
     expect(filters.every((f) => f.includes('pad='))).toBe(true);
   });
 
-  it('mỗi mức có thư mục playlist riêng và bitrate của chính nó', () => {
+  it('mỗi mức có thư mục playlist riêng và tham số CRF / maxrate / bufsize tương ứng', () => {
     const plan = planRenditions({ width: 1920, height: 1080 });
     const args = buildFFmpegArgs('vao.mp4', '/ra', plan, 30);
     const after = (flag) => args.filter((arg, i) => args[i - 1] === flag);
-    expect(after('-b:v')).toEqual(plan.map((r) => r.videoBitrate));
+    expect(after('-crf')).toEqual(plan.map((r) => String(r.crf)));
+    expect(after('-maxrate')).toEqual(plan.map((r) => r.maxrate));
+    expect(after('-bufsize')).toEqual(plan.map((r) => r.bufsize));
     expect(after('-b:a')).toEqual(plan.map((r) => r.audioBitrate));
     expect(args.filter((a) => a.endsWith('playlist.m3u8')).map((a) => a.split(/[\\/]/).slice(-2, -1)[0])).toEqual(
       ['144p', '240p', '360p', '480p', '720p', '1080p']

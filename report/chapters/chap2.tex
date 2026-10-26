@@ -55,7 +55,7 @@ relevant to this work.
 \midrule
 Compute model & Dedicated microservice platform with serverless compute tier & Managed service (MediaConvert) & Serverless container on AWS Batch / Fargate \\
 Parallelism & Chunk-based, distributed across many nodes & Managed internally by the service & Chunk-based on AWS Batch array jobs from five minutes of video, one container below that \\
-Bitrate ladder & Per-shot optimisation driven by VMAF & Configurable job template & Fixed ladder: six rungs from 144p to 1080p, limited by the source \\
+Bitrate ladder & Per-shot optimisation driven by VMAF & Configurable job template & Per-Resolution Capped-CRF ladder: six rungs (144p--1080p), limited by source \\
 Queueing & Priority-based messaging system & AWS Step Functions & Amazon SQS with dead letter queue \\
 Content protection & DRM & Signed URLs or signed cookies & OAC plus CloudFront Signed Cookies \\
 Operational effort & Very high & Very low & Moderate \\
