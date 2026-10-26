@@ -30,8 +30,10 @@ const app = express();
 // config/trustedProxies.js — `trust proxy` bằng 1 từng cho ra đúng IP đó).
 app.set('trust proxy', TRUSTED_PROXIES);
 
-// Connect to MongoDB Atlas-dqc
-connectDB();
+// Connect to MongoDB Atlas (Standalone server mode; Lambda connects in handler)
+if (!process.env.AWS_LAMBDA_FUNCTION_NAME) {
+  connectDB();
+}
 
 // Security headers (CSP tắt vì API chỉ trả JSON, không phục vụ HTML)
 app.use(helmet({ contentSecurityPolicy: false }));

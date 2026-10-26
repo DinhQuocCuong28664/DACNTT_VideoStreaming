@@ -174,6 +174,15 @@ data "aws_iam_policy_document" "github_deploy" {
     resources = [module.iam.transcoder_task_role_arn, module.iam.ecs_task_execution_role_arn]
   }
 
+  # cd-deploy: deploy Lambda Backend API
+  statement {
+    sid       = "DeployLambdaBackend"
+    actions   = ["lambda:UpdateFunctionCode", "lambda:GetFunction", "lambda:GetFunctionConfiguration"]
+    resources = [
+      "arn:aws:lambda:${var.aws_region}:${data.aws_caller_identity.current.account_id}:function:${var.project_name}-${var.environment}-backend-api"
+    ]
+  }
+
   # cd-deploy: tìm máy theo tag rồi chạy lệnh deploy qua SSM.
   statement {
     sid       = "FindBackendInstance"

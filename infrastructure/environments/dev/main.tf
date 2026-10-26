@@ -222,6 +222,7 @@ module "lambda_backend" {
   environment        = var.environment
   lambda_role_arn    = module.iam.lambda_backend_role_arn
   log_retention_days = 7
+  lambda_zip_path    = "${path.module}/../../modules/lambda-backend/dist/backend_api.zip"
 
   mongodb_uri            = var.mongodb_uri
   jwt_secret             = var.jwt_secret
@@ -229,7 +230,7 @@ module "lambda_backend" {
   processed_bucket_name  = module.s3.processed_bucket_name
   cloudfront_domain      = "cdn.zelostech.site"
   cloudfront_key_pair_id = module.cloudfront.signing_key_pair_id != null ? module.cloudfront.signing_key_pair_id : ""
-  cors_origins           = "https://zelostech.site,https://www.zelostech.site"
+  cors_origins           = "https://zelostech.site,https://www.zelostech.site,http://localhost:5173"
   frontend_url           = var.frontend_url
   email_user             = var.email_user
   email_app_password     = var.email_app_password

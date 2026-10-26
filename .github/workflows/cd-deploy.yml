@@ -1,35 +1,11 @@
 # ═══════════════════════════════════════════════════
 # CD — Continuous Deployment (Merge to main)
-# Stages: CI — Backend passes → deploy that exact commit to EC2
-#
-# Luu y: workflow nay KHONG invalidate cache cua HLS Video CDN.
-# Transcoder ghi moi rendition vao videos/{videoId}/ va khong bao
-# gio ghi de len khoa da ton tai, nen noi dung video la bat bien —
-# khong co gi de invalidate. Truoc day o day co mot job chay
-# 'create-invalidation --paths /*' tren moi push, ke ca push chi
-# sua frontend hoac tai lieu; no xoa sach segment da cache o edge
-# va buoc moi luot xem sau do phai fetch lai tu S3, lam tang
-# Time-to-First-Frame va phi GET dung vao thu ma CDN sinh ra de
-# tranh. Cache cua frontend thi nguoc lai VAN can invalidate (vi
-# index.html bi ghi de moi lan deploy) — viec do nam trong
-# ci-frontend.yml.
+# Stages: CI — Backend passes → deploy that exact commit to AWS Lambda Multi-AZ
 # ═══════════════════════════════════════════════════
 
 name: CD — Deploy
 
-# Chi deploy commit da qua CI.
-#
-# Truoc day workflow nay chay theo `push` len main/master, SONG SONG voi
-# ci-backend.yml tren cung lan push: commit lam hong test van duoc dua len
-# production, va CI chi bao do sau khi code da chay tren may chu. Nay no chay
-# khi "CI — Backend" ket thuc, va chi khi lan chay do thanh cong.
-#
-# CI — Backend chi chay khi backend/** doi (bo loc paths cua no), nen khong
-# con can buoc do thay doi rieng (dorny/paths-filter) nhu truoc.
-#
-# workflow_run duoc dung secrets ke ca khi lan chay goc den tu PR cua fork
-# (GitHub canh bao dieu nay), nen chi nhan lan chay goc la `push` len chinh
-# repo nay.
+# Chỉ deploy commit đã qua CI Backend thành công.
 on:
   workflow_dispatch:
   workflow_run:
@@ -39,14 +15,12 @@ on:
 
 env:
   AWS_REGION: ap-southeast-1
-  # Deploy dung commit CI vua kiem, khong phai "commit moi nhat" cua nhanh —
-  # trong luc CI chay co the da co commit khac day len.
   DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
 
 jobs:
-  # ── Deploy Backend to EC2 (only after CI — Backend passed) ──
+  # ── Deploy Backend to AWS Lambda Multi-AZ (Serverless) ──
   deploy-backend:
-    name: "Deploy Backend to EC2"
+    name: "Deploy Backend to AWS Lambda"
     runs-on: ubuntu-latest
     if: >-
       github.event_name == 'workflow_dispatch' ||
@@ -54,123 +28,73 @@ jobs:
        github.event.workflow_run.event == 'push' &&
        github.event.workflow_run.head_repository.full_name == github.repository)
     environment: production
-    # id-token: write cho phep job xin token OIDC de doi lay credential AWS tam
-    # thoi (infrastructure/environments/dev/github-oidc.tf).
     permissions:
       id-token: write
       contents: read
 
     steps:
-      # OIDC: role tam thoi theo bien repo AWS_DEPLOY_ROLE_ARN (github-oidc.tf). Khong con
-      # khoa AWS tinh nao trong GitHub Secrets (xoa ngay 2026-10-03).
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Build and Package Lambda Artifact
+        run: |
+          set -e
+          cd backend
+          npm ci --omit=dev
+          zip -q -r ../backend_api.zip src package.json package-lock.json node_modules
+          cd ..
+          ls -lh backend_api.zip
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
-      # Triển khai qua AWS Systems Manager thay vì SSH.
-      #
-      # Máy chủ backend không gắn key pair nào, nên không thể SSH vào — cách làm
-      # cũ (appleboy/ssh-action) chắc chắn thất bại. SSM chạy lệnh thông qua
-      # agent sẵn có trên máy, dùng chính quyền IAM đã cấp cho instance, nên
-      # không phải mở thêm cổng, không phải lưu khoá riêng trong GitHub Secrets,
-      # và mọi lệnh đều được ghi vết trong CloudTrail.
-      #
-      # Instance được tìm theo tag Name thay vì ghi cứng instance ID, để khi
-      # Terraform thay máy (ví dụ đổi user_data) workflow không cần sửa theo.
-      - name: Find backend instance
-        id: find
-        run: |
-          INSTANCE_ID=$(aws ec2 describe-instances \
-            --filters "Name=tag:Name,Values=dacntt-dev-backend-api" \
-                      "Name=instance-state-name,Values=running" \
-            --query "Reservations[0].Instances[0].InstanceId" \
-            --output text)
-
-          if [ -z "$INSTANCE_ID" ] || [ "$INSTANCE_ID" = "None" ]; then
-            echo "::error::Khong tim thay EC2 dang chay voi tag Name=dacntt-dev-backend-api"
-            exit 1
-          fi
-
-          echo "instance_id=$INSTANCE_ID" >> "$GITHUB_OUTPUT"
-          echo "Deploy toi: $INSTANCE_ID"
-
-      - name: Deploy via SSM (git pull + npm install + pm2 restart)
+      - name: Deploy to AWS Lambda Function
         run: |
           set -e
-          # Chay toan bo duoi quyen 'ubuntu', khong phai root.
-          #
-          # SSM thuc thi lenh bang root. Repo /home/ubuntu/app thuoc ve ubuntu,
-          # nen git tu choi voi loi "detected dubious ownership" va deploy hong
-          # ngay tu buoc dau. Ngoai ra neu chay npm install bang root thi
-          # node_modules se thuoc root, trong khi pm2 chay bang ubuntu — lan
-          # khoi dong sau se loi quyen truy cap.
-          #
-          # Dung 'bash -lc' de nap PATH day du cho ubuntu (can cho pm2).
-          COMMAND_ID=$(aws ssm send-command \
-            --instance-ids "${{ steps.find.outputs.instance_id }}" \
-            --document-name "AWS-RunShellScript" \
-            --comment "CD deploy ${{ env.DEPLOY_SHA }}" \
-            --parameters commands="[\"sudo -u ubuntu bash -lc 'set -e; cd /home/ubuntu/app; git fetch origin; git reset --hard ${{ env.DEPLOY_SHA }}; cd backend; grep -q ^NODE_ENV= .env || { echo; echo NODE_ENV=production; } >> .env; grep -q ^S3_STATIC_BUCKET_NAME= .env || echo S3_STATIC_BUCKET_NAME=zelostech.site >> .env; npm install --omit=dev; (pm2 restart backend-api --update-env || pm2 start src/server.js --name backend-api); pm2 save'\"]" \
-            --query "Command.CommandId" --output text)
+          echo "Updating Lambda function: dacntt-dev-backend-api..."
+          aws lambda update-function-code \
+            --function-name dacntt-dev-backend-api \
+            --zip-file fileb://backend_api.zip
 
-          echo "CommandId: $COMMAND_ID"
+          echo "Waiting for Lambda function update to complete..."
+          aws lambda wait function-updated \
+            --function-name dacntt-dev-backend-api
 
-          # send-command tra ve ngay lap tuc; phai tu doi ket qua, neu khong
-          # workflow se bao xanh du lenh tren may chu that bai.
-          aws ssm wait command-executed \
-            --command-id "$COMMAND_ID" \
-            --instance-id "${{ steps.find.outputs.instance_id }}" || true
+          echo "✅ Lambda function code updated successfully."
 
-          STATUS=$(aws ssm get-command-invocation \
-            --command-id "$COMMAND_ID" \
-            --instance-id "${{ steps.find.outputs.instance_id }}" \
-            --query "Status" --output text)
-
-          echo "--- stdout ---"
-          aws ssm get-command-invocation \
-            --command-id "$COMMAND_ID" \
-            --instance-id "${{ steps.find.outputs.instance_id }}" \
-            --query "StandardOutputContent" --output text | tail -30
-
-          if [ "$STATUS" != "Success" ]; then
-            echo "--- stderr ---"
-            aws ssm get-command-invocation \
-              --command-id "$COMMAND_ID" \
-              --instance-id "${{ steps.find.outputs.instance_id }}" \
-              --query "StandardErrorContent" --output text | tail -30
-            echo "::error::Deploy that bai, trang thai SSM: $STATUS"
-            exit 1
-          fi
-
-      # Kiem chung that su thay vi tin vao viec lenh chay xong: pm2 co the khoi
-      # dong lai roi tien trinh sap ngay sau do, luc do SSM van bao Success.
-      #
-      # Goi qua ten mien, khong goi thang IP may chu: security group chi mo cong
-      # 80/443 cho dai IP Cloudflare (backend-ec2.tf), nen runner GitHub goi
-      # thang IP se bi chan. Di qua ten mien cung la kiem dung duong nguoi dung
-      # di: Cloudflare -> nginx -> pm2.
-      - name: Verify API responds
+      - name: Verify Lambda API responds
         env:
-          API_URL: https://api.zelostech.site/
+          LAMBDA_HEALTH_URL: https://b7ssxm6vbhvfdcaxsdn7vmosgy0thkbw.lambda-url.ap-southeast-1.on.aws/health
         run: |
           for i in $(seq 1 10); do
-            CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$API_URL" || echo 000)
+            CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 "$LAMBDA_HEALTH_URL" || echo 000)
             if [ "$CODE" = "200" ]; then
-              echo "API phan hoi OK (HTTP $CODE)"
+              echo "Lambda Backend API phan hoi OK (HTTP $CODE)"
               exit 0
             fi
-            echo "cho API... (HTTP $CODE)"
-            sleep 6
+            echo "Cho Lambda API san sang... (HTTP $CODE)"
+            sleep 3
           done
 
-          echo "::error::API khong phan hoi sau khi deploy"
+          echo "::error::Lambda Backend API khong phan hoi HTTP 200"
           exit 1
 
       - name: Deploy Summary
         run: |
-          echo "## 🚀 Backend Deployed to EC2 (via SSM)" >> $GITHUB_STEP_SUMMARY
+          echo "## 🚀 Backend Deployed to AWS Lambda Multi-AZ" >> $GITHUB_STEP_SUMMARY
+          echo "- **Architecture:** Serverless Containerless (Node.js 22, Multi-AZ Active-Active)" >> $GITHUB_STEP_SUMMARY
           echo "- **Branch:** ${{ github.event.workflow_run.head_branch || github.ref_name }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Commit:** ${{ env.DEPLOY_SHA }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Instance:** ${{ steps.find.outputs.instance_id }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Function URL:** https://b7ssxm6vbhvfdcaxsdn7vmosgy0thkbw.lambda-url.ap-southeast-1.on.aws/" >> $GITHUB_STEP_SUMMARY
