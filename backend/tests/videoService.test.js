@@ -61,6 +61,40 @@ describe('videoService Unit Tests', () => {
       );
       expect(result.upload).toBe(mockUpload);
     });
+
+    it('should persist accessLevel and requiredTierLevel when initiating upload for membership content', async () => {
+      const mockVideoId = new mongoose.Types.ObjectId();
+      const mockUserId = new mongoose.Types.ObjectId();
+      const mockCreatedVideo = {
+        _id: mockVideoId,
+        title: 'Members Exclusive',
+        user: mockUserId,
+        status: 'UPLOADING',
+        accessLevel: 'members_only',
+        requiredTierLevel: 2,
+        save: jest.fn().mockResolvedValue(true),
+      };
+
+      Video.create.mockResolvedValue(mockCreatedVideo);
+      s3Service.generateS3Key.mockReturnValue('videos/' + mockUserId + '/' + mockVideoId + '/exclusive.mp4');
+      s3Service.generateVideoUploadPost.mockResolvedValue({ url: 'https://s3.amazonaws.com/raw-bucket', fields: {} });
+
+      await videoService.initiateUpload(mockUserId, {
+        title: 'Members Exclusive',
+        filename: 'exclusive.mp4',
+        mimeType: 'video/mp4',
+        accessLevel: 'members_only',
+        requiredTierLevel: 2,
+      });
+
+      expect(Video.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Members Exclusive',
+          accessLevel: 'members_only',
+          requiredTierLevel: 2,
+        })
+      );
+    });
   });
 
   describe('getVideoById security checks', () => {

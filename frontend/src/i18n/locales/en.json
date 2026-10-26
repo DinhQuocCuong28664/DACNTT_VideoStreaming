@@ -116,7 +116,9 @@
       "visibility": "Visibility"
     },
     "violenceLabel": "Violence / Sensitive Content Warning",
-    "violenceHelp": "Check if this video contains graphic violence or sensitive material. Viewers will see a warning screen before playback."
+    "violenceHelp": "Check if this video contains graphic violence or sensitive material. Viewers will see a warning screen before playback.",
+    "visibilitySubtitle": "Choose when to publish and who can see your video",
+    "draftSaved": "Saved as draft"
   },
   "visibility": {
     "public": "Public",
@@ -125,7 +127,9 @@
     "label": "Visibility",
     "publicDesc": "Everyone can watch your video and find it on the home page.",
     "unlistedDesc": "Anyone with the video link can watch it. It does not appear on the home page.",
-    "privateDesc": "Only you can watch your video."
+    "privateDesc": "Only you can watch your video.",
+    "saveOrPublish": "Save or publish",
+    "saveOrPublishDesc": "Make your video public, unlisted, or private"
   },
   "channel": {
     "videos": "Videos",
@@ -717,6 +721,8 @@
     "membersOnly": "Members only",
     "lockedTitle": "Members-only video",
     "lockedSubtitle": "Join this channel to unlock this exclusive video and get access to member perks.",
-    "joinPrompt": "Join channel"
+    "joinPrompt": "Join channel",
+    "audienceTitle": "Members-only Access",
+    "audienceDesc": "Restrict video playback exclusively to active members of your channel"
   }
 }

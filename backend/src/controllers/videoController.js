@@ -10,7 +10,19 @@ const { parsePaging } = require('../utils/pagination');
  */
 const initiateUpload = async (req, res, next) => {
   try {
-    const { title, description, category, filename, mimetype, fileSize, tags, visibility, hasViolence } = req.body;
+    const {
+      title,
+      description,
+      category,
+      filename,
+      mimetype,
+      fileSize,
+      tags,
+      visibility,
+      hasViolence,
+      accessLevel,
+      requiredTierLevel,
+    } = req.body;
 
     const result = await videoService.initiateUpload(req.user._id, {
       title,
@@ -22,6 +34,8 @@ const initiateUpload = async (req, res, next) => {
       tags,
       visibility,
       hasViolence: Boolean(hasViolence),
+      accessLevel,
+      requiredTierLevel,
     });
 
     res.status(201).json({

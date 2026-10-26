@@ -8,6 +8,7 @@ import {
   MdCheck,
   MdOutlineMovie,
   MdOutlineMarkEmailUnread,
+  MdStar,
 } from 'react-icons/md';
 import videoApi from '../../api/videoApi';
 import { useAuth } from '../../context/useAuth';
@@ -32,6 +33,7 @@ const EMPTY_FORM = {
   category: UPLOAD_CATEGORIES[0].value,
   tags: '',
   visibility: 'public',
+  accessLevel: 'public',
   hasViolence: false,
 };
 
@@ -284,6 +286,7 @@ const VideoUpload = () => {
         fileSize: file.size,
         tags: tagsArray,
         visibility: formData.visibility,
+        accessLevel: formData.accessLevel,
         hasViolence: formData.hasViolence,
       });
 
@@ -400,7 +403,14 @@ const VideoUpload = () => {
     <div className="upload-page">
       <div className="dialog upload-panel">
         <div className="dialog-header">
-          <h1 className="dialog-title">{step === 1 ? t('upload.pageTitle') : formData.title || file?.name}</h1>
+          <div className="upload-dialog-header-text">
+            <h1 className="dialog-title">{step === 1 ? t('upload.pageTitle') : formData.title || file?.name}</h1>
+            {step > 1 && (
+              <span className="upload-draft-status">
+                <MdCheck aria-hidden="true" /> {t('upload.draftSaved')}
+              </span>
+            )}
+          </div>
           {step !== 3 && (
             <button
               type="button"
@@ -568,11 +578,42 @@ const VideoUpload = () => {
                   </>
                 ) : (
                   <>
-                    <h2 className="upload-section-title">{t('upload.step.visibility')}</h2>
+                    <div className="upload-section-header">
+                      <h2 className="upload-section-title">{t('upload.step.visibility')}</h2>
+                      <p className="upload-section-subtitle">{t('upload.visibilitySubtitle')}</p>
+                    </div>
+
                     <VisibilityPicker
                       value={formData.visibility}
                       onChange={(v) => setFormData({ ...formData, visibility: v })}
                     />
+
+                    <div className="visibility-membership-card">
+                      <div className="visibility-membership-header">
+                        <span className="visibility-membership-title">
+                          <MdStar style={{ color: '#00c3b2', fontSize: '1.25rem' }} aria-hidden="true" />
+                          {t('membership.audienceTitle')}
+                        </span>
+                        <p className="visibility-membership-desc">{t('membership.audienceDesc')}</p>
+                      </div>
+                      <label className="visibility-membership-toggle">
+                        <input
+                          type="checkbox"
+                          name="accessLevel"
+                          checked={formData.accessLevel === 'members_only'}
+                          onChange={(e) =>
+                            setFormData({
+                              ...formData,
+                              accessLevel: e.target.checked ? 'members_only' : 'public',
+                            })
+                          }
+                        />
+                        <div className="radio-row-text">
+                          <span className="visibility-membership-label">{t('membership.membersOnly')}</span>
+                          <span className="field-help" style={{ margin: 0 }}>{t('membership.exclusiveVideos')}</span>
+                        </div>
+                      </label>
+                    </div>
                   </>
                 )}
               </div>

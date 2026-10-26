@@ -115,7 +115,9 @@
       "visibility": "Chế độ hiển thị"
     },
     "violenceLabel": "Cảnh báo nội dung bạo lực / nhạy cảm",
-    "violenceHelp": "Đánh dấu nếu video chứa cảnh bạo lực hoặc hình ảnh không phù hợp với trẻ em. Người xem sẽ thấy màn hình cảnh báo trước khi phát."
+    "violenceHelp": "Đánh dấu nếu video chứa cảnh bạo lực hoặc hình ảnh không phù hợp với trẻ em. Người xem sẽ thấy màn hình cảnh báo trước khi phát.",
+    "visibilitySubtitle": "Chọn thời điểm xuất bản và đối tượng có thể xem video của bạn",
+    "draftSaved": "Đã lưu bản nháp"
   },
   "visibility": {
     "public": "Công khai",
@@ -124,7 +126,9 @@
     "label": "Chế độ hiển thị",
     "publicDesc": "Mọi người đều xem được và thấy video trên trang chủ.",
     "unlistedDesc": "Ai có đường liên kết đều xem được. Video không hiện trên trang chủ.",
-    "privateDesc": "Chỉ bạn xem được video này."
+    "privateDesc": "Chỉ bạn xem được video này.",
+    "saveOrPublish": "Lưu hoặc xuất bản",
+    "saveOrPublishDesc": "Đặt video của bạn ở chế độ công khai, không công khai hoặc riêng tư"
   },
   "channel": {
     "videos": "Video",
@@ -713,6 +717,8 @@
     "membersOnly": "Dành cho hội viên",
     "lockedTitle": "Video dành riêng cho hội viên",
     "lockedSubtitle": "Hãy tham gia làm hội viên của kênh {{name}} để mở khóa video này và thưởng thức các nội dung độc quyền.",
-    "joinPrompt": "Tham gia làm hội viên"
+    "joinPrompt": "Tham gia làm hội viên",
+    "audienceTitle": "Quyền truy cập của Hội viên",
+    "audienceDesc": "Thiết lập video này chỉ dành riêng cho các thành viên đã tham gia kênh của bạn"
   }
 }
