@@ -1,14 +1,27 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { MdNotificationsActive, MdOutlineCheck } from 'react-icons/md';
+import {
+  MdNotificationsActive,
+  MdNotificationsNone,
+  MdNotificationsOff,
+  MdKeyboardArrowDown,
+  MdCheck,
+  MdPersonRemoveAlt1,
+} from 'react-icons/md';
 import { useAuth } from '../../context/useAuth';
 import subscriptionApi from '../../api/subscriptionApi';
 import useToast from '../Common/Toast';
+import ConfirmDialog from '../Common/ConfirmDialog';
+import './SubscribeButton.css';
 
 /**
- * YouTube-style Channel Subscribe Button.
- * Handles authentication redirect, optimistic UI updates, and atomic subscriber counts.
+ * YouTube-style Channel Subscribe Button & Notification Controls.
+ * Faithfully mirrors YouTube Web UI:
+ * - Unsubscribed: High-contrast pill ("Đăng ký" / "Subscribe") without icons
+ * - Subscribed: Subtle secondary pill with Bell icon + "Đã đăng ký" + Chevron Down
+ * - Subscribed Click: YouTube dropdown for notifications (All / Personalized / None) & Unsubscribe
+ * - Unsubscribe: Native YouTube confirmation modal
  */
 const SubscribeButton = ({
   channelId,
@@ -28,6 +41,15 @@ const SubscribeButton = ({
   const [loading, setLoading] = useState(true);
   const [actionInProgress, setActionInProgress] = useState(false);
 
+  // YouTube notification dropdown & confirmation dialog state
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [notifPref, setNotifPref] = useState(() => {
+    if (!channelId) return 'personalized';
+    return localStorage.getItem(`yt_notif_${channelId}`) || 'personalized';
+  });
+
+  const wrapperRef = useRef(null);
   const isOwnChannel = Boolean(currentUser && channelId && currentUser._id === channelId);
 
   // Sync initial count if parent passes updated value
@@ -37,7 +59,7 @@ const SubscribeButton = ({
     }
   }, [initialSubscribersCount]);
 
-  // Fetch subscription status
+  // Fetch subscription status from backend
   useEffect(() => {
     if (!channelId || isOwnChannel) {
       setLoading(false);
@@ -70,12 +92,37 @@ const SubscribeButton = ({
     };
   }, [channelId, isOwnChannel, onCountChange]);
 
+  // Close dropdown on click outside or Escape key
+  useEffect(() => {
+    if (!menuOpen) return;
+
+    const onPointerDown = (e) => {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+        setMenuOpen(false);
+      }
+    };
+
+    const onKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [menuOpen]);
+
   // Do not render subscribe button on creator's own channel
   if (isOwnChannel) {
     return null;
   }
 
-  const handleToggleSubscribe = async (e) => {
+  // Handle subscribe action
+  const handleSubscribe = async (e) => {
     e.preventDefault();
     e.stopPropagation();
 
@@ -87,74 +134,203 @@ const SubscribeButton = ({
     if (actionInProgress) return;
     setActionInProgress(true);
 
-    const prevSubscribed = isSubscribed;
     const prevCount = subscribersCount;
+    const nextCount = prevCount + 1;
 
     // Optimistic UI update
-    const nextSubscribed = !prevSubscribed;
-    const nextCount = nextSubscribed ? prevCount + 1 : Math.max(0, prevCount - 1);
-    setIsSubscribed(nextSubscribed);
+    setIsSubscribed(true);
     setSubscribersCount(nextCount);
     if (onCountChange) onCountChange(nextCount);
 
     try {
-      if (nextSubscribed) {
-        const res = await subscriptionApi.subscribe(channelId);
-        const count = res.data?.data?.subscribersCount;
-        if (typeof count === 'number') {
-          setSubscribersCount(count);
-          if (onCountChange) onCountChange(count);
-        }
-        toast.success(
-          t('subscription.subscribeSuccess', { name: channelName || t('nav.channel') })
-        );
-      } else {
-        const res = await subscriptionApi.unsubscribe(channelId);
-        const count = res.data?.data?.subscribersCount;
-        if (typeof count === 'number') {
-          setSubscribersCount(count);
-          if (onCountChange) onCountChange(count);
-        }
-        toast.info(
-          t('subscription.unsubscribeSuccess', { name: channelName || t('nav.channel') })
-        );
+      const res = await subscriptionApi.subscribe(channelId);
+      const count = res.data?.data?.subscribersCount;
+      if (typeof count === 'number') {
+        setSubscribersCount(count);
+        if (onCountChange) onCountChange(count);
       }
+      toast.success(
+        t('subscription.subscribeSuccess', { name: channelName || t('nav.channel') })
+      );
     } catch (err) {
       // Rollback on error
-      setIsSubscribed(prevSubscribed);
+      setIsSubscribed(false);
       setSubscribersCount(prevCount);
       if (onCountChange) onCountChange(prevCount);
-      toast.error(err.response?.data?.message || 'Failed to update subscription');
+      toast.error(err.response?.data?.message || 'Failed to subscribe');
     } finally {
       setActionInProgress(false);
     }
   };
 
+  // Click on "Subscribed" button toggles notification / unsubscribe dropdown
+  const handleSubscribedButtonClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setMenuOpen((prev) => !prev);
+  };
+
+  // Change notification preference
+  const handleSelectNotif = (tier) => {
+    setNotifPref(tier);
+    try {
+      localStorage.setItem(`yt_notif_${channelId}`, tier);
+    } catch (e) {
+      console.warn('LocalStorage write failed:', e);
+    }
+    setMenuOpen(false);
+    toast.info(t('subscription.notificationSet'));
+  };
+
+  // Open confirmation modal for unsubscribe
+  const handlePromptUnsubscribe = () => {
+    setMenuOpen(false);
+    setShowConfirm(true);
+  };
+
+  // Execute unsubscribe after user confirmation
+  const handleConfirmUnsubscribe = async () => {
+    setShowConfirm(false);
+
+    if (actionInProgress) return;
+    setActionInProgress(true);
+
+    const prevCount = subscribersCount;
+    const nextCount = Math.max(0, prevCount - 1);
+
+    // Optimistic UI update
+    setIsSubscribed(false);
+    setSubscribersCount(nextCount);
+    if (onCountChange) onCountChange(nextCount);
+
+    try {
+      const res = await subscriptionApi.unsubscribe(channelId);
+      const count = res.data?.data?.subscribersCount;
+      if (typeof count === 'number') {
+        setSubscribersCount(count);
+        if (onCountChange) onCountChange(count);
+      }
+      toast.info(
+        t('subscription.unsubscribeSuccess', { name: channelName || t('nav.channel') })
+      );
+    } catch (err) {
+      // Rollback on error
+      setIsSubscribed(true);
+      setSubscribersCount(prevCount);
+      if (onCountChange) onCountChange(prevCount);
+      toast.error(err.response?.data?.message || 'Failed to unsubscribe');
+    } finally {
+      setActionInProgress(false);
+    }
+  };
+
+  // Render appropriate Bell icon based on preference
+  const renderBellIcon = () => {
+    if (notifPref === 'all') {
+      return <MdNotificationsActive className="yt-bell-icon" />;
+    }
+    if (notifPref === 'none') {
+      return <MdNotificationsOff className="yt-bell-icon" />;
+    }
+    return <MdNotificationsNone className="yt-bell-icon" />;
+  };
+
   return (
-    <button
-      type="button"
-      onClick={handleToggleSubscribe}
-      disabled={loading || actionInProgress}
-      className={`inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-full font-medium text-sm transition-all duration-200 cursor-pointer ${
-        isSubscribed
-          ? 'bg-neutral-200 hover:bg-neutral-300 text-neutral-800 dark:bg-neutral-800 dark:hover:bg-neutral-700 dark:text-neutral-200'
-          : 'bg-neutral-900 hover:bg-neutral-800 text-white dark:bg-white dark:hover:bg-neutral-100 dark:text-neutral-900 shadow-sm'
-      } ${actionInProgress ? 'opacity-70 cursor-wait' : ''} ${className}`}
-      title={isSubscribed ? t('subscription.subscribed') : t('subscription.subscribe')}
-      aria-label={isSubscribed ? t('subscription.subscribed') : t('subscription.subscribe')}
+    <div
+      ref={wrapperRef}
+      className={`yt-subscribe-wrapper ${menuOpen ? 'menu-open' : ''} ${className}`}
     >
       {isSubscribed ? (
-        <>
-          <MdOutlineCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-          <span>{t('subscription.subscribed')}</span>
-        </>
+        <button
+          type="button"
+          onClick={handleSubscribedButtonClick}
+          disabled={loading || actionInProgress}
+          className={`yt-subscribe-btn subscribed ${actionInProgress ? 'loading' : ''}`}
+          title={t('subscription.subscribed')}
+          aria-label={t('subscription.subscribed')}
+          aria-haspopup="menu"
+          aria-expanded={menuOpen}
+        >
+          {renderBellIcon()}
+          <span className="yt-btn-text">{t('subscription.subscribed')}</span>
+          <MdKeyboardArrowDown className="yt-arrow-icon" />
+        </button>
       ) : (
-        <>
-          <MdNotificationsActive className="w-4 h-4" />
+        <button
+          type="button"
+          onClick={handleSubscribe}
+          disabled={loading || actionInProgress}
+          className={`yt-subscribe-btn unsubscribed ${actionInProgress ? 'loading' : ''}`}
+          title={t('subscription.subscribe')}
+          aria-label={t('subscription.subscribe')}
+        >
           <span>{t('subscription.subscribe')}</span>
-        </>
+        </button>
       )}
-    </button>
+
+      {/* YouTube Notification & Unsubscribe Options Dropdown */}
+      {isSubscribed && menuOpen && (
+        <div className="yt-sub-menu" role="menu" aria-orientation="vertical">
+          <button
+            type="button"
+            className="yt-sub-menu-item"
+            role="menuitem"
+            onClick={() => handleSelectNotif('all')}
+          >
+            <MdNotificationsActive className="yt-item-icon" />
+            <span className="yt-item-label">{t('subscription.notificationsAll')}</span>
+            {notifPref === 'all' && <MdCheck className="yt-item-check" />}
+          </button>
+
+          <button
+            type="button"
+            className="yt-sub-menu-item"
+            role="menuitem"
+            onClick={() => handleSelectNotif('personalized')}
+          >
+            <MdNotificationsNone className="yt-item-icon" />
+            <span className="yt-item-label">{t('subscription.notificationsPersonalized')}</span>
+            {notifPref === 'personalized' && <MdCheck className="yt-item-check" />}
+          </button>
+
+          <button
+            type="button"
+            className="yt-sub-menu-item"
+            role="menuitem"
+            onClick={() => handleSelectNotif('none')}
+          >
+            <MdNotificationsOff className="yt-item-icon" />
+            <span className="yt-item-label">{t('subscription.notificationsNone')}</span>
+            {notifPref === 'none' && <MdCheck className="yt-item-check" />}
+          </button>
+
+          <div className="yt-sub-menu-divider" />
+
+          <button
+            type="button"
+            className="yt-sub-menu-item"
+            role="menuitem"
+            onClick={handlePromptUnsubscribe}
+          >
+            <MdPersonRemoveAlt1 className="yt-item-icon" />
+            <span className="yt-item-label">{t('subscription.unsubscribe')}</span>
+          </button>
+        </div>
+      )}
+
+      {/* Native YouTube Confirmation Modal when user chooses to Unsubscribe */}
+      {showConfirm && (
+        <ConfirmDialog
+          title={t('subscription.unsubscribeConfirmTitle', {
+            name: channelName || t('nav.channel'),
+          })}
+          message={t('subscription.unsubscribeConfirmMessage')}
+          confirmLabel={t('subscription.unsubscribeConfirmButton')}
+          onConfirm={handleConfirmUnsubscribe}
+          onClose={() => setShowConfirm(false)}
+        />
+      )}
+    </div>
   );
 };
 

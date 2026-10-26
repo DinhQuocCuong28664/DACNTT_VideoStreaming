@@ -681,6 +681,14 @@
     "feedTitle": "Kênh đăng ký",
     "feedSubtitle": "Video mới nhất từ các kênh bạn theo dõi",
     "feedEmpty": "Chưa có video nào từ các kênh bạn đã đăng ký.",
-    "feedExplore": "Khám phá các video trên trang chủ"
+    "feedExplore": "Khám phá các video trên trang chủ",
+    "notificationsAll": "Tất cả",
+    "notificationsPersonalized": "Dành cho bạn",
+    "notificationsNone": "Không nhận thông báo",
+    "notificationSet": "Đã lưu tùy chọn thông báo",
+    "unsubscribe": "Hủy đăng ký",
+    "unsubscribeConfirmTitle": "Hủy đăng ký kênh {{name}}?",
+    "unsubscribeConfirmMessage": "Bạn sẽ không còn nhận được các thông báo mới từ kênh này.",
+    "unsubscribeConfirmButton": "Hủy đăng ký"
   }
 }
