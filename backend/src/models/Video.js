@@ -94,6 +94,23 @@ const videoSchema = new mongoose.Schema(
     },
 
     /**
+     * Mức độ truy cập nội dung:
+     * - 'public': Công khai cho tất cả người xem hợp lệ.
+     * - 'members_only': Chỉ hội viên tích cực (active ChannelMembership) của kênh mới được xem.
+     */
+    accessLevel: {
+      type: String,
+      enum: ['public', 'members_only'],
+      default: 'public',
+      index: true,
+    },
+    requiredTierLevel: {
+      type: Number,
+      default: 1,
+      min: 1,
+    },
+
+    /**
      * Cảnh báo nội dung bạo lực / nhạy cảm (Content Warning).
      * Được bật bởi người dùng khi tải lên/chỉnh sửa, hoặc do hệ thống
      * AI Rekognition tự động phát hiện trong quá trình chuyển mã.
