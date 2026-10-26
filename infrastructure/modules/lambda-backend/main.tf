@@ -40,7 +40,8 @@ resource "aws_lambda_function" "backend_api" {
 
   environment {
     variables = {
-      NODE_ENV                 = var.environment == "prod" ? "production" : "development"
+      NODE_ENV                 = var.node_env
+      COOKIE_DOMAIN            = var.cookie_domain
       MONGODB_URI              = var.mongodb_uri
       JWT_SECRET               = var.jwt_secret
       S3_RAW_BUCKET_NAME       = var.raw_bucket_name
