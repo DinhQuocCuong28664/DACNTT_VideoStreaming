@@ -213,6 +213,12 @@ module "lambda" {
 }
 
 
+# Đọc CloudFront private key từ Secrets Manager cho backend Lambda
+data "aws_secretsmanager_secret_version" "cloudfront_private_key" {
+  count     = var.enable_signed_urls ? 1 : 0
+  secret_id = module.secrets.cloudfront_private_key_secret_arn
+}
+
 # ── 12. Serverless Backend Lambda (SPOF Elimination) ──────
 module "lambda_backend" {
   count  = var.enable_lambda_backend ? 1 : 0
@@ -230,6 +236,9 @@ module "lambda_backend" {
   processed_bucket_name  = module.s3.processed_bucket_name
   cloudfront_domain      = "cdn.zelostech.site"
   cloudfront_key_pair_id = module.cloudfront.signing_key_pair_id != null ? module.cloudfront.signing_key_pair_id : ""
+  cloudfront_private_key = data.aws_secretsmanager_secret_version.cloudfront_private_key[0].secret_string
+  cookie_domain          = ".zelostech.site"
+  node_env               = "production"
   cors_origins           = "https://zelostech.site,https://www.zelostech.site,http://localhost:5173"
   frontend_url           = var.frontend_url
   email_user             = var.email_user

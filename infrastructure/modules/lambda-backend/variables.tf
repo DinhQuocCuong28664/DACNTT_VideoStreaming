@@ -72,6 +72,18 @@ variable "cloudfront_private_key" {
   sensitive   = true
 }
 
+variable "cookie_domain" {
+  description = "Cookie domain attribute (e.g. .zelostech.site)"
+  type        = string
+  default     = ".zelostech.site"
+}
+
+variable "node_env" {
+  description = "Node environment for Lambda"
+  type        = string
+  default     = "production"
+}
+
 variable "cors_origins" {
   description = "Comma-separated allowed origins"
   type        = string
