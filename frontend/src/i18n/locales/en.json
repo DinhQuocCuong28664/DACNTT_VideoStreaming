@@ -129,7 +129,9 @@
     "unlistedDesc": "Anyone with the video link can watch it. It does not appear on the home page.",
     "privateDesc": "Only you can watch your video.",
     "saveOrPublish": "Save or publish",
-    "saveOrPublishDesc": "Make your video public, unlisted, or private"
+    "saveOrPublishDesc": "Make your video public, unlisted, or private",
+    "members_only": "Members only",
+    "members_onlyDesc": "Only members of your channel can watch this video."
   },
   "channel": {
     "videos": "Videos",

@@ -128,7 +128,9 @@
     "unlistedDesc": "Ai có đường liên kết đều xem được. Video không hiện trên trang chủ.",
     "privateDesc": "Chỉ bạn xem được video này.",
     "saveOrPublish": "Lưu hoặc xuất bản",
-    "saveOrPublishDesc": "Đặt video của bạn ở chế độ công khai, không công khai hoặc riêng tư"
+    "saveOrPublishDesc": "Đặt video của bạn ở chế độ công khai, không công khai hoặc riêng tư",
+    "members_only": "Dành cho hội viên",
+    "members_onlyDesc": "Chỉ hội viên của kênh bạn mới có thể xem video này."
   },
   "channel": {
     "videos": "Video",
