@@ -1,0 +1,8 @@
+name = "zelostech-api-gateway"
+main = "src/index.js"
+compatibility_date = "2024-10-22"
+workers_dev = false
+
+routes = [
+  { pattern = "api.zelostech.site/*", zone_name = "zelostech.site" }
+]
