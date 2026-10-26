@@ -458,3 +458,16 @@
   color: #ffffff !important;
   border: 1px solid rgba(52, 211, 153, 0.4);
 }
+
+
+/* Members-Only video badge on video card */
+.video-status-badge-member {
+  background: rgba(16, 163, 127, 0.95) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(52, 211, 153, 0.4);
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  top: 8px;
+  right: 8px;
+}

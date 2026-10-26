@@ -694,5 +694,29 @@
     "unsubscribeConfirmTitle": "Unsubscribe from {{name}}?",
     "unsubscribeConfirmMessage": "You will no longer receive notifications from this channel.",
     "unsubscribeConfirmButton": "Unsubscribe"
+  },
+  "membership": {
+    "join": "Join",
+    "member": "Member",
+    "manage": "Manage",
+    "joinTitle": "Join this channel",
+    "joinSubtitle": "Support this creator and unlock exclusive member perks",
+    "perks": "Member perks",
+    "badgePerk": "Exclusive member badge next to your name in comments",
+    "exclusiveVideos": "Watch all members-only exclusive videos",
+    "selectTier": "Select a membership tier",
+    "pricePerMonth": "{{price}} ₫/month",
+    "sandboxCheckout": "Pay (Sandbox)",
+    "sandboxNote": "Sandbox test mode payment — You can cancel your membership at any time.",
+    "activeMember": "You are a member of this channel",
+    "tierLevel": "Level {{level}}",
+    "expiresOn": "Active until: {{date}}",
+    "cancelMembership": "Cancel membership",
+    "cancelSuccess": "Membership cancelled successfully",
+    "joinSuccess": "Welcome! You are now a member of {{name}}",
+    "membersOnly": "Members only",
+    "lockedTitle": "Members-only video",
+    "lockedSubtitle": "Join this channel to unlock this exclusive video and get access to member perks.",
+    "joinPrompt": "Join channel"
   }
 }

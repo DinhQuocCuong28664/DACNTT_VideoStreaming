@@ -23,6 +23,8 @@ import CommentSection from '../components/Video/CommentSection';
 import VideoCard from '../components/Video/VideoCard';
 import ReportDialog from '../components/Video/ReportDialog';
 import SubscribeButton from '../components/Channel/SubscribeButton';
+import JoinButton from '../components/Channel/JoinButton';
+import LockedVideoOverlay from '../components/Video/LockedVideoOverlay';
 import AppealBox from '../components/Video/AppealBox';
 import { can } from '../utils/roles';
 import { formatViews, formatDate } from '../utils/format';
@@ -44,6 +46,8 @@ const WatchPage = () => {
   // Mã lỗi kiểm duyệt từ máy chủ (VIDEO_REMOVED, VIDEO_UNDER_REVIEW): hiện màn
   // hình giải thích thay vì đưa người xem sang trang 404 chung chung.
   const [unavailable, setUnavailable] = useState(null);
+  const [refreshCount, setRefreshCount] = useState(0);
+  const refetchVideo = () => setRefreshCount((c) => c + 1);
   const [reportOpen, setReportOpen] = useState(false);
   const [warningDismissed, setWarningDismissed] = useState(false);
 
@@ -95,7 +99,7 @@ const WatchPage = () => {
         //
         // Video đã bị gỡ thì chủ video vẫn mở được trang nhưng không phát được
         // (máy chủ trả 403 VIDEO_REMOVED) — không xin cookie để khỏi bị chuyển sang trang 403.
-        if (v.status === 'READY' && (v.moderation?.status !== 'blocked' || isAdmin)) {
+        if (v.status === 'READY' && (v.moderation?.status !== 'blocked' || isAdmin) && !v.isLocked) {
           try {
             await videoApi.getPlaybackAuth(id);
           } catch (authErr) {
@@ -118,7 +122,7 @@ const WatchPage = () => {
     };
 
     fetchVideo();
-  }, [id, currentUser, isAdmin]);
+  }, [id, currentUser, isAdmin, refreshCount]);
 
   // Video còn đang xử lý — tự động kiểm tra lại định kỳ để chuyển sang phát
   // ngay khi chuyển mã xong, thay vì bắt người xem tự bấm F5.
@@ -329,14 +333,30 @@ const WatchPage = () => {
               </div>
             </div>
           ) : isReady ? (
-            <VideoPlayer
-              src={videoSrc}
-              poster={video.thumbnailUrl}
-              onViewThreshold={handleViewThreshold}
-              onAuthExpired={handleAuthExpired}
-              startTime={startTime}
-              shareUrl={`${window.location.origin}/watch/${video._id}`}
-            />
+            video.isLocked ? (
+              <div className="player-locked-wrapper" style={{ position: 'relative', width: '100%', aspectRatio: '16/9', borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
+                <img
+                  src={video.thumbnailUrl}
+                  alt={video.title}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+                <LockedVideoOverlay
+                  channelId={user._id}
+                  channelName={channelName}
+                  channelAvatar={user.avatar}
+                  onUnlockSuccess={refetchVideo}
+                />
+              </div>
+            ) : (
+              <VideoPlayer
+                src={videoSrc}
+                poster={video.thumbnailUrl}
+                onViewThreshold={handleViewThreshold}
+                onAuthExpired={handleAuthExpired}
+                startTime={startTime}
+                shareUrl={`${window.location.origin}/watch/${video._id}`}
+              />
+            )
           ) : (
             <div className="player-placeholder">
               {video.status === 'ERROR' ? (
@@ -421,6 +441,13 @@ const WatchPage = () => {
                   <p className="watch-owner-handle">@{user.username}</p>
                 </div>
               </Link>
+
+              <JoinButton
+                channelId={user._id}
+                channelName={channelName}
+                channelAvatar={user.avatar}
+                onMembershipChange={refetchVideo}
+              />
 
               <SubscribeButton
                 channelId={user._id}

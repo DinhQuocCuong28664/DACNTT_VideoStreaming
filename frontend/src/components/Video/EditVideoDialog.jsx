@@ -21,6 +21,7 @@ const EditVideoDialog = ({ video, onClose, onSaved }) => {
   const [category, setCategory] = useState(video.category || UPLOAD_CATEGORIES[0].value);
   const [visibility, setVisibility] = useState(video.visibility || 'public');
   const [hasViolence, setHasViolence] = useState(Boolean(video.hasViolence));
+  const [accessLevel, setAccessLevel] = useState(video.accessLevel || 'public');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -37,7 +38,7 @@ const EditVideoDialog = ({ video, onClose, onSaved }) => {
     setSaving(true);
     setError('');
     try {
-      const res = await videoApi.updateVideo(video._id, { title, description, category, visibility, hasViolence });
+      const res = await videoApi.updateVideo(video._id, { title, description, category, visibility, hasViolence, accessLevel });
       onSaved(res.data.data.video);
     } catch (err) {
       setError(err.response?.data?.message || err.message);
@@ -134,6 +135,25 @@ const EditVideoDialog = ({ video, onClose, onSaved }) => {
                   </span>
                   <p className="field-help" style={{ margin: '2px 0 0', fontSize: '0.825rem', color: 'var(--text-secondary)' }}>
                     {t('channel.editViolenceHelp')}
+                  </p>
+                </div>
+              </label>
+            </div>
+
+            <div className="field-group" style={{ marginTop: '12px' }}>
+              <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={accessLevel === 'members_only'}
+                  onChange={(e) => setAccessLevel(e.target.checked ? 'members_only' : 'public')}
+                  style={{ marginTop: '3px', cursor: 'pointer' }}
+                />
+                <div>
+                  <span style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--text-primary)' }}>
+                    {t('membership.membersOnly')}
+                  </span>
+                  <p className="field-help" style={{ margin: '2px 0 0', fontSize: '0.825rem', color: 'var(--text-secondary)' }}>
+                    {t('membership.exclusiveVideos')}
                   </p>
                 </div>
               </label>

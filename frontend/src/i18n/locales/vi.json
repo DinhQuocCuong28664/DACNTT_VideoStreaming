@@ -690,5 +690,29 @@
     "unsubscribeConfirmTitle": "Hủy đăng ký kênh {{name}}?",
     "unsubscribeConfirmMessage": "Bạn sẽ không còn nhận được các thông báo mới từ kênh này.",
     "unsubscribeConfirmButton": "Hủy đăng ký"
+  },
+  "membership": {
+    "join": "Tham gia",
+    "member": "Hội viên",
+    "manage": "Quản lý gói",
+    "joinTitle": "Tham gia kênh này",
+    "joinSubtitle": "Ủng hộ nhà sáng tạo và mở khóa các đặc quyền độc quyền của kênh",
+    "perks": "Đặc quyền hội viên",
+    "badgePerk": "Huy hiệu hội viên hiển thị bên cạnh tên khi bình luận",
+    "exclusiveVideos": "Xem toàn bộ video chỉ dành riêng cho hội viên",
+    "selectTier": "Chọn gói hội viên",
+    "pricePerMonth": "{{price}} ₫/tháng",
+    "sandboxCheckout": "Thanh toán (Sandbox)",
+    "sandboxNote": "Môi trường thanh toán thử nghiệm Sandbox — Bạn có thể hủy gói bất kỳ lúc nào.",
+    "activeMember": "Bạn đang là hội viên của kênh này",
+    "tierLevel": "Cấp độ {{level}}",
+    "expiresOn": "Hạn dùng đến: {{date}}",
+    "cancelMembership": "Hủy gói hội viên",
+    "cancelSuccess": "Đã hủy gói hội viên thành công",
+    "joinSuccess": "Chúc mừng! Bạn đã trở thành hội viên của kênh {{name}}",
+    "membersOnly": "Dành cho hội viên",
+    "lockedTitle": "Video dành riêng cho hội viên",
+    "lockedSubtitle": "Hãy tham gia làm hội viên của kênh {{name}} để mở khóa video này và thưởng thức các nội dung độc quyền.",
+    "joinPrompt": "Tham gia làm hội viên"
   }
 }

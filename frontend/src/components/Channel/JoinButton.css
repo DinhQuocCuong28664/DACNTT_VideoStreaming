@@ -1,0 +1,79 @@
+/* ==========================================================================
+   YouTube-Style Channel Join / Membership Button
+   VidShare · DACNTT
+   Matches 1:1 with YouTube Web UI specifications (No Tailwind).
+   ========================================================================== */
+
+.yt-join-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.yt-join-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  min-height: 36px;
+  padding: 0 16px;
+  border-radius: 18px;
+  border: 1px solid var(--border-color);
+  background: transparent;
+  color: var(--accent-primary);
+  font-family: var(--font-family);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  line-height: 36px;
+  white-space: nowrap;
+  user-select: none;
+  cursor: pointer;
+  outline: none;
+  box-sizing: border-box;
+  transition: background-color var(--transition-fast), border-color var(--transition-fast), transform 0.08s ease;
+}
+
+.yt-join-btn:hover:not(:disabled) {
+  background-color: var(--accent-soft);
+  border-color: transparent;
+}
+
+.yt-join-btn:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.yt-join-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Dark mode specific highlight for YouTube join button */
+[data-theme='dark'] .yt-join-btn {
+  color: #3ea6ff;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+[data-theme='dark'] .yt-join-btn:hover:not(:disabled) {
+  background-color: rgba(62, 166, 255, 0.12);
+  border-color: transparent;
+}
+
+/* ── Active Member State ── */
+.yt-join-btn.is-member {
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
+  border-color: transparent;
+  gap: 6px;
+  padding: 0 14px;
+}
+
+.yt-join-btn.is-member:hover:not(:disabled) {
+  background-color: var(--bg-pressed);
+}
+
+.yt-join-btn.is-member .yt-join-star {
+  font-size: 1.15rem;
+  color: var(--brand);
+  flex-shrink: 0;
+}
