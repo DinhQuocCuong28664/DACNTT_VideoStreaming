@@ -32,6 +32,7 @@ const ChannelPage = lazy(() => import('./pages/ChannelPage'));
 const UploadPage = lazy(() => import('./pages/UploadPage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 const AdminPage = lazy(() => import('./pages/AdminPage'));
+const SubscriptionsPage = lazy(() => import('./pages/SubscriptionsPage'));
 
 /**
  * Tải trước trang xem (và hls.js) khi trình duyệt rảnh.
@@ -167,6 +168,14 @@ function App() {
           <Route path="/landing" element={<LandingPage />} />
           <Route path="/watch/:id" element={<WatchPage />} />
           <Route path="/channel/:userId" element={<ChannelPage />} />
+          <Route
+            path="/subscriptions"
+            element={
+              <ProtectedRoute>
+                <SubscriptionsPage />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/upload"
             element={

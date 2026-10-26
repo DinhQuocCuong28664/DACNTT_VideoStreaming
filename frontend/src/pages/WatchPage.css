@@ -139,6 +139,13 @@
   margin-top: 12px;
 }
 
+.watch-owner-meta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
 .watch-owner {
   display: flex;
   align-items: center;

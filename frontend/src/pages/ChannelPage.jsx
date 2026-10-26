@@ -15,6 +15,7 @@ import { useAuth } from '../context/useAuth';
 import videoApi from '../api/videoApi';
 import userApi from '../api/userApi';
 import VideoCard from '../components/Video/VideoCard';
+import SubscribeButton from '../components/Channel/SubscribeButton';
 import { SkeletonCard, LoadMoreFooter } from '../components/Video/VideoListParts';
 import EditVideoDialog from '../components/Video/EditVideoDialog';
 import { VISIBILITY_ICON } from '../components/Video/visibilityIcons';
@@ -320,6 +321,9 @@ const ChannelPage = () => {
           <h1 className="channel-header-name">{channelName}</h1>
           <p className="channel-header-meta">
             {displayUser?.username && <span className="channel-header-handle">@{displayUser.username}</span>}
+            {typeof displayUser?.subscribers === 'number' && (
+              <span>{t('subscription.subscribersCount', { count: displayUser.subscribers })}</span>
+            )}
             {list.status !== 'loading' && (
               <span>{t('channel.videoCount', { count: list.total })}</span>
             )}
@@ -334,7 +338,7 @@ const ChannelPage = () => {
               {description}
             </button>
           )}
-          {isOwner && (
+          {isOwner ? (
             <div className="channel-header-actions">
               <Link to="/settings" className="btn btn-secondary">
                 {t('channel.customize')}
@@ -342,6 +346,17 @@ const ChannelPage = () => {
               <Link to="/upload" className="btn btn-secondary">
                 {t('nav.uploadVideo')}
               </Link>
+            </div>
+          ) : (
+            <div className="channel-header-actions" style={{ marginTop: '12px' }}>
+              <SubscribeButton
+                channelId={userId}
+                channelName={channelName}
+                initialSubscribersCount={displayUser?.subscribers}
+                onCountChange={(count) => {
+                  setChannelUser((prev) => (prev ? { ...prev, subscribers: count } : prev));
+                }}
+              />
             </div>
           )}
         </div>

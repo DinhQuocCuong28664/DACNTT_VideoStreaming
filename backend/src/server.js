@@ -18,6 +18,7 @@ const authRoutes = require('./routes/authRoutes');
 const videoRoutes = require('./routes/videoRoutes');
 const userRoutes = require('./routes/userRoutes');
 const adminRoutes = require('./routes/adminRoutes');
+const subscriptionRoutes = require('./routes/subscriptionRoutes');
 const { translate, DEFAULT_LANGUAGE } = require('./config/i18n');
 
 // Dừng sớm nếu thiếu cấu hình bắt buộc, trước khi mở cổng lắng nghe
@@ -88,6 +89,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/videos', videoRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/subscriptions', subscriptionRoutes);
 
 // Global error handler (must be AFTER routes)
 app.use(errorHandler);

@@ -32,7 +32,8 @@
     "aboutVidShare": "About VidShare",
     "signInPrompt": "Sign in to upload videos, comment and like.",
     "languageRow": "Language: {{lang}}",
-    "admin": "Moderation"
+    "admin": "Moderation",
+    "subscriptions": "Subscriptions"
   },
   "categories": {
     "all": "All",
@@ -673,5 +674,17 @@
       "upheld": "Your appeal was accepted and the video was restored.",
       "rejected": "Your appeal was reviewed and the removal stands."
     }
+  },
+  "subscription": {
+    "subscribe": "Subscribe",
+    "subscribed": "Subscribed",
+    "subscribers": "subscribers",
+    "subscribersCount": "{{count}} subscribers",
+    "subscribeSuccess": "Subscribed to {{name}}",
+    "unsubscribeSuccess": "Unsubscribed from {{name}}",
+    "feedTitle": "Subscriptions",
+    "feedSubtitle": "Latest videos from channels you follow",
+    "feedEmpty": "No videos from your subscribed channels yet.",
+    "feedExplore": "Explore videos on Home"
   }
 }

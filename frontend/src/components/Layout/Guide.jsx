@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next';
 import {
   MdHome,
   MdOutlineHome,
+  MdSubscriptions,
+  MdOutlineSubscriptions,
   MdOutlineFileUpload,
   MdOutlineVideoLibrary,
   MdVideoLibrary,
@@ -59,6 +61,13 @@ const Guide = ({ variant = 'full', onNavigate }) => {
       icon: MdOutlineHome,
       activeIcon: MdHome,
       active: onHome && !category && !searchParams.get('q'),
+    },
+    isAuthenticated && {
+      to: '/subscriptions',
+      label: t('nav.subscriptions'),
+      icon: MdOutlineSubscriptions,
+      activeIcon: MdSubscriptions,
+      active: location.pathname === '/subscriptions',
     },
     isAuthenticated && {
       to: '/upload',
