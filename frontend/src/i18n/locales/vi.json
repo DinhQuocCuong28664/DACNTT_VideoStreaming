@@ -721,6 +721,12 @@
     "lockedSubtitle": "Hãy tham gia làm hội viên của kênh {{name}} để mở khóa video này và thưởng thức các nội dung độc quyền.",
     "joinPrompt": "Tham gia làm hội viên",
     "audienceTitle": "Quyền truy cập của Hội viên",
-    "audienceDesc": "Thiết lập video này chỉ dành riêng cho các thành viên đã tham gia kênh của bạn"
+    "audienceDesc": "Thiết lập video này chỉ dành riêng cho các thành viên đã tham gia kênh của bạn",
+    "shelfTitle": "Hưởng thêm nhiều lợi ích từ hội viên",
+    "shelfBadge": "VidShare chọn lọc",
+    "shelfDesc": "Tận hưởng đặc quyền như video chỉ cho hội viên và nhiều lợi ích khác",
+    "exploreNow": "Khám phá ngay",
+    "showMore": "Hiện thêm",
+    "badgeText": "Ưu tiên hội viên"
   }
 }
