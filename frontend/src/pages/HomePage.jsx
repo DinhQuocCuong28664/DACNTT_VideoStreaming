@@ -1,7 +1,7 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { MdOutlineVideoLibrary, MdOutlineSearchOff, MdErrorOutline } from 'react-icons/md';
+import { MdOutlineVideoLibrary, MdOutlineSearchOff, MdErrorOutline, MdExpandMore } from 'react-icons/md';
 import videoApi from '../api/videoApi';
 import VideoCard from '../components/Video/VideoCard';
 import { SkeletonCard, LoadMoreFooter } from '../components/Video/VideoListParts';
@@ -52,8 +52,16 @@ const HomePage = () => {
     setSearchParams(next);
   };
 
+  const [showAllMemberVideos, setShowAllMemberVideos] = useState(false);
+
   const isFiltered = isSearch || selectedCategory !== ALL_CATEGORY;
   const listClass = isSearch ? 'video-list' : 'video-grid';
+
+  // Separate member-only videos if we are on the default home view (not searching, all categories)
+  const isDefaultHome = !isSearch && selectedCategory === ALL_CATEGORY;
+  const memberVideos = isDefaultHome ? list.items.filter((v) => v.accessLevel === 'members_only') : [];
+  const regularVideos = isDefaultHome ? list.items.filter((v) => v.accessLevel !== 'members_only') : list.items;
+  const displayedMemberVideos = showAllMemberVideos ? memberVideos : memberVideos.slice(0, 3);
 
   let body;
   if (list.status === 'loading') {
@@ -98,8 +106,56 @@ const HomePage = () => {
   } else {
     body = (
       <>
+        {memberVideos.length > 0 && (
+          <section className="membership-shelf">
+            <div className="membership-shelf-header">
+              <div className="membership-shelf-info">
+                <div className="membership-shelf-heading-row">
+                  <h2 className="membership-shelf-title">{t('membership.shelfTitle')}</h2>
+                  <span className="membership-shelf-badge">{t('membership.shelfBadge')}</span>
+                </div>
+                <p className="membership-shelf-desc">{t('membership.shelfDesc')}</p>
+              </div>
+              <div className="membership-shelf-actions">
+                <button
+                  type="button"
+                  className="membership-explore-btn"
+                  onClick={() => setShowAllMemberVideos((prev) => !prev)}
+                >
+                  {t('membership.exploreNow')}
+                </button>
+              </div>
+            </div>
+
+            <div className="video-grid membership-shelf-grid">
+              {displayedMemberVideos.map((video) => (
+                <VideoCard key={video._id} video={video} />
+              ))}
+            </div>
+
+            {memberVideos.length > 3 && (
+              <div className="membership-shelf-footer">
+                <button
+                  type="button"
+                  className="membership-show-more-btn"
+                  onClick={() => setShowAllMemberVideos((prev) => !prev)}
+                >
+                  <MdExpandMore
+                    style={{
+                      transform: showAllMemberVideos ? 'rotate(180deg)' : 'none',
+                      transition: 'transform 0.2s ease',
+                      fontSize: '1.25rem',
+                    }}
+                  />
+                  {showAllMemberVideos ? (t('membership.showLess') || 'Thu gọn') : t('membership.showMore')}
+                </button>
+              </div>
+            )}
+          </section>
+        )}
+
         <div className={listClass}>
-          {list.items.map((video) => (
+          {regularVideos.map((video) => (
             <VideoCard key={video._id} video={video} variant={isSearch ? 'row' : 'grid'} />
           ))}
           {list.status === 'loadingMore' &&

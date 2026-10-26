@@ -725,6 +725,12 @@
     "lockedSubtitle": "Join this channel to unlock this exclusive video and get access to member perks.",
     "joinPrompt": "Join channel",
     "audienceTitle": "Members-only Access",
-    "audienceDesc": "Restrict video playback exclusively to active members of your channel"
+    "audienceDesc": "Restrict video playback exclusively to active members of your channel",
+    "shelfTitle": "Get more perks from membership",
+    "shelfBadge": "VidShare Spotlight",
+    "shelfDesc": "Enjoy exclusive perks like members-only videos and more",
+    "exploreNow": "Explore now",
+    "showMore": "Show more",
+    "badgeText": "Members priority"
   }
 }

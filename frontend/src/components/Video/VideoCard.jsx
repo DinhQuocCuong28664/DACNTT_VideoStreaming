@@ -95,12 +95,7 @@ const VideoCard = ({ video, variant = 'grid', showAvatar = true, showMenu = true
             {t('videoCard.violenceBadge')}
           </span>
         )}
-        {video.accessLevel === 'members_only' && (
-          <span className="video-status-badge video-status-badge-member" title={t('membership.membersOnly')}>
-            <MdStars aria-hidden="true" style={{ marginRight: '3px', fontSize: '13px' }} />
-            {t('membership.member')}
-          </span>
-        )}
+
         {thumbnailOverlay}
       </div>
 
@@ -120,6 +115,12 @@ const VideoCard = ({ video, variant = 'grid', showAvatar = true, showMenu = true
                 {avatar}
                 <span className="video-card-channel">{channelName}</span>
               </div>
+              {video.accessLevel === 'members_only' && (
+                <div className="video-card-member-tag">
+                  <MdStars aria-hidden="true" />
+                  <span>{t('membership.badgeText')}</span>
+                </div>
+              )}
               {video.description && (
                 <p className="video-card-description">{video.description}</p>
               )}
@@ -128,6 +129,12 @@ const VideoCard = ({ video, variant = 'grid', showAvatar = true, showMenu = true
             <>
               <p className="video-card-channel">{channelName}</p>
               <p className="video-card-meta">{meta}</p>
+              {video.accessLevel === 'members_only' && (
+                <div className="video-card-member-tag">
+                  <MdStars aria-hidden="true" />
+                  <span>{t('membership.badgeText')}</span>
+                </div>
+              )}
             </>
           )}
         </div>

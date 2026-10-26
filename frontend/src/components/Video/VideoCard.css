@@ -51,16 +51,25 @@
 }
 
 .video-card-menu-trigger {
-  width: 36px;
-  height: 36px;
-  font-size: 1.5rem;
-  opacity: 0;
+  width: 32px;
+  height: 32px;
+  font-size: 1.35rem;
+  color: var(--text-secondary);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.75;
+  transition: opacity var(--transition-fast), background-color var(--transition-fast), color var(--transition-fast);
 }
 
 .video-card:hover .video-card-menu-trigger,
 .video-card:focus-within .video-card-menu-trigger,
+.video-card-menu-trigger:hover,
 .video-card-menu-trigger[aria-expanded='true'] {
   opacity: 1;
+  color: var(--text-primary);
+  background: var(--bg-tertiary);
 }
 
 @media (hover: none) {
@@ -460,14 +469,23 @@
 }
 
 
-/* Members-Only video badge on video card */
-.video-status-badge-member {
-  background: rgba(16, 163, 127, 0.95) !important;
-  color: #ffffff !important;
-  border: 1px solid rgba(52, 211, 153, 0.4);
-  font-weight: 600;
+/* YouTube 1:1 Members-Only badge under metadata */
+.video-card-member-tag {
   display: inline-flex;
   align-items: center;
-  top: 8px;
-  right: 8px;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #0f8558;
+  margin-top: 3px;
+  line-height: 1.2;
+}
+
+[data-theme='dark'] .video-card-member-tag {
+  color: #2ba640;
+}
+
+.video-card-member-tag svg {
+  font-size: 13px;
+  flex-shrink: 0;
 }
