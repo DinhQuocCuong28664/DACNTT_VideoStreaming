@@ -8,6 +8,7 @@ const { publicListingFilter } = require('../utils/moderation');
 const httpError = require('../utils/httpError');
 const { can } = require('../utils/roles');
 const limits = require('../config/uploadLimits');
+const ChannelMembership = require('../models/ChannelMembership');
 const { MAX_VIDEO_SIZE_BYTES } = limits;
 
 // Xem và phát video đã bị gỡ hoặc đang chờ rà soát: quyền của admin và operator, không phải
@@ -43,6 +44,8 @@ const initiateUpload = async (userId, videoData) => {
     fileSize: videoData.fileSize || 0,
     tags: videoData.tags || [],
     visibility: videoData.visibility || 'public',
+    accessLevel: videoData.accessLevel || 'public',
+    requiredTierLevel: Number(videoData.requiredTierLevel) || 1,
     hasViolence: Boolean(videoData.hasViolence),
     status: 'UPLOADING',
   });
@@ -239,6 +242,29 @@ const getVideoById = async (videoId, requesterUser = null) => {
   const isOwner =
     requesterUser && requesterUser._id && requesterUser._id.toString() === video.user._id.toString();
 
+  // Kiểm tra quyền hội viên nếu video đặt quyền truy cập là members_only
+  if (video.accessLevel === 'members_only' && !isOwner && !isAdminUser(requesterUser)) {
+    let isMember = false;
+    if (requesterUser && requesterUser._id) {
+      const channelOwnerId = video.user._id || video.user;
+      isMember = Boolean(
+        await ChannelMembership.exists({
+          user: requesterUser._id,
+          channel: channelOwnerId,
+          status: 'active',
+          expiresAt: { $gt: new Date() },
+          tierLevel: { $gte: video.requiredTierLevel || 1 },
+        })
+      );
+    }
+    if (!isMember) {
+      const lockedObj = video.toObject ? video.toObject() : { ...video };
+      lockedObj.isLocked = true;
+      lockedObj.lockedReason = 'MEMBERS_ONLY';
+      return lockedObj;
+    }
+  }
+
   // Quản trị viên cần xem được mọi video để rà soát, kể cả video riêng tư bị
   // báo cáo qua đường link cũ hay video đã bị gỡ.
   if (!isOwner && !isAdminUser(requesterUser)) {
@@ -283,6 +309,10 @@ const getVideoById = async (videoId, requesterUser = null) => {
  */
 const getPlayableVideo = async (videoId, requesterUser = null) => {
   const video = await getVideoById(videoId, requesterUser);
+
+  if (video.isLocked) {
+    throw httpError(403, 'This video is available to channel members only', 'MEMBERS_ONLY_CONTENT');
+  }
 
   if (video.moderation && video.moderation.status === 'blocked' && !isAdminUser(requesterUser)) {
     throw httpError(403, 'This video has been removed for violating the community guidelines', 'VIDEO_REMOVED');
@@ -561,9 +591,43 @@ const getComments = async (videoId, { limit = 20, before = null } = {}, requeste
       : null,
   ]);
   const { items, nextCursor } = cursorPage(docs, limit);
+  const allComments = pinned ? [pinned, ...items] : items;
+
+  let finalComments = allComments;
+  const authorIds = allComments.map((c) => c.user && c.user._id).filter(Boolean);
+  if (authorIds.length > 0) {
+    const channelOwnerId = video.user && (video.user._id || video.user);
+    const activeMemberships = await ChannelMembership.find({
+      channel: channelOwnerId,
+      user: { $in: authorIds },
+      status: 'active',
+      expiresAt: { $gt: new Date() },
+    }).populate('tier', 'name level badgeColor');
+
+    if (activeMemberships.length > 0) {
+      const badgeMap = new Map();
+      activeMemberships.forEach((m) => {
+        if (m.tier) {
+          badgeMap.set(m.user.toString(), {
+            name: m.tier.name,
+            level: m.tier.level,
+            color: m.tier.badgeColor,
+          });
+        }
+      });
+
+      finalComments = allComments.map((c) => {
+        const obj = c.toObject ? c.toObject() : { ...c };
+        if (c.user && badgeMap.has(c.user._id.toString())) {
+          obj.memberBadge = badgeMap.get(c.user._id.toString());
+        }
+        return obj;
+      });
+    }
+  }
 
   return {
-    comments: pinned ? [pinned, ...items] : items,
+    comments: finalComments,
     pinnedCommentId: pinnedId,
     total,
     nextCursor,
@@ -727,7 +791,7 @@ const updateVideo = async (videoId, userId, updateData) => {
     throw error;
   }
 
-  const allowedFields = ['title', 'description', 'category', 'tags', 'visibility', 'hasViolence'];
+  const allowedFields = ['title', 'description', 'category', 'tags', 'visibility', 'accessLevel', 'requiredTierLevel', 'hasViolence'];
   for (const field of allowedFields) {
     if (updateData[field] !== undefined) {
       if (field === 'hasViolence') {
