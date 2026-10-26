@@ -16,6 +16,7 @@ import videoApi from '../api/videoApi';
 import userApi from '../api/userApi';
 import VideoCard from '../components/Video/VideoCard';
 import SubscribeButton from '../components/Channel/SubscribeButton';
+import JoinButton from '../components/Channel/JoinButton';
 import { SkeletonCard, LoadMoreFooter } from '../components/Video/VideoListParts';
 import EditVideoDialog from '../components/Video/EditVideoDialog';
 import { VISIBILITY_ICON } from '../components/Video/visibilityIcons';
@@ -348,7 +349,12 @@ const ChannelPage = () => {
               </Link>
             </div>
           ) : (
-            <div className="channel-header-actions" style={{ marginTop: '12px' }}>
+            <div className="channel-header-actions" style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <JoinButton
+                channelId={userId}
+                channelName={channelName}
+                channelAvatar={displayUser?.avatar}
+              />
               <SubscribeButton
                 channelId={userId}
                 channelName={channelName}

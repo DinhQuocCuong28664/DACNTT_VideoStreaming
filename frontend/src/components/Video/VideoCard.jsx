@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { FiPlay } from 'react-icons/fi';
+import { MdStars } from 'react-icons/md';
 import Avatar from '../Common/Avatar';
 import VideoCardMenu from './VideoCardMenu';
 import { formatViews, formatDuration, timeAgo } from '../../utils/format';
@@ -92,6 +93,12 @@ const VideoCard = ({ video, variant = 'grid', showAvatar = true, showMenu = true
         {video.hasViolence && (
           <span className="video-status-badge video-status-badge-violence">
             {t('videoCard.violenceBadge')}
+          </span>
+        )}
+        {video.accessLevel === 'members_only' && (
+          <span className="video-status-badge video-status-badge-member" title={t('membership.membersOnly')}>
+            <MdStars aria-hidden="true" style={{ marginRight: '3px', fontSize: '13px' }} />
+            {t('membership.member')}
           </span>
         )}
         {thumbnailOverlay}

@@ -9,6 +9,7 @@ import {
   MdOutlinedFlag,
   MdOutlinePushPin,
   MdPushPin,
+  MdStars,
 } from 'react-icons/md';
 import Avatar from '../Common/Avatar';
 import ConfirmDialog from '../Common/ConfirmDialog';
@@ -121,6 +122,16 @@ const CommentItem = ({ comment, pinned, ownerName, actions, menuOpen, onToggleMe
           <Link to={`/channel/${comment.user?._id}`} className="comment-author">
             @{comment.user?.username}
           </Link>
+          {comment.memberBadge && (
+            <span
+              className="comment-member-badge"
+              style={{ color: comment.memberBadge.color || 'var(--brand)' }}
+              title={`${t('membership.member')}: ${comment.memberBadge.name}`}
+            >
+              <MdStars className="member-badge-icon" />
+              <span>{comment.memberBadge.name}</span>
+            </span>
+          )}
           {comment.createdAt && <span className="comment-time">{timeAgo(t, comment.createdAt)}</span>}
         </p>
         <p className="comment-text">{comment.content}</p>
