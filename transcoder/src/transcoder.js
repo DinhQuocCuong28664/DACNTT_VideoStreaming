@@ -166,7 +166,7 @@ const transcodeToHLS = async (inputPath, outputDir, { onProgress, encryption = n
         if (keyPath && fs.existsSync(keyPath)) {
           fs.rmSync(keyPath, { force: true });
         }
-      } catch (_) {}
+      } catch {}
     }
   }
 
@@ -895,7 +895,7 @@ const runFFmpeg = (args, totalDuration, { onProgress } = {}) => {
             lastReportedProgress = progress;
             try {
               onProgress(progress);
-            } catch (_) {}
+            } catch {}
           }
         }
 
