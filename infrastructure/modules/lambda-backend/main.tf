@@ -86,6 +86,13 @@ resource "aws_lambda_permission" "backend_api_url_public" {
   function_url_auth_type = "NONE"
 }
 
+resource "aws_lambda_permission" "backend_api_invoke_public" {
+  statement_id  = "AllowPublicInvokeFunction"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.backend_api.function_name
+  principal     = "*"
+}
+
 # ── Scheduled Video Reconciler (EventBridge) ──────────────────
 # Periodic execution of reconcilerHandler (dọn video kẹt ở PROCESSING/UPLOADING)
 resource "aws_cloudwatch_event_rule" "reconciler_schedule" {
