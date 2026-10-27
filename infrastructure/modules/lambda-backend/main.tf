@@ -15,6 +15,10 @@ data "archive_file" "placeholder_zip" {
 
 locals {
   effective_zip_path = var.lambda_zip_path != "" ? var.lambda_zip_path : data.archive_file.placeholder_zip.output_path
+
+  # Same sender the EC2 backend used (scripts/ec2-userdata.sh). Empty lets
+  # backend/src/services/emailService.js fall back to its default.
+  email_from = var.email_user != "" ? "DACNTT Video Platform <${var.email_user}>" : ""
 }
 
 resource "aws_cloudwatch_log_group" "backend_api" {
@@ -46,11 +50,16 @@ resource "aws_lambda_function" "backend_api" {
       JWT_SECRET               = var.jwt_secret
       S3_RAW_BUCKET_NAME       = var.raw_bucket_name
       S3_PROCESSED_BUCKET_NAME = var.processed_bucket_name
+      S3_STATIC_BUCKET_NAME    = var.static_bucket_name
+      GOOGLE_CLIENT_ID         = var.google_client_id
       CLOUDFRONT_DOMAIN        = var.cloudfront_domain
       CLOUDFRONT_KEY_PAIR_ID   = var.cloudfront_key_pair_id
       CLOUDFRONT_PRIVATE_KEY   = var.cloudfront_private_key
       CORS_ORIGINS             = var.cors_origins
       FRONTEND_URL             = var.frontend_url
+      EMAIL_HOST               = var.email_host
+      EMAIL_PORT               = var.email_port
+      EMAIL_FROM               = local.email_from
       EMAIL_USER               = var.email_user
       EMAIL_APP_PASSWORD       = var.email_app_password
     }

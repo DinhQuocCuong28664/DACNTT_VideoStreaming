@@ -109,6 +109,28 @@ variable "email_app_password" {
   sensitive   = true
 }
 
+variable "email_host" {
+  description = "SMTP host for outgoing mail"
+  type        = string
+  default     = "smtp.gmail.com"
+}
+
+variable "email_port" {
+  description = "SMTP port for outgoing mail"
+  type        = string
+  default     = "587"
+}
+
+variable "static_bucket_name" {
+  description = "Frontend bucket that holds avatars/ (S3_STATIC_BUCKET_NAME)"
+  type        = string
+}
+
+variable "google_client_id" {
+  description = "Google OAuth client ID; the backend checks Google ID tokens against it"
+  type        = string
+}
+
 variable "lambda_zip_path" {
   description = "Path to the backend lambda zip package"
   type        = string
