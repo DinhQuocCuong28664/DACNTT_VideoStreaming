@@ -2,16 +2,30 @@
  * Rate Limiting Middleware
  *
  * Bảo vệ các endpoint nhạy cảm khỏi tấn công brute-force và lạm dụng tài nguyên.
- * Sử dụng bộ nhớ tiến trình (in-memory store) — phù hợp với mô hình triển khai
- * một tiến trình pm2 hiện tại. Khi mở rộng ra nhiều instance, cần thay bằng
- * store dùng chung (Redis) để giới hạn có hiệu lực trên toàn cụm.
+ *
+ * Counters live in MongoDB (mongoRateLimitStore.js), shared by every backend
+ * instance. The backend runs on Lambda, where each execution environment has
+ * its own memory: the in-memory store gave every warm instance its own
+ * allowance, so 10 login attempts per 15 minutes became up to 10 per instance,
+ * and a recycled instance started again from zero.
+ *
+ * If the database cannot be reached the request passes without a count
+ * (passOnStoreError): the endpoints behind these limiters need the database
+ * anyway, and a limiter should not be what takes the API down.
  */
 
 const { rateLimit, ipKeyGenerator } = require('express-rate-limit');
 const { t } = require('../config/i18n');
+const MongoRateLimitStore = require('./mongoRateLimitStore');
 
 // Bỏ qua giới hạn khi chạy test để không làm hỏng các bộ test tự động
 const skipInTest = () => process.env.NODE_ENV === 'test';
+
+/** Options every limiter shares; `prefix` keeps each limiter's counters apart. */
+const sharedStore = (prefix) => ({
+  store: new MongoRateLimitStore({ prefix }),
+  passOnStoreError: true,
+});
 
 /**
  * Khoá giới hạn theo tài khoản cho các endpoint đã qua `auth`.
@@ -42,6 +56,7 @@ const UPLOAD_LIMIT_PER_HOUR = (() => {
  * Đây là các endpoint dễ bị dò mật khẩu nhất.
  */
 const authLimiter = rateLimit({
+  ...sharedStore('auth:'),
   windowMs: 15 * 60 * 1000, // 15 phút
   max: 10,
   standardHeaders: true,
@@ -55,6 +70,7 @@ const authLimiter = rateLimit({
  * bản ghi rác trong cơ sở dữ liệu và spam URL upload. Tính theo tài khoản.
  */
 const uploadLimiter = rateLimit({
+  ...sharedStore('upload:'),
   windowMs: 60 * 60 * 1000, // 1 giờ
   max: UPLOAD_LIMIT_PER_HOUR,
   standardHeaders: true,
@@ -71,6 +87,7 @@ const uploadLimiter = rateLimit({
  * tài khoản, đúng với mối lo "một tài khoản rải báo cáo".
  */
 const reportLimiter = rateLimit({
+  ...sharedStore('report:'),
   windowMs: 60 * 60 * 1000, // 1 giờ
   max: 20,
   standardHeaders: true,
@@ -87,6 +104,7 @@ const reportLimiter = rateLimit({
  * khoản (endpoint nằm sau `auth`).
  */
 const verificationEmailLimiter = rateLimit({
+  ...sharedStore('verify-email:'),
   windowMs: 60 * 60 * 1000, // 1 giờ
   max: 5,
   standardHeaders: true,
@@ -100,6 +118,7 @@ const verificationEmailLimiter = rateLimit({
  * Giới hạn chung cho toàn bộ API, đủ rộng để không ảnh hưởng người dùng thật.
  */
 const apiLimiter = rateLimit({
+  ...sharedStore('api:'),
   windowMs: 15 * 60 * 1000, // 15 phút
   max: 500,
   standardHeaders: true,
