@@ -22,9 +22,13 @@ output "batch_job_definition" {
   value = module.batch.job_definition_name
 }
 
-output "backend_instance_id" {
-  description = "null khi staging đang tắt (backend_enabled = false)"
-  value       = var.backend_enabled ? aws_instance.backend_api[0].id : null
+output "backend_function_name" {
+  value = module.lambda_backend.function_name
+}
+
+output "backend_function_url" {
+  description = "Origin of the staging Worker (wrangler.toml [env.staging] TARGET_HOST is its host)"
+  value       = module.lambda_backend.function_url
 }
 
 output "github_staging_deploy_role_arn" {

@@ -6,14 +6,14 @@
 # code đó lên production.
 #
 # Chạy khi:
-# - scripts/staging-up.sh kích hoạt nó (workflow_dispatch) sau khi dựng máy;
+# - scripts/staging-up.sh kích hoạt nó (workflow_dispatch) sau khi apply;
 # - push vào nhánh develop.
 #
 # Các bước: build + đẩy image transcoder (tag = SHA, không đụng :latest mà
-# production dùng) và đăng ký job definition của staging → deploy backend qua
-# SSM nếu máy staging đang bật → build frontend trỏ tới API staging và đồng bộ
-# lên bucket staging → kiểm tra API và frontend → quét DAST (OWASP ZAP
-# baseline, chỉ báo cáo).
+# production dùng) và đăng ký job definition của staging → deploy backend lên
+# Lambda staging (cùng cách cd-deploy.yml làm với production) → build frontend
+# trỏ tới API staging và đồng bộ lên bucket staging → kiểm tra API và frontend
+# → quét DAST (OWASP ZAP baseline, chỉ báo cáo).
 #
 # Trước đây workflow này chỉ chạy `terraform validate` và chưa từng chạy lần
 # nào (repo không có nhánh develop).
@@ -49,8 +49,6 @@ jobs:
     permissions:
       id-token: write
       contents: read
-    outputs:
-      backend_deployed: ${{ steps.backend.outputs.deployed }}
 
     steps:
       - name: Checkout code
@@ -90,40 +88,27 @@ jobs:
           fi
           aws batch register-job-definition --cli-input-json file://jobdef.json --query 'revision'
 
-      # ── Backend (chỉ khi máy staging đang bật) ─────
-      - name: Deploy backend via SSM
-        id: backend
+      # ── Backend (Lambda) ───────────────────────────
+      # Same build as cd-deploy.yml: Node 24 / npm 11 because npm 10 rejects
+      # backend/package-lock.json; the zip runs on the nodejs22.x runtime.
+      - name: Setup Node.js 24 (backend)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Deploy backend to the staging Lambda
         run: |
-          INSTANCE_ID=$(aws ec2 describe-instances \
-            --filters "Name=tag:Name,Values=${STAGING_PREFIX}-backend-api" "Name=instance-state-name,Values=running" \
-            --query "Reservations[0].Instances[0].InstanceId" --output text)
-
-          if [ -z "$INSTANCE_ID" ] || [ "$INSTANCE_ID" = "None" ]; then
-            echo "::notice::Staging dang tat, bo qua backend. Bat bang: bash scripts/staging-up.sh ${{ github.ref_name }}"
-            echo "deployed=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          # Cùng lệnh với cd-deploy.yml: chạy dưới quyền ubuntu, reset về đúng
-          # SHA của lượt này.
-          COMMAND_ID=$(aws ssm send-command \
-            --instance-ids "$INSTANCE_ID" \
-            --document-name "AWS-RunShellScript" \
-            --comment "Staging deploy ${{ github.sha }}" \
-            --parameters commands="[\"sudo -u ubuntu bash -lc 'set -e; cd /home/ubuntu/app; git fetch origin; git reset --hard ${{ github.sha }}; cd backend; npm install --omit=dev; (pm2 restart backend-api --update-env || pm2 start src/server.js --name backend-api); pm2 save'\"]" \
-            --query "Command.CommandId" --output text)
-
-          aws ssm wait command-executed --command-id "$COMMAND_ID" --instance-id "$INSTANCE_ID" || true
-          STATUS=$(aws ssm get-command-invocation --command-id "$COMMAND_ID" --instance-id "$INSTANCE_ID" --query "Status" --output text)
-          aws ssm get-command-invocation --command-id "$COMMAND_ID" --instance-id "$INSTANCE_ID" \
-            --query "StandardOutputContent" --output text | tail -20
-          if [ "$STATUS" != "Success" ]; then
-            aws ssm get-command-invocation --command-id "$COMMAND_ID" --instance-id "$INSTANCE_ID" \
-              --query "StandardErrorContent" --output text | tail -20
-            echo "::error::Deploy backend staging that bai (SSM: $STATUS)"
-            exit 1
-          fi
-          echo "deployed=true" >> "$GITHUB_OUTPUT"
+          set -e
+          cd backend
+          npm ci --omit=dev
+          zip -q -r ../backend_api.zip src package.json package-lock.json node_modules
+          cd ..
+          aws lambda update-function-code \
+            --function-name "${STAGING_PREFIX}-backend-api" \
+            --zip-file fileb://backend_api.zip --query 'CodeSha256' --output text
+          aws lambda wait function-updated --function-name "${STAGING_PREFIX}-backend-api"
 
       # ── Frontend ───────────────────────────────────
       - name: Setup Node.js
@@ -174,9 +159,7 @@ jobs:
             echo "::error::$1 khong tra 200"; return 1
           }
           check "https://${FRONTEND_DOMAIN}/"
-          if [ "${{ steps.backend.outputs.deployed }}" = "true" ]; then
-            check "$API_URL"
-          fi
+          check "${API_URL}health"
 
       - name: Summary
         run: |
@@ -184,7 +167,7 @@ jobs:
             echo "## Staging deployed"
             echo "- **Ref:** ${{ github.ref_name }} (\`${{ github.sha }}\`)"
             echo "- **Frontend:** https://${FRONTEND_DOMAIN}/"
-            echo "- **Backend:** ${{ steps.backend.outputs.deployed == 'true' && env.API_URL || 'staging dang tat, bo qua' }}"
+            echo "- **Backend:** ${API_URL} (Lambda \`${STAGING_PREFIX}-backend-api\`)"
             echo "- **Transcoder image:** \`${IMAGE}\`"
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -195,7 +178,6 @@ jobs:
     name: "DAST — OWASP ZAP baseline"
     runs-on: ubuntu-latest
     needs: deploy-staging
-    if: needs.deploy-staging.outputs.backend_deployed == 'true'
     permissions:
       contents: read
     steps:

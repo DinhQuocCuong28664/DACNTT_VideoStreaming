@@ -7,10 +7,9 @@
 # chung backend nên không phải cơ chế cô lập phù hợp).
 #
 # Chi phí: phần luôn tồn tại (S3, SQS, Lambda, Batch, CloudFront, VPC, IAM,
-# secret) gần như không tốn gì khi không chạy, trừ 2 secret riêng
-# (~$0,80/tháng). Máy chủ backend, Elastic IP và bản ghi DNS api-staging chỉ
-# tồn tại khi backend_enabled = true — xem scripts/staging-up.sh và
-# scripts/staging-down.sh.
+# secret, backend Lambda) gần như không tốn gì khi không chạy, trừ các secret
+# riêng (~$0,40/tháng mỗi secret). Backend chạy trên Lambda như production
+# (backend-lambda.tf), nên không còn máy chủ hay Elastic IP phải bật/tắt.
 #
 # Yêu cầu trước khi apply:
 # - environments/dev đã apply (staging dùng lại repo ECR, hai secret dùng chung
