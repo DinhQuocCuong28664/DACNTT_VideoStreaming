@@ -25,13 +25,22 @@ const readChunkRendition = (renditionDir) => {
   }));
 };
 
-/** Media playlist VOD từ danh sách segment, cùng định dạng với playlist ffmpeg tự ghi. */
-const buildMediaPlaylist = (segments) => {
+/**
+ * Media playlist VOD từ danh sách segment, cùng định dạng với playlist ffmpeg tự ghi.
+ *
+ * With `encryption` ({uri, ivHex}) one EXT-X-KEY tag covers every segment: all chunks were
+ * encrypted with the same key and the same explicit IV (RFC 8216 §4.3.2.4, §5.2; the IV
+ * attribute needs EXT-X-VERSION 2 or later).
+ */
+const buildMediaPlaylist = (segments, encryption = null) => {
   // ffmpeg ghi TARGETDURATION là độ dài segment dài nhất làm tròn; RFC 8216 §4.3.3.1 yêu
   // cầu EXTINF làm tròn không vượt quá giá trị này.
   const target = Math.max(1, ...segments.map((s) => Math.round(s.duration)));
 
   let content = `#EXTM3U\n#EXT-X-VERSION:3\n#EXT-X-TARGETDURATION:${target}\n#EXT-X-MEDIA-SEQUENCE:0\n`;
+  if (encryption) {
+    content += `#EXT-X-KEY:METHOD=AES-128,URI="${encryption.uri}",IV=0x${encryption.ivHex}\n`;
+  }
   for (const { file, duration } of segments) {
     content += `#EXTINF:${duration.toFixed(6)},\n${file}\n`;
   }

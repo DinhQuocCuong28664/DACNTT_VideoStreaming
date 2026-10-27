@@ -228,3 +228,22 @@ describe('chunkLabel', () => {
     expect(chunkLabel(575)).toBe('0575');
   });
 });
+
+describe('buildChunkArgs with HLS AES-128', () => {
+  it('gives every rendition output the key info file, before its segment pattern', () => {
+    const keyInfoPath = path.join('tmp', 'hls-key-x', 'enc.keyinfo');
+    const args = build({ keyInfoPath });
+
+    const keyFlags = indexesOf(args, '-hls_key_info_file');
+    const patterns = indexesOf(args, '-hls_segment_filename');
+    expect(keyFlags).toHaveLength(renditions.length);
+    keyFlags.forEach((at, i) => {
+      expect(args[at + 1]).toBe(keyInfoPath);
+      expect(at).toBeLessThan(patterns[i]);
+    });
+  });
+
+  it('leaves the flag out without a key', () => {
+    expect(build()).not.toContain('-hls_key_info_file');
+  });
+});

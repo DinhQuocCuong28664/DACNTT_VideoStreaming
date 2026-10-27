@@ -32,6 +32,8 @@ const createFakeDb = ({ status = 'UPLOADING', exists = true } = {}) => {
       if (!state.exists) throw new Error(`Video not found: ${id}`);
       if (state.status === 'READY') return { updated: false };
       Object.assign(state, { status: 'READY', hlsUrl: data.hlsUrl, thumbnailUrl: data.thumbnailUrl, duration: data.duration, moderation: data.moderation });
+      // Like the real updateVideoReady: the key is stored only when there is one.
+      if (data.encryptionKey) Object.assign(state, { encryptionKey: data.encryptionKey, isEncrypted: Boolean(data.isEncrypted) });
       return { updated: true };
     },
     updateVideoError: async (id, message) => {

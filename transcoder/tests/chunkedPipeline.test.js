@@ -676,4 +676,83 @@ describe('createPipeline', () => {
       expect(leftover()).toEqual([]);
     });
   });
+
+  // ───────────────────────────────────────────────────────────────────────
+  describe('HLS AES-128 on the chunked path', () => {
+    const planFile = () => path.join(io.rawRoot, 'work', VIDEO_ID, 'plan.json');
+    const walk = (dir) =>
+      fs.existsSync(dir) ? fs.readdirSync(dir, { recursive: true }).map((f) => String(f).split(path.sep).join('/')) : [];
+
+    const runChunked = async ({ encrypted }) => {
+      probeResult = summarizeProbe(probeJson({ seconds: 120 }));
+      const config = { ...makeConfig({ chunked: { thresholdSeconds: 10, gopsPerChunk: 3 } }), hlsEncryption: { enabled: encrypted } };
+      const seen = [];
+      const ffmpeg = fakeFfmpeg({ segmentsPerOutput: 3 });
+      const runFfmpeg = async (call) => {
+        call.args.forEach((a, i) => {
+          if (a !== '-hls_key_info_file') return;
+          const keyInfoPath = call.args[i + 1];
+          const [uri, keyPath, iv] = fs.readFileSync(keyInfoPath, 'utf-8').split('\n');
+          seen.push({ keyInfoPath, uri, iv, key: fs.readFileSync(keyPath).toString('hex') });
+        });
+        return ffmpeg(call);
+      };
+      const pipeline = build({ config, runFfmpeg });
+
+      const outcome = await pipeline.planJob({ videoId: VIDEO_ID, rawS3Key: RAW_KEY });
+      const document = JSON.parse(fs.readFileSync(planFile(), 'utf-8'));
+      for (const spec of submit.specs.filter((s) => s.command[2] === 'audio')) {
+        await pipeline.audioJob({ videoId: VIDEO_ID, rawS3Key: RAW_KEY, bitrate: spec.environment.AUDIO_BITRATE });
+      }
+      for (let index = 0; index < outcome.chunks; index += 1) {
+        await pipeline.chunkJob({ videoId: VIDEO_ID, rawS3Key: RAW_KEY, index });
+      }
+      await pipeline.finalizeJob({ videoId: VIDEO_ID, rawS3Key: RAW_KEY });
+      return { document, seen, chunks: outcome.chunks };
+    };
+
+    it('plans one key and one explicit IV for the whole video', async () => {
+      const { document } = await runChunked({ encrypted: true });
+
+      expect(document.encryption).toEqual({
+        keyHex: expect.stringMatching(/^[0-9a-f]{32}$/),
+        ivHex: expect.stringMatching(/^[0-9a-f]{32}$/),
+        uri: `${realConfig.keyDeliveryBaseUrl}/videos/${VIDEO_ID}/key`,
+      });
+    });
+
+    it('encrypts every chunk with that key and IV, and leaves no key file behind', async () => {
+      const { document, seen, chunks } = await runChunked({ encrypted: true });
+      const renditionCount = document.renditions.length;
+
+      expect(seen).toHaveLength(chunks * renditionCount);
+      for (const call of seen) {
+        expect(call).toMatchObject({ uri: document.encryption.uri, iv: document.encryption.ivHex, key: document.encryption.keyHex });
+        expect(fs.existsSync(call.keyInfoPath)).toBe(false);
+      }
+      expect(walk(io.processedRoot).filter((f) => /enc\.key/.test(f))).toEqual([]);
+    });
+
+    it('publishes playlists that declare the key and IV, and stores the key with the video', async () => {
+      const { document } = await runChunked({ encrypted: true });
+      const keyLine = `#EXT-X-KEY:METHOD=AES-128,URI="${document.encryption.uri}",IV=0x${document.encryption.ivHex}`;
+
+      for (const r of document.renditions) {
+        const playlist = fs.readFileSync(path.join(io.processedRoot, 'videos', VIDEO_ID, r.name, 'playlist.m3u8'), 'utf-8');
+        expect(playlist.split('\n').filter((l) => l.startsWith('#EXT-X-KEY'))).toEqual([keyLine]);
+      }
+      expect(db.state).toMatchObject({ status: 'READY', encryptionKey: document.encryption.keyHex, isEncrypted: true });
+    });
+
+    it('does none of this when encryption is turned off', async () => {
+      const { document, seen } = await runChunked({ encrypted: false });
+
+      expect(document.encryption).toBeUndefined();
+      expect(seen).toEqual([]);
+      const playlist = fs.readFileSync(path.join(io.processedRoot, 'videos', VIDEO_ID, '720p', 'playlist.m3u8'), 'utf-8');
+      expect(playlist).not.toContain('#EXT-X-KEY');
+      expect(db.state.status).toBe('READY');
+      expect(db.state.encryptionKey).toBeUndefined();
+    });
+  });
 });
