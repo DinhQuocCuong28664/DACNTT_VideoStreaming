@@ -4,6 +4,7 @@ import { MdStars } from 'react-icons/md';
 import { useAuth } from '../../context/useAuth';
 import membershipApi from '../../api/membershipApi';
 import MembershipModal from './MembershipModal';
+import useToast from '../Common/Toast';
 import './JoinButton.css';
 
 /**
@@ -24,6 +25,7 @@ const JoinButton = ({
   const [membership, setMembership] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [toastNode, showToast] = useToast();
 
   const isOwnChannel = Boolean(currentUser && channelId && currentUser._id === channelId);
 
@@ -98,8 +100,11 @@ const JoinButton = ({
           currentMembership={membership}
           onClose={() => setModalOpen(false)}
           onStatusChange={handleStatusChange}
+          notify={showToast}
         />
       )}
+
+      {toastNode}
     </div>
   );
 };

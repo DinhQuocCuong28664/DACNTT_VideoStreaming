@@ -1,16 +1,19 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { MdClose, MdCheck, MdStars, MdSecurity } from 'react-icons/md';
+import { MdClose, MdCheck, MdStars, MdSecurity, MdErrorOutline } from 'react-icons/md';
 import Modal from '../Common/Modal';
 import { useAuth } from '../../context/useAuth';
 import membershipApi from '../../api/membershipApi';
-import useToast from '../Common/Toast';
 import './MembershipModal.css';
 
 /**
  * YouTube-style Channel Membership Modal.
  * Shows available tiers, perks, badge previews, and handles Sandbox checkout.
+ *
+ * Errors show inside the dialog: a toast outside a modal <dialog> sits below
+ * the top layer and stays hidden. Success goes to `notify`, a toast owned by
+ * the parent, because the dialog closes right after it.
  */
 const MembershipModal = ({
   channelId,
@@ -20,17 +23,18 @@ const MembershipModal = ({
   currentMembership = null,
   onClose,
   onStatusChange,
+  notify,
 }) => {
   const { t } = useTranslation();
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const toast = useToast();
 
   const [tiers, setTiers] = useState([]);
   const [selectedTierId, setSelectedTierId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [actionBusy, setActionBusy] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     let isMounted = true;
@@ -69,6 +73,7 @@ const MembershipModal = ({
 
     if (!selectedTier || actionBusy) return;
     setActionBusy(true);
+    setError('');
 
     try {
       const res = await membershipApi.join(channelId, {
@@ -77,7 +82,7 @@ const MembershipModal = ({
       });
       const data = res.data?.data;
       if (data) {
-        toast.success(t('membership.joinSuccess', { name: channelName }));
+        if (notify) notify(t('membership.joinSuccess', { name: channelName }));
         if (onStatusChange) {
           onStatusChange({
             isMember: true,
@@ -88,7 +93,7 @@ const MembershipModal = ({
         onClose();
       }
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to join membership');
+      setError(err.response?.data?.message || t('membership.joinFailed'));
     } finally {
       setActionBusy(false);
     }
@@ -97,10 +102,11 @@ const MembershipModal = ({
   const handleCancel = async () => {
     if (actionBusy) return;
     setActionBusy(true);
+    setError('');
 
     try {
       await membershipApi.cancel(channelId);
-      toast.info(t('membership.cancelSuccess'));
+      if (notify) notify(t('membership.cancelSuccess'));
       if (onStatusChange) {
         onStatusChange({
           isMember: false,
@@ -110,7 +116,7 @@ const MembershipModal = ({
       }
       onClose();
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to cancel membership');
+      setError(err.response?.data?.message || t('membership.cancelFailed'));
     } finally {
       setActionBusy(false);
     }
@@ -227,6 +233,12 @@ const MembershipModal = ({
         </div>
 
         <footer className="yt-membership-footer">
+          {error && (
+            <p className="field-error" role="alert">
+              <MdErrorOutline aria-hidden="true" /> {error}
+            </p>
+          )}
+
           {isMember ? (
             <button
               type="button"

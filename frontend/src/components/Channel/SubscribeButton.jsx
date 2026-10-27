@@ -34,7 +34,7 @@ const SubscribeButton = ({
   const { user: currentUser, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const toast = useToast();
+  const [toastNode, showToast] = useToast();
 
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [subscribersCount, setSubscribersCount] = useState(initialSubscribersCount || 0);
@@ -149,7 +149,7 @@ const SubscribeButton = ({
         setSubscribersCount(count);
         if (onCountChange) onCountChange(count);
       }
-      toast.success(
+      showToast(
         t('subscription.subscribeSuccess', { name: channelName || t('nav.channel') })
       );
     } catch (err) {
@@ -157,7 +157,7 @@ const SubscribeButton = ({
       setIsSubscribed(false);
       setSubscribersCount(prevCount);
       if (onCountChange) onCountChange(prevCount);
-      toast.error(err.response?.data?.message || 'Failed to subscribe');
+      showToast(err.response?.data?.message || t('subscription.subscribeFailed'));
     } finally {
       setActionInProgress(false);
     }
@@ -179,7 +179,7 @@ const SubscribeButton = ({
       console.warn('LocalStorage write failed:', e);
     }
     setMenuOpen(false);
-    toast.info(t('subscription.notificationSet'));
+    showToast(t('subscription.notificationSet'));
   };
 
   // Open confirmation modal for unsubscribe
@@ -210,7 +210,7 @@ const SubscribeButton = ({
         setSubscribersCount(count);
         if (onCountChange) onCountChange(count);
       }
-      toast.info(
+      showToast(
         t('subscription.unsubscribeSuccess', { name: channelName || t('nav.channel') })
       );
     } catch (err) {
@@ -218,7 +218,7 @@ const SubscribeButton = ({
       setIsSubscribed(true);
       setSubscribersCount(prevCount);
       if (onCountChange) onCountChange(prevCount);
-      toast.error(err.response?.data?.message || 'Failed to unsubscribe');
+      showToast(err.response?.data?.message || t('subscription.unsubscribeFailed'));
     } finally {
       setActionInProgress(false);
     }
@@ -330,6 +330,8 @@ const SubscribeButton = ({
           onClose={() => setShowConfirm(false)}
         />
       )}
+
+      {toastNode}
     </div>
   );
 };

@@ -7,12 +7,14 @@ import './LockedVideoOverlay.css';
 /**
  * LockedVideoOverlay Component.
  * Displayed when viewer tries to play a members-only video without active membership.
+ * `notify` is the watch page's toast: this overlay unmounts once the video unlocks.
  */
 const LockedVideoOverlay = ({
   channelId,
   channelName = '',
   channelAvatar = '',
   onUnlockSuccess,
+  notify,
 }) => {
   const { t } = useTranslation();
   const [modalOpen, setModalOpen] = useState(false);
@@ -51,6 +53,7 @@ const LockedVideoOverlay = ({
           isMember={false}
           onClose={() => setModalOpen(false)}
           onStatusChange={handleStatusChange}
+          notify={notify}
         />
       )}
     </div>
