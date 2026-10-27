@@ -146,7 +146,7 @@ const getVideoById = async (req, res, next) => {
     res.status(200).json({
       success: true,
       data: {
-        video: { ...video.toJSON(), viewerReaction: videoService.reactionOf(video, req.user) },
+        video: videoService.toViewerJSON(video, req.user),
       },
     });
   } catch (error) {

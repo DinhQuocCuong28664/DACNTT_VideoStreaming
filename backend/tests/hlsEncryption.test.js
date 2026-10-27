@@ -31,9 +31,7 @@ describe('HLS AES-128 Encryption Key Service Tests', () => {
     const populated = doc && {
       ...doc,
       user: { _id: mockOwnerId },
-      toObject() {
-        return { ...this };
-      },
+      $locals: {},
     };
     selectKey = jest.fn().mockResolvedValue(doc);
     Video.findById.mockReturnValue({

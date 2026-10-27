@@ -15,6 +15,12 @@ const { MAX_VIDEO_SIZE_BYTES } = limits;
 // của auditor (chỉ đọc số liệu). Kiểm tra theo quyền để thêm vai trò không phải sửa ở đây.
 const isAdminUser = (user) => can(user, 'content:viewRemoved');
 
+/** Why getVideoById locked a video for this viewer. */
+const MEMBERS_ONLY_LOCK = 'MEMBERS_ONLY';
+
+/** The lock getVideoById put on a video for this viewer, or null. */
+const lockReasonOf = (video) => (video && video.$locals && video.$locals.lockedReason) || null;
+
 /**
  * Danh sách video (trang chủ, trang kênh, video liên quan) không cần hai mảng
  * người đã Like/Dislike: thẻ video không hiện chúng, và mảng dài ra theo mức
@@ -258,10 +264,11 @@ const getVideoById = async (videoId, requesterUser = null) => {
       );
     }
     if (!isMember) {
-      const lockedObj = video.toObject ? video.toObject() : { ...video };
-      lockedObj.isLocked = true;
-      lockedObj.lockedReason = 'MEMBERS_ONLY';
-      return lockedObj;
+      // Keep the Mongoose document: callers call toJSON() on it, and toJSON is
+      // what strips likes, dislikes and multipartUploadId. A plain copy made
+      // the watch endpoint answer 500 for every non-member. The lock travels
+      // in $locals, Mongoose's place for per-request data on a document.
+      video.$locals.lockedReason = MEMBERS_ONLY_LOCK;
     }
   }
 
@@ -310,7 +317,7 @@ const getVideoById = async (videoId, requesterUser = null) => {
 const getPlayableVideo = async (videoId, requesterUser = null) => {
   const video = await getVideoById(videoId, requesterUser);
 
-  if (video.isLocked) {
+  if (lockReasonOf(video)) {
     throw httpError(403, 'This video is available to channel members only', 'MEMBERS_ONLY_CONTENT');
   }
 
@@ -448,6 +455,22 @@ const reactionOf = (video, requesterUser) => {
   if (has(video.likes)) return 'like';
   if (has(video.dislikes)) return 'dislike';
   return null;
+};
+
+/**
+ * The JSON one viewer gets for the watch page. A video locked for this viewer
+ * keeps its title, channel and thumbnail for the join prompt, but not its
+ * playlist URL.
+ */
+const toViewerJSON = (video, requesterUser) => {
+  const json = { ...video.toJSON(), viewerReaction: reactionOf(video, requesterUser) };
+  const lockedReason = lockReasonOf(video);
+  if (lockedReason) {
+    json.isLocked = true;
+    json.lockedReason = lockedReason;
+    delete json.hlsUrl;
+  }
+  return json;
 };
 
 /** Mảng của từng loại phản hồi và mảng loại trừ nó (Like bỏ Dislike và ngược lại). */
@@ -987,6 +1010,8 @@ module.exports = {
   USER_VIDEO_SORTS,
   getRelatedVideos,
   reactionOf,
+  lockReasonOf,
+  toViewerJSON,
   toggleLike,
   toggleDislike,
   getComments,
