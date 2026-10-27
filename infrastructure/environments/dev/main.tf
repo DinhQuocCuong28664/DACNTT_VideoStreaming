@@ -148,6 +148,7 @@ module "cloudfront" {
 # ── 10. AWS Batch (Fargate) ───────────────────────
 module "batch" {
   source                      = "../../modules/batch"
+  key_delivery_base_url       = "https://api.zelostech.site/api"
   project_name                = "${var.project_name}-${var.environment}"
   region                      = var.aws_region
   batch_service_role_arn      = module.iam.batch_service_role_arn
