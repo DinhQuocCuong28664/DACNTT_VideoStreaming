@@ -234,6 +234,8 @@ module "lambda_backend" {
   jwt_secret             = var.jwt_secret
   raw_bucket_name        = module.s3.raw_bucket_name
   processed_bucket_name  = module.s3.processed_bucket_name
+  static_bucket_name     = aws_s3_bucket.frontend.bucket
+  google_client_id       = var.google_client_id
   cloudfront_domain      = "cdn.zelostech.site"
   cloudfront_key_pair_id = module.cloudfront.signing_key_pair_id != null ? module.cloudfront.signing_key_pair_id : ""
   cloudfront_private_key = data.aws_secretsmanager_secret_version.cloudfront_private_key[0].secret_string

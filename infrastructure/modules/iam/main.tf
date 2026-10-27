@@ -468,7 +468,7 @@ resource "aws_iam_role_policy" "lambda_backend_s3" {
 
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [
+    Statement = concat([
       {
         Effect = "Allow"
         Action = [
@@ -499,6 +499,33 @@ resource "aws_iam_role_policy" "lambda_backend_s3" {
           "s3:AbortMultipartUpload"
         ]
         Resource = "${var.raw_bucket_arn}/*"
+      }
+      ], var.static_bucket_arn == "" ? [] : [
+      # Avatars, as for the EC2 role above: sign the presigned POST into
+      # avatars/, let Rekognition read the image with the caller's access, and
+      # delete a refused image. Nothing outside avatars/ in the frontend bucket.
+      {
+        Effect   = "Allow"
+        Action   = ["s3:PutObject", "s3:GetObject", "s3:DeleteObject"]
+        Resource = ["${var.static_bucket_arn}/avatars/*"]
+      }
+    ])
+  })
+}
+
+# Avatar screening (backend/src/services/avatarModeration.js); same single
+# read-only action as the EC2 role, which has no resource to scope to.
+resource "aws_iam_role_policy" "lambda_backend_rekognition" {
+  name = "${var.project_name}-lambda-backend-rekognition-policy"
+  role = aws_iam_role.lambda_backend.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = ["rekognition:DetectModerationLabels"]
+        Resource = "*"
       }
     ]
   })
