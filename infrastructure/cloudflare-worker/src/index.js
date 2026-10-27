@@ -9,6 +9,12 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const targetHost = env.TARGET_HOST;
+    if (!targetHost) {
+      return new Response(JSON.stringify({ error: 'GATEWAY_NOT_CONFIGURED' }), {
+        status: 503,
+        headers: { 'content-type': 'application/json' },
+      });
+    }
 
     url.hostname = targetHost;
     url.port = '';
