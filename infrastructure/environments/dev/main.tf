@@ -214,6 +214,19 @@ module "lambda" {
 }
 
 
+# Shared secret between the Cloudflare Worker and the Lambda backend: the Worker
+# sends it as X-Origin-Verify and the backend refuses requests without it, so
+# the public function URL cannot be called around Cloudflare. Terraform owns
+# only the secret, not its value, which stays out of the state. Put a value in
+# (and into the Worker, infrastructure/cloudflare-worker/wrangler.toml) BEFORE
+# the Lambda gets the ARN: the backend fails to start on a secret without one.
+#   aws secretsmanager put-secret-value --secret-id dacntt-dev/origin-verify-secret #     --secret-string "$(openssl rand -hex 32)"
+resource "aws_secretsmanager_secret" "origin_verify" {
+  name        = "${var.project_name}-${var.environment}/origin-verify-secret"
+  description = "X-Origin-Verify value shared by the Cloudflare Worker and the Lambda backend"
+  tags        = local.common_tags
+}
+
 # ── 12. Serverless Backend Lambda (SPOF Elimination) ──────
 module "lambda_backend" {
   count  = var.enable_lambda_backend ? 1 : 0
@@ -230,6 +243,7 @@ module "lambda_backend" {
   jwt_secret_arn                    = module.secrets.jwt_secret_arn
   cloudfront_private_key_secret_arn = var.enable_signed_urls ? module.secrets.cloudfront_private_key_secret_arn : ""
   email_app_password_secret_arn     = module.secrets.email_app_password_secret_arn
+  origin_verify_secret_arn          = aws_secretsmanager_secret.origin_verify.arn
   raw_bucket_name                   = module.s3.raw_bucket_name
   processed_bucket_name             = module.s3.processed_bucket_name
   static_bucket_name                = aws_s3_bucket.frontend.bucket
