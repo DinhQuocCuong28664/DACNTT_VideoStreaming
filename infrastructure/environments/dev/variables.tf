@@ -146,6 +146,15 @@ variable "backend_instance_type" {
   default     = "t3.micro"
 }
 
+# Public OAuth client ID (it ships in the frontend bundle, not a secret). Must
+# match VITE_GOOGLE_CLIENT_ID in frontend/.env.production: the backend only
+# accepts Google ID tokens issued for this client.
+variable "google_client_id" {
+  description = "Google OAuth client ID that Google ID tokens must be issued for"
+  type        = string
+  default     = "114993607166-icpnvg75bgq016v0lofg70lft7vommpl.apps.googleusercontent.com"
+}
+
 # ── Serverless Backend Lambda (SPOF Elimination) ──
 variable "enable_lambda_backend" {
   description = "Bật hàm Serverless Backend Lambda (chạy Multi-AZ, tự tắt 0đ khi không dùng, khử SPOF)"

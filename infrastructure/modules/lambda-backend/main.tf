@@ -15,6 +15,10 @@ data "archive_file" "placeholder_zip" {
 
 locals {
   effective_zip_path = var.lambda_zip_path != "" ? var.lambda_zip_path : data.archive_file.placeholder_zip.output_path
+
+  # Same sender the EC2 backend used (scripts/ec2-userdata.sh). Empty lets
+  # backend/src/services/emailService.js fall back to its default.
+  email_from = var.email_user != "" ? "DACNTT Video Platform <${var.email_user}>" : ""
 }
 
 resource "aws_cloudwatch_log_group" "backend_api" {
@@ -46,13 +50,19 @@ resource "aws_lambda_function" "backend_api" {
       JWT_SECRET               = var.jwt_secret
       S3_RAW_BUCKET_NAME       = var.raw_bucket_name
       S3_PROCESSED_BUCKET_NAME = var.processed_bucket_name
+      S3_STATIC_BUCKET_NAME    = var.static_bucket_name
+      GOOGLE_CLIENT_ID         = var.google_client_id
       CLOUDFRONT_DOMAIN        = var.cloudfront_domain
       CLOUDFRONT_KEY_PAIR_ID   = var.cloudfront_key_pair_id
       CLOUDFRONT_PRIVATE_KEY   = var.cloudfront_private_key
       CORS_ORIGINS             = var.cors_origins
       FRONTEND_URL             = var.frontend_url
+      EMAIL_HOST               = var.email_host
+      EMAIL_PORT               = var.email_port
+      EMAIL_FROM               = local.email_from
       EMAIL_USER               = var.email_user
       EMAIL_APP_PASSWORD       = var.email_app_password
+      MAX_VIDEO_SIZE_GB        = tostring(var.max_video_size_gb)
     }
   }
 
@@ -60,6 +70,13 @@ resource "aws_lambda_function" "backend_api" {
     Name = "${var.project_name}-${var.environment}-backend-api"
     Role = "Serverless Express API"
   })
+
+  # Terraform creates the function; .github/workflows/cd-deploy.yml owns its
+  # code. Without this, an apply uploads whatever zip sits in dist/ on the
+  # machine running Terraform and silently rolls production back to it.
+  lifecycle {
+    ignore_changes = [filename, source_code_hash]
+  }
 
   depends_on = [aws_cloudwatch_log_group.backend_api]
 }
@@ -87,11 +104,62 @@ resource "aws_lambda_permission" "backend_api_url_public" {
   function_url_auth_type = "NONE"
 }
 
-resource "aws_lambda_permission" "backend_api_invoke_public" {
-  statement_id  = "AllowPublicInvokeFunction"
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.backend_api.function_name
-  principal     = "*"
+# Function URLs created since October 2025 also need lambda:InvokeFunction.
+# Granted to "*" without a condition it lets any AWS account call the Invoke
+# API directly with a hand-made event, bypassing Cloudflare and spoofing the
+# source IP the rate limiters key on. The lambda:InvokedViaFunctionUrl
+# condition limits it to requests that arrive through the function URL
+# (https://docs.aws.amazon.com/lambda/latest/dg/urls-auth.html).
+#
+# aws_lambda_permission only gained `invoked_via_function_url` in provider
+# 6.28.0 and this stack pins ~> 5.0, so the statement is added with the AWS
+# CLI. After moving to provider >= 6.28, replace this with an
+# aws_lambda_permission that sets invoked_via_function_url = true.
+data "aws_region" "current" {}
+
+resource "terraform_data" "backend_api_invoke_via_url" {
+  triggers_replace = [aws_lambda_function.backend_api.arn]
+
+  input = {
+    function_name = aws_lambda_function.backend_api.function_name
+    region        = data.aws_region.current.name
+    statement_id  = "FunctionURLInvokeAllowPublicAccess"
+  }
+
+  # `interpreter` runs aws directly, without cmd or sh, so the "*" principal
+  # reaches the CLI as is: cmd /C passed it on with its quotes, and sh would
+  # expand an unquoted * to file names. local-exec appends `command` as the
+  # last argument.
+  provisioner "local-exec" {
+    interpreter = [
+      "aws", "lambda", "add-permission",
+      "--region", self.input.region,
+      "--function-name", self.input.function_name,
+      "--statement-id", self.input.statement_id,
+      "--action", "lambda:InvokeFunction",
+      "--principal", "*",
+      "--invoked-via-function-url",
+      "--output", "text",
+      "--query",
+    ]
+    command     = "Statement"
+    environment = { AWS_PAGER = "" }
+  }
+
+  # A missing statement (never added, or removed by hand) must not block the
+  # replace or destroy of this resource.
+  provisioner "local-exec" {
+    when = destroy
+    interpreter = [
+      "aws", "lambda", "remove-permission",
+      "--region", self.input.region,
+      "--function-name", self.input.function_name,
+      "--statement-id",
+    ]
+    command     = self.input.statement_id
+    environment = { AWS_PAGER = "" }
+    on_failure  = continue
+  }
 }
 
 # ── Scheduled Video Reconciler (EventBridge) ──────────────────
@@ -111,7 +179,8 @@ resource "aws_cloudwatch_event_target" "reconciler_target" {
   target_id = "VideoReconcilerLambda"
   arn       = aws_lambda_function.backend_api.arn
 
-  # Invokes the specific reconcilerHandler via payload or handler override if configured
+  # The function's handler (src/lambda.handler) recognises the scheduled event
+  # and runs the reconciler instead of passing it to Express.
 }
 
 resource "aws_lambda_permission" "allow_eventbridge_reconciler" {

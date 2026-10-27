@@ -234,14 +234,19 @@ module "lambda_backend" {
   jwt_secret             = var.jwt_secret
   raw_bucket_name        = module.s3.raw_bucket_name
   processed_bucket_name  = module.s3.processed_bucket_name
+  static_bucket_name     = aws_s3_bucket.frontend.bucket
+  google_client_id       = var.google_client_id
   cloudfront_domain      = "cdn.zelostech.site"
   cloudfront_key_pair_id = module.cloudfront.signing_key_pair_id != null ? module.cloudfront.signing_key_pair_id : ""
   cloudfront_private_key = data.aws_secretsmanager_secret_version.cloudfront_private_key[0].secret_string
   cookie_domain          = ".zelostech.site"
   node_env               = "production"
-  cors_origins           = "https://zelostech.site,https://www.zelostech.site,http://localhost:5173"
-  frontend_url           = var.frontend_url
-  email_user             = var.email_user
-  email_app_password     = var.email_app_password
-  tags                   = local.common_tags
+  # Production origins only, as for the EC2 backend (backend-ec2.tf). Local
+  # development reaches a local backend through the Vite proxy, so the
+  # production API has no reason to accept credentialed calls from localhost.
+  cors_origins       = "https://zelostech.site,https://www.zelostech.site"
+  frontend_url       = var.frontend_url
+  email_user         = var.email_user
+  email_app_password = var.email_app_password
+  tags               = local.common_tags
 }
