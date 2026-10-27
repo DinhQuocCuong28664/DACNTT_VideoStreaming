@@ -96,11 +96,38 @@ resource "aws_lambda_permission" "backend_api_url_public" {
   function_url_auth_type = "NONE"
 }
 
-resource "aws_lambda_permission" "backend_api_invoke_public" {
-  statement_id  = "AllowPublicInvokeFunction"
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.backend_api.function_name
-  principal     = "*"
+# Function URLs created since October 2025 also need lambda:InvokeFunction.
+# Granted to "*" without a condition it lets any AWS account call the Invoke
+# API directly with a hand-made event, bypassing Cloudflare and spoofing the
+# source IP the rate limiters key on. The lambda:InvokedViaFunctionUrl
+# condition limits it to requests that arrive through the function URL
+# (https://docs.aws.amazon.com/lambda/latest/dg/urls-auth.html).
+#
+# aws_lambda_permission only gained `invoked_via_function_url` in provider
+# 6.28.0 and this stack pins ~> 5.0, so the statement is added with the AWS
+# CLI. After moving to provider >= 6.28, replace this with an
+# aws_lambda_permission that sets invoked_via_function_url = true.
+data "aws_region" "current" {}
+
+resource "terraform_data" "backend_api_invoke_via_url" {
+  triggers_replace = [aws_lambda_function.backend_api.arn]
+
+  input = {
+    function_name = aws_lambda_function.backend_api.function_name
+    region        = data.aws_region.current.name
+    statement_id  = "FunctionURLInvokeAllowPublicAccess"
+  }
+
+  provisioner "local-exec" {
+    command     = "aws lambda add-permission --region ${self.input.region} --function-name ${self.input.function_name} --statement-id ${self.input.statement_id} --action lambda:InvokeFunction --principal \"*\" --invoked-via-function-url --query Statement --output text"
+    environment = { AWS_PAGER = "" }
+  }
+
+  provisioner "local-exec" {
+    when        = destroy
+    command     = "aws lambda remove-permission --region ${self.input.region} --function-name ${self.input.function_name} --statement-id ${self.input.statement_id}"
+    environment = { AWS_PAGER = "" }
+  }
 }
 
 # ── Scheduled Video Reconciler (EventBridge) ──────────────────
