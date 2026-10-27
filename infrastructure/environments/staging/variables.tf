@@ -17,21 +17,10 @@ variable "project_name" {
   default = "dacntt"
 }
 
-variable "backend_enabled" {
-  description = "true: dựng máy chủ backend, Elastic IP và bản ghi DNS api-staging. false: xoá cả ba (không còn tốn compute, IPv4 hay EBS)."
-  type        = bool
-  default     = false
-}
-
-variable "git_ref" {
-  description = "Nhánh hoặc tag mà máy chủ staging clone lúc dựng. Nhánh phải có trên GitHub."
+variable "google_client_id" {
+  description = "Google OAuth client ID for Sign in with Google (public value); empty disables it on staging"
   type        = string
-  default     = "master"
-}
-
-variable "backend_instance_type" {
-  type    = string
-  default = "t3.micro"
+  default     = ""
 }
 
 variable "email_user" {
