@@ -1,8 +1,10 @@
+const crypto = require('crypto');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const defaultConfig = require('../config');
-const { planRenditions, probeSegmentCodecs, firstSegmentPath, extractThumbnail, buildMasterPlaylist } = require('../transcoder');
+const { planRenditions, probeFirstSegmentCodecs, extractThumbnail, buildMasterPlaylist } = require('../transcoder');
+const { writeKeyInfo } = require('../hlsKey');
 const { runWithConcurrency } = require('../s3Handler');
 const { buildChunkPlan, chooseGopsPerChunk, audioBitratesFor } = require('./plan');
 const { buildAudioArgs, buildChunkArgs, chunkLabel } = require('./ffmpegArgs');
@@ -188,6 +190,20 @@ const createPipeline = (deps) => {
         audio: hasAudio ? audioBitratesFor(renditions).map((bitrate) => ({ bitrate, key: audioKey(videoId, bitrate) })) : [],
         plan,
       };
+
+      // HLS AES-128, as on the single-job path, with one key for the whole video. The IV is
+      // explicit and the same in every chunk: each chunk numbers its segments from 0, so the
+      // default IV (the media sequence number, RFC 8216 §5.2) would differ from the one the
+      // merged playlist implies for every chunk after the first. The plan document lives in
+      // the private work prefix and is deleted once the video is published; the key itself is
+      // kept with the video record for /api/videos/:id/key.
+      if (config.hlsEncryption && config.hlsEncryption.enabled) {
+        document.encryption = {
+          keyHex: crypto.randomBytes(16).toString('hex'),
+          ivHex: crypto.randomBytes(16).toString('hex'),
+          uri: `${config.keyDeliveryBaseUrl}/videos/${videoId}/key`,
+        };
+      }
       await io.putWorkJson(planKey(videoId), document);
 
       const environment = { VIDEO_ID: videoId, RAW_S3_KEY: rawS3Key };
@@ -289,6 +305,9 @@ const createPipeline = (deps) => {
       const isLast = index === plan.chunks.length - 1;
 
       const dir = scratch(`${videoId}-chunk-${chunkLabel(index)}`);
+      // Key files sit outside the uploaded output directory (hlsKey.js).
+      const key = document.encryption ? Buffer.from(document.encryption.keyHex, 'hex') : null;
+      const keyFiles = key ? writeKeyInfo({ key, uri: document.encryption.uri, iv: document.encryption.ivHex }) : null;
       try {
         const outputDir = path.join(dir, 'out');
         for (const r of renditions) fs.mkdirSync(path.join(outputDir, r.name), { recursive: true });
@@ -308,6 +327,7 @@ const createPipeline = (deps) => {
               gopFrames: plan.gopFrames,
               segmentSeconds: plan.segmentSeconds,
               outputDir,
+              keyInfoPath: keyFiles && keyFiles.keyInfoPath,
             }),
           });
         });
@@ -326,8 +346,7 @@ const createPipeline = (deps) => {
         if (index === 0) {
           result.codecs = {};
           for (const r of renditions) {
-            const first = firstSegmentPath(path.join(outputDir, r.name));
-            const codecs = first && (await probeSegmentCodecs(first));
+            const codecs = await probeFirstSegmentCodecs(path.join(outputDir, r.name), key);
             if (codecs) result.codecs[r.name] = codecs;
           }
         }
@@ -343,6 +362,7 @@ const createPipeline = (deps) => {
         console.log(`🧱 Chunk ${index}/${plan.chunks.length - 1}: ${count} segment x ${renditions.length} mức đã lên S3`);
         return { skipped: false, segments: count };
       } finally {
+        if (keyFiles) keyFiles.remove();
         cleanup(dir);
       }
     });
@@ -388,7 +408,7 @@ const createPipeline = (deps) => {
         for (const r of renditions) {
           const segments = collectSegments(results, r.name);
           fs.mkdirSync(path.join(outputDir, r.name), { recursive: true });
-          fs.writeFileSync(path.join(outputDir, r.name, 'playlist.m3u8'), buildMediaPlaylist(segments));
+          fs.writeFileSync(path.join(outputDir, r.name, 'playlist.m3u8'), buildMediaPlaylist(segments, document.encryption));
           stats[r.name] = renditionStats(segments);
         }
 
@@ -421,6 +441,7 @@ const createPipeline = (deps) => {
           thumbnailUrl,
           duration: document.duration,
           moderation,
+          ...(document.encryption ? { encryptionKey: document.encryption.keyHex, isEncrypted: true } : {}),
         });
 
         console.log(
