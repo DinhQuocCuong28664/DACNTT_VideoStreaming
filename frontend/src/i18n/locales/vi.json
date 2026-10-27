@@ -719,6 +719,8 @@
     "cancelSuccess": "Đã hủy gói hội viên thành công",
     "joinSuccess": "Chúc mừng! Bạn đã trở thành hội viên của kênh {{name}}",
     "joinFailed": "Không tham gia được kênh. Vui lòng thử lại.",
+    "standardTierName": "Hội viên",
+    "notOffered": "Kênh này chưa mở hội viên.",
     "cancelFailed": "Không hủy được gói hội viên. Vui lòng thử lại.",
     "membersOnly": "Dành cho hội viên",
     "lockedTitle": "Video dành riêng cho hội viên",

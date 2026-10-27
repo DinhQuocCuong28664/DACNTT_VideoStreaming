@@ -1,31 +1,60 @@
+const mongoose = require('mongoose');
 const MembershipTier = require('../models/MembershipTier');
 const ChannelMembership = require('../models/ChannelMembership');
 const User = require('../models/User');
+const Video = require('../models/Video');
 const httpError = require('../utils/httpError');
 const { parsePaging } = require('../utils/pagination');
 
 /**
  * Service managing Creator Channel Memberships, Tiers, and Viewer Subscriptions.
+ *
+ * Payments are a sandbox: joining charges nothing (demo only).
  */
 
-const DEFAULT_TIER = {
-  name: 'Fan Cứng (Member)',
+/**
+ * The tier a channel offers once its owner publishes members-only content.
+ * There is no screen for creators to design tiers yet, so publishing such a
+ * video is how a channel opts in. Name and perks are left for the interface to
+ * show in the viewer's language (isStandard).
+ */
+const STANDARD_TIER = {
+  name: 'Member',
   price: 50000,
   currency: 'VND',
   level: 1,
   badgeColor: '#10a37f',
-  perks: [
-    'Huy hiệu hội viên độc quyền hiển thị cạnh tên khi bình luận',
-    'Xem trước và mở khóa toàn bộ video dành riêng cho hội viên',
-    'Ưu tiên giải đáp và tương tác trực tiếp với nhà sáng tạo',
-  ],
-  description: 'Trở thành hội viên chính thức để ủng hộ kênh và mở khóa các video độc quyền!',
+  perks: [],
+  description: '',
   isActive: true,
+  isStandard: true,
+};
+
+/**
+ * The channel's standard tier, created on first need. The upsert and the
+ * unique index one_standard_tier_per_channel keep it to one per channel; a
+ * request that loses the race to create it reads the winner's.
+ */
+const ensureStandardTier = async (channelId) => {
+  try {
+    return await MembershipTier.findOneAndUpdate(
+      { channel: channelId, isStandard: true },
+      { $setOnInsert: { ...STANDARD_TIER, channel: channelId } },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+  } catch (err) {
+    if (err && err.code === 11000) return MembershipTier.findOne({ channel: channelId, isStandard: true });
+    throw err;
+  }
 };
 
 /**
  * Get all active membership tiers of a channel.
- * Returns creator-defined tiers, or fallback default tier if none created yet.
+ *
+ * A channel offers membership only when its owner has created a tier or
+ * published a members-only video. Before, a channel with neither still showed
+ * a default tier, and the first viewer to join created it on that channel.
+ * An empty list now means "this channel does not offer membership".
  */
 const getChannelTiers = async (channelId) => {
   if (!channelId) {
@@ -38,20 +67,14 @@ const getChannelTiers = async (channelId) => {
   }
 
   const tiers = await MembershipTier.find({ channel: channelId, isActive: true }).sort({ level: 1 });
+  if (tiers.length > 0) return tiers;
 
-  // If creator hasn't explicitly customized tiers yet, provide standard default tier
-  if (tiers.length === 0) {
-    return [
-      {
-        ...DEFAULT_TIER,
-        _id: 'default_tier_' + channelId,
-        channel: channelId,
-        isDefault: true,
-      },
-    ];
-  }
+  const offersMembersContent = await Video.exists({ user: channelId, accessLevel: 'members_only' });
+  if (!offersMembersContent) return [];
 
-  return tiers;
+  // A standard tier the owner switched off stays off.
+  const standard = await ensureStandardTier(channelId);
+  return standard && standard.isActive ? [standard] : [];
 };
 
 /**
@@ -68,7 +91,7 @@ const createOrUpdateTier = async (channelId, tierData, creatorUser) => {
     throw httpError(400, 'Tier name and valid price are required');
   }
 
-  if (tierData._id && !tierData._id.toString().startsWith('default_tier_')) {
+  if (tierData._id) {
     const updated = await MembershipTier.findOneAndUpdate(
       { _id: tierData._id, channel: channelId },
       {
@@ -142,21 +165,14 @@ const joinMembership = async (userId, channelId, tierId, paymentData = {}) => {
     throw httpError(404, 'Channel not found', 'CHANNEL_NOT_FOUND');
   }
 
-  let tier = null;
-  if (tierId && !tierId.toString().startsWith('default_tier_')) {
-    tier = await MembershipTier.findOne({ _id: tierId, channel: channelId, isActive: true });
+  // Only a tier this channel actually offers. There is no fallback: falling
+  // back used to create a tier on a channel whose owner never offered one.
+  if (!tierId || !mongoose.Types.ObjectId.isValid(String(tierId))) {
+    throw httpError(400, 'Choose one of the channel\'s membership tiers', 'TIER_REQUIRED');
   }
-
-  // Fallback to existing active tier or auto-create default tier for channel
+  const tier = await MembershipTier.findOne({ _id: tierId, channel: channelId, isActive: true });
   if (!tier) {
-    let existingTier = await MembershipTier.findOne({ channel: channelId, isActive: true });
-    if (!existingTier) {
-      existingTier = await MembershipTier.create({
-        ...DEFAULT_TIER,
-        channel: channelId,
-      });
-    }
-    tier = existingTier;
+    throw httpError(404, 'This channel does not offer that membership tier', 'TIER_NOT_FOUND');
   }
 
   // 30 days active validity period
