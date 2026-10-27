@@ -2,7 +2,7 @@ const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const config = require('./config');
-const { writeKeyInfo } = require('./hlsKey');
+const { writeKeyInfo, segmentIvs, decryptSegmentToTemp } = require('./hlsKey');
 
 /**
  * Khoảng framerate được coi là thật.
@@ -157,7 +157,7 @@ const transcodeToHLS = async (inputPath, outputDir, { onProgress, encryption = n
   }
 
   // Step 4: Generate master playlist
-  const codecsByRendition = await probeRenditionCodecs(outputDir, renditions);
+  const codecsByRendition = await probeRenditionCodecs(outputDir, renditions, keyFiles ? encryption.key : null);
   generateMasterPlaylist(outputDir, renditions, codecsByRendition);
 
   // Step 5: Extract thumbnail (null khi không lấy được khung hình nào)
@@ -501,15 +501,45 @@ const firstSegmentPath = (renditionDir) => {
   return null;
 };
 
+/**
+ * CODECS of a rendition from its first segment.
+ *
+ * ffprobe cannot read an AES-128 segment, so with `key` the segment is first
+ * decrypted to a temporary file with the IV its playlist gives it. Without
+ * this, every encrypted video lost CODECS from master.m3u8 (RFC 8216
+ * §4.3.4.2: every EXT-X-STREAM-INF SHOULD carry it). A failure here leaves
+ * CODECS out rather than failing the video.
+ *
+ * @param {string} renditionDir - holds playlist.m3u8 and its segments
+ * @param {Buffer|null} key - the AES-128 key when the segments are encrypted
+ * @returns {Promise<string|null>}
+ */
+const probeFirstSegmentCodecs = async (renditionDir, key = null) => {
+  const segment = firstSegmentPath(renditionDir);
+  if (!segment) return null;
+  if (!key) return probeSegmentCodecs(segment);
+
+  let plain = null;
+  try {
+    const playlist = fs.readFileSync(path.join(renditionDir, 'playlist.m3u8'), 'utf-8');
+    const iv = segmentIvs(playlist).get(path.basename(segment));
+    if (!iv) return null;
+    plain = decryptSegmentToTemp(segment, key, iv);
+    return await probeSegmentCodecs(plain.path);
+  } catch (err) {
+    console.warn(`⚠️  Could not decrypt ${segment} to probe its codecs: ${err.message}`);
+    return null;
+  } finally {
+    if (plain) plain.remove();
+  }
+};
+
 /** Thăm dò CODECS cho mọi rendition, trả về bảng "tên rendition → chuỗi". */
-const probeRenditionCodecs = async (outputDir, renditions) => {
+const probeRenditionCodecs = async (outputDir, renditions, key = null) => {
   const map = {};
 
   for (const r of renditions) {
-    const segment = firstSegmentPath(path.join(outputDir, r.name));
-    if (!segment) continue;
-
-    const codecs = await probeSegmentCodecs(segment);
+    const codecs = await probeFirstSegmentCodecs(path.join(outputDir, r.name), key);
     if (codecs) map[r.name] = codecs;
     else console.warn(`⚠️  ${r.name}: không đọc được CODECS, sẽ bỏ trống thuộc tính này`);
   }
@@ -950,6 +980,7 @@ module.exports = {
   parseAacCodec,
   probeSegmentCodecs,
   probeRenditionCodecs,
+  probeFirstSegmentCodecs,
   firstSegmentPath,
   extractThumbnail,
   pickThumbnailTime,
