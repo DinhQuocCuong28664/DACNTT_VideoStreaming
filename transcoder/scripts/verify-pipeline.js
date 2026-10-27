@@ -9,10 +9,12 @@
  * Khác verify-chunked.js (kiểm lệnh ffmpeg từng mảnh), script này kiểm cả khâu điều phối: kế hoạch,
  * tên tệp, kết quả từng đoạn, ghép, master playlist, thumbnail, dọn tệp tạm, trạng thái video.
  */
+const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 
 const config = require('../src/config');
+const { segmentIvs } = require('../src/hlsKey');
 const { createPipeline } = require('../src/chunked/pipeline');
 const { probeSource } = require('../src/chunked/probe');
 const { runFfmpegProcess } = require('../src/chunked/run');
@@ -105,14 +107,47 @@ const check = (ok, message) => {
   check(variants.length > 0, `master có ${variants.length} variant`);
   check(variants.every((v) => /BANDWIDTH=\d+/.test(v.attrs) && /CODECS="avc1\.[0-9a-f]{6}(,mp4a\.40\.2)?"/.test(v.attrs)), 'mọi variant có BANDWIDTH đo được và CODECS đọc từ luồng');
 
+  // Encrypted output is read the way a player reads it: ffprobe's HLS demuxer decrypts every
+  // segment with the IV the playlist declares, given the key as a data: URI in place of the key
+  // endpoint. A wrong IV on any chunk shows up below as broken packets.
+  const encrypted = Boolean(config.hlsEncryption && config.hlsEncryption.enabled);
+  if (encrypted) {
+    check(db.state.isEncrypted === true && /^[0-9a-f]{32}$/.test(db.state.encryptionKey || ''), 'khoá AES-128 được lưu cùng video');
+  }
+  const playable = (playlistPath) => {
+    if (!encrypted) return playlistPath;
+    const dataUri = `data:application/octet-stream;base64,${Buffer.from(db.state.encryptionKey, 'hex').toString('base64')}`;
+    const local = playlistPath.replace(/\.m3u8$/, '.local.m3u8');
+    fs.writeFileSync(local, fs.readFileSync(playlistPath, 'utf-8').replace(/URI="[^"]*"/g, `URI="${dataUri}"`));
+    return local;
+  };
+
   const duration = db.state.duration;
   for (const v of variants) {
     const playlist = path.join(videoDir, v.uri);
-    const segments = parseMediaPlaylist(fs.readFileSync(playlist, 'utf-8'));
+    const text = fs.readFileSync(playlist, 'utf-8');
+    const segments = parseMediaPlaylist(text);
     const total = segments.reduce((t, s) => t + s.duration, 0);
     const missing = segments.filter((s) => !fs.existsSync(path.join(path.dirname(playlist), s.file)));
-    const v0 = packets(playlist, 'v:0');
-    const a0 = packets(playlist, 'a:0');
+    if (encrypted) {
+      const label = v.uri.split('/')[0];
+      const plainTs = segments.filter((s) => fs.readFileSync(path.join(path.dirname(playlist), s.file))[0] === 0x47);
+      check(/#EXT-X-KEY:METHOD=AES-128,URI="[^"]+",IV=0x[0-9a-f]{32}/.test(text), `${label}: playlist khai báo khoá và IV`);
+      check(plainTs.length === 0, `${label}: không segment nào còn ở dạng TS rõ`);
+      // A wrong IV breaks only the first 16-byte block of a segment (CBC), which ffmpeg's TS demuxer
+      // resyncs past without an error, so the packet checks below cannot see it. Decrypt the start of
+      // every segment with the IV the playlist declares and require TS sync bytes at 0 and 188.
+      const key = Buffer.from(db.state.encryptionKey, 'hex');
+      const ivs = segmentIvs(text);
+      const badIv = segments.filter((s) => {
+        const decipher = crypto.createDecipheriv('aes-128-cbc', key, ivs.get(s.file)).setAutoPadding(false);
+        const head = decipher.update(fs.readFileSync(path.join(path.dirname(playlist), s.file)).subarray(0, 384));
+        return head[0] !== 0x47 || head[188] !== 0x47;
+      });
+      check(badIv.length === 0, `${label}: mọi segment giải mã bằng IV khai báo ra gói TS hợp lệ${badIv.length ? ` (sai: ${badIv.map((s) => s.file).join(', ')})` : ''}`);
+    }
+    const v0 = packets(playable(playlist), 'v:0');
+    const a0 = packets(playable(playlist), 'a:0');
     const vGaps = gaps(v0, 0.002);
     const aGaps = gaps(a0, 0.002);
     const aHoles = aGaps.filter((g) => g.ms > 0);

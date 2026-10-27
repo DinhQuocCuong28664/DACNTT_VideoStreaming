@@ -95,7 +95,17 @@ const audioWindow = (chunk) => windowArgs(chunk.audioSeekSeconds, chunk.audioDur
  * @param {number} p.segmentSeconds
  * @param {string} p.outputDir
  */
-const buildChunkArgs = ({ videoUrl, videoStreamIndex, audio = [], renditions, chunk, gopFrames, segmentSeconds, outputDir }) => {
+const buildChunkArgs = ({
+  videoUrl,
+  videoStreamIndex,
+  audio = [],
+  renditions,
+  chunk,
+  gopFrames,
+  segmentSeconds,
+  outputDir,
+  keyInfoPath = null,
+}) => {
   const args = ['-hide_banner', '-loglevel', 'warning', '-stats', '-y'];
 
   args.push(...httpInputOptions(videoUrl), ...videoWindow(chunk), '-i', videoUrl);
@@ -151,6 +161,9 @@ const buildChunkArgs = ({ videoUrl, videoStreamIndex, audio = [], renditions, ch
       '-hls_time', String(segmentSeconds),
       '-hls_list_size', '0',
       '-start_number', '0',
+      // AES-128 with the video's key and its explicit IV (pipeline.js planJob): every chunk numbers its
+      // segments from 0, so an IV taken from the sequence number would not match the merged playlist.
+      ...(keyInfoPath ? ['-hls_key_info_file', keyInfoPath] : []),
       '-hls_segment_filename', path.join(outputDir, r.name, `segment_c${chunkLabel(chunk.index)}_%03d.ts`),
       path.join(outputDir, r.name, 'playlist.m3u8')
     );
