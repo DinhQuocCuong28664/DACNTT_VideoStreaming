@@ -100,6 +100,19 @@ const disconnectDB = async () => {
  * (`moderation.status`...) thay vì cả object để không xoá mất
  * `moderation.openReports` do backend quản lý.
  */
+/**
+ * Rekognition moderation taxonomy v7, Violence branch: L1 "Violence"; L2
+ * "Weapons" and "Graphic Violence" (parent Violence); L3 "Weapon Violence",
+ * "Physical Violence", "Self-Harm", "Blood & Gore", "Explosions and Blasts"
+ * (parent Graphic Violence). A label belongs to it when its name or its
+ * parent's name is one of the two inner nodes. Matching only parent
+ * "Violence" missed an L3 label kept without its L2 parent (moderation.js keeps
+ * at most 12 labels, and a parent can fall below MinConfidence).
+ */
+const VIOLENCE_NODES = new Set(['Violence', 'Graphic Violence']);
+const isViolenceLabel = (label) =>
+  Boolean(label) && (VIOLENCE_NODES.has(label.name) || VIOLENCE_NODES.has(label.parentName));
+
 const updateVideoReady = async (videoId, { hlsUrl, thumbnailUrl, duration, moderation, encryptionKey, isEncrypted }) => {
   const update = { status: 'READY', hlsUrl };
   if (thumbnailUrl) update.thumbnailUrl = thumbnailUrl;
@@ -119,9 +132,7 @@ const updateVideoReady = async (videoId, { hlsUrl, thumbnailUrl, duration, moder
     update['moderation.error'] = moderation.error;
     update['moderation.checkedAt'] = new Date();
 
-    const hasViolenceDetected = Array.isArray(moderation.labels) && moderation.labels.some(
-      (l) => l.name === 'Violence' || l.name === 'Graphic Violence' || l.parentName === 'Violence'
-    );
+    const hasViolenceDetected = Array.isArray(moderation.labels) && moderation.labels.some(isViolenceLabel);
     if (hasViolenceDetected) {
       update.hasViolence = true;
     }
@@ -268,4 +279,5 @@ module.exports = {
   getVideo,
   getVideoWithUser,
   updateVideoProgress,
+  isViolenceLabel,
 };
