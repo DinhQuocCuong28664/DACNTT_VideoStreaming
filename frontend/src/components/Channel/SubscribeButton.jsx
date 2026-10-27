@@ -34,7 +34,7 @@ const SubscribeButton = ({
   const { user: currentUser, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const toast = useToast();
+  const [toastNode, showToast] = useToast();
 
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [subscribersCount, setSubscribersCount] = useState(initialSubscribersCount || 0);
@@ -59,6 +59,16 @@ const SubscribeButton = ({
     }
   }, [initialSubscribersCount]);
 
+  // The parent usually passes an inline function, a new one on every render.
+  // With it in the status effect's dependencies the effect reported the
+  // count, the parent re-rendered with a new function and the effect fetched
+  // again: about 25 requests a second for as long as the channel page stayed
+  // open. The effect reads the latest callback from this ref instead.
+  const onCountChangeRef = useRef(onCountChange);
+  useEffect(() => {
+    onCountChangeRef.current = onCountChange;
+  });
+
   // Fetch subscription status from backend
   useEffect(() => {
     if (!channelId || isOwnChannel) {
@@ -76,7 +86,7 @@ const SubscribeButton = ({
           setIsSubscribed(Boolean(data.isSubscribed));
           if (typeof data.subscribersCount === 'number') {
             setSubscribersCount(data.subscribersCount);
-            if (onCountChange) onCountChange(data.subscribersCount);
+            if (onCountChangeRef.current) onCountChangeRef.current(data.subscribersCount);
           }
         }
       })
@@ -90,7 +100,7 @@ const SubscribeButton = ({
     return () => {
       isMounted = false;
     };
-  }, [channelId, isOwnChannel, onCountChange]);
+  }, [channelId, isOwnChannel]);
 
   // Close dropdown on click outside or Escape key
   useEffect(() => {
@@ -149,7 +159,7 @@ const SubscribeButton = ({
         setSubscribersCount(count);
         if (onCountChange) onCountChange(count);
       }
-      toast.success(
+      showToast(
         t('subscription.subscribeSuccess', { name: channelName || t('nav.channel') })
       );
     } catch (err) {
@@ -157,7 +167,7 @@ const SubscribeButton = ({
       setIsSubscribed(false);
       setSubscribersCount(prevCount);
       if (onCountChange) onCountChange(prevCount);
-      toast.error(err.response?.data?.message || 'Failed to subscribe');
+      showToast(err.response?.data?.message || t('subscription.subscribeFailed'));
     } finally {
       setActionInProgress(false);
     }
@@ -179,7 +189,7 @@ const SubscribeButton = ({
       console.warn('LocalStorage write failed:', e);
     }
     setMenuOpen(false);
-    toast.info(t('subscription.notificationSet'));
+    showToast(t('subscription.notificationSet'));
   };
 
   // Open confirmation modal for unsubscribe
@@ -210,7 +220,7 @@ const SubscribeButton = ({
         setSubscribersCount(count);
         if (onCountChange) onCountChange(count);
       }
-      toast.info(
+      showToast(
         t('subscription.unsubscribeSuccess', { name: channelName || t('nav.channel') })
       );
     } catch (err) {
@@ -218,7 +228,7 @@ const SubscribeButton = ({
       setIsSubscribed(true);
       setSubscribersCount(prevCount);
       if (onCountChange) onCountChange(prevCount);
-      toast.error(err.response?.data?.message || 'Failed to unsubscribe');
+      showToast(err.response?.data?.message || t('subscription.unsubscribeFailed'));
     } finally {
       setActionInProgress(false);
     }
@@ -330,6 +340,8 @@ const SubscribeButton = ({
           onClose={() => setShowConfirm(false)}
         />
       )}
+
+      {toastNode}
     </div>
   );
 };

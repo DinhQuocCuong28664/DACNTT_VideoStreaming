@@ -32,8 +32,12 @@ const getPublicProfile = async (req, res, next) => {
       throw error;
     }
 
+    // subscribers is public, as on YouTube, and is the authoritative count kept
+    // by subscriptionService. Without it the channel page only learnt the count
+    // from the subscribe button's status call, which the owner and signed-out
+    // visitors never make.
     const user = await User.findById(id).select(
-      'username displayName avatar channelDescription createdAt'
+      'username displayName avatar channelDescription createdAt subscribers'
     );
 
     if (!user) {
