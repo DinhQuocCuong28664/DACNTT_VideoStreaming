@@ -104,6 +104,12 @@ variable "email_user" {
   default     = ""
 }
 
+variable "origin_verify_secret_arn" {
+  description = "ARN of the secret the Cloudflare Worker sends as X-Origin-Verify; empty leaves the check off (backend/src/middleware/originVerify.js)"
+  type        = string
+  default     = ""
+}
+
 variable "email_app_password_secret_arn" {
   description = "ARN of the secret holding the Gmail App Password; empty leaves mail unconfigured"
   type        = string

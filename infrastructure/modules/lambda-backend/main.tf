@@ -63,6 +63,7 @@ resource "aws_lambda_function" "backend_api" {
       JWT_SECRET_SECRET_ARN             = var.jwt_secret_arn
       CLOUDFRONT_PRIVATE_KEY_SECRET_ARN = var.cloudfront_private_key_secret_arn
       EMAIL_APP_PASSWORD_SECRET_ARN     = var.email_app_password_secret_arn
+      ORIGIN_VERIFY_SECRET_SECRET_ARN   = var.origin_verify_secret_arn
       MAX_VIDEO_SIZE_GB                 = tostring(var.max_video_size_gb)
     }
   }
