@@ -38,10 +38,16 @@ jobs:
         with:
           ref: ${{ env.DEPLOY_SHA }}
 
-      - name: Setup Node.js 22
+      # Build with the Node/npm that CI — Backend uses (NODE_VERSION there) and
+      # that wrote backend/package-lock.json. npm 10 (Node 22) rejects this lock:
+      # mongoose's mongodb driver has an optional peer gcp-metadata@^7.0.1 that
+      # npm 11 leaves out and npm 10 expects, so every deploy failed at npm ci.
+      # The packages are plain JavaScript (no native addons), so the zip runs
+      # unchanged on the function's nodejs22.x runtime.
+      - name: Setup Node.js 24
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
           cache: 'npm'
           cache-dependency-path: backend/package-lock.json
 
@@ -49,7 +55,7 @@ jobs:
         run: |
           set -e
           cd backend
-          npm ci --omit=dev --omit=optional
+          npm ci --omit=dev
           zip -q -r ../backend_api.zip src package.json package-lock.json node_modules
           cd ..
           ls -lh backend_api.zip
