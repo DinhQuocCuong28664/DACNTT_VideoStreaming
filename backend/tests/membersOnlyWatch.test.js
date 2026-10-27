@@ -75,6 +75,29 @@ describe('members-only video', () => {
     expect(res.body.code).toBe('MEMBERS_ONLY_CONTENT');
   });
 
+  // The visibility, status and moderation checks run before the members-only
+  // check, so a non-member learns nothing more than any other stranger.
+  it.each([
+    ['private', { visibility: 'private' }, 404, undefined],
+    ['still processing', { status: 'PROCESSING' }, 400, undefined],
+    ['under review', { moderation: { status: 'flagged' } }, 403, 'VIDEO_UNDER_REVIEW'],
+    ['removed', { moderation: { status: 'blocked' } }, 403, 'VIDEO_REMOVED'],
+  ])('answers a %s members-only video like any other one', async (_label, fields, status, code) => {
+    video = buildVideo(fields);
+    Video.findById.mockReturnValue({ populate: jest.fn().mockResolvedValue(video) });
+    const stranger = { _id: new mongoose.Types.ObjectId(), role: 'user' };
+
+    const res = await request(app).get(`/api/videos/${video._id}`);
+
+    expect(res.status).toBe(status);
+    if (code) expect(res.body.code).toBe(code);
+    expect(JSON.stringify(res.body)).not.toContain('Members cut');
+
+    // A signed-in stranger gets the same answer without a membership query.
+    await expect(videoService.getVideoById(video._id, stranger)).rejects.toMatchObject({ statusCode: status });
+    expect(ChannelMembership.exists).not.toHaveBeenCalled();
+  });
+
   it('plays normally for an active member', async () => {
     ChannelMembership.exists.mockResolvedValue({ _id: new mongoose.Types.ObjectId() });
     const member = { _id: new mongoose.Types.ObjectId(), role: 'user' };

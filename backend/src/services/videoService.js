@@ -248,30 +248,6 @@ const getVideoById = async (videoId, requesterUser = null) => {
   const isOwner =
     requesterUser && requesterUser._id && requesterUser._id.toString() === video.user._id.toString();
 
-  // Kiểm tra quyền hội viên nếu video đặt quyền truy cập là members_only
-  if (video.accessLevel === 'members_only' && !isOwner && !isAdminUser(requesterUser)) {
-    let isMember = false;
-    if (requesterUser && requesterUser._id) {
-      const channelOwnerId = video.user._id || video.user;
-      isMember = Boolean(
-        await ChannelMembership.exists({
-          user: requesterUser._id,
-          channel: channelOwnerId,
-          status: 'active',
-          expiresAt: { $gt: new Date() },
-          tierLevel: { $gte: video.requiredTierLevel || 1 },
-        })
-      );
-    }
-    if (!isMember) {
-      // Keep the Mongoose document: callers call toJSON() on it, and toJSON is
-      // what strips likes, dislikes and multipartUploadId. A plain copy made
-      // the watch endpoint answer 500 for every non-member. The lock travels
-      // in $locals, Mongoose's place for per-request data on a document.
-      video.$locals.lockedReason = MEMBERS_ONLY_LOCK;
-    }
-  }
-
   // Quản trị viên cần xem được mọi video để rà soát, kể cả video riêng tư bị
   // báo cáo qua đường link cũ hay video đã bị gỡ.
   if (!isOwner && !isAdminUser(requesterUser)) {
@@ -302,6 +278,32 @@ const getVideoById = async (videoId, requesterUser = null) => {
     }
     if (moderationStatus === 'flagged') {
       throw httpError(403, 'This video is being reviewed by moderators', 'VIDEO_UNDER_REVIEW');
+    }
+  }
+
+  // Members-only comes last: a private, unfinished or removed video must
+  // answer a non-member exactly as it answers anyone else (404, 400, 403),
+  // not with a locked page that shows its title and channel.
+  if (video.accessLevel === 'members_only' && !isOwner && !isAdminUser(requesterUser)) {
+    let isMember = false;
+    if (requesterUser && requesterUser._id) {
+      const channelOwnerId = video.user._id || video.user;
+      isMember = Boolean(
+        await ChannelMembership.exists({
+          user: requesterUser._id,
+          channel: channelOwnerId,
+          status: 'active',
+          expiresAt: { $gt: new Date() },
+          tierLevel: { $gte: video.requiredTierLevel || 1 },
+        })
+      );
+    }
+    if (!isMember) {
+      // Keep the Mongoose document: callers call toJSON() on it, and toJSON is
+      // what strips likes, dislikes and multipartUploadId. A plain copy made
+      // the watch endpoint answer 500 for every non-member. The lock travels
+      // in $locals, Mongoose's place for per-request data on a document.
+      video.$locals.lockedReason = MEMBERS_ONLY_LOCK;
     }
   }
 
