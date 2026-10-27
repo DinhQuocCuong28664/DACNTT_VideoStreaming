@@ -1,7 +1,58 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { writeKeyInfo } = require('../src/hlsKey');
+const crypto = require('crypto');
+const { writeKeyInfo, segmentIvs, sequenceIv, decryptSegmentToTemp } = require('../src/hlsKey');
+
+describe('segmentIvs', () => {
+  it('uses the IV attribute of the key tag in force', () => {
+    const ivs = segmentIvs(
+      [
+        '#EXTM3U',
+        '#EXT-X-MEDIA-SEQUENCE:0',
+        '#EXT-X-KEY:METHOD=AES-128,URI="https://k",IV=0x0000000000000000000000000000000a',
+        '#EXTINF:6.000000,',
+        'a.ts',
+        '#EXT-X-KEY:METHOD=AES-128,URI="https://k",IV=0X000000000000000000000000000000FF',
+        '#EXTINF:6.000000,',
+        'b.ts',
+      ].join('\r\n')
+    );
+
+    expect(ivs.get('a.ts').toString('hex')).toBe('0000000000000000000000000000000a');
+    expect(ivs.get('b.ts').toString('hex')).toBe('000000000000000000000000000000ff');
+  });
+
+  it('falls back to each segment\'s media sequence number (RFC 8216 §5.2)', () => {
+    const ivs = segmentIvs(
+      ['#EXTM3U', '#EXT-X-MEDIA-SEQUENCE:7', '#EXT-X-KEY:METHOD=AES-128,URI="https://k"', '#EXTINF:6,', 'a.ts', '#EXTINF:6,', 'b.ts'].join('\n')
+    );
+
+    expect(ivs.get('a.ts')).toEqual(sequenceIv(7));
+    expect(ivs.get('b.ts')).toEqual(sequenceIv(8));
+  });
+});
+
+describe('decryptSegmentToTemp', () => {
+  it('returns the plaintext of an AES-128-CBC segment and removes it afterwards', () => {
+    const key = crypto.randomBytes(16);
+    const iv = crypto.randomBytes(16);
+    const plaintext = Buffer.alloc(188 * 3, 0x47);
+    const cipher = crypto.createCipheriv('aes-128-cbc', key, iv);
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hls-enc-'));
+    const segment = path.join(dir, 'segment_000.ts');
+    fs.writeFileSync(segment, Buffer.concat([cipher.update(plaintext), cipher.final()]));
+    try {
+      const plain = decryptSegmentToTemp(segment, key, iv);
+      expect(fs.readFileSync(plain.path)).toEqual(plaintext);
+      plain.remove();
+      expect(fs.existsSync(plain.path)).toBe(false);
+      expect(() => decryptSegmentToTemp(segment, crypto.randomBytes(16), iv)).toThrow();
+    } finally {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
 
 describe('writeKeyInfo', () => {
   const key = Buffer.from('00112233445566778899aabbccddeeff', 'hex');

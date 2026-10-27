@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -40,4 +41,54 @@ const writeKeyInfo = ({ key, uri, iv }) => {
   return { keyInfoPath, remove };
 };
 
-module.exports = { writeKeyInfo };
+/** A 128-bit big-endian IV holding a media sequence number. */
+const sequenceIv = (sequence) => {
+  const iv = Buffer.alloc(16);
+  iv.writeBigUInt64BE(BigInt(sequence), 8);
+  return iv;
+};
+
+/**
+ * The IV of every segment of a media playlist, by segment URI.
+ *
+ * RFC 8216 §5.2: a segment uses the IV attribute of the EXT-X-KEY tag in force,
+ * and without one its own media sequence number. ffmpeg writes the attribute
+ * even when it chose the IV itself, so this is mostly the first case.
+ *
+ * @returns {Map<string, Buffer>}
+ */
+const segmentIvs = (playlistText) => {
+  const ivs = new Map();
+  let sequence = 0;
+  let explicitIv = null;
+  for (const raw of playlistText.split(/\r?\n/)) {
+    const line = raw.trim();
+    if (line.startsWith('#EXT-X-MEDIA-SEQUENCE:')) {
+      sequence = Number(line.slice('#EXT-X-MEDIA-SEQUENCE:'.length));
+    } else if (line.startsWith('#EXT-X-KEY:')) {
+      const match = line.match(/IV=0[xX]([0-9a-fA-F]{32})/);
+      explicitIv = match ? Buffer.from(match[1], 'hex') : null;
+    } else if (line && !line.startsWith('#')) {
+      ivs.set(line, explicitIv || sequenceIv(sequence));
+      sequence += 1;
+    }
+  }
+  return ivs;
+};
+
+/**
+ * Decrypt one AES-128 segment (CBC, PKCS7 padding) into a temporary file, for
+ * tools such as ffprobe that cannot read the encrypted one.
+ *
+ * @returns {{path: string, remove: Function}}
+ */
+const decryptSegmentToTemp = (segmentPath, key, iv) => {
+  const decipher = crypto.createDecipheriv('aes-128-cbc', key, iv);
+  const plain = Buffer.concat([decipher.update(fs.readFileSync(segmentPath)), decipher.final()]);
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hls-plain-'));
+  const plainPath = path.join(dir, path.basename(segmentPath));
+  fs.writeFileSync(plainPath, plain);
+  return { path: plainPath, remove: () => fs.rmSync(dir, { recursive: true, force: true }) };
+};
+
+module.exports = { writeKeyInfo, segmentIvs, sequenceIv, decryptSegmentToTemp };
