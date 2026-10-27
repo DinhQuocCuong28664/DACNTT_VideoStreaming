@@ -46,23 +46,24 @@ resource "aws_lambda_function" "backend_api" {
     variables = {
       NODE_ENV                 = var.node_env
       COOKIE_DOMAIN            = var.cookie_domain
-      MONGODB_URI              = var.mongodb_uri
-      JWT_SECRET               = var.jwt_secret
       S3_RAW_BUCKET_NAME       = var.raw_bucket_name
       S3_PROCESSED_BUCKET_NAME = var.processed_bucket_name
       S3_STATIC_BUCKET_NAME    = var.static_bucket_name
       GOOGLE_CLIENT_ID         = var.google_client_id
       CLOUDFRONT_DOMAIN        = var.cloudfront_domain
       CLOUDFRONT_KEY_PAIR_ID   = var.cloudfront_key_pair_id
-      CLOUDFRONT_PRIVATE_KEY   = var.cloudfront_private_key
       CORS_ORIGINS             = var.cors_origins
       FRONTEND_URL             = var.frontend_url
       EMAIL_HOST               = var.email_host
       EMAIL_PORT               = var.email_port
       EMAIL_FROM               = local.email_from
       EMAIL_USER               = var.email_user
-      EMAIL_APP_PASSWORD       = var.email_app_password
-      MAX_VIDEO_SIZE_GB        = tostring(var.max_video_size_gb)
+      # Secrets by reference only (variables.tf). An empty ARN is skipped.
+      MONGODB_URI_SECRET_ARN            = var.mongodb_uri_secret_arn
+      JWT_SECRET_SECRET_ARN             = var.jwt_secret_arn
+      CLOUDFRONT_PRIVATE_KEY_SECRET_ARN = var.cloudfront_private_key_secret_arn
+      EMAIL_APP_PASSWORD_SECRET_ARN     = var.email_app_password_secret_arn
+      MAX_VIDEO_SIZE_GB                 = tostring(var.max_video_size_gb)
     }
   }
 

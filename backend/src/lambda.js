@@ -1,9 +1,19 @@
 const serverlessExpress = require('@codegenie/serverless-express');
-const app = require('./server');
 const connectDB = require('./config/db');
+const { loadRuntimeSecrets } = require('./config/runtimeSecrets');
 const { reconcileStuckVideos } = require('./services/videoReconciler');
 
 let serverlessExpressInstance;
+
+/**
+ * Secrets first, then the database. server.js is required only after the
+ * secrets are loaded, because it checks MONGODB_URI and JWT_SECRET when it
+ * loads (config/validateEnv.js) and those now come from Secrets Manager.
+ */
+const prepare = async () => {
+  await loadRuntimeSecrets();
+  await connectDB();
+};
 
 /**
  * True for the event EventBridge sends on a schedule rule. The rule in
@@ -34,14 +44,15 @@ exports.handler = async (event, context) => {
     context.callbackWaitsForEmptyEventLoop = false;
   }
 
-  // Ensure DB connection is active for this invocation
-  await connectDB();
+  // Ensure secrets are loaded and the DB connection is active for this invocation
+  await prepare();
 
   if (isScheduledEvent(event)) {
     return runReconciler();
   }
 
   if (!serverlessExpressInstance) {
+    const app = require('./server');
     serverlessExpressInstance = serverlessExpress({
       app,
       binarySettings: {
@@ -70,7 +81,7 @@ exports.reconcilerHandler = async (event, context) => {
     context.callbackWaitsForEmptyEventLoop = false;
   }
 
-  await connectDB();
+  await prepare();
   return runReconciler();
 };
 
