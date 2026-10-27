@@ -9,6 +9,7 @@ const httpError = require('../utils/httpError');
 const { can } = require('../utils/roles');
 const limits = require('../config/uploadLimits');
 const ChannelMembership = require('../models/ChannelMembership');
+const ViewMark = require('../models/ViewMark');
 const { MAX_VIDEO_SIZE_BYTES } = limits;
 
 // Xem và phát video đã bị gỡ hoặc đang chờ rà soát: quyền của admin và operator, không phải
@@ -865,31 +866,34 @@ const deleteVideo = async (videoId, userId) => {
   return video;
 };
 
-/**
- * Bộ nhớ tạm chống đếm trùng lượt xem.
- * Khóa có dạng `<videoId>:<danh tính người xem>`, giá trị là thời điểm ghi nhận
- * gần nhất. Dùng bộ nhớ tiến trình vì mô hình triển khai hiện tại chỉ có một
- * instance backend; khi mở rộng nhiều instance cần chuyển sang Redis để cơ chế
- * chống trùng có hiệu lực trên toàn cụm.
- */
-const viewDedupeCache = new Map();
-
 /** Khoảng thời gian một người xem chỉ được tính một lượt xem cho cùng video */
 const VIEW_DEDUPE_WINDOW_MS = 30 * 60 * 1000; // 30 phút
 
 /**
- * Dọn các mục đã hết hạn để bộ nhớ không phình vô hạn.
+ * Claim the right to count one view for `key` (`<videoId>:<viewer>`), shared
+ * by every backend instance through the viewmarks collection.
  *
- * Map duyệt theo thứ tự chèn, và registerView luôn xoá rồi chèn lại khoá khi
- * ghi, nên các mục xếp từ cũ đến mới: gặp mục còn hạn đầu tiên là dừng. Bản
- * trước duyệt toàn bộ Map ở MỖI lượt xem — O(số người xem trong 30 phút) trên
- * luồng sự kiện duy nhất của Node. Từ khi req.ip là IP thật của từng người thay
- * vì một nhúm IP Cloudflare, Map lớn hơn hẳn và chi phí đó mới thật sự lộ ra.
+ * One upsert decides it. With no mark, the insert succeeds; with an expired
+ * mark, the filter matches and the mark is renewed; with a mark still in its
+ * window, the filter does not match, the insert collides on _id and MongoDB
+ * answers with a duplicate key error, which means "already counted". Two
+ * instances claiming the same new key at once end the same way: one insert
+ * wins, the other collides. Repeated views inside the window do not extend
+ * it, as before.
+ *
+ * @returns {Promise<boolean>} true when this view should be counted
  */
-const pruneViewCache = (now) => {
-  for (const [key, timestamp] of viewDedupeCache) {
-    if (now - timestamp <= VIEW_DEDUPE_WINDOW_MS) break;
-    viewDedupeCache.delete(key);
+const claimViewSlot = async (key, now = new Date()) => {
+  try {
+    const result = await ViewMark.updateOne(
+      { _id: key, expiresAt: { $lte: now } },
+      { $set: { expiresAt: new Date(now.getTime() + VIEW_DEDUPE_WINDOW_MS) } },
+      { upsert: true }
+    );
+    return result.upsertedCount === 1 || result.modifiedCount === 1;
+  } catch (err) {
+    if (err && err.code === 11000) return false;
+    throw err;
   }
 };
 
@@ -927,19 +931,9 @@ const registerView = async (videoId, requesterUser, clientIp) => {
   }
 
   const viewerId = requesterUser ? `u:${requesterUser._id}` : `ip:${clientIp || 'unknown'}`;
-  const cacheKey = `${videoId}:${viewerId}`;
-  const now = Date.now();
-
-  pruneViewCache(now);
-
-  const lastViewedAt = viewDedupeCache.get(cacheKey);
-  if (lastViewedAt && now - lastViewedAt < VIEW_DEDUPE_WINDOW_MS) {
+  if (!(await claimViewSlot(`${videoId}:${viewerId}`))) {
     return { counted: false, views: video.views };
   }
-
-  // Xoá trước khi ghi để khoá chuyển xuống cuối Map (xem pruneViewCache).
-  viewDedupeCache.delete(cacheKey);
-  viewDedupeCache.set(cacheKey, now);
 
   const updated = await Video.findByIdAndUpdate(
     videoId,
@@ -1027,8 +1021,6 @@ module.exports = {
   deleteVideo,
   registerView,
   VIEW_DEDUPE_WINDOW_MS,
-  // Xuất ra để kiểm thử việc dọn bộ nhớ chống đếm trùng
-  viewDedupeCache,
-  pruneViewCache,
+  claimViewSlot,
 };
 
