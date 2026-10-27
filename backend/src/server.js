@@ -17,6 +17,7 @@ const { apiLimiter } = require('./middleware/rateLimiter');
 const { verifyEmailTransport } = require('./services/emailService');
 const { startVideoReconciler } = require('./services/videoReconciler');
 const { healthCheck } = require('./controllers/healthController');
+const originVerify = require('./middleware/originVerify');
 
 // Route imports
 const authRoutes = require('./routes/authRoutes');
@@ -36,6 +37,10 @@ const app = express();
 // req.ip là IP người dùng chứ không phải IP máy Cloudflare (xem
 // config/trustedProxies.js — `trust proxy` bằng 1 từng cho ra đúng IP đó).
 app.set('trust proxy', TRUSTED_PROXIES);
+
+// Refuse requests that did not come through the Cloudflare Worker, before
+// CORS and the routes (middleware/originVerify.js).
+app.use(originVerify);
 
 // Connect to MongoDB Atlas (Standalone server mode; Lambda connects in handler)
 if (!process.env.AWS_LAMBDA_FUNCTION_NAME) {
