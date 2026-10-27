@@ -181,6 +181,7 @@ module "cloudfront" {
 
 module "batch" {
   source                      = "../../modules/batch"
+  key_delivery_base_url       = "https://${local.api_domain}/api"
   project_name                = local.prefix
   region                      = var.aws_region
   batch_service_role_arn      = module.iam.batch_service_role_arn
