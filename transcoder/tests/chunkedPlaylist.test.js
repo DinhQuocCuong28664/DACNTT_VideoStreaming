@@ -197,7 +197,9 @@ describe('readChunkRendition', () => {
 
 describe('buildMediaPlaylist with HLS AES-128', () => {
   const segments = [seg('segment_c0000_000.ts', 6.006), seg('segment_c0001_000.ts', 6.006)];
-  const encryption = { uri: 'https://api.example.test/api/videos/v1/key', ivHex: '0123456789abcdef0123456789abcdef' };
+  // A low-entropy test IV: a random-looking hex string next to "key" reads as a
+  // leaked secret to Gitleaks (generic-api-key).
+  const encryption = { uri: 'https://api.example.test/api/videos/v1/key', ivHex: 'a5'.repeat(16) };
 
   it('puts one key tag with the explicit IV before the first segment', () => {
     const text = buildMediaPlaylist(segments, encryption);
@@ -205,7 +207,7 @@ describe('buildMediaPlaylist with HLS AES-128', () => {
     const keyAt = lines.findIndex((l) => l.startsWith('#EXT-X-KEY:'));
 
     expect(lines.filter((l) => l.startsWith('#EXT-X-KEY:'))).toEqual([
-      '#EXT-X-KEY:METHOD=AES-128,URI="https://api.example.test/api/videos/v1/key",IV=0x0123456789abcdef0123456789abcdef',
+      `#EXT-X-KEY:METHOD=AES-128,URI="https://api.example.test/api/videos/v1/key",IV=0x${'a5'.repeat(16)}`,
     ]);
     expect(keyAt).toBeGreaterThan(lines.indexOf('#EXT-X-MEDIA-SEQUENCE:0'));
     expect(keyAt).toBeLessThan(lines.findIndex((l) => l.startsWith('#EXTINF:')));
