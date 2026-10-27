@@ -3,6 +3,7 @@ const User = require('../models/User');
 const Video = require('../models/Video');
 const httpError = require('../utils/httpError');
 const { parsePaging } = require('../utils/pagination');
+const { publicListingFilter } = require('../utils/moderation');
 
 /**
  * Service managing user-to-channel subscriptions and the subscription video feed.
@@ -156,12 +157,12 @@ const getSubscriptionFeed = async (subscriberId, query = {}) => {
     };
   }
 
-  // 2. Query videos from followed channels
+  // 2. Query videos from followed channels. The same rule as every public
+  // listing: a video under review (flagged) is hidden too, since playing it
+  // answers 403 VIDEO_UNDER_REVIEW.
   const filter = {
     user: { $in: channelIds },
-    status: 'READY',
-    visibility: 'public',
-    'moderation.status': { $ne: 'blocked' },
+    ...publicListingFilter(),
   };
 
   const [videos, total] = await Promise.all([
