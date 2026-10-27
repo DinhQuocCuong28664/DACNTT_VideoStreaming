@@ -12,6 +12,7 @@ jest.mock('../src/models/Report');
 jest.mock('../src/models/ModerationEvent');
 jest.mock('../src/models/User');
 jest.mock('../src/services/s3Service');
+jest.mock('../src/models/ViewMark', () => require('./helpers/fakeViewMark'));
 
 /**
  * Kiểm duyệt nội dung phía backend.
