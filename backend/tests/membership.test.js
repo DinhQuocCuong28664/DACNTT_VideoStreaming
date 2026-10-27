@@ -242,13 +242,7 @@ describe('Channel Membership Service Tests', () => {
         accessLevel: 'members_only',
         requiredTierLevel: 1,
         status: 'READY',
-        toObject: () => ({
-          _id: new mongoose.Types.ObjectId(),
-          title: 'Exclusive Behind the Scenes',
-          user: { _id: channelId },
-          visibility: 'public',
-          accessLevel: 'members_only',
-        }),
+        $locals: {},
       };
 
       Video.findById.mockReturnValue({
@@ -261,8 +255,7 @@ describe('Channel Membership Service Tests', () => {
       const guestUser = { _id: new mongoose.Types.ObjectId() };
       const result = await videoService.getVideoById(mockVideo._id, guestUser);
 
-      expect(result.isLocked).toBe(true);
-      expect(result.lockedReason).toBe('MEMBERS_ONLY');
+      expect(videoService.lockReasonOf(result)).toBe('MEMBERS_ONLY');
     });
 
     it('throws 403 MEMBERS_ONLY_CONTENT in getPlayableVideo when video is locked', async () => {
@@ -274,12 +267,7 @@ describe('Channel Membership Service Tests', () => {
         accessLevel: 'members_only',
         requiredTierLevel: 1,
         status: 'READY',
-        toObject: () => ({
-          _id: new mongoose.Types.ObjectId(),
-          title: 'Exclusive Behind the Scenes',
-          user: { _id: channelId },
-          accessLevel: 'members_only',
-        }),
+        $locals: {},
       };
 
       Video.findById.mockReturnValue({
@@ -304,7 +292,7 @@ describe('Channel Membership Service Tests', () => {
         visibility: 'public',
         accessLevel: 'members_only',
         status: 'READY',
-        toObject: () => mockVideo,
+        $locals: {},
       };
 
       Video.findById.mockReturnValue({
@@ -315,7 +303,7 @@ describe('Channel Membership Service Tests', () => {
       const ownerUser = { _id: channelId };
       const result = await videoService.getPlayableVideo(mockVideo._id, ownerUser);
 
-      expect(result.isLocked).toBeUndefined();
+      expect(videoService.lockReasonOf(result)).toBeNull();
       expect(result.title).toBe('Exclusive Behind the Scenes');
     });
   });
