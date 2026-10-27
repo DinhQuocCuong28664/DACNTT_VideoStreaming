@@ -131,6 +131,18 @@ variable "google_client_id" {
   type        = string
 }
 
+variable "max_video_size_gb" {
+  description = "Upload cap in GiB (MAX_VIDEO_SIZE_GB). Without it the backend falls back to 2 GiB, too small for the required 4-hour videos"
+  type        = number
+  default     = 20
+
+  # backend/src/config/uploadLimits.js clamps anything above its hard cap of 20 GiB.
+  validation {
+    condition     = var.max_video_size_gb > 0 && var.max_video_size_gb <= 20
+    error_message = "max_video_size_gb must be above 0 and at most 20 (the backend's hard cap)."
+  }
+}
+
 variable "lambda_zip_path" {
   description = "Path to the backend lambda zip package"
   type        = string
