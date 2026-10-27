@@ -97,6 +97,21 @@ const publicListingFilter = () => ({
   'moderation.status': { $nin: HIDDEN_MODERATION_STATUSES },
 });
 
+/**
+ * Same rule as transcoder/src/dbHandler.js isViolenceLabel: a stored
+ * Rekognition label whose name or parent is Violence or Graphic Violence
+ * (moderation taxonomy v7, every level of the Violence branch).
+ */
+const VIOLENCE_NODES = new Set(['Violence', 'Graphic Violence']);
+const isViolenceLabel = (label) =>
+  Boolean(label) && (VIOLENCE_NODES.has(label.name) || VIOLENCE_NODES.has(label.parentName));
+
+/** True when automatic moderation found violence in the video. */
+const hasDetectedViolence = (video) => {
+  const labels = video && video.moderation && video.moderation.labels;
+  return Array.isArray(labels) && labels.some(isViolenceLabel);
+};
+
 module.exports = {
   MODERATION_STATUSES,
   HIDDEN_MODERATION_STATUSES,
@@ -110,4 +125,6 @@ module.exports = {
   MAX_APPEAL_MESSAGE,
   MAX_APPEAL_RESOLUTION,
   publicListingFilter,
+  isViolenceLabel,
+  hasDetectedViolence,
 };

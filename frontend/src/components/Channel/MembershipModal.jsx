@@ -181,6 +181,11 @@ const MembershipModal = ({
             <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--text-secondary)' }}>
               {t('common.loading')}
             </div>
+          ) : tiers.length === 0 ? (
+            // The channel has no tier and no members-only video: nothing to join.
+            <p className="yt-tier-desc" style={{ textAlign: 'center', padding: '24px 0' }}>
+              {t('membership.notOffered')}
+            </p>
           ) : (
             tiers.map((tier) => {
               const isSelected = tier._id === selectedTierId;
@@ -194,7 +199,8 @@ const MembershipModal = ({
                 >
                   <div className="yt-tier-card-header">
                     <div className="yt-tier-name-wrapper">
-                      <h4 className="yt-tier-name">{tier.name}</h4>
+                      {/* The standard tier has no creator-written name: show it in the viewer's language. */}
+                      <h4 className="yt-tier-name">{tier.isStandard ? t('membership.standardTierName') : tier.name}</h4>
                       <span
                         className="yt-tier-badge"
                         style={{ backgroundColor: tier.badgeColor || '#10a37f' }}

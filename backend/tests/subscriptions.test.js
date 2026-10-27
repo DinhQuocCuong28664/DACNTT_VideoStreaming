@@ -153,12 +153,15 @@ describe('Subscription Service Tests', () => {
 
       const result = await subscriptionService.getSubscriptionFeed(subscriberId, { page: 1, limit: 10 });
 
+      // Flagged videos are under review and answer 403 when played, so the
+      // feed hides them as every other public listing does.
       expect(Video.find).toHaveBeenCalledWith({
         user: { $in: [channel1, channel2] },
         status: 'READY',
         visibility: 'public',
-        'moderation.status': { $ne: 'blocked' },
+        'moderation.status': { $nin: ['flagged', 'blocked'] },
       });
+      expect(Video.countDocuments).toHaveBeenCalledWith(Video.find.mock.calls[0][0]);
       expect(result.videos).toHaveLength(2);
       expect(result.pagination.total).toBe(2);
     });

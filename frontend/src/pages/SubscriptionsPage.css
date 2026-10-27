@@ -1,0 +1,43 @@
+/* ============================================
+   Subscriptions feed. The grid, skeletons and empty state are shared with the
+   home and channel pages (VideoCard.css); the grid picks its column count with
+   container queries, so this page must be a size container like them.
+   ============================================ */
+
+.subscriptions-page {
+  container-type: inline-size;
+  max-width: 1284px;
+  margin: 0 auto;
+  padding: var(--space-lg) var(--space-lg) var(--space-3xl);
+}
+
+.subscriptions-header {
+  margin-bottom: var(--space-lg);
+}
+
+.subscriptions-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: var(--font-size-2xl);
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.subscriptions-title-icon {
+  flex-shrink: 0;
+  font-size: 1.75rem;
+  color: var(--danger);
+}
+
+.subscriptions-subtitle {
+  margin-top: var(--space-xs);
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+
+@media (max-width: 599px) {
+  .subscriptions-page {
+    padding: var(--space-md) var(--space-md) var(--space-2xl);
+  }
+}

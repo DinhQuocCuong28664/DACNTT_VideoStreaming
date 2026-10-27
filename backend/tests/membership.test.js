@@ -35,17 +35,49 @@ describe('Channel Membership Service Tests', () => {
       });
     });
 
-    it('returns default tier if creator has not configured custom tiers', async () => {
+    it('offers nothing on a channel with no tier and no members-only video', async () => {
       User.exists.mockResolvedValue({ _id: channelId });
-      MembershipTier.find.mockReturnValue({
-        sort: jest.fn().mockResolvedValue([]),
-      });
+      MembershipTier.find.mockReturnValue({ sort: jest.fn().mockResolvedValue([]) });
+      Video.exists.mockResolvedValue(null);
 
-      const tiers = await membershipService.getChannelTiers(channelId);
-      expect(tiers).toHaveLength(1);
-      expect(tiers[0].isDefault).toBe(true);
-      expect(tiers[0].price).toBe(50000);
-      expect(tiers[0].name).toContain('Fan Cứng');
+      expect(await membershipService.getChannelTiers(channelId)).toEqual([]);
+      expect(MembershipTier.findOneAndUpdate).not.toHaveBeenCalled();
+      expect(MembershipTier.create).not.toHaveBeenCalled();
+    });
+
+    it('gives a channel with members-only videos its one standard tier, named by the interface', async () => {
+      User.exists.mockResolvedValue({ _id: channelId });
+      MembershipTier.find.mockReturnValue({ sort: jest.fn().mockResolvedValue([]) });
+      Video.exists.mockResolvedValue({ _id: new mongoose.Types.ObjectId() });
+      const standard = { _id: tierId, channel: channelId, isStandard: true, isActive: true, level: 1 };
+      MembershipTier.findOneAndUpdate.mockResolvedValue(standard);
+
+      expect(await membershipService.getChannelTiers(channelId)).toEqual([standard]);
+      expect(Video.exists).toHaveBeenCalledWith({ user: channelId, accessLevel: 'members_only' });
+      const [filter, update, options] = MembershipTier.findOneAndUpdate.mock.calls[0];
+      expect(filter).toEqual({ channel: channelId, isStandard: true });
+      expect(update.$setOnInsert).toMatchObject({ channel: channelId, isStandard: true, perks: [], level: 1 });
+      expect(options).toMatchObject({ upsert: true });
+    });
+
+    it('reads the winner when two requests create the standard tier at once', async () => {
+      User.exists.mockResolvedValue({ _id: channelId });
+      MembershipTier.find.mockReturnValue({ sort: jest.fn().mockResolvedValue([]) });
+      Video.exists.mockResolvedValue({ _id: new mongoose.Types.ObjectId() });
+      MembershipTier.findOneAndUpdate.mockRejectedValue(Object.assign(new Error('E11000 duplicate key'), { code: 11000 }));
+      const winner = { _id: tierId, isStandard: true, isActive: true };
+      MembershipTier.findOne.mockResolvedValue(winner);
+
+      expect(await membershipService.getChannelTiers(channelId)).toEqual([winner]);
+    });
+
+    it('keeps a standard tier the owner switched off switched off', async () => {
+      User.exists.mockResolvedValue({ _id: channelId });
+      MembershipTier.find.mockReturnValue({ sort: jest.fn().mockResolvedValue([]) });
+      Video.exists.mockResolvedValue({ _id: new mongoose.Types.ObjectId() });
+      MembershipTier.findOneAndUpdate.mockResolvedValue({ _id: tierId, isStandard: true, isActive: false });
+
+      expect(await membershipService.getChannelTiers(channelId)).toEqual([]);
     });
 
     it('returns active creator tiers when configured', async () => {
@@ -122,6 +154,27 @@ describe('Channel Membership Service Tests', () => {
         statusCode: 404,
         errorCode: 'CHANNEL_NOT_FOUND',
       });
+    });
+
+    it('refuses a missing or made-up tier instead of creating one on the channel', async () => {
+      User.exists.mockResolvedValue({ _id: channelId });
+
+      for (const bad of [undefined, `default_tier_${channelId}`]) {
+        await expect(membershipService.joinMembership(userId, channelId, bad)).rejects.toMatchObject({
+          statusCode: 400,
+          errorCode: 'TIER_REQUIRED',
+        });
+      }
+
+      MembershipTier.findOne.mockResolvedValue(null);
+      await expect(membershipService.joinMembership(userId, channelId, tierId)).rejects.toMatchObject({
+        statusCode: 404,
+        errorCode: 'TIER_NOT_FOUND',
+      });
+      expect(MembershipTier.findOne).toHaveBeenCalledWith({ _id: tierId, channel: channelId, isActive: true });
+      expect(MembershipTier.create).not.toHaveBeenCalled();
+      expect(MembershipTier.findOneAndUpdate).not.toHaveBeenCalled();
+      expect(ChannelMembership.findOneAndUpdate).not.toHaveBeenCalled();
     });
 
     it('upserts channel membership with 30-day validity', async () => {

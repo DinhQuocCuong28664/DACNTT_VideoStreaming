@@ -1,14 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import {
-  MdNotificationsActive,
-  MdNotificationsNone,
-  MdNotificationsOff,
-  MdKeyboardArrowDown,
-  MdCheck,
-  MdPersonRemoveAlt1,
-} from 'react-icons/md';
+import { MdKeyboardArrowDown, MdCheck, MdPersonRemoveAlt1 } from 'react-icons/md';
 import { useAuth } from '../../context/useAuth';
 import subscriptionApi from '../../api/subscriptionApi';
 import useToast from '../Common/Toast';
@@ -16,12 +9,15 @@ import ConfirmDialog from '../Common/ConfirmDialog';
 import './SubscribeButton.css';
 
 /**
- * YouTube-style Channel Subscribe Button & Notification Controls.
- * Faithfully mirrors YouTube Web UI:
+ * YouTube-style Channel Subscribe Button.
  * - Unsubscribed: High-contrast pill ("Đăng ký" / "Subscribe") without icons
- * - Subscribed: Subtle secondary pill with Bell icon + "Đã đăng ký" + Chevron Down
- * - Subscribed Click: YouTube dropdown for notifications (All / Personalized / None) & Unsubscribe
+ * - Subscribed: Subtle secondary pill with a check + "Đã đăng ký" + Chevron Down,
+ *   opening a menu with Unsubscribe
  * - Unsubscribe: Native YouTube confirmation modal
+ *
+ * There is no notification choice (All / Personalized / None): the platform
+ * sends no notifications for new uploads, so the menu offered a setting that
+ * did nothing but write to localStorage.
  */
 const SubscribeButton = ({
   channelId,
@@ -41,13 +37,9 @@ const SubscribeButton = ({
   const [loading, setLoading] = useState(true);
   const [actionInProgress, setActionInProgress] = useState(false);
 
-  // YouTube notification dropdown & confirmation dialog state
+  // Unsubscribe menu & confirmation dialog state
   const [menuOpen, setMenuOpen] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [notifPref, setNotifPref] = useState(() => {
-    if (!channelId) return 'personalized';
-    return localStorage.getItem(`yt_notif_${channelId}`) || 'personalized';
-  });
 
   const wrapperRef = useRef(null);
   const isOwnChannel = Boolean(currentUser && channelId && currentUser._id === channelId);
@@ -173,23 +165,11 @@ const SubscribeButton = ({
     }
   };
 
-  // Click on "Subscribed" button toggles notification / unsubscribe dropdown
+  // Click on "Subscribed" button toggles the unsubscribe dropdown
   const handleSubscribedButtonClick = (e) => {
     e.preventDefault();
     e.stopPropagation();
     setMenuOpen((prev) => !prev);
-  };
-
-  // Change notification preference
-  const handleSelectNotif = (tier) => {
-    setNotifPref(tier);
-    try {
-      localStorage.setItem(`yt_notif_${channelId}`, tier);
-    } catch (e) {
-      console.warn('LocalStorage write failed:', e);
-    }
-    setMenuOpen(false);
-    showToast(t('subscription.notificationSet'));
   };
 
   // Open confirmation modal for unsubscribe
@@ -234,17 +214,6 @@ const SubscribeButton = ({
     }
   };
 
-  // Render appropriate Bell icon based on preference
-  const renderBellIcon = () => {
-    if (notifPref === 'all') {
-      return <MdNotificationsActive className="yt-bell-icon" />;
-    }
-    if (notifPref === 'none') {
-      return <MdNotificationsOff className="yt-bell-icon" />;
-    }
-    return <MdNotificationsNone className="yt-bell-icon" />;
-  };
-
   return (
     <div
       ref={wrapperRef}
@@ -261,7 +230,7 @@ const SubscribeButton = ({
           aria-haspopup="menu"
           aria-expanded={menuOpen}
         >
-          {renderBellIcon()}
+          <MdCheck className="yt-bell-icon" aria-hidden="true" />
           <span className="yt-btn-text">{t('subscription.subscribed')}</span>
           <MdKeyboardArrowDown className="yt-arrow-icon" />
         </button>
@@ -278,44 +247,9 @@ const SubscribeButton = ({
         </button>
       )}
 
-      {/* YouTube Notification & Unsubscribe Options Dropdown */}
+      {/* Unsubscribe dropdown */}
       {isSubscribed && menuOpen && (
         <div className="yt-sub-menu" role="menu" aria-orientation="vertical">
-          <button
-            type="button"
-            className="yt-sub-menu-item"
-            role="menuitem"
-            onClick={() => handleSelectNotif('all')}
-          >
-            <MdNotificationsActive className="yt-item-icon" />
-            <span className="yt-item-label">{t('subscription.notificationsAll')}</span>
-            {notifPref === 'all' && <MdCheck className="yt-item-check" />}
-          </button>
-
-          <button
-            type="button"
-            className="yt-sub-menu-item"
-            role="menuitem"
-            onClick={() => handleSelectNotif('personalized')}
-          >
-            <MdNotificationsNone className="yt-item-icon" />
-            <span className="yt-item-label">{t('subscription.notificationsPersonalized')}</span>
-            {notifPref === 'personalized' && <MdCheck className="yt-item-check" />}
-          </button>
-
-          <button
-            type="button"
-            className="yt-sub-menu-item"
-            role="menuitem"
-            onClick={() => handleSelectNotif('none')}
-          >
-            <MdNotificationsOff className="yt-item-icon" />
-            <span className="yt-item-label">{t('subscription.notificationsNone')}</span>
-            {notifPref === 'none' && <MdCheck className="yt-item-check" />}
-          </button>
-
-          <div className="yt-sub-menu-divider" />
-
           <button
             type="button"
             className="yt-sub-menu-item"

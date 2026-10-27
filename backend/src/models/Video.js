@@ -220,14 +220,6 @@ videoSchema.index({ visibility: 1, status: 1, createdAt: -1 });
 videoSchema.index({ 'moderation.status': 1, updatedAt: -1 });
 videoSchema.index({ 'moderation.openReports': -1, createdAt: -1 });
 videoSchema.index({ visibility: 1, status: 1, views: -1 });
-videoSchema.index(
-  { title: 'text', description: 'text', tags: 'text' },
-  {
-    weights: { title: 10, tags: 5, description: 1 },
-    default_language: 'none',
-    name: 'VideoTextSearchIndex',
-  }
-);
 
 // Ghi chu: truoc day o day co mot text index { title: 'text', description: 'text' }.
 // No da duoc go bo vi khong truy van nao dung den — getAllVideos() tim kiem bang

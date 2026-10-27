@@ -6,6 +6,7 @@ import subscriptionApi from '../api/subscriptionApi';
 import VideoCard from '../components/Video/VideoCard';
 import { SkeletonCard, LoadMoreFooter } from '../components/Video/VideoListParts';
 import useInfiniteList from '../hooks/useInfiniteList';
+import './SubscriptionsPage.css';
 
 const PAGE_SIZE = 12;
 
@@ -52,15 +53,11 @@ const SubscriptionsPage = () => {
     );
   } else if (list.items.length === 0) {
     body = (
-      <div className="empty-state py-16 text-center">
-        <MdOutlineSubscriptions className="empty-state-icon mx-auto text-5xl text-neutral-400 mb-4" aria-hidden="true" />
-        <h3 className="empty-state-title text-lg font-semibold text-neutral-800 dark:text-neutral-100 mb-2">
-          {t('subscription.feedEmpty')}
-        </h3>
-        <p className="empty-state-desc text-sm text-neutral-500 dark:text-neutral-400 mb-6 max-w-md mx-auto">
-          {t('subscription.feedSubtitle')}
-        </p>
-        <Link to="/" className="btn btn-primary inline-flex items-center gap-2">
+      <div className="empty-state">
+        <MdOutlineSubscriptions className="empty-state-icon" aria-hidden="true" />
+        <h2 className="empty-state-title">{t('subscription.feedEmpty')}</h2>
+        <p className="empty-state-desc">{t('subscription.feedSubtitle')}</p>
+        <Link to="/" className="btn btn-primary">
           {t('subscription.feedExplore')}
         </Link>
       </div>
@@ -81,16 +78,14 @@ const SubscriptionsPage = () => {
   }
 
   return (
-    <div className="subscriptions-page p-4 sm:p-6 max-w-7xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-neutral-900 dark:text-white flex items-center gap-2">
-          <MdOutlineSubscriptions className="w-7 h-7 text-red-600" />
+    <div className="subscriptions-page">
+      <header className="subscriptions-header">
+        <h1 className="subscriptions-title">
+          <MdOutlineSubscriptions className="subscriptions-title-icon" aria-hidden="true" />
           {t('subscription.feedTitle')}
         </h1>
-        <p className="text-sm text-neutral-500 dark:text-neutral-400 mt-1">
-          {t('subscription.feedSubtitle')}
-        </p>
-      </div>
+        <p className="subscriptions-subtitle">{t('subscription.feedSubtitle')}</p>
+      </header>
 
       {body}
     </div>
