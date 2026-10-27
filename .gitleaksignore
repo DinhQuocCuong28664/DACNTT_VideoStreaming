@@ -20,3 +20,9 @@ f0353adc6793f9dde960a6e5beec229448887042:backend/tests/s3Service.test.js:aws-acc
 # (token ký bằng JWT_SECRET cũ giờ bị API từ chối; app password cũ đã bị thu hồi
 # trong tài khoản Google). Secret mới chỉ nằm trong AWS Secrets Manager.
 3cd9219e9d37c8e03264110d46e919dd683b6396:scripts/ec2-userdata.sh:generic-api-key:25
+
+# transcoder/tests/chunkedPlaylist.test.js (commit 3e5a353) dùng một IV AES-128 giả
+# trong test playlist (chuỗi hex 32 ký tự) cạnh URL có chữ "key"; generic-api-key bắt
+# nhầm. Commit sau đã đổi sang IV entropy thấp, nhưng Gitleaks quét từng commit nên bỏ
+# qua đúng finding này. Nếu lịch sử bị viết lại thì cập nhật SHA ở dòng dưới.
+3e5a353f0319f351ec31b3b05401fdcb5e793d0c:transcoder/tests/chunkedPlaylist.test.js:generic-api-key:208
