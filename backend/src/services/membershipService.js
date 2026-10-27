@@ -40,7 +40,7 @@ const ensureStandardTier = async (channelId) => {
     return await MembershipTier.findOneAndUpdate(
       { channel: channelId, isStandard: true },
       { $setOnInsert: { ...STANDARD_TIER, channel: channelId } },
-      { upsert: true, new: true, setDefaultsOnInsert: true }
+      { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true }
     );
   } catch (err) {
     if (err && err.code === 11000) return MembershipTier.findOne({ channel: channelId, isStandard: true });
@@ -105,7 +105,7 @@ const createOrUpdateTier = async (channelId, tierData, creatorUser) => {
           isActive: true,
         },
       },
-      { new: true, runValidators: true }
+      { returnDocument: 'after', runValidators: true }
     );
     if (!updated) {
       throw httpError(404, 'Tier not found');
@@ -138,7 +138,7 @@ const deleteTier = async (channelId, tierId, creatorUser) => {
   const tier = await MembershipTier.findOneAndUpdate(
     { _id: tierId, channel: channelId },
     { $set: { isActive: false } },
-    { new: true }
+    { returnDocument: 'after' }
   );
 
   if (!tier) {
@@ -193,7 +193,7 @@ const joinMembership = async (userId, channelId, tierId, paymentData = {}) => {
         lastPaymentAmount: tier.price || 0,
       },
     },
-    { upsert: true, new: true, setDefaultsOnInsert: true }
+    { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true }
   ).populate('tier', 'name level price badgeColor perks');
 
   return {
@@ -219,7 +219,7 @@ const cancelMembership = async (userId, channelId) => {
         autoRenew: false,
       },
     },
-    { new: true }
+    { returnDocument: 'after' }
   );
 
   if (!membership) {
