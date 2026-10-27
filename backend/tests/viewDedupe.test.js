@@ -1,45 +1,91 @@
-const {
-  viewDedupeCache,
-  pruneViewCache,
-  VIEW_DEDUPE_WINDOW_MS,
-} = require('../src/services/videoService');
+const mongoose = require('mongoose');
 
 jest.mock('../src/models/Video');
 jest.mock('../src/models/Comment');
 jest.mock('../src/services/s3Service');
+jest.mock('../src/models/ViewMark', () => require('./helpers/fakeViewMark'));
+
+const Video = require('../src/models/Video');
+const ViewMark = require('../src/models/ViewMark');
+const videoService = require('../src/services/videoService');
+
+const { claimViewSlot, VIEW_DEDUPE_WINDOW_MS } = videoService;
 
 /**
- * Dọn bộ nhớ chống đếm trùng lượt xem trong thời gian tỉ lệ với số mục hết
- * hạn, không phải với cả Map.
+ * The view dedupe window lives in MongoDB (viewmarks) so that every Lambda
+ * instance sees the same marks. Before, each instance kept its own Map and a
+ * viewer whose reloads reached different instances was counted on each.
  */
-describe('pruneViewCache', () => {
-  const NOW = 10 * VIEW_DEDUPE_WINDOW_MS;
+describe('claimViewSlot', () => {
+  const T0 = new Date('2026-10-27T12:00:00Z');
+  const at = (ms) => new Date(T0.getTime() + ms);
 
-  afterEach(() => {
-    viewDedupeCache.clear();
+  beforeEach(() => ViewMark.reset());
+
+  it('counts the first view and not a repeat inside the window', async () => {
+    expect(await claimViewSlot('v1:ip:a', T0)).toBe(true);
+    expect(await claimViewSlot('v1:ip:a', at(60 * 1000))).toBe(false);
   });
 
-  it('xoá mọi mục hết hạn ở đầu và giữ các mục còn hạn', () => {
-    viewDedupeCache.set('v1:ip:a', NOW - VIEW_DEDUPE_WINDOW_MS - 3);
-    viewDedupeCache.set('v1:ip:b', NOW - VIEW_DEDUPE_WINDOW_MS - 1);
-    viewDedupeCache.set('v2:ip:a', NOW - 1000);
-    viewDedupeCache.set('v3:ip:c', NOW);
+  it('counts again once the window has ended, even if the mark lingers', async () => {
+    await claimViewSlot('v1:ip:a', T0);
 
-    pruneViewCache(NOW);
-
-    expect([...viewDedupeCache.keys()]).toEqual(['v2:ip:a', 'v3:ip:c']);
+    expect(await claimViewSlot('v1:ip:a', at(VIEW_DEDUPE_WINDOW_MS))).toBe(true);
   });
 
-  it('dừng ở mục còn hạn đầu tiên thay vì duyệt cả Map', () => {
-    for (let i = 0; i < 1000; i += 1) viewDedupeCache.set(`fresh:${i}`, NOW);
+  it('does not extend the window with repeated views', async () => {
+    await claimViewSlot('v1:ip:a', T0);
+    await claimViewSlot('v1:ip:a', at(10 * 60 * 1000));
 
-    const iterate = jest.spyOn(Map.prototype, Symbol.iterator);
-    pruneViewCache(NOW);
-    const entries = iterate.mock.results[0].value;
-    iterate.mockRestore();
+    expect(await claimViewSlot('v1:ip:a', at(VIEW_DEDUPE_WINDOW_MS))).toBe(true);
+  });
 
-    // Iterator chỉ bị đọc đúng một lần (mục đầu tiên còn hạn) rồi dừng.
-    expect(entries.next().value[0]).toBe('fresh:1');
-    expect(viewDedupeCache.size).toBe(1000);
+  it('keeps viewers and videos apart', async () => {
+    await claimViewSlot('v1:ip:a', T0);
+
+    expect(await claimViewSlot('v1:ip:b', T0)).toBe(true);
+    expect(await claimViewSlot('v2:ip:a', T0)).toBe(true);
+  });
+
+  it('sends one upsert that renews only an expired mark', async () => {
+    await claimViewSlot('v1:u:42', T0);
+
+    expect(ViewMark.updateOne).toHaveBeenCalledWith(
+      { _id: 'v1:u:42', expiresAt: { $lte: T0 } },
+      { $set: { expiresAt: at(VIEW_DEDUPE_WINDOW_MS) } },
+      { upsert: true }
+    );
+  });
+
+  it('passes on database errors other than the duplicate key', async () => {
+    ViewMark.updateOne.mockRejectedValueOnce(Object.assign(new Error('not primary'), { code: 10107 }));
+
+    await expect(claimViewSlot('v1:ip:a', T0)).rejects.toThrow('not primary');
+  });
+});
+
+describe('registerView keeps no view state of its own', () => {
+  const videoId = new mongoose.Types.ObjectId().toString();
+  const ownerId = new mongoose.Types.ObjectId();
+
+  beforeEach(() => {
+    ViewMark.reset();
+    jest.clearAllMocks();
+    Video.findById.mockReturnValue({
+      select: jest.fn().mockResolvedValue({ _id: videoId, user: ownerId, status: 'READY', views: 10 }),
+    });
+    Video.findByIdAndUpdate.mockResolvedValue({ views: 11 });
+  });
+
+  it('decides from the database mark alone, which every instance shares', async () => {
+    const first = await videoService.registerView(videoId, null, '203.0.113.9');
+    const repeat = await videoService.registerView(videoId, null, '203.0.113.9');
+
+    // Without the mark the same viewer counts again: nothing else remembered it.
+    ViewMark.marks.clear();
+    const afterMarkGone = await videoService.registerView(videoId, null, '203.0.113.9');
+
+    expect([first.counted, repeat.counted, afterMarkGone.counted]).toEqual([true, false, true]);
+    expect([...ViewMark.marks.keys()]).toEqual([`${videoId}:ip:203.0.113.9`]);
   });
 });

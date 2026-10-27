@@ -1,10 +1,12 @@
 const mongoose = require('mongoose');
 const videoService = require('../src/services/videoService');
 const Video = require('../src/models/Video');
+const ViewMark = require('../src/models/ViewMark');
 
 jest.mock('../src/models/Video');
 jest.mock('../src/models/Comment');
 jest.mock('../src/services/s3Service');
+jest.mock('../src/models/ViewMark', () => require('./helpers/fakeViewMark'));
 
 /**
  * Bộ kiểm thử kiểm soát quyền riêng tư của video.
@@ -200,6 +202,7 @@ describe('Kiểm soát quyền riêng tư của video', () => {
     });
 
     beforeEach(() => {
+      ViewMark.reset();
       Video.findById.mockReturnValue({
         select: jest.fn().mockResolvedValue(mockVideoDoc()),
       });
