@@ -148,9 +148,22 @@ resource "aws_batch_job_definition" "transcoder" {
         "awslogs-region"        = var.region
         "awslogs-stream-prefix" = "transcoder"
       }
+      secretOptions = []
     }
 
-    environment = concat(
+    # AWS fills these defaults in and returns them; leaving them out made every
+    # plan show a change to the job definition.
+    fargatePlatformConfiguration = {
+      platformVersion = "LATEST"
+    }
+    mountPoints = []
+    ulimits     = []
+    volumes     = []
+
+    # AWS returns the environment sorted by name, so the list is built in that
+    # order (Terraform iterates a map by key). The map also rejects a name set
+    # twice.
+    environment = [for name, value in { for e in concat(
       [
         { name = "AWS_REGION", value = var.region },
         { name = "S3_RAW_BUCKET_NAME", value = var.raw_bucket_name },
@@ -192,7 +205,7 @@ resource "aws_batch_job_definition" "transcoder" {
       var.email_user != "" ? [{ name = "EMAIL_USER", value = var.email_user }] : [],
       var.email_from != "" ? [{ name = "EMAIL_FROM", value = var.email_from }] : [],
       var.frontend_url != "" ? [{ name = "FRONTEND_URL", value = var.frontend_url }] : []
-    )
+    ) : e.name => e.value } : { name = name, value = value }]
 
     # EMAIL_APP_PASSWORD chỉ được thêm khi đã có secret thật (email_app_password_secret_arn
     # khác rỗng) — tránh đăng ký Job Definition với ARN rỗng khiến AWS Batch từ
