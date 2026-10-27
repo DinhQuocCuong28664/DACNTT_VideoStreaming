@@ -345,6 +345,7 @@ const WatchPage = () => {
                   channelName={channelName}
                   channelAvatar={user.avatar}
                   onUnlockSuccess={refetchVideo}
+                  notify={showToast}
                 />
               </div>
             ) : (
