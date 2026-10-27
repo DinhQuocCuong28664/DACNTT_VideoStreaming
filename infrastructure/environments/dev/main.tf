@@ -213,12 +213,6 @@ module "lambda" {
 }
 
 
-# Đọc CloudFront private key từ Secrets Manager cho backend Lambda
-data "aws_secretsmanager_secret_version" "cloudfront_private_key" {
-  count     = var.enable_signed_urls ? 1 : 0
-  secret_id = module.secrets.cloudfront_private_key_secret_arn
-}
-
 # ── 12. Serverless Backend Lambda (SPOF Elimination) ──────
 module "lambda_backend" {
   count  = var.enable_lambda_backend ? 1 : 0
@@ -230,23 +224,24 @@ module "lambda_backend" {
   log_retention_days = 7
   lambda_zip_path    = "${path.module}/../../modules/lambda-backend/dist/backend_api.zip"
 
-  mongodb_uri            = var.mongodb_uri
-  jwt_secret             = var.jwt_secret
-  raw_bucket_name        = module.s3.raw_bucket_name
-  processed_bucket_name  = module.s3.processed_bucket_name
-  static_bucket_name     = aws_s3_bucket.frontend.bucket
-  google_client_id       = var.google_client_id
-  cloudfront_domain      = "cdn.zelostech.site"
-  cloudfront_key_pair_id = module.cloudfront.signing_key_pair_id != null ? module.cloudfront.signing_key_pair_id : ""
-  cloudfront_private_key = data.aws_secretsmanager_secret_version.cloudfront_private_key[0].secret_string
-  cookie_domain          = ".zelostech.site"
-  node_env               = "production"
+  # Secrets by ARN; the function reads the values at start-up (modules/lambda-backend/variables.tf).
+  mongodb_uri_secret_arn            = module.secrets.mongodb_uri_secret_arn
+  jwt_secret_arn                    = module.secrets.jwt_secret_arn
+  cloudfront_private_key_secret_arn = var.enable_signed_urls ? module.secrets.cloudfront_private_key_secret_arn : ""
+  email_app_password_secret_arn     = module.secrets.email_app_password_secret_arn
+  raw_bucket_name                   = module.s3.raw_bucket_name
+  processed_bucket_name             = module.s3.processed_bucket_name
+  static_bucket_name                = aws_s3_bucket.frontend.bucket
+  google_client_id                  = var.google_client_id
+  cloudfront_domain                 = "cdn.zelostech.site"
+  cloudfront_key_pair_id            = module.cloudfront.signing_key_pair_id != null ? module.cloudfront.signing_key_pair_id : ""
+  cookie_domain                     = ".zelostech.site"
+  node_env                          = "production"
   # Production origins only, as for the EC2 backend (backend-ec2.tf). Local
   # development reaches a local backend through the Vite proxy, so the
   # production API has no reason to accept credentialed calls from localhost.
-  cors_origins       = "https://zelostech.site,https://www.zelostech.site"
-  frontend_url       = var.frontend_url
-  email_user         = var.email_user
-  email_app_password = var.email_app_password
-  tags               = local.common_tags
+  cors_origins = "https://zelostech.site,https://www.zelostech.site"
+  frontend_url = var.frontend_url
+  email_user   = var.email_user
+  tags         = local.common_tags
 }

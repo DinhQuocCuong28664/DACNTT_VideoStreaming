@@ -31,16 +31,19 @@ variable "lambda_timeout" {
   default     = 30
 }
 
-variable "mongodb_uri" {
-  description = "MongoDB connection string"
+# The function receives the ARNs of its secrets, not their values: it reads
+# them from Secrets Manager when an execution environment starts
+# (backend/src/config/runtimeSecrets.js), so no secret appears in the
+# function configuration. The role needs secretsmanager:GetSecretValue on
+# them (modules/iam, lambda_backend_secrets).
+variable "mongodb_uri_secret_arn" {
+  description = "ARN of the Secrets Manager secret holding the MongoDB connection string"
   type        = string
-  sensitive   = true
 }
 
-variable "jwt_secret" {
-  description = "JWT secret key"
+variable "jwt_secret_arn" {
+  description = "ARN of the Secrets Manager secret holding the JWT signing key"
   type        = string
-  sensitive   = true
 }
 
 variable "raw_bucket_name" {
@@ -65,11 +68,10 @@ variable "cloudfront_key_pair_id" {
   default     = ""
 }
 
-variable "cloudfront_private_key" {
-  description = "CloudFront RSA private key for signing cookies"
+variable "cloudfront_private_key_secret_arn" {
+  description = "ARN of the secret holding the CloudFront RSA private key for signed cookies; empty disables signing"
   type        = string
   default     = ""
-  sensitive   = true
 }
 
 variable "cookie_domain" {
@@ -102,11 +104,10 @@ variable "email_user" {
   default     = ""
 }
 
-variable "email_app_password" {
-  description = "Gmail App Password"
+variable "email_app_password_secret_arn" {
+  description = "ARN of the secret holding the Gmail App Password; empty leaves mail unconfigured"
   type        = string
   default     = ""
-  sensitive   = true
 }
 
 variable "email_host" {
