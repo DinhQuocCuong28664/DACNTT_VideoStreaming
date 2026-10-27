@@ -185,10 +185,17 @@ variable "chunk_memory" {
   default = 2048
 }
 
+# No default: the transcoder writes this URL into every encrypted playlist, so
+# an environment that forgot it would send its viewers to another
+# environment's API for the key (staging did, to production).
 variable "key_delivery_base_url" {
   type        = string
-  default     = "https://api.zelostech.site/api"
-  description = "Base URL for HLS AES-128 decryption key delivery"
+  description = "API base URL players fetch the HLS AES-128 key from (<base>/videos/:id/key), e.g. https://api.zelostech.site/api"
+
+  validation {
+    condition     = can(regex("^https://[^/]+/api$", var.key_delivery_base_url))
+    error_message = "key_delivery_base_url must look like https://<api host>/api."
+  }
 }
 
 variable "tags" {
