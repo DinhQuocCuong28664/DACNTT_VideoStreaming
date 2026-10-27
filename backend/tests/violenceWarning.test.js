@@ -88,3 +88,54 @@ describe('Violence Warning Feature Tests', () => {
     expect(updated.hasViolence).toBe(true);
   });
 });
+
+describe('the violence warning automatic moderation set', () => {
+  const ownerId = new mongoose.Types.ObjectId();
+  const videoId = new mongoose.Types.ObjectId();
+  const doc = (labels, hasViolence = true) => ({
+    _id: videoId,
+    user: ownerId,
+    hasViolence,
+    moderation: { status: 'approved', labels },
+    save: jest.fn().mockResolvedValue(true),
+  });
+
+  afterEach(() => jest.clearAllMocks());
+
+  it.each([
+    ['an L2 label', [{ name: 'Graphic Violence', parentName: 'Violence', confidence: 96 }]],
+    ['an L3 label alone', [{ name: 'Physical Violence', parentName: 'Graphic Violence', confidence: 93 }]],
+  ])('cannot be switched off by the owner when moderation found %s', async (_, labels) => {
+    const video = doc(labels);
+    Video.findOne.mockResolvedValue(video);
+
+    await expect(videoService.updateVideo(videoId, ownerId, { hasViolence: false, title: 'renamed' })).rejects.toMatchObject({
+      statusCode: 403,
+      errorCode: 'VIOLENCE_WARNING_LOCKED',
+    });
+    expect(video.hasViolence).toBe(true);
+    expect(video.title).toBeUndefined();
+    expect(video.save).not.toHaveBeenCalled();
+  });
+
+  it('still lets the owner change other fields and keep the warning on', async () => {
+    const video = doc([{ name: 'Graphic Violence', parentName: 'Violence' }]);
+    Video.findOne.mockResolvedValue(video);
+
+    await videoService.updateVideo(videoId, ownerId, { title: 'renamed', hasViolence: true });
+
+    expect(video.title).toBe('renamed');
+    expect(video.hasViolence).toBe(true);
+    expect(video.save).toHaveBeenCalled();
+  });
+
+  it('lets the owner remove a warning they set themselves', async () => {
+    const video = doc([{ name: 'Smoking', parentName: 'Drugs & Tobacco Paraphernalia & Use' }]);
+    Video.findOne.mockResolvedValue(video);
+
+    await videoService.updateVideo(videoId, ownerId, { hasViolence: false });
+
+    expect(video.hasViolence).toBe(false);
+    expect(video.save).toHaveBeenCalled();
+  });
+});
