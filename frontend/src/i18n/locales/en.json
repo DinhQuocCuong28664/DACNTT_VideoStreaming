@@ -723,6 +723,8 @@
     "cancelSuccess": "Membership cancelled successfully",
     "joinSuccess": "Welcome! You are now a member of {{name}}",
     "joinFailed": "Could not join this channel. Please try again.",
+    "standardTierName": "Member",
+    "notOffered": "This channel doesn't offer memberships yet.",
     "cancelFailed": "Could not cancel the membership. Please try again.",
     "membersOnly": "Members only",
     "lockedTitle": "Members-only video",

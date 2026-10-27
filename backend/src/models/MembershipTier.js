@@ -52,6 +52,13 @@ const membershipTierSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    // The tier a channel gets once it publishes members-only content
+    // (membershipService.getChannelTiers). The interface shows its name and
+    // perks in the viewer's language instead of stored text.
+    isStandard: {
+      type: Boolean,
+      default: false,
+    },
     createdAt: {
       type: Date,
       default: Date.now,
@@ -66,5 +73,11 @@ const membershipTierSchema = new mongoose.Schema(
 // Compound indexes for efficient lookup
 membershipTierSchema.index({ channel: 1, level: 1 });
 membershipTierSchema.index({ channel: 1, isActive: 1 });
+// At most one standard tier per channel, even when two requests create it at once.
+// The key differs from the plain channel_1 index so the two do not clash.
+membershipTierSchema.index(
+  { channel: 1, isStandard: 1 },
+  { unique: true, partialFilterExpression: { isStandard: true }, name: 'one_standard_tier_per_channel' }
+);
 
 module.exports = mongoose.model('MembershipTier', membershipTierSchema);
