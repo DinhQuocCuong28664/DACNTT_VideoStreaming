@@ -4,7 +4,7 @@ const Comment = require('../models/Comment');
 const CommentReport = require('../models/CommentReport');
 const Report = require('../models/Report');
 const s3Service = require('./s3Service');
-const { publicListingFilter } = require('../utils/moderation');
+const { publicListingFilter, hasDetectedViolence } = require('../utils/moderation');
 const httpError = require('../utils/httpError');
 const { can } = require('../utils/roles');
 const limits = require('../config/uploadLimits');
@@ -804,6 +804,13 @@ const updateVideo = async (videoId, userId, updateData) => {
     const error = new Error('Video not found or not owned by user');
     error.statusCode = 404;
     throw error;
+  }
+
+  // The owner may add a violence warning, but not remove one that automatic
+  // moderation set: the warning protects viewers, and the uploader is the one
+  // party with a reason to hide it. Checked before any field changes.
+  if (updateData.hasViolence !== undefined && !updateData.hasViolence && hasDetectedViolence(video)) {
+    throw httpError.localized(403, 'video.violenceWarningLocked', 'VIOLENCE_WARNING_LOCKED');
   }
 
   const allowedFields = ['title', 'description', 'category', 'tags', 'visibility', 'accessLevel', 'requiredTierLevel', 'hasViolence'];
