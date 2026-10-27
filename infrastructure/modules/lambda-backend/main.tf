@@ -70,6 +70,13 @@ resource "aws_lambda_function" "backend_api" {
     Role = "Serverless Express API"
   })
 
+  # Terraform creates the function; .github/workflows/cd-deploy.yml owns its
+  # code. Without this, an apply uploads whatever zip sits in dist/ on the
+  # machine running Terraform and silently rolls production back to it.
+  lifecycle {
+    ignore_changes = [filename, source_code_hash]
+  }
+
   depends_on = [aws_cloudwatch_log_group.backend_api]
 }
 
