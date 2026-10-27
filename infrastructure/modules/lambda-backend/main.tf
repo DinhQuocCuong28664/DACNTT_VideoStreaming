@@ -62,6 +62,7 @@ resource "aws_lambda_function" "backend_api" {
       EMAIL_FROM               = local.email_from
       EMAIL_USER               = var.email_user
       EMAIL_APP_PASSWORD       = var.email_app_password
+      MAX_VIDEO_SIZE_GB        = tostring(var.max_video_size_gb)
     }
   }
 

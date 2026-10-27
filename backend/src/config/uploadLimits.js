@@ -17,11 +17,11 @@ const GiB = 1024 * MiB;
 const HARD_MAX_VIDEO_SIZE_BYTES = 20 * GiB;
 
 /**
- * Trần mặc định đang áp dụng. Giữ 2 GiB cho tới khi video dài được chuyển mã
- * song song theo đoạn: một job chuyển mã chạy tuần tự, và ở 1 vCPU chỉ xử lý
- * được khoảng 30 phút video 1080p (docs/results/transcode-timing.json). Cho tải
- * lên tệp lớn hơn trước thời điểm đó chỉ làm tăng số video thất bại. Nâng bằng
- * biến môi trường MAX_VIDEO_SIZE_GB (tối đa 20) rồi restart pm2.
+ * Default cap when MAX_VIDEO_SIZE_GB is unset: 2 GiB, the size one sequential
+ * single-job transcode handles (about 30 min of 1080p at 1 vCPU,
+ * docs/results/transcode-timing.json). Environments with chunk-parallel
+ * transcoding raise it with MAX_VIDEO_SIZE_GB (at most 20). Production sets it
+ * in Terraform (infrastructure/modules/lambda-backend, max_video_size_gb).
  */
 const DEFAULT_MAX_VIDEO_SIZE_BYTES = 2 * GiB;
 
