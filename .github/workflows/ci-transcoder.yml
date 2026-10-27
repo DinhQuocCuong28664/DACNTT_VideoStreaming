@@ -127,7 +127,6 @@ jobs:
         run: |
           docker build \
             -t ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }} \
-            -t ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest \
             .
 
       # Báo cáo đầy đủ CRITICAL + HIGH để nắm hiện trạng image
@@ -161,10 +160,17 @@ jobs:
             --region ${{ env.AWS_REGION }} \
             --image-scanning-configuration scanOnPush=true
 
+      # ":latest" moves only on master. develop builds push to this repository
+      # too, and ":latest" is where a new environment's job definition starts
+      # (infrastructure/modules/batch/main.tf).
       - name: Push image to ECR
         run: |
-          docker push ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
-          docker push ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
+          IMAGE="${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}"
+          docker push "$IMAGE:${{ github.sha }}"
+          if [ "${{ github.ref }}" = "refs/heads/master" ] || [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            docker tag "$IMAGE:${{ github.sha }}" "$IMAGE:latest"
+            docker push "$IMAGE:latest"
+          fi
 
   # ── Stage 4: Update Batch Job Definition ───────────
   deploy:
