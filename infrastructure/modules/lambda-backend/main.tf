@@ -111,7 +111,8 @@ resource "aws_cloudwatch_event_target" "reconciler_target" {
   target_id = "VideoReconcilerLambda"
   arn       = aws_lambda_function.backend_api.arn
 
-  # Invokes the specific reconcilerHandler via payload or handler override if configured
+  # The function's handler (src/lambda.handler) recognises the scheduled event
+  # and runs the reconciler instead of passing it to Express.
 }
 
 resource "aws_lambda_permission" "allow_eventbridge_reconciler" {
