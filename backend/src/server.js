@@ -1,4 +1,8 @@
-require('dotenv').config();
+// dotenv 17+ announces "◇ injected env (N) from .env" through console.error,
+// which Lambda logs at ERROR level on every cold start although nothing went
+// wrong. Lambda has no .env file (its configuration and runtimeSecrets.js set
+// the environment), so stay quiet there; local runs keep the message.
+require('dotenv').config({ quiet: Boolean(process.env.AWS_LAMBDA_FUNCTION_NAME) });
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
