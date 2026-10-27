@@ -44,3 +44,21 @@ describe('GET /api/videos/:id/key CORS', () => {
     expect(videoService.getVideoKey).not.toHaveBeenCalled();
   });
 });
+
+describe('CORS refusal', () => {
+  it('answers a request from an origin outside CORS_ORIGINS with 403, not 500', async () => {
+    const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const res = await request(app).get('/api/health').set('Origin', 'http://localhost:5173');
+    consoleError.mockRestore();
+
+    expect(res.status).toBe(403);
+    expect(res.body).toMatchObject({ success: false, code: 'CORS_ORIGIN_FORBIDDEN' });
+    expect(res.headers['access-control-allow-origin']).toBeUndefined();
+  });
+
+  it('still serves requests without an Origin header (curl, health checks)', async () => {
+    const res = await request(app).get('/api/health');
+
+    expect(res.status).not.toBe(403);
+  });
+});

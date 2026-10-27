@@ -8,6 +8,7 @@ const connectDB = require('./config/db');
 const validateEnv = require('./config/validateEnv');
 const { TRUSTED_PROXIES } = require('./config/trustedProxies');
 const errorHandler = require('./middleware/errorHandler');
+const httpError = require('./utils/httpError');
 const { apiLimiter } = require('./middleware/rateLimiter');
 const { verifyEmailTransport } = require('./services/emailService');
 const { startVideoReconciler } = require('./services/videoReconciler');
@@ -60,7 +61,11 @@ app.use(
       if (!origin || allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
-      return callback(new Error(translate(DEFAULT_LANGUAGE, 'cors.forbiddenOrigin', { origin })));
+      // 403, not the 500 a bare Error becomes in errorHandler: the request is
+      // refused on purpose, nothing failed on the server.
+      return callback(
+        httpError(403, translate(DEFAULT_LANGUAGE, 'cors.forbiddenOrigin', { origin }), 'CORS_ORIGIN_FORBIDDEN')
+      );
     },
     credentials: true,
   })
