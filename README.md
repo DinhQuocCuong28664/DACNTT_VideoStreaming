@@ -156,6 +156,8 @@ Với cùng một video 1080p dài 25 phút ở hạn mức 8 vCPU Fargate Spot,
 - Hệ thống cấu hình **Origin Access Control (OAC)** để S3 Bucket được đặt ở chế độ hoàn toàn riêng tư. Chỉ Amazon CloudFront được cấp quyền truy cập dữ liệu trong bucket (thông qua S3 Bucket Policy), qua đó ngăn chặn việc truy cập trực tiếp trái phép vào video.
 - Đối với video ở chế độ riêng tư, hệ thống bổ sung lớp bảo vệ thứ hai bằng **CloudFront Signed Cookies** kết hợp **Trusted Key Group**. Backend kiểm tra quyền truy cập rồi ký một Custom Policy giới hạn trong đúng thư mục của video, nhờ đó người không có quyền sẽ nhận HTTP 403 ngay tại Edge Location kể cả khi biết chính xác đường dẫn tệp `.m3u8`. Chi tiết thiết kế và hướng dẫn triển khai xem tại [`docs/PRIVATE_VIDEO_SIGNED_COOKIES.md`](docs/PRIVATE_VIDEO_SIGNED_COOKIES.md).
 
+- Các segment còn được **mã hoá AES-128** theo RFC 8216 (một khoá cho mỗi video, ở cả đường một job lẫn đường chia đoạn). Playlist trỏ tới `https://api.zelostech.site/api/videos/:id/key`; backend chỉ trả khoá sau đúng các bước kiểm tra quyền như khi phát (riêng tư, hội viên, đang rà soát), nên lấy được segment mà không có quyền thì cũng không giải mã được.
+
 > ℹ️ **Trạng thái triển khai thực tế (cập nhật 2026-09-09):** CloudFront Distribution cho video CDN đã deploy và đang chạy trên production. Tài khoản AWS chính (lưu S3/Batch/Lambda) vẫn bị chặn tự tạo CloudFront Distribution (`AccessDenied: Your account must be verified`), nên CloudFront được vận hành trên một AWS account phụ thông qua cơ chế Terraform multi-account provider — S3 Processed Bucket vẫn ở account chính và hoàn toàn riêng tư qua Origin Access Control. **Signed Cookies nay đã bật** (`enable_signed_urls = true`, Trusted Key Group gắn từ 2026-08-30): mọi request video không kèm cookie hợp lệ đều nhận HTTP 403 `MissingKey` ngay tại Edge Location. Cổng ký này phủ toàn bộ video kể cả video công khai; riêng `*/thumbnail.jpg` được cố ý miễn trừ để trang danh mục vẫn hiển thị được ảnh đại diện. Xem Chương 6 của báo cáo (`report/chapters/chap6.tex`) để biết phân tích đầy đủ.
 
 ---
@@ -166,6 +168,16 @@ Với cùng một video 1080p dài 25 phút ở hạn mức 8 vCPU Fargate Spot,
 - Docker Image được tối ưu thông qua **Multi-stage Build** (Base image: `node:24-slim`; FFmpeg 8.1.2 là bản dựng tĩnh của `mwader/static-ffmpeg`, ghim theo digest và sao chép vào image thay vì cài bằng apt, vì các phiên bản FFmpeg khác nhau cho kết quả khác nhau ở ranh giới giữa các đoạn) nhằm giảm kích thước image và hạn chế các thành phần không cần thiết trong môi trường thực thi. Phiên bản Node.js đã trải qua 2 lần nâng cấp: từ `node:18-slim` lên `node:20-slim` do Mongoose 9.x phụ thuộc vào Web Crypto API vốn chưa khả dụng đầy đủ trên Node.js 18; và từ `node:20-slim` lên `node:24-slim` (10/8/2026) vì Node.js 20 đã hết vòng đời hỗ trợ (EOL 30/4/2026, không còn nhận bản vá bảo mật). Chọn Node 24 vì đây là bản Active LTS (hỗ trợ đến 4/2028), ổn định hơn cho production so với bản Current (Node 26, chưa vào LTS tại thời điểm nâng cấp).
 - Sau khi được xây dựng, Docker Image được đưa lên **Amazon Elastic Container Registry (ECR)** để AWS Batch sử dụng khi khởi tạo các tác vụ chuyển mã.
 - AWS Batch chạy trên **AWS Fargate** (hỗ trợ `FARGATE_SPOT` ở môi trường Dev giúp tiết kiệm 70% chi phí) chịu trách nhiệm quản lý các tác vụ xử lý video. Hệ thống có khả năng tự động tạo thêm container khi số lượng nhiệm vụ tăng và kết thúc container khi nhiệm vụ hoàn thành.
+
+### 8.1 Backend API serverless (AWS Lambda)
+
+Từ 2026-10-26 backend Express không còn chạy trên máy EC2 mà chạy trên **AWS Lambda** (`dacntt-dev-backend-api`, Node.js 22, 512 MB) qua `@codegenie/serverless-express`; máy EC2 cũ đã tắt.
+
+- **Đường đi của request:** trình duyệt gọi `https://api.zelostech.site`, một **Cloudflare Worker** (`infrastructure/cloudflare-worker`) chuyển tiếp tới **Lambda Function URL**. Function URL chỉ cho phép gọi `lambda:InvokeFunction` khi đi qua chính nó (điều kiện `lambda:InvokedViaFunctionUrl`).
+- **Secret:** cấu hình hàm chỉ chứa ARN (`MONGODB_URI_SECRET_ARN`, `JWT_SECRET_SECRET_ARN`, ...). Khi một execution environment khởi động, backend đọc giá trị từ **AWS Secrets Manager** rồi mới kết nối MongoDB (`backend/src/config/runtimeSecrets.js`), nên không secret nào nằm dạng chữ trong cấu hình Lambda.
+- **Trạng thái dùng chung giữa các instance:** bộ giới hạn tốc độ (`express-rate-limit`) và bộ chống đếm trùng lượt xem lưu trong MongoDB (`ratelimithits`, `viewmarks`, có TTL index) thay vì RAM, vì mỗi instance Lambda có bộ nhớ riêng.
+- **Bộ đối soát định kỳ:** EventBridge gọi cùng hàm mỗi giờ; handler nhận sự kiện lịch và chạy bộ đối soát video kẹt thay vì chuyển cho Express.
+- **Chi phí lúc rảnh:** không có máy chạy liên tục; Lambda chỉ tính tiền theo lượt gọi.
 
 ---
 
@@ -207,17 +219,17 @@ graph TD
 
     H --> H1[Deploy nhánh lên staging: transcoder + backend + frontend]
     H1 --> H2[Smoke test + DAST: OWASP ZAP baseline]
-    F --> F1[Deploy đúng commit đã qua CI lên EC2 qua SSM]
+    F --> F1[Đóng gói đúng commit đã qua CI và cập nhật code Lambda]
 ```
 
 ### Các Workflows Chính:
-1. `ci-backend.yml`: Chạy Jest Unit Tests (288 test trên 24 test suites) → ESLint check → Gitleaks secret detection → Trivy SCA scan.
-2. `ci-transcoder.yml`: Chạy Jest Unit Tests (361 test trên 17 test suites) → ESLint check → Gitleaks → kiểm tra ranh giới đoạn bằng FFmpeg thật bên trong chính image (Stage 1b) → Build Docker Multi-stage → Trivy Container Scan → Push ECR → Register AWS Batch Job Definition mới.
+1. `ci-backend.yml`: Chạy Jest Unit Tests (648 test trên 52 test suites, 2026-10-28) → ESLint check → Gitleaks secret detection → Trivy SCA scan.
+2. `ci-transcoder.yml`: Chạy Jest Unit Tests (385 test trên 19 test suites, 2026-10-28) → ESLint check → Gitleaks → kiểm tra ranh giới đoạn bằng FFmpeg thật bên trong chính image (Stage 1b) → Build Docker Multi-stage → Trivy Container Scan → Push ECR (tag SHA; tag `:latest` chỉ dời khi build từ `master`) → Register AWS Batch Job Definition mới với image tag SHA. Terraform không tự đổi image: khi apply, nó đọc image của revision đang chạy.
 3. `ci-frontend.yml`: oxlint Code Quality → Build Vite → Tự động deploy lên S3 Static Hosting khi merge vào `main`/`master` (`s3 sync --delete` loại trừ `avatars/`, nơi chứa ảnh đại diện người dùng tải lên) → Invalidate cache CloudFront của frontend.
 4. `ci-infra.yml`: `terraform fmt -check` → `terraform validate` cho cả `dev` và `prod` → Trivy IaC Config Scan.
 5. `security-scan.yml`: DevSecOps Gate cho mọi Pull Request, gồm Gitleaks Secret Detection, Trivy Dependency Scan và SAST bằng `eslint-plugin-security`.
 6. `cd-staging.yml`: Deploy một nhánh lên môi trường **staging** (xem mục "Môi trường Staging" bên dưới) khi có push vào `develop` hoặc khi `scripts/staging-up.sh` kích hoạt: build image transcoder (tag SHA) và đăng ký job definition staging → deploy backend qua SSM nếu máy staging đang bật → build frontend trỏ tới API staging → smoke test → quét DAST bằng OWASP ZAP baseline (chỉ báo cáo).
-7. `cd-deploy.yml`: Chạy sau khi `CI — Backend` **thành công** trên `main`/`master` (sự kiện `workflow_run`), rồi triển khai đúng commit CI vừa kiểm lên Amazon EC2 qua **AWS Systems Manager (SSM Run Command)** — máy chủ backend không gắn key pair SSH nào và security group không mở cổng 22, nên workflow tìm instance theo tag và thực thi `git reset --hard <sha>` + `npm install` + `pm2 restart` từ xa bằng quyền IAM instance profile — rồi kiểm tra API qua tên miền công khai. Workflow này không invalidate CDN video vì nội dung HLS là bất biến.
+7. `cd-deploy.yml`: Chạy sau khi `CI — Backend` **thành công** trên `main`/`master` (sự kiện `workflow_run`). Workflow lấy đúng commit CI vừa kiểm, đóng gói backend bằng Node 24 (`npm ci --omit=dev`, cùng phiên bản npm đã ghi lockfile), gọi `aws lambda update-function-code` cho `dacntt-dev-backend-api`, chờ hàm cập nhật xong rồi kiểm tra `/health`. Terraform bỏ qua phần code của hàm (`ignore_changes`), nên CD là nơi duy nhất thay code; cấu hình (biến môi trường, quyền) vẫn do Terraform quản lý. Workflow này không invalidate CDN video vì nội dung HLS là bất biến.
 
 Các workflow truy cập AWS bằng **OIDC** (role tạm thời trong `infrastructure/environments/dev/github-oidc.tf`, mỗi nhóm job một role với quyền tối thiểu) qua các biến repository `AWS_ECR_PUSH_ROLE_ARN`, `AWS_DEPLOY_ROLE_ARN`, `AWS_CLOUDFRONT_ROLE_ARN` và hai biến staging `AWS_STAGING_DEPLOY_ROLE_ARN`, `AWS_STAGING_CLOUDFRONT_ROLE_ARN` (bật ngày 2026-10-03). GitHub Secrets không còn khoá AWS tĩnh nào. Environment `production` trên GitHub chỉ cho phép nhánh `master` (Settings → Environments → Deployment branches, đặt ngày 2026-09-29): role deploy tin mọi job gắn `environment: production`, nên không có quy tắc này thì một workflow ở nhánh bất kỳ cũng lấy được quyền deploy production.
 
@@ -252,20 +264,21 @@ Cách phân tách này xuất phát từ thực tế vận hành: phần lớn l
 
 ## 10. INFRASTRUCTURE AS CODE
 
-Toàn bộ hạ tầng AWS được quản lý bằng **Terraform** theo phương pháp Infrastructure as Code (IaC) chia thành 13 modules độc lập:
+Toàn bộ hạ tầng AWS được quản lý bằng **Terraform** theo phương pháp Infrastructure as Code (IaC) chia thành 14 modules độc lập:
 
 | Module | Đường dẫn | Chức năng chính |
 |---|---|---|
 | `s3` | `infrastructure/modules/s3` | Raw & Processed S3 Buckets, CORS, Glacier Lifecycle (30 ngày), S3 Event Notification |
 | `sqs` | `infrastructure/modules/sqs` | Transcode Queue (Visibility 300s) + Dead Letter Queue (DLQ) + Queue Policy |
 | `ecr` | `infrastructure/modules/ecr` | Image Scanning on Push, Image Lifecycle Policy (giữ 5 images mới nhất) |
-| `iam` | `infrastructure/modules/iam` | IAM Roles: Batch Service, ECS Task Exec, Transcoder Task, Lambda Submitter |
+| `iam` | `infrastructure/modules/iam` | IAM Roles: Batch Service, ECS Task Exec, Transcoder Task, Lambda Submitter, Lambda Backend |
 | `vpc` | `infrastructure/modules/vpc` | VPC (10.0.0.0/16), 2 Public Subnets, IGW, Security Groups, S3 VPC Gateway Endpoint |
-| `secrets` | `infrastructure/modules/secrets` | AWS Secrets Manager lưu `mongodb-uri` & `jwt-secret` |
+| `secrets` | `infrastructure/modules/secrets` | AWS Secrets Manager lưu `mongodb-uri`, `jwt-secret`, `email-app-password`, `cloudfront-private-key`, `cloudflare-api-token` |
 | `sns` | `infrastructure/modules/sns` | SNS Notification Topics (`transcode-complete`, `dlq-alert`) + Email Subscriptions |
 | `monitoring` | `infrastructure/modules/monitoring` | CloudWatch Log Groups, Alarms (DLQ Depth > 0), CloudWatch Dashboard |
 | `batch` | `infrastructure/modules/batch` | Fargate Compute Environment (SPOT/ON_DEMAND), hai Job Queue (chính và ưu tiên thấp cho các chunk), Job Definition |
 | `lambda` | `infrastructure/modules/lambda` | Lambda Job Submitter (Node.js 22), SQS Event Source Mapping trigger |
+| `lambda-backend` | `infrastructure/modules/lambda-backend` | Backend API trên Lambda (Node.js 22): Function URL, quyền gọi qua Function URL, log group, lịch EventBridge cho bộ đối soát; secret truyền bằng ARN |
 | `cloudfront` | `infrastructure/modules/cloudfront` | CloudFront Distribution, Origin Access Control (OAC), HLS Cache Policy |
 | `backend-userdata` | `infrastructure/modules/backend-userdata` | Dựng chuỗi user-data của EC2 backend từ `scripts/ec2-userdata.sh` (không tạo tài nguyên) |
 | `cloudflare-ips` | `infrastructure/modules/cloudflare-ips` | Dải IPv4 của Cloudflare cho security group của backend (không tạo tài nguyên) |
@@ -277,7 +290,7 @@ Hệ thống phân tách môi trường rõ ràng giữa `infrastructure/environ
 ## 11. CÔNG NGHỆ DỰ KIẾN
 
 - **Frontend:** React.js (Vite), HLS.js, Axios, React Router v6, Lucide/Feather Icons.
-- **Backend API:** Node.js, Express.js, JWT Authentication, AWS SDK v3 (`@aws-sdk/client-s3`, `@aws-sdk/s3-request-presigner`).
+- **Backend API:** Node.js, Express.js trên AWS Lambda (`@codegenie/serverless-express`) sau Cloudflare Worker, JWT Authentication, AWS SDK v3 (`@aws-sdk/client-s3`, `@aws-sdk/s3-request-presigner`, `@aws-sdk/client-secrets-manager`).
 - **Xử lý video (Transcoder Engine):** FFmpeg, Node.js worker, Docker Multi-stage Container trên AWS Batch và AWS Fargate.
 - **Cloud Infrastructure (AWS):** Amazon S3, Amazon SQS, AWS Batch, AWS Fargate, Amazon ECR, Amazon CloudFront (OAC), Amazon SNS, AWS Secrets Manager, Amazon CloudWatch.
 - **Cơ sở dữ liệu:** MongoDB Atlas (Mongoose ODM 9.x).
@@ -317,7 +330,7 @@ Hệ thống phân tách môi trường rõ ràng giữa `infrastructure/environ
 9. Hệ thống phân phối video bảo mật qua Amazon CloudFront (OAC).
 10. Docker Image chứa FFmpeg và Node.js (Multi-stage build).
 11. CI/CD Pipeline 4 giai đoạn sử dụng GitHub Actions.
-12. Bộ mã nguồn Infrastructure as Code 13 modules sử dụng Terraform.
+12. Bộ mã nguồn Infrastructure as Code 14 modules sử dụng Terraform.
 13. Khả năng khởi tạo toàn bộ hạ tầng AWS thông qua một lệnh `terraform apply`.
 14. Mã nguồn hoàn chỉnh của toàn bộ hệ thống (Monorepo).
 15. Tài liệu phân tích và thiết kế, Báo cáo đánh giá hiệu năng chuyển mã, Kịch bản k6 Load Test và Báo cáo phân tích tối ưu chi phí FinOps.
