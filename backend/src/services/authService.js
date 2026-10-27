@@ -215,11 +215,20 @@ const buildUniqueUsername = async (base) => {
  * người đăng ký trước bị xoá — chính là chỗ CVE trên làm sai.
  */
 const verifyGoogleIdToken = async (idToken) => {
+  // With an empty audience google-auth-library skips the `aud` check and
+  // accepts an ID token issued for any Google client, so a site the user once
+  // signed in to with Google could replay that token here. Refuse instead.
+  const audience = process.env.GOOGLE_CLIENT_ID;
+  if (!audience) {
+    console.error('GOOGLE_CLIENT_ID is not set: refusing Google sign-in');
+    throw httpError(503, 'Google sign-in is not configured', 'GOOGLE_SIGNIN_UNAVAILABLE');
+  }
+
   let payload;
   try {
     const ticket = await googleClient.verifyIdToken({
       idToken,
-      audience: process.env.GOOGLE_CLIENT_ID,
+      audience,
     });
     payload = ticket.getPayload();
   } catch {

@@ -18,6 +18,8 @@ const authService = require('../src/services/authService');
 const User = require('../src/models/User');
 
 process.env.JWT_SECRET = 'test_secret_key_for_unit_tests_only_32chars';
+const TEST_CLIENT_ID = 'test-client.apps.googleusercontent.com';
+process.env.GOOGLE_CLIENT_ID = TEST_CLIENT_ID;
 
 const googlePayload = { sub: 'google-sub-1', email: 'chuthat@example.com', email_verified: true, name: 'Chủ thật' };
 
@@ -126,5 +128,34 @@ describe('Các đường khác chứng minh sở hữu hộp thư', () => {
 
     expect(user.emailVerified).toBe(true);
     expect(user.save).toHaveBeenCalled();
+  });
+});
+
+describe('Google ID token audience', () => {
+  afterEach(() => {
+    process.env.GOOGLE_CLIENT_ID = TEST_CLIENT_ID;
+    jest.clearAllMocks();
+  });
+
+  it('checks the token against GOOGLE_CLIENT_ID', async () => {
+    verifyIdToken.mockResolvedValue({ getPayload: () => googlePayload });
+    User.findOne.mockResolvedValue({ _id: 'g1', email: googlePayload.email, googleId: 'google-sub-1' });
+
+    await authService.loginWithGoogle('id-token');
+
+    expect(verifyIdToken).toHaveBeenCalledWith({ idToken: 'id-token', audience: TEST_CLIENT_ID });
+  });
+
+  it('refuses Google sign-in when GOOGLE_CLIENT_ID is unset instead of skipping the audience check', async () => {
+    delete process.env.GOOGLE_CLIENT_ID;
+    const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    await expect(authService.loginWithGoogle('id-token')).rejects.toMatchObject({
+      statusCode: 503,
+      errorCode: 'GOOGLE_SIGNIN_UNAVAILABLE',
+    });
+    await expect(authService.linkGoogleAccount('u1', 'id-token')).rejects.toMatchObject({ statusCode: 503 });
+    expect(verifyIdToken).not.toHaveBeenCalled();
+    consoleError.mockRestore();
   });
 });

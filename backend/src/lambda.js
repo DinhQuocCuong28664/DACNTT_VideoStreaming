@@ -6,7 +6,27 @@ const { reconcileStuckVideos } = require('./services/videoReconciler');
 let serverlessExpressInstance;
 
 /**
+ * True for the event EventBridge sends on a schedule rule. The rule in
+ * infrastructure/modules/lambda-backend targets this same function, so the
+ * main handler must recognise it: serverless-express cannot map it to an
+ * HTTP request and fails every run.
+ */
+const isScheduledEvent = (event) =>
+  Boolean(event) && event.source === 'aws.events' && event['detail-type'] === 'Scheduled Event';
+
+const runReconciler = async () => {
+  console.log('Running scheduled video reconciler');
+  const result = await reconcileStuckVideos();
+  console.log('Reconciler completed:', JSON.stringify(result));
+  return {
+    statusCode: 200,
+    body: JSON.stringify(result),
+  };
+};
+
+/**
  * Main Lambda Handler for Express HTTP requests via Lambda Function URL or API Gateway.
+ * Scheduled EventBridge events are routed to the video reconciler instead.
  */
 exports.handler = async (event, context) => {
   // Allow Node.js process to freeze while retaining active MongoDB connection pool
@@ -16,6 +36,10 @@ exports.handler = async (event, context) => {
 
   // Ensure DB connection is active for this invocation
   await connectDB();
+
+  if (isScheduledEvent(event)) {
+    return runReconciler();
+  }
 
   if (!serverlessExpressInstance) {
     serverlessExpressInstance = serverlessExpress({
@@ -37,8 +61,9 @@ exports.handler = async (event, context) => {
 };
 
 /**
- * EventBridge Scheduled Handler for periodic stuck video cleanup (runs every 1-6 hours).
- * Replaces the long-running setInterval on EC2 with a pure serverless cron trigger.
+ * Standalone entry point for the reconciler, for a function configured with
+ * handler `src/lambda.reconcilerHandler`. Replaces the setInterval the EC2
+ * backend ran (services/videoReconciler.js).
  */
 exports.reconcilerHandler = async (event, context) => {
   if (context) {
@@ -46,12 +71,7 @@ exports.reconcilerHandler = async (event, context) => {
   }
 
   await connectDB();
-  console.log('⏰ Running EventBridge scheduled video reconciler...');
-  const result = await reconcileStuckVideos();
-  console.log('✅ Reconciler completed:', result);
-
-  return {
-    statusCode: 200,
-    body: JSON.stringify(result),
-  };
+  return runReconciler();
 };
+
+exports.isScheduledEvent = isScheduledEvent;
