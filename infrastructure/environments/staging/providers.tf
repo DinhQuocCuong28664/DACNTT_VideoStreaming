@@ -33,6 +33,11 @@ terraform {
       source  = "hashicorp/archive"
       version = "~> 2.0"
     }
+    # modules/batch reads the image of the latest job definition revision with the AWS CLI.
+    external = {
+      source  = "hashicorp/external"
+      version = "~> 2.0"
+    }
     cloudflare = {
       source  = "cloudflare/cloudflare"
       version = "~> 5.0"
