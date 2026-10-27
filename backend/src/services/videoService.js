@@ -323,27 +323,17 @@ const getPlayableVideo = async (videoId, requesterUser = null) => {
 
 /**
  * Cấp khóa giải mã HLS AES-128 (16 bytes nhị phân) cho trình phát hợp lệ.
+ *
+ * The key is checked with the same rules as playback (getPlayableVideo):
+ * private, members-only, unfinished, removed and under-review videos. A
+ * separate, shorter list here had let anyone fetch the key of a members-only
+ * or under-review video.
  */
 const getVideoKey = async (videoId, requesterUser = null) => {
+  await getPlayableVideo(videoId, requesterUser);
+
   const video = await Video.findById(videoId).select('+encryptionKey');
-
-  if (!video) {
-    throw httpError(404, 'Video not found');
-  }
-
-  const isOwner = requesterUser && String(requesterUser._id) === String(video.user);
-  const isAdmin = isAdminUser(requesterUser);
-
-  if (video.visibility === 'private' && !isOwner && !isAdmin) {
-    throw httpError(403, 'This video is private', 'VIDEO_PRIVATE');
-  }
-
-  const moderationStatus = video.moderation && video.moderation.status;
-  if (moderationStatus === 'blocked' && !isAdmin) {
-    throw httpError(403, 'This video has been removed for violating the community guidelines', 'VIDEO_REMOVED');
-  }
-
-  if (!video.encryptionKey) {
+  if (!video || !video.encryptionKey) {
     throw httpError(404, 'No encryption key found for this video', 'KEY_NOT_FOUND');
   }
 
