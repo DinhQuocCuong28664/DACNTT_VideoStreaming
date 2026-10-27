@@ -125,15 +125,39 @@ resource "terraform_data" "backend_api_invoke_via_url" {
     statement_id  = "FunctionURLInvokeAllowPublicAccess"
   }
 
+  # `interpreter` runs aws directly, without cmd or sh, so the "*" principal
+  # reaches the CLI as is: cmd /C passed it on with its quotes, and sh would
+  # expand an unquoted * to file names. local-exec appends `command` as the
+  # last argument.
   provisioner "local-exec" {
-    command     = "aws lambda add-permission --region ${self.input.region} --function-name ${self.input.function_name} --statement-id ${self.input.statement_id} --action lambda:InvokeFunction --principal \"*\" --invoked-via-function-url --query Statement --output text"
+    interpreter = [
+      "aws", "lambda", "add-permission",
+      "--region", self.input.region,
+      "--function-name", self.input.function_name,
+      "--statement-id", self.input.statement_id,
+      "--action", "lambda:InvokeFunction",
+      "--principal", "*",
+      "--invoked-via-function-url",
+      "--output", "text",
+      "--query",
+    ]
+    command     = "Statement"
     environment = { AWS_PAGER = "" }
   }
 
+  # A missing statement (never added, or removed by hand) must not block the
+  # replace or destroy of this resource.
   provisioner "local-exec" {
-    when        = destroy
-    command     = "aws lambda remove-permission --region ${self.input.region} --function-name ${self.input.function_name} --statement-id ${self.input.statement_id}"
+    when = destroy
+    interpreter = [
+      "aws", "lambda", "remove-permission",
+      "--region", self.input.region,
+      "--function-name", self.input.function_name,
+      "--statement-id",
+    ]
+    command     = self.input.statement_id
     environment = { AWS_PAGER = "" }
+    on_failure  = continue
   }
 }
 
