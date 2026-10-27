@@ -8,7 +8,7 @@
 # Hai role, chỉ tin job gắn `environment: staging` (claim dạng immutable
 # subject của repo — xem giải thích ở dev/github-oidc.tf):
 # - deploy (account chính): đẩy image thử lên repo ECR dùng chung, đăng ký job
-#   definition của staging, chạy lệnh deploy trên máy staging qua SSM, đồng bộ
+#   definition của staging, cập nhật code của Lambda backend staging, đồng bộ
 #   bucket frontend staging;
 # - cloudfront (account A): invalidate đúng distribution frontend staging.
 # ═══════════════════════════════════════════════════
@@ -106,35 +106,12 @@ data "aws_iam_policy_document" "github_staging_deploy" {
     resources = [module.iam.transcoder_task_role_arn, module.iam.ecs_task_execution_role_arn]
   }
 
+  # Same deploy as cd-deploy.yml in production: upload a new zip and wait for
+  # the update to finish. Only the staging function.
   statement {
-    sid       = "FindStagingInstance"
-    actions   = ["ec2:DescribeInstances"]
-    resources = ["*"]
-  }
-
-  # Máy staging bị xoá và dựng lại mỗi lần bật nên không có ARN cố định: giới
-  # hạn theo tag Name thay vì theo instance ID.
-  statement {
-    sid       = "RunDeployOnStagingInstanceOnly"
-    actions   = ["ssm:SendCommand"]
-    resources = ["arn:aws:ec2:${var.aws_region}:${data.aws_caller_identity.current.account_id}:instance/*"]
-    condition {
-      test     = "StringEquals"
-      variable = "ssm:resourceTag/Name"
-      values   = ["${local.prefix}-backend-api"]
-    }
-  }
-
-  statement {
-    sid       = "UseRunShellScriptDocument"
-    actions   = ["ssm:SendCommand"]
-    resources = ["arn:aws:ssm:${var.aws_region}::document/AWS-RunShellScript"]
-  }
-
-  statement {
-    sid       = "ReadDeployResult"
-    actions   = ["ssm:GetCommandInvocation", "ssm:ListCommandInvocations"]
-    resources = ["*"]
+    sid       = "DeployStagingBackendLambda"
+    actions   = ["lambda:UpdateFunctionCode", "lambda:GetFunctionConfiguration", "lambda:GetFunction"]
+    resources = [module.lambda_backend.function_arn]
   }
 
   statement {

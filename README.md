@@ -228,31 +228,31 @@ graph TD
 3. `ci-frontend.yml`: oxlint Code Quality → Build Vite → Tự động deploy lên S3 Static Hosting khi merge vào `main`/`master` (`s3 sync --delete` loại trừ `avatars/`, nơi chứa ảnh đại diện người dùng tải lên) → Invalidate cache CloudFront của frontend.
 4. `ci-infra.yml`: `terraform fmt -check` → `terraform validate` cho cả `dev` và `prod` → Trivy IaC Config Scan.
 5. `security-scan.yml`: DevSecOps Gate cho mọi Pull Request, gồm Gitleaks Secret Detection, Trivy Dependency Scan và SAST bằng `eslint-plugin-security`.
-6. `cd-staging.yml`: Deploy một nhánh lên môi trường **staging** (xem mục "Môi trường Staging" bên dưới) khi có push vào `develop` hoặc khi `scripts/staging-up.sh` kích hoạt: build image transcoder (tag SHA) và đăng ký job definition staging → deploy backend qua SSM nếu máy staging đang bật → build frontend trỏ tới API staging → smoke test → quét DAST bằng OWASP ZAP baseline (chỉ báo cáo).
+6. `cd-staging.yml`: Deploy một nhánh lên môi trường **staging** (xem mục "Môi trường Staging" bên dưới) khi có push vào `develop` hoặc khi `scripts/staging-up.sh` kích hoạt: build image transcoder (tag SHA) và đăng ký job definition staging → deploy backend lên Lambda `dacntt-staging-backend-api` (cùng cách `cd-deploy.yml` làm với production) → build frontend trỏ tới API staging → smoke test → quét DAST bằng OWASP ZAP baseline (chỉ báo cáo).
 7. `cd-deploy.yml`: Chạy sau khi `CI — Backend` **thành công** trên `main`/`master` (sự kiện `workflow_run`). Workflow lấy đúng commit CI vừa kiểm, đóng gói backend bằng Node 24 (`npm ci --omit=dev`, cùng phiên bản npm đã ghi lockfile), gọi `aws lambda update-function-code` cho `dacntt-dev-backend-api`, chờ hàm cập nhật xong rồi kiểm tra `/health`. Terraform bỏ qua phần code của hàm (`ignore_changes`), nên CD là nơi duy nhất thay code; cấu hình (biến môi trường, quyền) vẫn do Terraform quản lý. Workflow này không invalidate CDN video vì nội dung HLS là bất biến.
 
 Các workflow truy cập AWS bằng **OIDC** (role tạm thời trong `infrastructure/environments/dev/github-oidc.tf`, mỗi nhóm job một role với quyền tối thiểu) qua các biến repository `AWS_ECR_PUSH_ROLE_ARN`, `AWS_DEPLOY_ROLE_ARN`, `AWS_CLOUDFRONT_ROLE_ARN` và hai biến staging `AWS_STAGING_DEPLOY_ROLE_ARN`, `AWS_STAGING_CLOUDFRONT_ROLE_ARN` (bật ngày 2026-10-03). GitHub Secrets không còn khoá AWS tĩnh nào. Environment `production` trên GitHub chỉ cho phép nhánh `master` (Settings → Environments → Deployment branches, đặt ngày 2026-09-29): role deploy tin mọi job gắn `environment: production`, nên không có quy tắc này thì một workflow ở nhánh bất kỳ cũng lấy được quyền deploy production.
 
 ### Môi trường Staging
 
-Staging (`infrastructure/environments/staging`) là bản sao thu gọn của production để thử một nhánh trước khi merge: `https://staging.zelostech.site`, API `https://api-staging.zelostech.site`, CDN video `cdn-staging.zelostech.site`. Nó có database riêng (`vidshare-staging` trên cùng cluster Atlas), JWT secret và cặp khoá ký CloudFront riêng; dùng chung với production repo ECR, mật khẩu Gmail, token Cloudflare và script dựng máy chủ.
+Staging (`infrastructure/environments/staging`) là bản sao thu gọn của production để thử một nhánh trước khi merge: `https://staging.zelostech.site`, API `https://api-staging.zelostech.site`, CDN video `cdn-staging.zelostech.site`. Nó có database riêng (`vidshare-staging` trên cùng cluster Atlas), JWT secret và cặp khoá ký CloudFront riêng; dùng chung với production repo ECR, mật khẩu Gmail và token Cloudflare.
 
-Máy chủ backend chỉ tồn tại khi đang thử — tắt là **xoá** EC2, Elastic IP và bản ghi DNS `api-staging`:
+Backend staging chạy trên Lambda như production (`backend-lambda.tf`): hàm `dacntt-staging-backend-api` sau Worker `zelostech-api-gateway-staging` (`wrangler deploy --env staging` trong `infrastructure/cloudflare-worker`). Không còn máy chủ phải bật hay tắt, nên cũng không còn `staging-down.sh`:
 
 ```bash
-bash scripts/staging-up.sh <nhánh>   # dựng máy (~5–10 phút), chờ API sẵn sàng, kích hoạt cd-staging.yml
+bash scripts/staging-up.sh <nhánh>   # terraform apply rồi kích hoạt cd-staging.yml cho nhánh đó
 # ... thử trên https://staging.zelostech.site ...
-bash scripts/staging-down.sh         # xoá máy chủ, ngừng tính tiền
 ```
 
-Quy trình phát hành: `staging-up.sh <nhánh>` → thử → merge vào `master` (`cd-deploy.yml` đưa đúng commit đó lên production sau khi CI xanh) → `staging-down.sh`.
+Quy trình phát hành: `staging-up.sh <nhánh>` → thử → merge vào `master` (`cd-deploy.yml` đưa đúng commit đó lên production sau khi CI xanh).
 
-Chi phí ước tính (giá niêm yết vùng Singapore): khoảng **$0,26 cho mỗi lượt thử** 3 giờ với 5 video ngắn (EC2 t3.micro, IPv4, Fargate Spot, Rekognition), và khoảng **$1,20/tháng lúc tắt** (3 secret riêng; S3, SQS, Lambda, Batch, CloudFront không tính phí khi không có lưu lượng).
+Chi phí: lúc rảnh chỉ còn các secret riêng của staging (khoảng $0,40/tháng mỗi secret); Lambda, S3, SQS, Batch và CloudFront không tính phí khi không có lưu lượng. Mỗi lượt thử tốn thêm phần Fargate Spot và Rekognition của các video tải lên.
+
+Lần đầu: secret `dacntt-staging/origin-verify-secret` phải có giá trị, và cùng giá trị đó phải nằm trong Worker staging (`wrangler secret put ORIGIN_VERIFY_SECRET --env staging`), vì hàm không khởi động được khi secret rỗng; `TARGET_HOST` của `[env.staging]` trong `wrangler.toml` là host của `terraform output backend_function_url`.
 
 Lưu ý:
 - Apply `environments/dev` trước (staging đọc OIDC provider và secret dùng chung do dev tạo).
 - Đăng nhập Google chỉ chạy trên staging sau khi thêm `https://staging.zelostech.site` vào *Authorized JavaScript origins* của OAuth client trên Google Cloud Console.
-- Let's Encrypt cấp tối đa 5 chứng chỉ trùng tên mỗi 7 ngày: bật staging quá 5 lần/tuần thì lần sau không có HTTPS cho API staging.
 
 ### Cơ chế Quality Gate hai lớp
 

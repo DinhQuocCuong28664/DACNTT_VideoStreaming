@@ -13,3 +13,16 @@ routes = [
 #     --query SecretString --output text | npx wrangler secret put ORIGIN_VERIFY_SECRET
 [vars]
 TARGET_HOST = "b7ssxm6vbhvfdcaxsdn7vmosgy0thkbw.lambda-url.ap-southeast-1.on.aws"
+
+# Staging gateway: npx wrangler deploy --env staging
+# TARGET_HOST is the host of `terraform output backend_function_url` in
+# infrastructure/environments/staging; its secret comes from
+# dacntt-staging/origin-verify-secret (wrangler secret put ORIGIN_VERIFY_SECRET --env staging).
+[env.staging]
+name = "zelostech-api-gateway-staging"
+routes = [
+  { pattern = "api-staging.zelostech.site/*", zone_name = "zelostech.site" }
+]
+
+[env.staging.vars]
+TARGET_HOST = ""
