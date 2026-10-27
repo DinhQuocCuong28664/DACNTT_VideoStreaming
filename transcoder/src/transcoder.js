@@ -2,6 +2,7 @@ const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const config = require('./config');
+const { writeKeyInfo } = require('./hlsKey');
 
 /**
  * Khoảng framerate được coi là thật.
@@ -140,34 +141,19 @@ const transcodeToHLS = async (inputPath, outputDir, { onProgress, encryption = n
     fs.mkdirSync(dir, { recursive: true });
   }
 
-  // Chuẩn bị tệp thông tin khóa HLS AES-128 nếu có cấu hình mã hoá
-  let keyInfoPath = null;
-  let keyPath = null;
-  if (encryption && encryption.key && encryption.uri) {
-    keyPath = path.join(outputDir, 'enc.key');
-    keyInfoPath = path.join(outputDir, 'enc.keyinfo');
-    fs.writeFileSync(keyPath, encryption.key);
-    const keyInfoContent = `${encryption.uri}\n${keyPath}\n${encryption.iv ? encryption.iv + '\n' : ''}`;
-    fs.writeFileSync(keyInfoPath, keyInfoContent, 'utf-8');
-    console.log(`🔐 HLS AES-128 Encryption enabled. Key URI: ${encryption.uri}`);
-  }
+  // HLS AES-128: the key files go to a directory of their own, outside the
+  // output directory that is uploaded (hlsKey.js).
+  const keyFiles = encryption && encryption.key && encryption.uri ? writeKeyInfo(encryption) : null;
+  if (keyFiles) console.log(`🔐 HLS AES-128 Encryption enabled. Key URI: ${encryption.uri}`);
 
   // Step 3: Build FFmpeg command for all renditions simultaneously
-  const args = buildFFmpegArgs(inputPath, outputDir, renditions, fps, keyInfoPath);
+  const args = buildFFmpegArgs(inputPath, outputDir, renditions, fps, keyFiles && keyFiles.keyInfoPath);
   console.log(`🔧 FFmpeg command: ffmpeg ${args.join(' ').substring(0, 200)}...`);
 
   try {
     await runFFmpeg(args, duration, { onProgress });
   } finally {
-    // Dọn dẹp tệp khóa nhị phân và keyinfo trên ổ đĩa để KHÔNG bị tải lên S3
-    if (keyInfoPath && fs.existsSync(keyInfoPath)) {
-      try {
-        fs.rmSync(keyInfoPath, { force: true });
-        if (keyPath && fs.existsSync(keyPath)) {
-          fs.rmSync(keyPath, { force: true });
-        }
-      } catch {}
-    }
+    if (keyFiles) keyFiles.remove();
   }
 
   // Step 4: Generate master playlist
