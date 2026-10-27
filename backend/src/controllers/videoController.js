@@ -146,7 +146,7 @@ const getVideoById = async (req, res, next) => {
     res.status(200).json({
       success: true,
       data: {
-        video: { ...video.toJSON(), viewerReaction: videoService.reactionOf(video, req.user) },
+        video: videoService.toViewerJSON(video, req.user),
       },
     });
   } catch (error) {
@@ -203,12 +203,13 @@ const getVideoKey = async (req, res, next) => {
   try {
     const keyBuffer = await videoService.getVideoKey(req.params.id, req.user);
 
+    // CORS comes from the app-wide cors() middleware (server.js), which allows
+    // credentials only for CORS_ORIGINS. Setting the headers here again
+    // reflected any Origin with credentials allowed.
     res.set({
       'Content-Type': 'application/octet-stream',
       'Content-Length': keyBuffer.length,
       'Cache-Control': 'private, no-cache, no-store, must-revalidate',
-      'Access-Control-Allow-Origin': req.headers.origin || '*',
-      'Access-Control-Allow-Credentials': 'true',
     });
 
     return res.status(200).send(keyBuffer);

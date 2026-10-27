@@ -15,6 +15,12 @@ const { MAX_VIDEO_SIZE_BYTES } = limits;
 // của auditor (chỉ đọc số liệu). Kiểm tra theo quyền để thêm vai trò không phải sửa ở đây.
 const isAdminUser = (user) => can(user, 'content:viewRemoved');
 
+/** Why getVideoById locked a video for this viewer. */
+const MEMBERS_ONLY_LOCK = 'MEMBERS_ONLY';
+
+/** The lock getVideoById put on a video for this viewer, or null. */
+const lockReasonOf = (video) => (video && video.$locals && video.$locals.lockedReason) || null;
+
 /**
  * Danh sách video (trang chủ, trang kênh, video liên quan) không cần hai mảng
  * người đã Like/Dislike: thẻ video không hiện chúng, và mảng dài ra theo mức
@@ -242,29 +248,6 @@ const getVideoById = async (videoId, requesterUser = null) => {
   const isOwner =
     requesterUser && requesterUser._id && requesterUser._id.toString() === video.user._id.toString();
 
-  // Kiểm tra quyền hội viên nếu video đặt quyền truy cập là members_only
-  if (video.accessLevel === 'members_only' && !isOwner && !isAdminUser(requesterUser)) {
-    let isMember = false;
-    if (requesterUser && requesterUser._id) {
-      const channelOwnerId = video.user._id || video.user;
-      isMember = Boolean(
-        await ChannelMembership.exists({
-          user: requesterUser._id,
-          channel: channelOwnerId,
-          status: 'active',
-          expiresAt: { $gt: new Date() },
-          tierLevel: { $gte: video.requiredTierLevel || 1 },
-        })
-      );
-    }
-    if (!isMember) {
-      const lockedObj = video.toObject ? video.toObject() : { ...video };
-      lockedObj.isLocked = true;
-      lockedObj.lockedReason = 'MEMBERS_ONLY';
-      return lockedObj;
-    }
-  }
-
   // Quản trị viên cần xem được mọi video để rà soát, kể cả video riêng tư bị
   // báo cáo qua đường link cũ hay video đã bị gỡ.
   if (!isOwner && !isAdminUser(requesterUser)) {
@@ -298,6 +281,32 @@ const getVideoById = async (videoId, requesterUser = null) => {
     }
   }
 
+  // Members-only comes last: a private, unfinished or removed video must
+  // answer a non-member exactly as it answers anyone else (404, 400, 403),
+  // not with a locked page that shows its title and channel.
+  if (video.accessLevel === 'members_only' && !isOwner && !isAdminUser(requesterUser)) {
+    let isMember = false;
+    if (requesterUser && requesterUser._id) {
+      const channelOwnerId = video.user._id || video.user;
+      isMember = Boolean(
+        await ChannelMembership.exists({
+          user: requesterUser._id,
+          channel: channelOwnerId,
+          status: 'active',
+          expiresAt: { $gt: new Date() },
+          tierLevel: { $gte: video.requiredTierLevel || 1 },
+        })
+      );
+    }
+    if (!isMember) {
+      // Keep the Mongoose document: callers call toJSON() on it, and toJSON is
+      // what strips likes, dislikes and multipartUploadId. A plain copy made
+      // the watch endpoint answer 500 for every non-member. The lock travels
+      // in $locals, Mongoose's place for per-request data on a document.
+      video.$locals.lockedReason = MEMBERS_ONLY_LOCK;
+    }
+  }
+
   return video;
 };
 
@@ -310,7 +319,7 @@ const getVideoById = async (videoId, requesterUser = null) => {
 const getPlayableVideo = async (videoId, requesterUser = null) => {
   const video = await getVideoById(videoId, requesterUser);
 
-  if (video.isLocked) {
+  if (lockReasonOf(video)) {
     throw httpError(403, 'This video is available to channel members only', 'MEMBERS_ONLY_CONTENT');
   }
 
@@ -323,27 +332,17 @@ const getPlayableVideo = async (videoId, requesterUser = null) => {
 
 /**
  * Cấp khóa giải mã HLS AES-128 (16 bytes nhị phân) cho trình phát hợp lệ.
+ *
+ * The key is checked with the same rules as playback (getPlayableVideo):
+ * private, members-only, unfinished, removed and under-review videos. A
+ * separate, shorter list here had let anyone fetch the key of a members-only
+ * or under-review video.
  */
 const getVideoKey = async (videoId, requesterUser = null) => {
+  await getPlayableVideo(videoId, requesterUser);
+
   const video = await Video.findById(videoId).select('+encryptionKey');
-
-  if (!video) {
-    throw httpError(404, 'Video not found');
-  }
-
-  const isOwner = requesterUser && String(requesterUser._id) === String(video.user);
-  const isAdmin = isAdminUser(requesterUser);
-
-  if (video.visibility === 'private' && !isOwner && !isAdmin) {
-    throw httpError(403, 'This video is private', 'VIDEO_PRIVATE');
-  }
-
-  const moderationStatus = video.moderation && video.moderation.status;
-  if (moderationStatus === 'blocked' && !isAdmin) {
-    throw httpError(403, 'This video has been removed for violating the community guidelines', 'VIDEO_REMOVED');
-  }
-
-  if (!video.encryptionKey) {
+  if (!video || !video.encryptionKey) {
     throw httpError(404, 'No encryption key found for this video', 'KEY_NOT_FOUND');
   }
 
@@ -458,6 +457,22 @@ const reactionOf = (video, requesterUser) => {
   if (has(video.likes)) return 'like';
   if (has(video.dislikes)) return 'dislike';
   return null;
+};
+
+/**
+ * The JSON one viewer gets for the watch page. A video locked for this viewer
+ * keeps its title, channel and thumbnail for the join prompt, but not its
+ * playlist URL.
+ */
+const toViewerJSON = (video, requesterUser) => {
+  const json = { ...video.toJSON(), viewerReaction: reactionOf(video, requesterUser) };
+  const lockedReason = lockReasonOf(video);
+  if (lockedReason) {
+    json.isLocked = true;
+    json.lockedReason = lockedReason;
+    delete json.hlsUrl;
+  }
+  return json;
 };
 
 /** Mảng của từng loại phản hồi và mảng loại trừ nó (Like bỏ Dislike và ngược lại). */
@@ -997,6 +1012,8 @@ module.exports = {
   USER_VIDEO_SORTS,
   getRelatedVideos,
   reactionOf,
+  lockReasonOf,
+  toViewerJSON,
   toggleLike,
   toggleDislike,
   getComments,
