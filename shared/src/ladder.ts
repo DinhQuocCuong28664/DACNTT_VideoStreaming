@@ -38,11 +38,11 @@ export interface PlannedRendition extends Rung {
 
 export interface PlanInput {
   /** Display width after rotation and sample aspect ratio, if known. */
-  width?: number | undefined;
+  width?: number | null | undefined;
   /** Display height after rotation and sample aspect ratio, if known. */
-  height?: number | undefined;
+  height?: number | null | undefined;
   /** Duration in seconds; 0, NaN or undefined means unknown. */
-  durationSec?: number | undefined;
+  durationSec?: number | null | undefined;
   /** The chunked path always gets the full ladder. */
   chunked?: boolean;
   longVideoThresholdSec?: number;
