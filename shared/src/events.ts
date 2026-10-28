@@ -49,6 +49,10 @@ export const TranscodeProgress = z.object({
   step: z.enum(PROCESSING_STEPS),
   /** Share of the current step that is done, 0..100. */
   percent: z.number().min(0).max(100),
+  /** Chunk index when one array child reports (it sends 100 when done). */
+  part: z.number().int().nonnegative().optional(),
+  /** Number of chunks, sent with `part`. */
+  parts: z.number().int().positive().optional(),
 });
 export type TranscodeProgress = z.infer<typeof TranscodeProgress>;
 

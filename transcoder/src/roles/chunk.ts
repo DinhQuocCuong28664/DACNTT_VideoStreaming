@@ -70,10 +70,14 @@ export async function chunk(ctx: JobContext): Promise<void> {
 
     await putDirectory(env.PROCESSED_BUCKET, ctx.processed.root, outputDir, (p) => p.endsWith('.ts'));
     await putJson(env.WORK_BUCKET, ctx.work.chunkResult(index), result);
-    await progressReporter(env.EVENT_BUS_NAME, { videoId: env.VIDEO_ID, uploadVersion: env.UPLOAD_VERSION, step: 'encode' })(
-      ((index + 1) / plan.chunkPlan.chunks.length) * 100,
-      true,
-    );
+    // Chunks finish in any order: report this chunk as done, the status function counts them.
+    await progressReporter(env.EVENT_BUS_NAME, {
+      videoId: env.VIDEO_ID,
+      uploadVersion: env.UPLOAD_VERSION,
+      step: 'encode',
+      part: index,
+      parts: plan.chunkPlan.chunks.length,
+    })(100, true);
     log(ctx, 'chunk done', { index });
   } catch (err) {
     // Tell the siblings to stop when this chunk will not be tried again.
