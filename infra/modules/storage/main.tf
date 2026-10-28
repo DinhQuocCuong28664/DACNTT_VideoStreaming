@@ -56,10 +56,13 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "this" {
   }
 }
 
-# The processed bucket gets its CloudFront read statement from the CDN module, which merges
-# this TLS-only statement into a single policy, so it is excluded here.
+# Every bucket refuses plain HTTP. The processed bucket also receives the CloudFront read
+# statement from the CDN module through var.processed_policy_documents, merged here so the
+# bucket has exactly one policy.
 data "aws_iam_policy_document" "tls_only" {
-  for_each = { for k, b in aws_s3_bucket.this : k => b if k != "processed" }
+  for_each = aws_s3_bucket.this
+
+  source_policy_documents = each.key == "processed" ? var.processed_policy_documents : []
 
   statement {
     sid       = "DenyInsecureTransport"

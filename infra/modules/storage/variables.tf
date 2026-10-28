@@ -14,6 +14,12 @@ variable "force_destroy" {
   default     = false
 }
 
+variable "processed_policy_documents" {
+  description = "Extra policy JSON for the processed bucket (the CloudFront OAC read statement)"
+  type        = list(string)
+  default     = []
+}
+
 variable "work_retention_days" {
   description = "Days before temporary workflow files expire"
   type        = number
