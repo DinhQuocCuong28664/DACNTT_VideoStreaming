@@ -1,0 +1,21 @@
+{
+  "name": "@zelos/functions",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Lambda functions of the transcode workflow: starter, probe, status, stitch, notifier",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "esbuild": "^0.24.2"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1158.0",
+    "@aws-sdk/s3-request-presigner": "^3.1158.0",
+    "@zelos/shared": "^0.1.0",
+    "zod": "^3.25.76"
+  }
+}
