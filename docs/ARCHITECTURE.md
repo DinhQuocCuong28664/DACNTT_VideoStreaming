@@ -365,8 +365,8 @@ the account's 400, leaving 280 unreserved (AWS requires at least 100).
 The free cluster throttles above 100 operations per second, shared by both environments and
 the old stack. Every request of v1 wrote its rate-limit counter to MongoDB, and the player's
 analytics and the view rule add more writes. v2 keeps MongoDB for domain documents and search,
-and moves the hot, short-lived key-value writes to DynamoDB on-demand tables (ADR-17, waiting
-for the owner's approval):
+and moves the hot, short-lived key-value writes to DynamoDB on-demand tables (ADR-17, approved by
+the owner on 2026-10-28):
 
 | Data | Store | Why |
 |---|---|---|
@@ -419,7 +419,7 @@ status and moderation, so private, unlisted, unready or removed videos never app
 | 14 | Environments `prod` and `staging`, prefix `zelos-{env}`, state per environment with DynamoDB locking | Reusing `dacntt-dev-*` | Names match their role; the old stack stays untouched until cutover |
 | 15 | CloudFront in account A, origins in B | Everything in B | B is not allowed to create CloudFront distributions |
 | 16 | Email through Gmail SMTP with a per-recipient throttle | SES | SES account is in sandbox |
-| 17 | **Proposed, waiting for the owner:** DynamoDB on-demand for rate limits, view marks, watch progress, analytics heartbeats and notifications | Everything in MongoDB (free cluster throttles at 100 ops/s); Atlas Flex (8–30 USD per month outside AWS credits); Redis (rejected earlier) | Serverless, pay per request, TTL built in, covered by AWS credits; keeps MongoDB for documents and search |
+| 17 | **Approved 2026-10-28:** DynamoDB on-demand for rate limits, view marks, watch progress, analytics heartbeats and notifications | Everything in MongoDB (free cluster throttles at 100 ops/s); Atlas Flex (8–30 USD per month outside AWS credits); Redis (rejected earlier) | Serverless, pay per request, TTL built in, covered by AWS credits; keeps MongoDB for documents and search |
 | 18 | AES key in a private keys bucket, referenced by the workflow; key endpoint takes a per-video playback token | Key in MongoDB passed through the workflow; key endpoint behind the user JWT | Keys stay out of execution history and logs; embeds can fetch keys without a login session |
 | 19 | Captions as side-loaded WebVTT text tracks | Subtitle renditions in the master playlist | Adding a caption never rewrites a published playlist |
 
@@ -455,7 +455,7 @@ erDiagram
 | analyticsDaily | video, date, views, watchSeconds, retention[20] | Hourly roll-up of heartbeats |
 | reports, appeals, auditSamples, moderationEvents, roleChanges | as in the current console | |
 
-Key-value data (DynamoDB if ADR-17 is approved, otherwise MongoDB collections with TTL indexes):
+Key-value data in DynamoDB on-demand tables (ADR-17):
 
 | Table | Key | Attributes | TTL |
 |---|---|---|---|
@@ -612,7 +612,7 @@ until the cutover merge; `git show master:<path>` reads them for reference.
 | Day | Work | Exit check |
 |---|---|---|
 | 28–29/10 | S0: this document, repo skeleton, CI for the new layout | Owner approves |
-| 30/10 | Terraform modules: network, S3 (raw, processed, work, keys), SQS, bus, Batch (Spot + On-Demand, two queues), ECR, IAM, DynamoDB tables (if ADR-17) | `terraform plan` clean on staging |
+| 30/10 | Terraform modules: network, S3 (raw, processed, work, keys), SQS, bus, Batch (Spot + On-Demand, two queues), ECR, IAM, DynamoDB tables | `terraform plan` clean on staging |
 | 31/10 | Transcoder roles (analyse, encode, audio, chunk) + probe/stitch Lambdas | Unit tests; local encode of sample sources |
 | 01/11 | State machine, starter, status; deploy to staging | Short clip and 25-minute video reach `READY`; duplicate event; killed job → `ERROR` |
 | 02/11 | API: auth, uploads, videos, playback/key, comments, channels, subscriptions | Tests green against staging |
