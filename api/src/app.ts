@@ -16,6 +16,7 @@ import type { Cdn } from './services/cdn.js';
 import type { Activity } from './services/activity.js';
 import type { Scheduler } from './services/scheduler.js';
 import type { ImageScreener } from './services/images.js';
+import type { Search } from './services/search.js';
 import { errorHandler, notFoundHandler } from './http/errors.js';
 import { authenticate, cors, originVerify, rateLimit, type Sessions } from './http/middleware.js';
 
@@ -37,6 +38,7 @@ export interface Deps {
   activity: Activity;
   scheduler: Scheduler;
   screenImage: ImageScreener;
+  search: Search;
 }
 
 /** A feature module adds its routes to the /v1 router. */

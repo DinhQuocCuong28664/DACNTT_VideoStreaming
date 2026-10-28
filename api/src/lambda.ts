@@ -21,6 +21,7 @@ import { cloudFrontCdn } from './services/cdn.js';
 import { dynamoActivity } from './services/activity.js';
 import { eventBridgeScheduler } from './services/scheduler.js';
 import { rekognitionScreener } from './services/images.js';
+import { atlasSearch, ensureSearchIndexes } from './services/search.js';
 
 const log: Log = (entry) => console.log(JSON.stringify(entry));
 
@@ -34,6 +35,8 @@ async function init(): Promise<Handler> {
   const config = loadConfig(process.env, secret.SecretString ?? '{}');
   const db = await connect(config.secrets.mongodbUri, config.dbName, config.mongoPoolSize);
   await ensureIndexes(db);
+  // Search indexes exist only on Atlas; a failure must not keep the API down.
+  await ensureSearchIndexes(db).catch((err: unknown) => log({ level: 'error', msg: 'search index setup failed', error: String(err) }));
   const kv = dynamoKv();
   const now = () => new Date();
   const { smtpUser, smtpPassword } = config.secrets;
@@ -53,6 +56,7 @@ async function init(): Promise<Handler> {
     activity: dynamoActivity(config.tables),
     scheduler: eventBridgeScheduler(config.schedule),
     screenImage: rekognitionScreener(),
+    search: atlasSearch(db),
     cdn: cloudFrontCdn(config.cdnBaseUrl, config.secrets.cloudfrontKeyPairId, config.secrets.cloudfrontPrivateKey),
   }, FEATURES);
   return serverlessExpress({ app, binarySettings: { contentTypes: ['application/octet-stream', 'image/*'] } }) as unknown as Handler;

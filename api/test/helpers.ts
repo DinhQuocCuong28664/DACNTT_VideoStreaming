@@ -46,6 +46,8 @@ export interface TestContext {
   schedules: ReturnType<typeof memoryScheduler>['schedules'];
   /** Labels the fake Rekognition finds; null makes it unavailable. */
   imageLabels: { value: string[] | null };
+  /** What the fake Atlas Search returns. */
+  searchResults: { videos: string[]; suggest: string[]; channels: string[]; calls: { q: string; skip: number }[] };
 }
 
 /** Builds the app with in-memory fakes; pass `db` for features that need MongoDB. */
@@ -61,6 +63,7 @@ export function testApp(features: readonly Feature[] = [], opts: { db?: Db; conf
   const activity = memoryActivity();
   const sched = memoryScheduler();
   const imageLabels: { value: string[] | null } = { value: [] };
+  const searchResults: TestContext['searchResults'] = { videos: [], suggest: [], channels: [], calls: [] };
   const deps: Deps = {
     config: opts.config ?? testConfig(),
     db: opts.db ?? ({} as Db),
@@ -80,8 +83,16 @@ export function testApp(features: readonly Feature[] = [], opts: { db?: Db; conf
       if (imageLabels.value === null) throw new HttpError(503, 'SCREENING_UNAVAILABLE', 'down');
       return { allowed: imageLabels.value.length === 0, labels: imageLabels.value };
     },
+    search: {
+      async videos(q, { skip, limit }) {
+        searchResults.calls.push({ q, skip });
+        return searchResults.videos.slice(skip, skip + limit).map((id, i) => ({ id, score: 10 - i }));
+      },
+      async suggest(_q, limit) { return searchResults.suggest.slice(0, limit); },
+      async channels(_q, limit) { return searchResults.channels.slice(0, limit); },
+    },
   };
-  const ctx: TestContext = { deps, kv, users, clock, mail, google, breached, s3, activity, schedules: sched.schedules, imageLabels };
+  const ctx: TestContext = { deps, kv, users, clock, mail, google, breached, s3, activity, schedules: sched.schedules, imageLabels, searchResults };
   return { app: createApp(deps, features), ctx };
 }
 
