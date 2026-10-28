@@ -79,7 +79,7 @@ export async function stitch(input: unknown, deps: StitchDeps): Promise<PackageR
     const head = await store.getRange(buckets.processed, `${processed.rungDir(r.name)}/${segments[0]!.uri}`, PREFIX_BYTES);
     const codecs = codecsFor(decryptPrefix(head, Buffer.from(key.keyHex, 'hex'), Buffer.from(key.ivHex, 'hex')), plan.hasAudio);
 
-    variants.push({ uri: `${r.name}/index.m3u8`, width: r.width, height: r.height, bandwidth, frameRate: toNumber(plan.fps), codecs });
+    variants.push({ uri: `${r.name}/index.m3u8`, width: r.width, height: r.height, bandwidth, frameRate: plan.fpsKnown ? toNumber(plan.fps) : null, codecs });
     rungs.push({ name: r.name, width: r.width, height: r.height, bandwidth, codecs });
   }
 

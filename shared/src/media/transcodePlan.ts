@@ -33,6 +33,8 @@ export interface SinglePlan {
   audioStreamIndex: number | null;
   /** Frame rate for GOP sizes and the master playlist; DEFAULT_FPS when unknown. */
   fps: Rational;
+  /** False when fps is the DEFAULT_FPS guess: the master then leaves FRAME-RATE out. */
+  fpsKnown: boolean;
 }
 
 export interface ChunkedPlan {
@@ -45,6 +47,8 @@ export interface ChunkedPlan {
   audioStreamIndex: number | null;
   /** Frame rate for GOP sizes and the master playlist; DEFAULT_FPS when unknown. */
   fps: Rational;
+  /** False when fps is the DEFAULT_FPS guess: the master then leaves FRAME-RATE out. */
+  fpsKnown: boolean;
   chunkPlan: ChunkPlan;
 }
 
@@ -62,6 +66,7 @@ export function buildTranscodePlan(summary: ProbeSummary, options: TranscodePlan
     videoStreamIndex: video.index,
     audioStreamIndex: summary.audio?.index ?? null,
     fps: video.fps ?? DEFAULT_FPS,
+    fpsKnown: video.fps !== null,
   };
 
   const single = (fallbackReason: string | null): SinglePlan => {

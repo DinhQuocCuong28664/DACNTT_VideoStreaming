@@ -29,6 +29,8 @@ export interface PackageInput {
   renditions: readonly PlannedRendition[];
   hasAudio: boolean;
   fps: Rational;
+  /** When false the frame rate is a guess and FRAME-RATE is left out of the master. */
+  fpsKnown: boolean;
   key: KeyMaterial;
   apiBaseUrl: string;
   videoId: string;
@@ -60,7 +62,7 @@ export async function packageLocal(input: PackageInput): Promise<{ master: strin
     const head = (await readFile(join(dir, measured[0]!.uri))).subarray(0, PREFIX_BYTES);
     const codecs = codecsFor(decryptPrefix(head, key, iv), input.hasAudio);
 
-    variants.push({ uri: `${r.name}/index.m3u8`, width: r.width, height: r.height, bandwidth, frameRate: toNumber(input.fps), codecs });
+    variants.push({ uri: `${r.name}/index.m3u8`, width: r.width, height: r.height, bandwidth, frameRate: input.fpsKnown ? toNumber(input.fps) : null, codecs });
     rungs.push({ name: r.name, width: r.width, height: r.height, bandwidth, codecs });
   }
 

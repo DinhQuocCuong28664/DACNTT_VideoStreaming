@@ -175,6 +175,13 @@ describe('buildTranscodePlan', () => {
     expect(plan.mode).toBe('single');
     expect(plan.renditions).toHaveLength(6);
     expect(plan.audioBitratesKbps).toEqual([64, 128]);
+    expect(plan.fpsKnown).toBe(true);
+  });
+
+  it('marks a guessed frame rate so the master does not claim it', () => {
+    const plan = buildTranscodePlan(summarizeProbe(probe({ video: { avg_frame_rate: '0/0' }, format: { duration: '60' } })));
+    expect(plan.fps).toEqual({ num: 30, den: 1 });
+    expect(plan.fpsKnown).toBe(false);
   });
 
   it('chunks long CFR videos and sizes chunks to the slots', () => {

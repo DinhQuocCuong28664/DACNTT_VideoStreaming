@@ -52,6 +52,7 @@ export async function encode(ctx: JobContext): Promise<void> {
     renditions: plan.renditions,
     hasAudio: plan.hasAudio,
     fps: plan.fps,
+    fpsKnown: plan.fpsKnown,
     key: ctx.key,
     apiBaseUrl: env.API_BASE_URL,
     videoId: env.VIDEO_ID,
