@@ -46,6 +46,9 @@ export const workPaths = (videoId: string, uploadVersion: number) => {
 /** Keys bucket: one AES-128 key and IV per upload version. */
 export const keyObject = (videoId: string, uploadVersion: number): string => `keys/${videoId}/${version(uploadVersion)}.json`;
 
-/** Key URI written into media playlists; the player adds the playback token. */
-export const keyUri = (apiBaseUrl: string, videoId: string): string =>
-  `${apiBaseUrl.replace(/\/+$/, '')}/v1/videos/${videoId}/key`;
+/**
+ * Key URI written into media playlists; the player adds the playback token. The upload version
+ * is part of it so a playlist of one version can never be served the key of another.
+ */
+export const keyUri = (apiBaseUrl: string, videoId: string, uploadVersion: number): string =>
+  `${apiBaseUrl.replace(/\/+$/, '')}/v1/videos/${videoId}/key?v=${uploadVersion}`;

@@ -121,7 +121,7 @@ describe('stitch', () => {
     expect(result.rungs.every((r) => r.codecs === 'avc1.4d4028,mp4a.40.2')).toBe(true);
 
     const media = writes.find((w) => w.key === processed.mediaPlaylist('720p'))!.body;
-    expect(media).toContain(`URI="https://api.example/v1/videos/${videoId}/key"`);
+    expect(media).toContain(`URI="https://api.example/v1/videos/${videoId}/key?v=1"`);
     expect(parseMediaPlaylist(media).length).toBeGreaterThan(0);
     const master = writes.find((w) => w.key === processed.master)!.body;
     expect(master.indexOf('144p/index.m3u8')).toBeLessThan(master.indexOf('1080p/index.m3u8'));

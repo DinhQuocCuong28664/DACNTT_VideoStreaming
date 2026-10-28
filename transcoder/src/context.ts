@@ -40,7 +40,7 @@ export async function loadContext(raw: NodeJS.ProcessEnv = process.env): Promise
   const keyPath = join(scratch, 'video.key');
   const keyInfoPath = join(scratch, 'key.info');
   await writeFile(keyPath, Buffer.from(key.keyHex, 'hex'), { mode: 0o600 });
-  await writeFile(keyInfoPath, `${keyUri(env.API_BASE_URL, env.VIDEO_ID)}\n${keyPath}\n${key.ivHex}\n`, { mode: 0o600 });
+  await writeFile(keyInfoPath, `${keyUri(env.API_BASE_URL, env.VIDEO_ID, env.UPLOAD_VERSION)}\n${keyPath}\n${key.ivHex}\n`, { mode: 0o600 });
 
   return {
     env,

@@ -67,7 +67,7 @@ export async function stitch(input: unknown, deps: StitchDeps): Promise<PackageR
     throw new StitchRefusedError(stitched.issues.filter((i) => i.level === 'error').map((i) => i.message));
   }
 
-  const keyTag = { uri: keyUri(deps.apiBaseUrl, videoId), ivHex: key.ivHex };
+  const keyTag = { uri: keyUri(deps.apiBaseUrl, videoId, uploadVersion), ivHex: key.ivHex };
   const variants: Variant[] = [];
   const rungs: RungOutput[] = [];
   for (const r of plan.renditions) {

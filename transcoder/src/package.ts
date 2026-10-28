@@ -34,12 +34,13 @@ export interface PackageInput {
   key: KeyMaterial;
   apiBaseUrl: string;
   videoId: string;
+  uploadVersion: number;
 }
 
 export async function packageLocal(input: PackageInput): Promise<{ master: string; rungs: RungOutput[] }> {
   const variants: Variant[] = [];
   const rungs: RungOutput[] = [];
-  const keyTag = { uri: keyUri(input.apiBaseUrl, input.videoId), ivHex: input.key.ivHex };
+  const keyTag = { uri: keyUri(input.apiBaseUrl, input.videoId, input.uploadVersion), ivHex: input.key.ivHex };
   const key = Buffer.from(input.key.keyHex, 'hex');
   const iv = Buffer.from(input.key.ivHex, 'hex');
 

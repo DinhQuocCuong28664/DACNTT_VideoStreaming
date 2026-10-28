@@ -221,7 +221,7 @@ flowchart TD
   M --> R1[1080p/index.m3u8]
   M --> R2[720p/index.m3u8]
   M --> R3[... 144p/index.m3u8]
-  R1 --> K[EXT-X-KEY METHOD=AES-128<br/>URI=API base of the environment + /v1/videos/:id/key, IV=0x...]
+  R1 --> K[EXT-X-KEY METHOD=AES-128<br/>URI=API base of the environment + /v1/videos/:id/key?v=version, IV=0x...]
   R1 --> S1[seg_00000.ts ... 6 s each]
   X[side files, not in the master] --> T[preview/thumbnails.vtt + sprite_N.jpg]
   X --> C[captions/vi.vtt, en.vtt]
