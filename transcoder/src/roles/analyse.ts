@@ -1,6 +1,7 @@
 /**
- * One pass over the source for everything that is not encoding: moderation frames checked with
- * Rekognition, the default thumbnail, and the seek-preview sprite sheets with their WebVTT map.
+ * Everything that is not encoding: the seek-preview sprite sheets with their WebVTT map (one
+ * keyframe pass, which also measures sources of unknown length), moderation frames checked with
+ * Rekognition, and the default thumbnail.
  */
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -50,8 +51,36 @@ export async function analyse(ctx: JobContext): Promise<void> {
   const top = plan.renditions.at(-1)!;
   const tileHeight = Math.max(2, Math.round((TILE_WIDTH * top.height) / top.width / 2) * 2);
 
-  // Moderation frames, a few at a time.
-  const samples = buildSamplePlan(plan.durationSec);
+  // 1. Seek-preview sprites from keyframes only. This pass reads the whole source, so it also
+  //    tells how long a source of unknown duration is (one preview frame per interval).
+  let previewVttKey: string | null = null;
+  let previewFrames = 0;
+  try {
+    const previewDir = join(ctx.scratch, 'preview');
+    await mkdir(previewDir, { recursive: true });
+    await runProcess('ffmpeg', previewFramesArgs({ inputUrl, videoStreamIndex: plan.videoStreamIndex, previewIntervalSec: PREVIEW_INTERVAL_SEC, outputDir: previewDir }));
+    previewFrames = (await readdir(previewDir)).filter((f) => f.startsWith('p_')).length;
+    if (previewFrames > 0) {
+      const spritesDir = join(ctx.scratch, 'sprites');
+      await mkdir(spritesDir, { recursive: true });
+      await runProcess('ffmpeg', spriteArgs(previewDir, COLUMNS, ROWS, join(spritesDir, 'sprite_%03d.jpg')));
+      // ffmpeg numbers image sequences from 1; the VTT uses the uploaded names from 0.
+      const sheets = (await readdir(spritesDir)).sort();
+      for (const [n, name] of sheets.entries()) await putFile(env.PROCESSED_BUCKET, ctx.processed.sprite(n), join(spritesDir, name));
+      const vttPath = join(ctx.scratch, 'thumbnails.vtt');
+      await writeFile(vttPath, previewVtt(previewFrames, tileHeight, (n) => ctx.processed.sprite(n).split('/').at(-1)!));
+      await putFile(env.PROCESSED_BUCKET, ctx.processed.previewVtt, vttPath);
+      previewVttKey = ctx.processed.previewVtt;
+    }
+  } catch (err) {
+    log(ctx, 'preview sprites failed', { error: String(err) });
+  }
+  void report(30);
+
+  // 2. Moderation frames, a few at a time. Without a known duration, sample over the length the
+  //    preview pass saw, never just the first frame of a video that may run for hours.
+  const durationSec = plan.durationSec ?? (previewFrames > 0 ? previewFrames * PREVIEW_INTERVAL_SEC : null);
+  const samples = buildSamplePlan(durationSec);
   const framesDir = join(ctx.scratch, 'frames');
   await mkdir(framesDir, { recursive: true });
   const moderationEnabled = process.env['MODERATION_ENABLED'] !== 'false';
@@ -69,13 +98,13 @@ export async function analyse(ctx: JobContext): Promise<void> {
       } catch (err) {
         log(ctx, 'frame skipped', { timestamp: job.t, error: String(err) });
       }
-      void report((analysed.length / samples.length) * 60);
+      void report(30 + (analysed.length / samples.length) * 60);
     }
   };
   await Promise.all(Array.from({ length: 4 }, worker));
 
-  // Thumbnail: the sample closest to 10% into the video avoids black intros.
-  const thumbAt = plan.durationSec ? plan.durationSec * 0.1 : 0;
+  // 3. Thumbnail: 10 % into the video avoids black intros.
+  const thumbAt = durationSec ? durationSec * 0.1 : 0;
   const thumbPath = join(ctx.scratch, 'thumbnail.jpg');
   let thumbnail: string | null = null;
   try {
@@ -84,29 +113,6 @@ export async function analyse(ctx: JobContext): Promise<void> {
     thumbnail = ctx.processed.thumbnail;
   } catch (err) {
     log(ctx, 'thumbnail failed', { error: String(err) });
-  }
-
-  // Seek-preview sprites from keyframes only.
-  let previewVttKey: string | null = null;
-  try {
-    const previewDir = join(ctx.scratch, 'preview');
-    await mkdir(previewDir, { recursive: true });
-    await runProcess('ffmpeg', previewFramesArgs({ inputUrl, videoStreamIndex: plan.videoStreamIndex, previewIntervalSec: PREVIEW_INTERVAL_SEC, outputDir: previewDir }));
-    const frames = (await readdir(previewDir)).filter((f) => f.startsWith('p_')).length;
-    if (frames > 0) {
-      const spritesDir = join(ctx.scratch, 'sprites');
-      await mkdir(spritesDir, { recursive: true });
-      await runProcess('ffmpeg', spriteArgs(previewDir, COLUMNS, ROWS, join(spritesDir, 'sprite_%03d.jpg')));
-      // ffmpeg numbers image sequences from 1; the VTT uses the uploaded names from 0.
-      const sheets = (await readdir(spritesDir)).sort();
-      for (const [n, name] of sheets.entries()) await putFile(env.PROCESSED_BUCKET, ctx.processed.sprite(n), join(spritesDir, name));
-      const vttPath = join(ctx.scratch, 'thumbnails.vtt');
-      await writeFile(vttPath, previewVtt(frames, tileHeight, (n) => ctx.processed.sprite(n).split('/').at(-1)!));
-      await putFile(env.PROCESSED_BUCKET, ctx.processed.previewVtt, vttPath);
-      previewVttKey = ctx.processed.previewVtt;
-    }
-  } catch (err) {
-    log(ctx, 'preview sprites failed', { error: String(err) });
   }
 
   const verdict = moderationEnabled ? evaluateFrames(analysed, samples.length) : null;
