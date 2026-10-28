@@ -47,7 +47,9 @@ export async function packageLocal(input: PackageInput): Promise<{ master: strin
     const measured: MeasuredSegment[] = [];
     for (const e of entries) {
       const bytes = await stat(join(dir, e.uri)).then((s) => s.size).catch(() => 0);
-      if (bytes > 0) measured.push({ ...e, bytes });
+      // A listed segment that is missing or empty would become a gap in playback: fail instead.
+      if (bytes <= 0) throw new Error(`${r.name}: segment ${e.uri} is missing or empty`);
+      measured.push({ ...e, bytes });
     }
     if (measured.length === 0) throw new Error(`${r.name}: ffmpeg wrote no segments`);
 
