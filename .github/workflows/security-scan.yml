@@ -1,26 +1,27 @@
-# ═══════════════════════════════════════════════════
-# Security Scan — DevSecOps Gate (Every Pull Request)
-# ═══════════════════════════════════════════════════
+# Security gate on every push and pull request. The job names are required status checks
+# in the "Protect master" ruleset, so they must not change.
 
 name: Security Scan — DevSecOps Gate
 
 on:
   workflow_dispatch:
   push:
-    branches: [main, master, develop]
+    branches: [master, rebuild/v2]
   pull_request:
-    branches: [main, master]
+    branches: [master, rebuild/v2]
+
+permissions:
+  contents: read
 
 jobs:
   gitleaks:
     name: "Gitleaks — Secret Detection"
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Full git history
+          fetch-depth: 0 # scan the full history
 
       - name: Run Gitleaks
         uses: gitleaks/gitleaks-action@v2
@@ -28,52 +29,57 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   trivy-sca:
-    name: "Trivy — Dependency Scan"
+    # The labels keep the check names the ruleset requires. "backend" scans the npm
+    # lockfile of the whole monorepo; "transcoder" scans the container image sources.
+    name: "Trivy — Dependency Scan (${{ matrix.label }})"
     runs-on: ubuntu-latest
-
     strategy:
       matrix:
-        directory: [backend, transcoder]
-
+        include:
+          - label: backend
+            path: .
+          - label: transcoder
+            path: transcoder
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Bước cảnh báo: liệt kê toàn bộ lỗ hổng CRITICAL và HIGH để nhóm nắm được
-      # hiện trạng, nhưng không chặn pipeline vì nhiều lỗ hổng HIGH nằm ở
-      # dependency gián tiếp và chưa có bản vá.
-      - name: "Trivy SCA — Báo cáo (CRITICAL + HIGH)"
+      - name: Skip when the path does not exist yet
+        id: present
+        run: |
+          if [ -e "${{ matrix.path }}" ]; then echo "run=true" >> "$GITHUB_OUTPUT"; else echo "run=false" >> "$GITHUB_OUTPUT"; fi
+
+      # Report every CRITICAL and HIGH finding without failing the build.
+      - name: "Trivy SCA — report (CRITICAL + HIGH)"
+        if: steps.present.outputs.run == 'true'
         uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
         with:
           scan-type: 'fs'
-          scan-ref: '${{ matrix.directory }}/'
+          scan-ref: '${{ matrix.path }}'
           severity: 'CRITICAL,HIGH'
           vuln-type: 'library'
           ignore-unfixed: true
           exit-code: '0'
           format: 'table'
 
-      # Quality Gate thực sự: chỉ lỗ hổng CRITICAL đã có bản vá mới chặn pipeline.
-      # Đây là bước khiến Pull Request bị đánh dấu thất bại và không thể merge.
-      - name: "Trivy SCA — Quality Gate (chặn khi có CRITICAL)"
+      # Quality gate: a fixable CRITICAL vulnerability fails the check.
+      - name: "Trivy SCA — gate (fail on CRITICAL)"
+        if: steps.present.outputs.run == 'true'
         uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
         with:
           scan-type: 'fs'
-          scan-ref: '${{ matrix.directory }}/'
+          scan-ref: '${{ matrix.path }}'
           severity: 'CRITICAL'
           vuln-type: 'library'
           ignore-unfixed: true
           exit-code: '1'
           format: 'table'
 
-  # ── SAST: Phân tích tĩnh mã nguồn tìm mẫu code dễ sinh lỗ hổng ──
-  # Sử dụng eslint-plugin-security thay vì SonarQube: không cần dựng và duy trì
-  # một SonarQube Server riêng, đồng thời vẫn chạy thực sự trong pipeline và
-  # chặn được pipeline khi phát hiện lỗi ở mức `error`.
   sast:
+    # eslint-plugin-security runs over every workspace; any warning fails the check
+    # until it is fixed or justified with an inline comment.
     name: "SAST — Phân tích tĩnh bảo mật mã nguồn"
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -81,17 +87,11 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '24'
-          cache: 'npm'
-          cache-dependency-path: backend/package-lock.json
+          node-version-file: .nvmrc
+          cache: npm
 
       - name: Install dependencies
-        working-directory: backend
         run: npm ci
 
-      # Cờ --max-warnings=0 khiến mọi cảnh báo bảo mật chưa được xem xét đều
-      # làm pipeline thất bại, buộc nhóm phải xử lý hoặc giải trình bằng chú
-      # thích eslint-disable kèm lý do trước khi merge.
-      - name: "Chạy phân tích bảo mật (eslint-plugin-security)"
-        working-directory: backend
-        run: npx eslint src/ tests/ --max-warnings=0
+      - name: Static security analysis (eslint-plugin-security)
+        run: npm run lint

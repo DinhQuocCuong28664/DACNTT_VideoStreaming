@@ -1,0 +1,47 @@
+# CI for the v2 monorepo: lint (with the security rules), typecheck, unit tests and build
+# for every workspace. Deployment workflows are added per environment in their own files.
+
+name: CI
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [master, rebuild/v2]
+  pull_request:
+    branches: [master, rebuild/v2]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: "Lint, typecheck, test, build"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
