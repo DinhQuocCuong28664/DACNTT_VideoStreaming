@@ -2,9 +2,11 @@
  * S3, EventBridge and Rekognition helpers of the container. Credentials come from the Batch
  * job role; nothing here can reach the database.
  */
-import { createReadStream } from 'node:fs';
+import { createReadStream, createWriteStream } from 'node:fs';
 import { readdir, stat } from 'node:fs/promises';
 import { join, relative } from 'node:path';
+import { Readable } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
 import {
   GetObjectCommand,
   HeadObjectCommand,
@@ -21,9 +23,19 @@ const s3 = new S3Client({});
 const events = new EventBridgeClient({});
 const rekognition = new RekognitionClient({ maxAttempts: 5, retryMode: 'adaptive' });
 
-/** HTTPS URL ffmpeg can read with range requests; long enough for a 20 GiB source. */
-export function presignGet(bucket: string, key: string, expiresInSec = 6 * 3600): Promise<string> {
+/**
+ * HTTPS URL ffmpeg can read with range requests. A URL signed with the task role's temporary
+ * credentials stops working when those credentials expire, whatever expiresIn says, so it is used
+ * only by short reads (analyse seeks, chunk windows); long reads download the file instead.
+ */
+export function presignGet(bucket: string, key: string, expiresInSec = 3600): Promise<string> {
   return getSignedUrl(s3, new GetObjectCommand({ Bucket: bucket, Key: key }), { expiresIn: expiresInSec });
+}
+
+/** Streams an object to a local file; the SDK refreshes credentials during long downloads. */
+export async function downloadToFile(bucket: string, key: string, path: string): Promise<void> {
+  const out = await s3.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
+  await pipeline(out.Body as Readable, createWriteStream(path));
 }
 
 export async function getJson<T>(bucket: string, key: string): Promise<T> {

@@ -6,7 +6,7 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { NonRetryableError, SEGMENT_SECONDS, type PackageResult } from '@zelos/shared';
-import { presignGet, progressReporter, putDirectory, putFile, putJson } from '../aws.js';
+import { downloadToFile, progressReporter, putDirectory, putFile, putJson } from '../aws.js';
 import { log, type JobContext } from '../context.js';
 import { singleJobArgs } from '../ffmpeg/args.js';
 import { DEFAULT_GUARD, createGuard } from '../ffmpeg/guard.js';
@@ -20,7 +20,9 @@ export async function encode(ctx: JobContext): Promise<void> {
   const outputDir = join(ctx.scratch, 'out');
   await Promise.all(plan.renditions.map((r) => mkdir(join(outputDir, r.name), { recursive: true })));
 
-  const inputUrl = await presignGet(env.RAW_BUCKET, env.RAW_KEY);
+  // A local copy: a presigned URL could expire during a multi-hour encode (see aws.ts).
+  const inputUrl = join(ctx.scratch, 'source');
+  await downloadToFile(env.RAW_BUCKET, env.RAW_KEY, inputUrl);
   const report = progressReporter(env.EVENT_BUS_NAME, { videoId: env.VIDEO_ID, uploadVersion: env.UPLOAD_VERSION, step: 'encode' });
   const guard = createGuard(plan.durationSec, { ...DEFAULT_GUARD, budgetSec: env.JOB_TIMEOUT_SECONDS ?? 8 * 3600 });
   const started = Date.now();
