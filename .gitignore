@@ -59,3 +59,5 @@ backend/dist/
 # TypeScript and test output
 *.tsbuildinfo
 coverage/
+# v2 commits its provider lock files so CI and local runs use the same providers
+!infra/envs/*/.terraform.lock.hcl
