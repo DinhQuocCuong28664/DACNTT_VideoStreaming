@@ -207,7 +207,8 @@ resource "aws_batch_job_definition" "role" {
     networkConfiguration         = { assignPublicIp = "ENABLED" }
     fargatePlatformConfiguration = { platformVersion = "LATEST" }
     runtimePlatform              = { operatingSystemFamily = "LINUX", cpuArchitecture = "X86_64" }
-    environment                  = local.environment
+    # JOB_TIMEOUT_SECONDS lets the encode guard stop a run that cannot finish in time.
+    environment = concat(local.environment, [{ name = "JOB_TIMEOUT_SECONDS", value = tostring(each.value.timeout) }])
     logConfiguration = {
       logDriver = "awslogs"
       options = {
