@@ -157,7 +157,7 @@ describe('status', () => {
   });
 
   it('publish sets READY with the package and moderation results and announces it once', async () => {
-    const { store, doc } = memoryStore({ ...base, status: 'PROCESSING', progress: { analyse: 0, encode: 0, chunksDone: [], chunkCount: 0, stitch: 0 } });
+    const { store, doc } = memoryStore({ ...base, status: 'PROCESSING', progress: { analyse: 0, encode: 0, audio: 0, chunksDone: [], chunkCount: 0 } });
     const { deps, published } = statusDeps(store, workFor(clean));
     expect(await handle({ action: 'publish', videoId, uploadVersion: 1 }, deps)).toEqual({ found: true, status: 'READY', published: true });
     expect(await handle({ action: 'publish', videoId, uploadVersion: 1 }, deps)).toEqual({ found: true, published: false });

@@ -6,7 +6,7 @@ export const VIDEO_STATUSES = ['UPLOADING', 'PROCESSING', 'READY', 'SCHEDULED', 
 export type VideoStatus = (typeof VIDEO_STATUSES)[number];
 
 /** Steps reported while a video is PROCESSING, in workflow order. */
-export const PROCESSING_STEPS = ['queued', 'probe', 'analyse', 'encode', 'stitch', 'publish'] as const;
+export const PROCESSING_STEPS = ['queued', 'probe', 'analyse', 'audio', 'encode', 'stitch', 'publish'] as const;
 export type ProcessingStep = (typeof PROCESSING_STEPS)[number];
 
 const TRANSITIONS: ReadonlyMap<VideoStatus, readonly VideoStatus[]> = new Map<VideoStatus, readonly VideoStatus[]>([
