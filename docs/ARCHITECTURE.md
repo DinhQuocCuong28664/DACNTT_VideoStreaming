@@ -238,19 +238,25 @@ flowchart TD
   removing a caption never rewrites a published playlist. Chapters are stored on the video and
   drawn by the player.
 
-### 5.2 FFmpeg filter graph (single job)
+### 5.2 FFmpeg processing graph (single job)
+
+One ffmpeg process reads the source once (a local copy, §4.3) and has one output per rung. The
+decoder runs once and ffmpeg hands every decoded frame to each output's own filter chain, so no
+explicit `split` filter is needed; each output is its own HLS muxer writing to `<rung>/`.
 
 ```mermaid
 flowchart LR
-  IN[source over HTTPS] --> D[decode]
-  D --> SPLIT[split=N]
-  SPLIT --> S1[scale 1920:1080] --> E1[libx264 crf 22 maxrate 4500k bufsize 9000k]
-  SPLIT --> S2[scale 1280:720] --> E2[libx264 crf 23 maxrate 2200k bufsize 4400k]
-  SPLIT --> S3[...] --> E3[...]
-  D --> A[aac 128k / 64k]
-  E1 & E2 & E3 & A --> MUX[hls muxer: hls_time 6,<br/>hls_key_info_file, var_stream_map]
-  MUX --> OUT[(S3 processed)]
+  IN[source file] --> D[demux + decode once]
+  D --> F1["-vf scale=1920:1080,setsar=1"] --> E1[libx264 crf 22, maxrate 4500k, bufsize 9000k] --> M1[HLS muxer 1080p/]
+  D --> F2["-vf scale=1280:720,setsar=1"] --> E2[libx264 crf 23, maxrate 2200k, bufsize 4400k] --> M2[HLS muxer 720p/]
+  D --> F3[... one chain per rung] --> E3[...] --> M3[...]
+  D --> A[aac 128k or 64k per rung] --> M1 & M2 & M3
+  M1 & M2 & M3 --> P[package: canonical playlists, BANDWIDTH, CODECS, master last]
+  P --> OUT[(S3 processed)]
 ```
+
+Every HLS muxer gets `-hls_time 6`, `-hls_playlist_type vod`, `-hls_key_info_file` (key URI,
+key file, explicit IV) and its own segment pattern `seg_%05d.ts`.
 
 Rules every rendition shares (so ABR switches never break): forced keyframes at absolute 6 s
 marks, `-g` from the real frame rate and `-keyint_min` equal to it (closed GOP),
