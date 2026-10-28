@@ -8,6 +8,7 @@ import { bcryptPasswords } from '../src/auth/passwords.js';
 import type { GoogleIdentity } from '../src/auth/google.js';
 import { memoryMailer } from '../src/services/mail.js';
 import { memoryStorage } from '../src/services/storage.js';
+import { fakeCdn } from '../src/services/cdn.js';
 
 export const ORIGIN_SECRET = 'o'.repeat(40);
 export const WEB = 'https://v2-staging.zelostech.site';
@@ -62,6 +63,7 @@ export function testApp(features: readonly Feature[] = [], opts: { db?: Db; conf
     google: async (t) => google.get(t) ?? null,
     mail,
     storage: s3.storage,
+    cdn: fakeCdn(),
   };
   const ctx: TestContext = { deps, kv, users, clock, mail, google, breached, s3 };
   return { app: createApp(deps, features), ctx };

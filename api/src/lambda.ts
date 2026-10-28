@@ -17,6 +17,7 @@ import { bcryptPasswords } from './auth/passwords.js';
 import { googleVerifier } from './auth/google.js';
 import { cappedMailer, gmailMailer, memoryMailer } from './services/mail.js';
 import { s3Storage } from './services/storage.js';
+import { cloudFrontCdn } from './services/cdn.js';
 
 const log: Log = (entry) => console.log(JSON.stringify(entry));
 
@@ -46,6 +47,7 @@ async function init(): Promise<Handler> {
     google: googleVerifier(config.secrets.googleClientId),
     mail: cappedMailer(mailer, kv, config.tables.rateLimits, log, now),
     storage: s3Storage(),
+    cdn: cloudFrontCdn(config.cdnBaseUrl, config.secrets.cloudfrontKeyPairId, config.secrets.cloudfrontPrivateKey),
   }, FEATURES);
   return serverlessExpress({ app, binarySettings: { contentTypes: ['application/octet-stream', 'image/*'] } }) as unknown as Handler;
 }

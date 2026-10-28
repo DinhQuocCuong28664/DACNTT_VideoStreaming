@@ -12,6 +12,7 @@ import type { Passwords } from './auth/passwords.js';
 import type { GoogleVerifier } from './auth/google.js';
 import type { Mailer } from './services/mail.js';
 import type { Storage } from './services/storage.js';
+import type { Cdn } from './services/cdn.js';
 import { errorHandler, notFoundHandler } from './http/errors.js';
 import { authenticate, cors, originVerify, rateLimit, type Sessions } from './http/middleware.js';
 
@@ -29,6 +30,7 @@ export interface Deps {
   google: GoogleVerifier;
   mail: Mailer;
   storage: Storage;
+  cdn: Cdn;
 }
 
 /** A feature module adds its routes to the /v1 router. */

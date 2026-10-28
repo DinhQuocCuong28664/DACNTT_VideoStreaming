@@ -35,7 +35,8 @@ export const can = (role: Role | undefined, permission: Permission): boolean =>
   role !== undefined && (PERMISSION_MAP.get(permission) ?? []).includes(role);
 
 export interface AccessClaims { sub: string; role: Role; tv: number }
-export interface PlaybackClaims { sub: string; v: number }
+/** `u` is the viewer's user id, or '' for a guest; `iat` is when playback was granted. */
+export interface PlaybackClaims { sub: string; v: number; u: string; iat: number }
 export interface UnlockClaims { sub: string }
 
 const ISSUER = 'zelos-api';
@@ -66,7 +67,7 @@ export class Tokens {
   }
 
   access(c: AccessClaims): string { return this.sign('access', c); }
-  playback(videoId: string, uploadVersion: number): string { return this.sign('playback', { sub: videoId, v: uploadVersion }); }
+  playback(videoId: string, uploadVersion: number, viewerId: string | null): string { return this.sign('playback', { sub: videoId, v: uploadVersion, u: viewerId ?? '' }); }
   unlock(videoId: string): string { return this.sign('unlock', { sub: videoId }); }
 
   verifyAccess(token: string): AccessClaims | null {
@@ -78,7 +79,8 @@ export class Tokens {
 
   verifyPlayback(token: string, videoId: string): PlaybackClaims | null {
     const p = this.verify('playback', token);
-    return p && p['sub'] === videoId && typeof p['v'] === 'number' ? { sub: videoId, v: p['v'] } : null;
+    if (!p || p['sub'] !== videoId || typeof p['v'] !== 'number' || typeof p['iat'] !== 'number') return null;
+    return { sub: videoId, v: p['v'], u: typeof p['u'] === 'string' ? p['u'] : '', iat: p['iat'] };
   }
 
   verifyUnlock(token: string, videoId: string): boolean {

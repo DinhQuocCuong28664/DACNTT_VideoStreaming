@@ -84,7 +84,7 @@ describe('authentication', () => {
     const forged = new Tokens('k'.repeat(40)).access({ sub: 'u1', role: 'admin', tv: 2 });
     expect((await call(app).get('/v1/probe/me').set('authorization', `Bearer ${forged}`)).status).toBe(401);
 
-    const playback = ctx.deps.tokens.playback('u1', 2);
+    const playback = ctx.deps.tokens.playback('u1', 2, null);
     expect((await call(app).get('/v1/probe/me').set('authorization', `Bearer ${playback}`)).status).toBe(401);
 
     ctx.users.set('u1', { tokenVersion: 2, role: 'user', disabled: true });
@@ -110,11 +110,11 @@ describe('authentication', () => {
 
   it('scopes playback and unlock tokens to one video', () => {
     const t = new Tokens('j'.repeat(40));
-    expect(t.verifyPlayback(t.playback('v1', 3), 'v1')).toEqual({ sub: 'v1', v: 3 });
-    expect(t.verifyPlayback(t.playback('v1', 3), 'v2')).toBeNull();
+    expect(t.verifyPlayback(t.playback('v1', 3, 'u1'), 'v1')).toMatchObject({ sub: 'v1', v: 3, u: 'u1' });
+    expect(t.verifyPlayback(t.playback('v1', 3, null), 'v2')).toBeNull();
     expect(t.verifyUnlock(t.unlock('v1'), 'v1')).toBe(true);
     expect(t.verifyUnlock(t.unlock('v1'), 'v2')).toBe(false);
-    expect(t.verifyUnlock(t.playback('v1', 1), 'v1')).toBe(false);
+    expect(t.verifyUnlock(t.playback('v1', 1, null), 'v1')).toBe(false);
   });
 });
 
