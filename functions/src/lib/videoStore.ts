@@ -32,12 +32,13 @@ export function mongoVideoStore(videos: Collection<Document>, now: () => Date = 
 
     async recordProgress(videoId, uploadVersion, event: TranscodeProgress) {
       const update: Document = { $set: { updatedAt: now() } };
+      // The step shown to the owner follows whichever branch reported last.
+      update['$set']['step'] = event.step;
+      if (event.parts !== undefined) update['$set']['progress.chunkCount'] = event.parts;
       if (event.part !== undefined) {
         if (event.percent >= 100) update['$addToSet'] = { 'progress.chunksDone': event.part };
-        if (event.parts !== undefined) update['$set']['progress.chunkCount'] = event.parts;
       } else {
         update['$max'] = { [`progress.${event.step}`]: event.percent };
-        update['$set']['step'] = event.step;
       }
       const d = await videos.findOneAndUpdate({ _id: id(videoId), uploadVersion, status: 'PROCESSING' }, update, { returnDocument: 'after' });
       return toDoc(d);
