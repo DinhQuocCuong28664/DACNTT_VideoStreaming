@@ -106,6 +106,10 @@ describe('chunkJobArgs', () => {
     expect(valueAfter(args, '-hls_segment_filename').at(0)).toBe('/o/144p/c0001_%03d.ts');
   });
 
+  it('drops audio packets before the seek point so boundaries never repeat one', () => {
+    expect(valueAfter(build(1), '-copypriorss')).toEqual(Array(6).fill('0'));
+  });
+
   it('never seeks chunk 0 and leaves the last chunk without -t', () => {
     expect(build(0)).not.toContain('-ss');
     expect(build(plan.chunks.length - 1)).not.toContain('-t');

@@ -163,7 +163,9 @@ export function chunkJobArgs(input: ChunkJobInput): string[] {
       '-fps_mode', 'passthrough',
       ...gopArgs(input.fps, input.segmentSeconds),
     );
-    if (audioInput >= 0) args.push('-c:a', 'copy');
+    // Without -copypriorss 0 the copy keeps the AAC packet just before the seek point, and
+    // every chunk boundary plays one audio packet twice.
+    if (audioInput >= 0) args.push('-c:a', 'copy', '-copypriorss', '0');
     args.push(
       '-output_ts_offset', seconds(chunk.tsOffsetSeconds),
       ...hlsOutputArgs(input.segmentSeconds, `${input.outputDir}/${r.name}`, segmentName(0, chunk.index).replace('_000', '_%03d'), input.keyInfoPath),
