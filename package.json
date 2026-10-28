@@ -8,7 +8,8 @@
   "workspaces": [
     "shared",
     "transcoder",
-    "functions"
+    "functions",
+    "api"
   ],
   "scripts": {
     "lint": "eslint . --max-warnings=0",
