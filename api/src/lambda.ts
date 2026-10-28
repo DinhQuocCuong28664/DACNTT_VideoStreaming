@@ -19,6 +19,8 @@ import { cappedMailer, gmailMailer, memoryMailer } from './services/mail.js';
 import { s3Storage } from './services/storage.js';
 import { cloudFrontCdn } from './services/cdn.js';
 import { dynamoActivity } from './services/activity.js';
+import { eventBridgeScheduler } from './services/scheduler.js';
+import { rekognitionScreener } from './services/images.js';
 
 const log: Log = (entry) => console.log(JSON.stringify(entry));
 
@@ -49,6 +51,8 @@ async function init(): Promise<Handler> {
     mail: cappedMailer(mailer, kv, config.tables.rateLimits, log, now),
     storage: s3Storage(),
     activity: dynamoActivity(config.tables),
+    scheduler: eventBridgeScheduler(config.schedule),
+    screenImage: rekognitionScreener(),
     cdn: cloudFrontCdn(config.cdnBaseUrl, config.secrets.cloudfrontKeyPairId, config.secrets.cloudfrontPrivateKey),
   }, FEATURES);
   return serverlessExpress({ app, binarySettings: { contentTypes: ['application/octet-stream', 'image/*'] } }) as unknown as Handler;

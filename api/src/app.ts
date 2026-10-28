@@ -14,6 +14,8 @@ import type { Mailer } from './services/mail.js';
 import type { Storage } from './services/storage.js';
 import type { Cdn } from './services/cdn.js';
 import type { Activity } from './services/activity.js';
+import type { Scheduler } from './services/scheduler.js';
+import type { ImageScreener } from './services/images.js';
 import { errorHandler, notFoundHandler } from './http/errors.js';
 import { authenticate, cors, originVerify, rateLimit, type Sessions } from './http/middleware.js';
 
@@ -33,6 +35,8 @@ export interface Deps {
   storage: Storage;
   cdn: Cdn;
   activity: Activity;
+  scheduler: Scheduler;
+  screenImage: ImageScreener;
 }
 
 /** A feature module adds its routes to the /v1 router. */

@@ -10,6 +10,8 @@ import { memoryMailer } from '../src/services/mail.js';
 import { memoryStorage } from '../src/services/storage.js';
 import { fakeCdn } from '../src/services/cdn.js';
 import { memoryActivity } from '../src/services/activity.js';
+import { memoryScheduler } from '../src/services/scheduler.js';
+import { HttpError } from '../src/http/errors.js';
 
 export const ORIGIN_SECRET = 'o'.repeat(40);
 export const WEB = 'https://v2-staging.zelostech.site';
@@ -41,6 +43,9 @@ export interface TestContext {
   breached: Map<string, number | null>;
   s3: ReturnType<typeof memoryStorage>;
   activity: ReturnType<typeof memoryActivity>;
+  schedules: ReturnType<typeof memoryScheduler>['schedules'];
+  /** Labels the fake Rekognition finds; null makes it unavailable. */
+  imageLabels: { value: string[] | null };
 }
 
 /** Builds the app with in-memory fakes; pass `db` for features that need MongoDB. */
@@ -54,6 +59,8 @@ export function testApp(features: readonly Feature[] = [], opts: { db?: Db; conf
   const bcrypt = bcryptPasswords(4);
   const s3 = memoryStorage();
   const activity = memoryActivity();
+  const sched = memoryScheduler();
+  const imageLabels: { value: string[] | null } = { value: [] };
   const deps: Deps = {
     config: opts.config ?? testConfig(),
     db: opts.db ?? ({} as Db),
@@ -68,8 +75,13 @@ export function testApp(features: readonly Feature[] = [], opts: { db?: Db; conf
     storage: s3.storage,
     cdn: fakeCdn(),
     activity: activity.activity,
+    scheduler: sched.scheduler,
+    screenImage: async () => {
+      if (imageLabels.value === null) throw new HttpError(503, 'SCREENING_UNAVAILABLE', 'down');
+      return { allowed: imageLabels.value.length === 0, labels: imageLabels.value };
+    },
   };
-  const ctx: TestContext = { deps, kv, users, clock, mail, google, breached, s3, activity };
+  const ctx: TestContext = { deps, kv, users, clock, mail, google, breached, s3, activity, schedules: sched.schedules, imageLabels };
   return { app: createApp(deps, features), ctx };
 }
 

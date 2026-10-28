@@ -31,6 +31,10 @@ export const envSchema = z.object({
   MONGO_POOL_SIZE: z.coerce.number().int().min(1).max(10).default(3),
   /** Upload size cap; an invalid value falls back to the hard cap and never raises it. */
   UPLOAD_MAX_BYTES: z.string().optional(),
+  /** EventBridge Scheduler group, target (the status function) and role; unset disables scheduling. */
+  SCHEDULE_GROUP: z.string().optional(),
+  SCHEDULE_TARGET_ARN: z.string().optional(),
+  SCHEDULE_ROLE_ARN: z.string().optional(),
 });
 
 export const secretSchema = z.object({
@@ -61,6 +65,7 @@ export interface Config {
   requireOriginSecret: boolean;
   mongoPoolSize: number;
   uploadMaxBytes: number;
+  schedule: { group: string; targetArn: string; roleArn: string } | null;
   secrets: Secrets;
 }
 
@@ -88,6 +93,9 @@ export function loadConfig(env: Record<string, string | undefined>, secretJson: 
     requireOriginSecret: e.REQUIRE_ORIGIN_SECRET,
     mongoPoolSize: e.MONGO_POOL_SIZE,
     uploadMaxBytes: uploadCap(e.UPLOAD_MAX_BYTES),
+    schedule: e.SCHEDULE_GROUP && e.SCHEDULE_TARGET_ARN && e.SCHEDULE_ROLE_ARN
+      ? { group: e.SCHEDULE_GROUP, targetArn: e.SCHEDULE_TARGET_ARN, roleArn: e.SCHEDULE_ROLE_ARN }
+      : null,
     secrets: s,
   };
 }
