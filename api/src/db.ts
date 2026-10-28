@@ -41,6 +41,8 @@ export async function ensureIndexes(db: Db): Promise<void> {
       { key: { status: 1, visibility: 1, 'moderation.status': 1, processedAt: -1 }, name: 'feed' },
       // The daily reconciler finds abandoned drafts.
       { key: { status: 1, 'upload.startedAt': 1 }, name: 'drafts' },
+      { key: { 'moderation.status': 1, createdAt: -1 }, name: 'moderation_queue' },
+      { key: { 'moderation.openReports': 1 }, name: 'reported', partialFilterExpression: { 'moderation.openReports': { $gt: 0 } } },
     ]),
     db.collection('comments').createIndexes([
       { key: { video: 1, parent: 1, pinned: 1, _id: -1 }, name: 'thread' },
@@ -71,6 +73,19 @@ export async function ensureIndexes(db: Db): Promise<void> {
       { key: { owner: 1, updatedAt: -1 }, name: 'by_owner' },
       { key: { 'items.video': 1 }, name: 'by_video' },
     ]),
+    db.collection('reports').createIndexes([
+      { key: { video: 1, reporter: 1 }, name: 'one_open_per_reporter', unique: true, partialFilterExpression: { status: 'open' } },
+      { key: { video: 1, status: 1 }, name: 'by_video' },
+    ]),
+    db.collection('appeals').createIndexes([
+      { key: { video: 1 }, name: 'one_open_per_video', unique: true, partialFilterExpression: { status: 'open' } },
+      { key: { status: 1, createdAt: 1 }, name: 'queue' },
+    ]),
+    db.collection('auditSamples').createIndexes([
+      { key: { video: 1 }, name: 'one_pending_per_video', unique: true, partialFilterExpression: { status: 'pending' } },
+      { key: { status: 1, createdAt: 1 }, name: 'queue' },
+    ]),
+    db.collection('moderationEvents').createIndexes([{ key: { outcome: 1, _id: -1 }, name: 'by_outcome' }]),
     db.collection('emailTokens').createIndexes([
       { key: { tokenHash: 1 }, name: 'token_unique', unique: true },
       { key: { user: 1, kind: 1 }, name: 'user_kind' },
