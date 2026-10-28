@@ -1,6 +1,8 @@
 # Architecture — Video Sharing Platform v2
 
-Status: **draft for owner review (S0, 2026-10-28)**. Branch: `rebuild/v2`.
+Status: **approved by the owner on 2026-10-28 (S0)**: TypeScript everywhere, resource prefix
+`zelos-{env}`, chunk fan-out as one Batch array job, playback authorised by a CloudFront
+signed query policy instead of cookies. Branch: `rebuild/v2`.
 
 This document is the design baseline of the rewrite. Code, infrastructure, tests and the
 report follow it; when they disagree, this document is fixed first.
@@ -27,8 +29,8 @@ product; none is optional.
 | F12 | Trust & safety | Automatic screening (Rekognition), review queue, decisions with reason codes, appeals, audit sampling with FP/FN metrics, event log, user/role admin; roles `user`, `operator`, `auditor`, `admin` |
 | F13 | UI | Light/dark theme, Vietnamese/English, 403/404 pages, design system in vanilla CSS (no Tailwind) |
 
-Owner to choose at S0 (proposed, not yet in scope): age restriction, owner download toggle,
-replace-file-keep-link, autoplay/up-next queue.
+Not in scope (owner, 2026-10-28): age restriction, owner download toggle, replace-file-keep-link,
+autoplay/up-next queue.
 
 ## 2. Constraints
 
