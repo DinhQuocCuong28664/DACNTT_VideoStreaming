@@ -46,6 +46,21 @@ jobs:
       - name: Build
         run: npm run build
 
+  transcoder-smoke:
+    # Runs the real ffmpeg pipeline inside the image: single and chunked paths encrypted, packaged,
+    # decrypted and decoded end to end, audio continuity at chunk boundaries, preview sprites.
+    name: "Transcoder image smoke test"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build the smoke stage
+        run: docker build -f transcoder/Dockerfile --target smoke -t zelos-smoke .
+
+      - name: Run the smoke test
+        run: docker run --rm zelos-smoke
+
   terraform:
     name: "Terraform format, validate, config scan"
     runs-on: ubuntu-latest
