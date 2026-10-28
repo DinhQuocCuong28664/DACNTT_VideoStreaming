@@ -7,6 +7,7 @@ import { cachedSessions, type SessionInfo } from '../src/http/middleware.js';
 import { bcryptPasswords } from '../src/auth/passwords.js';
 import type { GoogleIdentity } from '../src/auth/google.js';
 import { memoryMailer } from '../src/services/mail.js';
+import { memoryStorage } from '../src/services/storage.js';
 
 export const ORIGIN_SECRET = 'o'.repeat(40);
 export const WEB = 'https://v2-staging.zelostech.site';
@@ -17,7 +18,7 @@ export function testConfig(overrides: Record<string, string> = {}): Config {
     DB_NAME: 'zelos_test',
     WEB_ORIGINS: WEB,
     WEB_BASE_URL: WEB,
-    API_BASE_URL: 'https://api-v2-staging.zelostech.site/v1',
+    API_BASE_URL: 'https://api-v2-staging.zelostech.site',
     CDN_BASE_URL: 'https://cdn.example.test',
     RAW_BUCKET: 'raw', PROCESSED_BUCKET: 'processed', KEYS_BUCKET: 'keys',
     TABLE_RATE_LIMITS: 'rl', TABLE_VIEW_MARKS: 'vm', TABLE_WATCH_PROGRESS: 'wp',
@@ -36,6 +37,7 @@ export interface TestContext {
   google: Map<string, GoogleIdentity>;
   /** password -> breach count returned by the fake Pwned Passwords check. */
   breached: Map<string, number | null>;
+  s3: ReturnType<typeof memoryStorage>;
 }
 
 /** Builds the app with in-memory fakes; pass `db` for features that need MongoDB. */
@@ -47,6 +49,7 @@ export function testApp(features: readonly Feature[] = [], opts: { db?: Db; conf
   const google = new Map<string, GoogleIdentity>();
   const breached = new Map<string, number | null>();
   const bcrypt = bcryptPasswords(4);
+  const s3 = memoryStorage();
   const deps: Deps = {
     config: opts.config ?? testConfig(),
     db: opts.db ?? ({} as Db),
@@ -58,8 +61,9 @@ export function testApp(features: readonly Feature[] = [], opts: { db?: Db; conf
     passwords: { hash: bcrypt.hash, verify: bcrypt.verify, breaches: async (p) => (breached.has(p) ? breached.get(p) ?? null : 0) },
     google: async (t) => google.get(t) ?? null,
     mail,
+    storage: s3.storage,
   };
-  const ctx: TestContext = { deps, kv, users, clock, mail, google, breached };
+  const ctx: TestContext = { deps, kv, users, clock, mail, google, breached, s3 };
   return { app: createApp(deps, features), ctx };
 }
 

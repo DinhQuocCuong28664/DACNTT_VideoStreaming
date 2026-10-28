@@ -35,6 +35,13 @@ export async function ensureIndexes(db: Db): Promise<void> {
       { key: { handle: 1 }, name: 'handle_unique', unique: true },
       { key: { googleSub: 1 }, name: 'google_unique', unique: true, partialFilterExpression: { googleSub: { $type: 'string' } } },
     ]),
+    db.collection('videos').createIndexes([
+      { key: { owner: 1, createdAt: -1 }, name: 'owner_recent' },
+      // Public listing: ready, public, approved, newest first.
+      { key: { status: 1, visibility: 1, 'moderation.status': 1, processedAt: -1 }, name: 'feed' },
+      // The daily reconciler finds abandoned drafts.
+      { key: { status: 1, 'upload.startedAt': 1 }, name: 'drafts' },
+    ]),
     db.collection('emailTokens').createIndexes([
       { key: { tokenHash: 1 }, name: 'token_unique', unique: true },
       { key: { user: 1, kind: 1 }, name: 'user_kind' },

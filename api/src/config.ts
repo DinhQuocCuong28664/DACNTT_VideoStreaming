@@ -4,6 +4,7 @@
  * a missing value fails the deploy check instead of a user request.
  */
 import { z } from 'zod';
+import { HARD_CAP_BYTES } from './model/video.js';
 
 const csv = z.string().transform((s) => s.split(',').map((v) => v.trim()).filter(Boolean));
 
@@ -14,7 +15,7 @@ export const envSchema = z.object({
   WEB_ORIGINS: csv,
   /** Public base URL of the web app, used in e-mail links. */
   WEB_BASE_URL: z.string().url(),
-  /** Public base URL of the API including /v1, used for the HLS key URI. */
+  /** Public base URL of the API without /v1, used for the HLS key URI. */
   API_BASE_URL: z.string().url(),
   CDN_BASE_URL: z.string().url(),
   RAW_BUCKET: z.string().min(1),
@@ -28,6 +29,8 @@ export const envSchema = z.object({
   /** Requests without the shared origin header are refused unless this is false (local only). */
   REQUIRE_ORIGIN_SECRET: z.enum(['true', 'false']).default('true').transform((v) => v === 'true'),
   MONGO_POOL_SIZE: z.coerce.number().int().min(1).max(10).default(3),
+  /** Upload size cap; an invalid value falls back to the hard cap and never raises it. */
+  UPLOAD_MAX_BYTES: z.string().optional(),
 });
 
 export const secretSchema = z.object({
@@ -57,6 +60,7 @@ export interface Config {
   tables: { rateLimits: string; viewMarks: string; watchProgress: string; heartbeats: string; notifications: string };
   requireOriginSecret: boolean;
   mongoPoolSize: number;
+  uploadMaxBytes: number;
   secrets: Secrets;
 }
 
@@ -83,6 +87,12 @@ export function loadConfig(env: Record<string, string | undefined>, secretJson: 
     },
     requireOriginSecret: e.REQUIRE_ORIGIN_SECRET,
     mongoPoolSize: e.MONGO_POOL_SIZE,
+    uploadMaxBytes: uploadCap(e.UPLOAD_MAX_BYTES),
     secrets: s,
   };
+}
+
+export function uploadCap(raw: string | undefined): number {
+  const n = raw === undefined || !/^\d+$/.test(raw.trim()) ? NaN : Number(raw);
+  return Number.isSafeInteger(n) && n > 0 && n <= HARD_CAP_BYTES ? n : HARD_CAP_BYTES;
 }
