@@ -1,9 +1,0 @@
-# Sao thành terraform.tfvars (đã gitignore) hoặc để scripts/staging-up.sh tự
-# truyền. Không có giá trị bí mật nào ở đây: mật khẩu và khoá đều nằm trong
-# Secrets Manager.
-
-# Địa chỉ Gmail gửi thông báo, như production (bỏ trống thì staging không gửi mail)
-email_user = "your-account@gmail.com"
-
-# Google OAuth client ID (public); empty disables Sign in with Google on staging
-google_client_id = ""
