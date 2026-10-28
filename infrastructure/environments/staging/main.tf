@@ -19,19 +19,18 @@ data "aws_caller_identity" "current" {}
 # ── Tài nguyên dùng chung với production ─────────────
 #
 # Repo ECR: staging chạy đúng image mà CI build cho commit đang thử (tag bằng
-# SHA), không cần repo riêng. Hai secret mật khẩu Gmail và token Cloudflare
-# cũng đọc thẳng bản của production thay vì nhân bản — đổi mật khẩu thì chỉ
-# đổi một nơi.
+# SHA), không cần repo riêng.
+#
+# The Gmail app password secret is read from production instead of being
+# copied, so a rotation happens in one place. The production Cloudflare API
+# token is not granted to staging roles: only the old staging EC2 host needed
+# it (certbot); Terraform reads it with CLI credentials (scripts/staging-up.sh).
 data "aws_ecr_repository" "transcoder" {
   name = "${local.dev_prefix}-transcoder"
 }
 
 data "aws_secretsmanager_secret" "email_app_password" {
   name = "${local.dev_prefix}/email-app-password"
-}
-
-data "aws_secretsmanager_secret" "cloudflare_api_token" {
-  name = "${local.dev_prefix}/cloudflare-api-token"
 }
 
 data "aws_secretsmanager_secret_version" "prod_mongodb_uri" {
@@ -146,7 +145,6 @@ module "iam" {
   static_bucket_arn    = aws_s3_bucket.frontend.arn
   extra_secret_arns = [
     data.aws_secretsmanager_secret.email_app_password.arn,
-    data.aws_secretsmanager_secret.cloudflare_api_token.arn,
   ]
   tags = local.common_tags
 }
