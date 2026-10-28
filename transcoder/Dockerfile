@@ -2,6 +2,7 @@
 #   docker build -f transcoder/Dockerfile -t zelos-transcoder .                 # runtime image
 #   docker build -f transcoder/Dockerfile --target smoke -t zelos-smoke .       # CI smoke test
 #
+# Base images are pinned by digest (node 22.23.4, ffmpeg 8.1.2) so every build is the same.
 # Stage "build" builds the shared package and bundles the entry points into single files.
 # Stage "runtime" holds Node, a pinned static ffmpeg and the job bundle: no node_modules, no
 # ffprobe (probing runs in a Lambda), no build tools, a non-root user. Every Fargate task pulls
@@ -9,7 +10,7 @@
 
 FROM mwader/static-ffmpeg:8.1.2@sha256:33f770f812cbfc3de96c547157fc9faf8bd95a36481753439ffa761045167585 AS ffmpeg
 
-FROM node:22-slim AS build
+FROM node:22-slim@sha256:4b150b48b4116e2a22f2c39cc27025fbf4f153e2078fd3b14d159fdb5c7279da AS build
 WORKDIR /src
 COPY package.json package-lock.json tsconfig.base.json ./
 COPY shared/package.json shared/package.json
@@ -20,7 +21,7 @@ COPY shared/ shared/
 COPY transcoder/ transcoder/
 RUN npm run build --workspace=@zelos/shared && npm run build --workspace=@zelos/transcoder
 
-FROM node:22-slim AS base
+FROM node:22-slim@sha256:4b150b48b4116e2a22f2c39cc27025fbf4f153e2078fd3b14d159fdb5c7279da AS base
 COPY --from=ffmpeg /ffmpeg /usr/local/bin/ffmpeg
 RUN useradd --create-home --shell /usr/sbin/nologin transcoder
 WORKDIR /app
