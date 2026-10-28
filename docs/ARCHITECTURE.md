@@ -181,6 +181,10 @@ PROCESSING" sweep.
 Early stop for chunks: an array job only finishes when every child has finished, so a chunk
 whose last attempt fails writes `work/{videoId}/{uploadVersion}/abort` to S3; the other chunks
 check that marker before starting and between segments, and exit at once.
+A chunk that fails with a non-retryable error writes the marker on its first attempt. One gap
+remains by design: a Spot reclaim on the last attempt kills the container before it can write
+the marker, so the siblings finish their work and the missing result is caught by `stitch`,
+which refuses to publish and sends the workflow to `MarkFailed`.
 
 Progress: the `encode` job publishes a `TranscodeProgress` event at most every 10 s; each chunk
 publishes one event when it finishes; `status` stores `processingProgress` and the step. This
