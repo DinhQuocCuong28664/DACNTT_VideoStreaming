@@ -5,7 +5,7 @@
  */
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { SEGMENT_SECONDS, type PackageResult } from '@zelos/shared';
+import { NonRetryableError, SEGMENT_SECONDS, type PackageResult } from '@zelos/shared';
 import { presignGet, progressReporter, putDirectory, putFile, putJson } from '../aws.js';
 import { log, type JobContext } from '../context.js';
 import { singleJobArgs } from '../ffmpeg/args.js';
@@ -15,7 +15,7 @@ import { packageLocal } from '../package.js';
 
 export async function encode(ctx: JobContext): Promise<void> {
   const { env, plan } = ctx;
-  if (plan.mode !== 'single') throw new Error('the encode job runs only for single-job plans');
+  if (plan.mode !== 'single') throw new NonRetryableError('the encode job runs only for single-job plans');
 
   const outputDir = join(ctx.scratch, 'out');
   await Promise.all(plan.renditions.map((r) => mkdir(join(outputDir, r.name), { recursive: true })));

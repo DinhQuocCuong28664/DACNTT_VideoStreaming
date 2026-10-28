@@ -65,3 +65,20 @@ export interface AnalyseResult {
     error: string | null;
   } | null;
 }
+
+/**
+ * Container exit codes. Batch retries a failed attempt unless the container exits with
+ * EXIT_NON_RETRYABLE: a bad source, a plan mismatch, an encode that cannot meet its deadline or
+ * a chunk told to stop would fail the same way again. Spot reclaims, network and AWS errors
+ * exit with EXIT_RETRYABLE and are retried.
+ */
+export const EXIT_RETRYABLE = 1;
+export const EXIT_NON_RETRYABLE = 3;
+
+/** An error that another attempt cannot fix. */
+export class NonRetryableError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'NonRetryableError';
+  }
+}

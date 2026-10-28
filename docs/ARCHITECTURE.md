@@ -170,9 +170,10 @@ The chunk threshold is 5 minutes (measured on v1 on 2026-10-11: a 5-minute video
 26.7 minutes as one 1-vCPU job and 11.9 minutes on the chunked path). The single-job path above 20 minutes, which only happens on a
 fallback, keeps the 360p/720p/1080p subset (§5.3).
 
-Retries: every Batch job has `attempts = 3` and retries unconditionally, because a Fargate
-Spot reclaim must not fail the video (as measured on v1); application errors that a retry
-cannot fix exit with a code the workflow maps to `MarkFailed`. Lambda tasks retry
+Retries: every Batch job has `attempts = 3`. A Fargate Spot reclaim, a network or an AWS error
+is retried, because it must not fail the video (as measured on v1). An error that another
+attempt cannot fix (bad source, plan mismatch, encode deadline, abort marker) exits with code 3,
+which `evaluate_on_exit` turns into an immediate failure that the workflow maps to `MarkFailed`. Lambda tasks retry
 `Lambda.ServiceException`, `Lambda.TooManyRequestsException` and throttling with backoff. A
 workflow `TimeoutSeconds` of 24 h (queue wait included) replaces the hourly "stuck
 PROCESSING" sweep.

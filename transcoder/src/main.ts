@@ -2,12 +2,13 @@
  * Container entry point: `node dist/main.js <role>`. The role comes from the job definition;
  * the video comes from per-job environment overrides set by the workflow.
  */
-import { TRANSCODER_ROLES, type TranscoderRole } from '@zelos/shared';
+import { EXIT_NON_RETRYABLE, NonRetryableError, TRANSCODER_ROLES, type TranscoderRole } from '@zelos/shared';
 import { loadContext, log, type JobContext } from './context.js';
 import { analyse } from './roles/analyse.js';
 import { audio } from './roles/audio.js';
 import { chunk } from './roles/chunk.js';
 import { encode } from './roles/encode.js';
+import { exitCodeFor } from './exit.js';
 
 const ROLES: ReadonlyMap<TranscoderRole, (ctx: JobContext) => Promise<void>> = new Map([
   ['analyse', analyse],
@@ -19,7 +20,7 @@ const ROLES: ReadonlyMap<TranscoderRole, (ctx: JobContext) => Promise<void>> = n
 async function main(): Promise<void> {
   const role = process.argv.at(2) as TranscoderRole | undefined;
   const run = role && TRANSCODER_ROLES.includes(role) ? ROLES.get(role) : undefined;
-  if (!run) throw new Error(`unknown role "${role}"; expected one of ${TRANSCODER_ROLES.join(', ')}`);
+  if (!run) throw new NonRetryableError(`unknown role "${role}"; expected one of ${TRANSCODER_ROLES.join(', ')}`);
 
   const ctx = await loadContext();
   log(ctx, 'job started', { role, attempt: ctx.env.AWS_BATCH_JOB_ATTEMPT, arrayIndex: ctx.env.AWS_BATCH_JOB_ARRAY_INDEX });
@@ -32,12 +33,14 @@ async function main(): Promise<void> {
 }
 
 main().catch((err: unknown) => {
+  const code = exitCodeFor(err);
   console.error(JSON.stringify({
     level: 'error',
     msg: 'job failed',
     role: process.argv.at(2),
     videoId: process.env['VIDEO_ID'],
     error: err instanceof Error ? `${err.name}: ${err.message}` : String(err),
+    retryable: code !== EXIT_NON_RETRYABLE,
   }));
-  process.exit(1);
+  process.exit(code);
 });

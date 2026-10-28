@@ -6,6 +6,8 @@
  * judges after a warm-up, and only after the projection has stayed over budget for a sustained
  * period, so one slow stretch never kills a healthy run.
  */
+import { NonRetryableError } from '@zelos/shared';
+
 export interface GuardSettings {
   /** Seconds the job may run (the Batch attempt timeout). */
   budgetSec: number;
@@ -37,7 +39,7 @@ export function projectTotal(durationSec: number | null, sample: GuardSample, s:
   return durationSec * (sample.elapsedSec / sample.encodedSec);
 }
 
-export class EncodeTooSlowError extends Error {
+export class EncodeTooSlowError extends NonRetryableError {
   constructor(readonly projectedSec: number, readonly budgetSec: number) {
     super(`encode would take ${Math.round(projectedSec)} s, over the ${budgetSec} s budget`);
     this.name = 'EncodeTooSlowError';

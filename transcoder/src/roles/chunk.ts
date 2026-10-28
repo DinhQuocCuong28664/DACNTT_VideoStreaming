@@ -5,7 +5,7 @@
  */
 import { mkdir, readFile, stat } from 'node:fs/promises';
 import { join } from 'node:path';
-import { SEGMENT_SECONDS, parseMediaPlaylist, type ChunkResult, type MeasuredSegment } from '@zelos/shared';
+import { NonRetryableError, SEGMENT_SECONDS, parseMediaPlaylist, type ChunkResult, type MeasuredSegment } from '@zelos/shared';
 import { exists, presignGet, progressReporter, putDirectory, putJson } from '../aws.js';
 import { log, type JobContext } from '../context.js';
 import { chunkJobArgs } from '../ffmpeg/args.js';
@@ -14,7 +14,7 @@ import { runProcess } from '../ffmpeg/run.js';
 /** Matches the retry_strategy of the job definition. */
 const MAX_ATTEMPTS = 3;
 
-export class AbortedError extends Error {
+export class AbortedError extends NonRetryableError {
   constructor() {
     super('another chunk failed for good; stopping early');
     this.name = 'AbortedError';
@@ -23,10 +23,10 @@ export class AbortedError extends Error {
 
 export async function chunk(ctx: JobContext): Promise<void> {
   const { env, plan } = ctx;
-  if (plan.mode !== 'chunked') throw new Error('the chunk job runs only for chunked plans');
+  if (plan.mode !== 'chunked') throw new NonRetryableError('the chunk job runs only for chunked plans');
   const index = env.AWS_BATCH_JOB_ARRAY_INDEX;
   const item = index === undefined ? undefined : plan.chunkPlan.chunks.at(index);
-  if (index === undefined || !item || item.index !== index) throw new Error(`chunk index ${index} is not in the plan`);
+  if (index === undefined || !item || item.index !== index) throw new NonRetryableError(`chunk index ${index} is not in the plan`);
 
   if (await exists(env.WORK_BUCKET, ctx.work.abortMarker)) throw new AbortedError();
 
@@ -76,7 +76,9 @@ export async function chunk(ctx: JobContext): Promise<void> {
     );
     log(ctx, 'chunk done', { index });
   } catch (err) {
-    if (!(err instanceof AbortedError) && (env.AWS_BATCH_JOB_ATTEMPT ?? 1) >= MAX_ATTEMPTS) {
+    // Tell the siblings to stop when this chunk will not be tried again.
+    const final = err instanceof NonRetryableError || (env.AWS_BATCH_JOB_ATTEMPT ?? 1) >= MAX_ATTEMPTS;
+    if (!(err instanceof AbortedError) && final) {
       await putJson(env.WORK_BUCKET, ctx.work.abortMarker, { index, error: String(err) }).catch(() => undefined);
     }
     throw err;

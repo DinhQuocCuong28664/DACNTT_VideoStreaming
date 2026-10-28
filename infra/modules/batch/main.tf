@@ -184,10 +184,18 @@ resource "aws_batch_job_definition" "role" {
   platform_capabilities = ["FARGATE"]
   propagate_tags        = true
 
-  # A Fargate Spot reclaim must not fail the video, so every attempt is retried; the
-  # workflow decides what an application error means.
+  # A Fargate Spot reclaim, a network or an AWS error is retried. Exit code 3 marks an error
+  # another attempt cannot fix (bad source, plan mismatch, deadline, abort marker): stop at once.
   retry_strategy {
     attempts = 3
+    evaluate_on_exit {
+      on_exit_code = "3"
+      action       = "EXIT"
+    }
+    evaluate_on_exit {
+      on_reason = "*"
+      action    = "RETRY"
+    }
   }
 
   timeout {
