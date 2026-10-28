@@ -21,3 +21,11 @@ output "job_queue_arns" {
 output "job_definition_names" {
   value = module.batch.job_definition_names
 }
+
+output "state_machine_arn" {
+  value = module.workflow.state_machine_arn
+}
+
+output "mongodb_secret_arn" {
+  value = module.workflow.mongodb_secret_arn
+}

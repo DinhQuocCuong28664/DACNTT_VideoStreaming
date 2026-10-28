@@ -61,3 +61,6 @@ backend/dist/
 coverage/
 # v2 commits its provider lock files so CI and local runs use the same providers
 !infra/envs/*/.terraform.lock.hcl
+
+# Terraform build outputs (Lambda zips)
+**/.build/

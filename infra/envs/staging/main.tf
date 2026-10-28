@@ -92,3 +92,22 @@ module "batch" {
     API_BASE_URL = local.api_base_url
   }
 }
+
+module "workflow" {
+  source               = "../../modules/workflow"
+  name                 = local.name
+  environment_name     = local.environment
+  functions_dist_dir   = "${path.root}/../../../functions/dist"
+  artifacts_bucket     = data.terraform_remote_state.shared.outputs.artifacts_bucket
+  bucket_names         = module.storage.bucket_names
+  bucket_arns          = module.storage.bucket_arns
+  ingest_queue_arn     = module.ingest.queue_arn
+  event_bus_name       = module.events.bus_name
+  event_bus_arn        = module.events.bus_arn
+  alert_topic_arn      = module.events.alerts_topic_arn
+  job_queue_arns       = module.batch.job_queue_arns
+  job_definition_arns  = module.batch.job_definition_arns
+  api_base_url         = local.api_base_url
+  db_name              = "zelos_staging"
+  secret_recovery_days = 0 # staging is disposable
+}
