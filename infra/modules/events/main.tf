@@ -13,6 +13,9 @@ resource "aws_sns_topic" "alerts" {
   name = "${var.name}-alerts"
 }
 
+data "aws_caller_identity" "current" {}
+
+# Only alarms and rules of this account may publish (no confused deputy).
 data "aws_iam_policy_document" "alerts" {
   statement {
     sid       = "AllowCloudWatchAndEventBridge"
@@ -21,6 +24,11 @@ data "aws_iam_policy_document" "alerts" {
     principals {
       type        = "Service"
       identifiers = ["cloudwatch.amazonaws.com", "events.amazonaws.com"]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "aws:SourceAccount"
+      values   = [data.aws_caller_identity.current.account_id]
     }
   }
 }
