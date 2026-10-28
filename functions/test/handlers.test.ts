@@ -96,7 +96,8 @@ describe('stitch', () => {
   const goodResults = (): ChunkResult[] => {
     if (plan.mode !== 'chunked') return [];
     return plan.chunkPlan.chunks.map((c) => {
-      const n = c.expectedSegments ?? 3;
+      // The open last chunk holds whatever frames remain.
+      const n = c.expectedSegments ?? Math.ceil((plan.chunkPlan.frameCount - c.startFrame) / plan.chunkPlan.gopFrames);
       const rungs: ChunkResult['rungs'] = {};
       for (const r of plan.renditions) {
         rungs[r.name] = {
