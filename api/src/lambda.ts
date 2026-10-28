@@ -7,12 +7,15 @@ import { configure as serverlessExpress } from '@codegenie/serverless-express';
 import { GetSecretValueCommand, SecretsManagerClient } from '@aws-sdk/client-secrets-manager';
 import { createApp, type Log } from './app.js';
 import { loadConfig } from './config.js';
-import { connect } from './db.js';
+import { connect, ensureIndexes } from './db.js';
 import { dynamoKv } from './kv.js';
 import { Tokens } from './auth/tokens.js';
 import { mongoSessionLookup } from './auth/sessions.js';
 import { cachedSessions } from './http/middleware.js';
 import { FEATURES } from './features/index.js';
+import { bcryptPasswords } from './auth/passwords.js';
+import { googleVerifier } from './auth/google.js';
+import { cappedMailer, gmailMailer, memoryMailer } from './services/mail.js';
 
 const log: Log = (entry) => console.log(JSON.stringify(entry));
 
@@ -25,14 +28,22 @@ async function init(): Promise<Handler> {
   const secret = await new SecretsManagerClient({}).send(new GetSecretValueCommand({ SecretId: arn }));
   const config = loadConfig(process.env, secret.SecretString ?? '{}');
   const db = await connect(config.secrets.mongodbUri, config.dbName, config.mongoPoolSize);
+  await ensureIndexes(db);
+  const kv = dynamoKv();
+  const now = () => new Date();
+  const { smtpUser, smtpPassword } = config.secrets;
+  const mailer = smtpUser && smtpPassword ? gmailMailer(smtpUser, smtpPassword) : memoryMailer();
   const app = createApp({
     config,
     db,
-    kv: dynamoKv(),
+    kv,
     tokens: new Tokens(config.secrets.jwtSecret),
     sessions: cachedSessions(mongoSessionLookup(db)),
     log,
-    now: () => new Date(),
+    now,
+    passwords: bcryptPasswords(),
+    google: googleVerifier(config.secrets.googleClientId),
+    mail: cappedMailer(mailer, kv, config.tables.rateLimits, log, now),
   }, FEATURES);
   return serverlessExpress({ app, binarySettings: { contentTypes: ['application/octet-stream', 'image/*'] } }) as unknown as Handler;
 }

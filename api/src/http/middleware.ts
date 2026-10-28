@@ -2,7 +2,7 @@
 import { timingSafeEqual, createHash } from 'node:crypto';
 import type { Request, RequestHandler } from 'express';
 import type { Kv } from '../kv.js';
-import type { Role, Tokens } from '../auth/tokens.js';
+import { can, type Permission, type Role, type Tokens } from '../auth/tokens.js';
 import { clientIp, ipRateKey } from './clientIp.js';
 import { forbidden, tooMany, unauthorized } from './errors.js';
 
@@ -101,10 +101,10 @@ export function authenticate(tokens: Tokens, sessions: Sessions): RequestHandler
 
 export const requireUser: RequestHandler = (req, _res, next) => next(req.user ? undefined : unauthorized());
 
-export function requireRole(...roles: Role[]): RequestHandler {
+export function requirePermission(permission: Permission): RequestHandler {
   return (req, _res, next) => {
     if (!req.user) return next(unauthorized());
-    next(roles.includes(req.user.role) ? undefined : forbidden());
+    next(can(req.user.role, permission) ? undefined : forbidden());
   };
 }
 

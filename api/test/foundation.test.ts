@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import request from 'supertest';
 import type { Feature } from '../src/app.js';
 import { badRequest } from '../src/http/errors.js';
-import { rateLimit, requireRole, requireUser } from '../src/http/middleware.js';
+import { rateLimit, requirePermission, requireUser } from '../src/http/middleware.js';
 import { ipRateKey } from '../src/http/clientIp.js';
 import { Tokens } from '../src/auth/tokens.js';
 import { ORIGIN_SECRET, WEB, testApp, testConfig } from './helpers.js';
@@ -10,7 +10,7 @@ import { ORIGIN_SECRET, WEB, testApp, testConfig } from './helpers.js';
 const probe: Feature = (r, deps) => {
   r.get('/probe/me', requireUser, (req, res) => { res.json({ user: req.user, clientKey: req.clientKey }); });
   r.get('/probe/public-key', (req, res) => { res.json({ clientKey: req.clientKey }); });
-  r.get('/probe/admin', requireRole('admin'), (_req, res) => { res.json({ ok: true }); });
+  r.get('/probe/admin', requirePermission('users:manage'), (_req, res) => { res.json({ ok: true }); });
   r.get('/probe/fail', () => { throw new Error('database password is hunter2'); });
   r.get('/probe/bad', () => { throw badRequest('NOPE', 'Nope'); });
   r.post('/probe/echo', (req, res) => { res.json(req.body); });

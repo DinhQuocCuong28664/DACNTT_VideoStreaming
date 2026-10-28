@@ -7,8 +7,32 @@
  */
 import jwt from 'jsonwebtoken';
 
-export const ROLES = ['user', 'moderator', 'admin', 'auditor'] as const;
+export const ROLES = ['user', 'operator', 'auditor', 'admin'] as const;
 export type Role = (typeof ROLES)[number];
+export const STAFF_ROLES: readonly Role[] = ['operator', 'auditor', 'admin'];
+
+/**
+ * Staff permissions. Checks name a permission, never a role, so adding a role only changes this
+ * table. Operators decide; auditors only read metrics, so oversight does not depend on the
+ * people being overseen.
+ */
+export const PERMISSIONS = {
+  'moderation:review': ['admin', 'operator'],
+  'moderation:appeals': ['admin', 'operator'],
+  'moderation:audit': ['admin', 'operator'],
+  'moderation:sample': ['admin'],
+  'metrics:read': ['admin', 'auditor'],
+  'events:read': ['admin', 'auditor'],
+  'users:manage': ['admin'],
+  'pii:email': ['admin'],
+  'content:viewRemoved': ['admin', 'operator'],
+} as const satisfies Record<string, readonly Role[]>;
+export type Permission = keyof typeof PERMISSIONS;
+
+const PERMISSION_MAP: ReadonlyMap<Permission, readonly Role[]> = new Map(Object.entries(PERMISSIONS) as [Permission, readonly Role[]][]);
+
+export const can = (role: Role | undefined, permission: Permission): boolean =>
+  role !== undefined && (PERMISSION_MAP.get(permission) ?? []).includes(role);
 
 export interface AccessClaims { sub: string; role: Role; tv: number }
 export interface PlaybackClaims { sub: string; v: number }
