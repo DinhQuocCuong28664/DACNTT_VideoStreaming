@@ -55,3 +55,7 @@ samples/
 backup-aws/
 
 backend/dist/
+
+# TypeScript and test output
+*.tsbuildinfo
+coverage/
