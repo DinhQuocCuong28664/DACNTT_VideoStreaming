@@ -39,6 +39,7 @@ autoplay/up-next queue.
 | AWS account B (`749680934725`, `ap-southeast-1`) | All compute and storage | Credits; Fargate only, no always-on instances |
 | AWS account A (`911707244328`) | CloudFront + ACM only (B may not create CloudFront) | Cross-account OAC/bucket policy; new paid resources need the owner's OK |
 | Fargate quota | 8 vCPU Spot + 8 vCPU On-Demand (Spot 12 requested) | Transcoding ceiling 16 vCPU |
+| VPCs | 5 per region, 4 in use (old dev, old staging, bench, default) | One VPC (`zelos`, 10.20.0.0/16) shared by every v2 environment; each environment has its own security group |
 | Fargate quota is per account | Old stack (dev + staging) and new stack share the same 8 + 8 vCPU | Measurements run only while the other stack's queues are idle |
 | Lambda concurrency | 400 per account (1000 requested); at least 100 must stay unreserved | Reserved concurrency per function (§5.8) |
 | Batch `SubmitJob` | 50 TPS | Chunk fan-out uses one array job, not one call per chunk |
@@ -416,7 +417,7 @@ status and moderation, so private, unlisted, unready or removed videos never app
 | 11 | Atlas Search | Elasticsearch/OpenSearch | Same Lucene engine, managed, no always-on cluster |
 | 12 | EventBridge Scheduler one-time schedule per scheduled video, deleted after it fires | Polling cron | Exact time, no idle polling |
 | 13 | Powertools logger/tracer/metrics, X-Ray, structured English logs | Free-form logs | Correlate by `videoId` and execution ARN across Lambda, Step Functions and Batch |
-| 14 | Environments `prod` and `staging`, prefix `zelos-{env}`, state per environment with DynamoDB locking | Reusing `dacntt-dev-*` | Names match their role; the old stack stays untouched until cutover |
+| 14 | Environments `prod` and `staging`, prefix `zelos-{env}`, plus `shared` for the VPC and ECR; state per environment (`zelos/{env}/terraform.tfstate`) with DynamoDB locking | Reusing `dacntt-dev-*`; one VPC per environment | Names match their role; the old stack stays untouched until cutover; the VPC limit leaves room for one VPC |
 | 15 | CloudFront in account A, origins in B | Everything in B | B is not allowed to create CloudFront distributions |
 | 16 | Email through Gmail SMTP with a per-recipient throttle | SES | SES account is in sandbox |
 | 17 | **Approved 2026-10-28:** DynamoDB on-demand for rate limits, view marks, watch progress, analytics heartbeats and notifications | Everything in MongoDB (free cluster throttles at 100 ops/s); Atlas Flex (8–30 USD per month outside AWS credits); Redis (rejected earlier) | Serverless, pay per request, TTL built in, covered by AWS credits; keeps MongoDB for documents and search |
@@ -597,7 +598,7 @@ functions/      starter, probe, status, stitch, notifier (TypeScript)
 transcoder/     container image: analyse, encode, audio, chunk (TypeScript, FFmpeg)
 web/            React SPA (TypeScript, Vite, hls.js, vanilla CSS)
 shared/         schemas (zod), video states, event contracts, label policy
-infra/          Terraform: modules/ and envs/{prod,staging}
+infra/          Terraform: modules/ and envs/{shared,staging,prod}; shared = VPC + ECR
 e2e/            Playwright tests
 docs/           this document, diagrams, results
 report/         LaTeX report

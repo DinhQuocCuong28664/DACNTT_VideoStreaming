@@ -45,3 +45,37 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  terraform:
+    name: "Terraform format, validate, config scan"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.14.8
+
+      - name: Format
+        run: terraform fmt -check -recursive infra
+
+      # Validation needs no AWS access: the backend is skipped.
+      - name: Validate every environment
+        run: |
+          for env in infra/envs/*/; do
+            echo "::group::$env"
+            terraform -chdir="$env" init -backend=false -input=false
+            terraform -chdir="$env" validate
+            echo "::endgroup::"
+          done
+
+      - name: Misconfiguration scan (HIGH and CRITICAL fail the build)
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        with:
+          scan-type: 'config'
+          scan-ref: 'infra'
+          severity: 'HIGH,CRITICAL'
+          exit-code: '1'
+          format: 'table'
