@@ -5,6 +5,10 @@
 import { audioBitrates, planRenditions, type PlannedRendition } from '../ladder.js';
 import { buildChunkPlan, chooseGopsPerChunk, type ChunkPlan } from './chunkPlan.js';
 import { chunkEligibility, durationSeconds, estimateFrameCount, type ProbeSummary } from './probe.js';
+import type { Rational } from './rational.js';
+
+/** Frame rate assumed when the source does not report a usable one. */
+export const DEFAULT_FPS: Rational = { num: 30, den: 1 };
 
 /** Sources at least this long take the chunked path (v1 measurement: 5 min went 26.7 → 11.9 min). */
 export const DEFAULT_CHUNK_THRESHOLD_SEC = 300;
@@ -27,6 +31,8 @@ export interface SinglePlan {
   hasAudio: boolean;
   videoStreamIndex: number;
   audioStreamIndex: number | null;
+  /** Frame rate for GOP sizes and the master playlist; DEFAULT_FPS when unknown. */
+  fps: Rational;
 }
 
 export interface ChunkedPlan {
@@ -37,6 +43,8 @@ export interface ChunkedPlan {
   hasAudio: boolean;
   videoStreamIndex: number;
   audioStreamIndex: number | null;
+  /** Frame rate for GOP sizes and the master playlist; DEFAULT_FPS when unknown. */
+  fps: Rational;
   chunkPlan: ChunkPlan;
 }
 
@@ -53,6 +61,7 @@ export function buildTranscodePlan(summary: ProbeSummary, options: TranscodePlan
     hasAudio,
     videoStreamIndex: video.index,
     audioStreamIndex: summary.audio?.index ?? null,
+    fps: video.fps ?? DEFAULT_FPS,
   };
 
   const single = (fallbackReason: string | null): SinglePlan => {

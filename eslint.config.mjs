@@ -36,4 +36,13 @@ export default tseslint.config(
       'no-console': 'off',
     },
   },
+  {
+    // The transcoder container only touches files under its own mkdtemp scratch directory,
+    // joined with rung names from the validated plan; no path comes from a user. The rule
+    // stays on for the API, which handles user input.
+    files: ['transcoder/src/**/*.ts'],
+    rules: {
+      'security/detect-non-literal-fs-filename': 'off',
+    },
+  },
 );
