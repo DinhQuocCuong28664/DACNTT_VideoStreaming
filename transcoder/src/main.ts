@@ -22,7 +22,8 @@ async function main(): Promise<void> {
   const run = role && TRANSCODER_ROLES.includes(role) ? ROLES.get(role) : undefined;
   if (!run) throw new NonRetryableError(`unknown role "${role}"; expected one of ${TRANSCODER_ROLES.join(', ')}`);
 
-  const ctx = await loadContext();
+  // Only roles that write encrypted segments read the key.
+  const ctx = await loadContext(process.env, { withKey: role === 'encode' || role === 'chunk' });
   log(ctx, 'job started', { role, attempt: ctx.env.AWS_BATCH_JOB_ATTEMPT, arrayIndex: ctx.env.AWS_BATCH_JOB_ARRAY_INDEX });
   try {
     await run(ctx);

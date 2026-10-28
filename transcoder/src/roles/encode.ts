@@ -7,7 +7,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { NonRetryableError, SEGMENT_SECONDS, type PackageResult } from '@zelos/shared';
 import { downloadToFile, progressReporter, putDirectory, putFile, putJson } from '../aws.js';
-import { log, type JobContext } from '../context.js';
+import { log, requireKey, type JobContext } from '../context.js';
 import { singleJobArgs } from '../ffmpeg/args.js';
 import { DEFAULT_GUARD, createGuard } from '../ffmpeg/guard.js';
 import { runProcess } from '../ffmpeg/run.js';
@@ -16,6 +16,7 @@ import { packageLocal } from '../package.js';
 export async function encode(ctx: JobContext): Promise<void> {
   const { env, plan } = ctx;
   if (plan.mode !== 'single') throw new NonRetryableError('the encode job runs only for single-job plans');
+  const { key, keyInfoPath } = requireKey(ctx);
 
   const outputDir = join(ctx.scratch, 'out');
   await Promise.all(plan.renditions.map((r) => mkdir(join(outputDir, r.name), { recursive: true })));
@@ -37,7 +38,7 @@ export async function encode(ctx: JobContext): Promise<void> {
     fps: plan.fps,
     segmentSeconds: SEGMENT_SECONDS,
     outputDir,
-    keyInfoPath: ctx.keyInfoPath,
+    keyInfoPath,
   }), {
     onProgress: (sec) => {
       encodedSec = sec;
@@ -53,7 +54,7 @@ export async function encode(ctx: JobContext): Promise<void> {
     hasAudio: plan.hasAudio,
     fps: plan.fps,
     fpsKnown: plan.fpsKnown,
-    key: ctx.key,
+    key,
     apiBaseUrl: env.API_BASE_URL,
     videoId: env.VIDEO_ID,
     uploadVersion: env.UPLOAD_VERSION,

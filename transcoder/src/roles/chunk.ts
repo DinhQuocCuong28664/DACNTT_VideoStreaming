@@ -7,7 +7,7 @@ import { mkdir, readFile, stat } from 'node:fs/promises';
 import { join } from 'node:path';
 import { NonRetryableError, SEGMENT_SECONDS, parseMediaPlaylist, type ChunkResult, type MeasuredSegment } from '@zelos/shared';
 import { exists, presignGet, progressReporter, putDirectory, putJson } from '../aws.js';
-import { log, type JobContext } from '../context.js';
+import { log, requireKey, type JobContext } from '../context.js';
 import { chunkJobArgs } from '../ffmpeg/args.js';
 import { runProcess } from '../ffmpeg/run.js';
 
@@ -29,6 +29,7 @@ export async function chunk(ctx: JobContext): Promise<void> {
   if (index === undefined || !item || item.index !== index) throw new NonRetryableError(`chunk index ${index} is not in the plan`);
 
   if (await exists(env.WORK_BUCKET, ctx.work.abortMarker)) throw new AbortedError();
+  const { keyInfoPath } = requireKey(ctx);
 
   try {
     const outputDir = join(ctx.scratch, 'out');
@@ -49,7 +50,7 @@ export async function chunk(ctx: JobContext): Promise<void> {
       fps: plan.fps,
       segmentSeconds: SEGMENT_SECONDS,
       outputDir,
-      keyInfoPath: ctx.keyInfoPath,
+      keyInfoPath,
     }), {
       onProgress: () => {
         if (Date.now() - lastAbortCheck < 30_000) return;
