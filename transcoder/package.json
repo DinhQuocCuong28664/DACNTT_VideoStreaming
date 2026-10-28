@@ -1,0 +1,22 @@
+{
+  "name": "@zelos/transcoder",
+  "version": "0.1.0",
+  "private": true,
+  "description": "FFmpeg container image: analyse, encode, audio and chunk jobs on AWS Batch Fargate",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@aws-sdk/client-eventbridge": "^3.1158.0",
+    "@aws-sdk/client-rekognition": "^3.1158.0",
+    "@aws-sdk/client-s3": "^3.1158.0",
+    "@aws-sdk/s3-request-presigner": "^3.1158.0",
+    "@zelos/shared": "^0.1.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.24.2"
+  }
+}

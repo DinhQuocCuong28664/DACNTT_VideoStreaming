@@ -9,3 +9,5 @@ export * from './hls/playlist.js';
 export * from './hls/codecs.js';
 export * from './hls/stitch.js';
 export * from './moderation/policy.js';
+export * from './paths.js';
+export * from './jobs.js';
