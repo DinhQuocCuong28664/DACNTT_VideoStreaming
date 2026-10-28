@@ -91,6 +91,18 @@ export function stitchChunks(plan: ChunkPlan, rungNames: readonly string[], resu
     });
   }
 
+  // An empty or short last chunk is accepted above because frame counts can be estimates;
+  // the whole video must still be there, within two GOPs or 1 %.
+  const firstRung = rungNames.at(0);
+  if (!hasErrors(issues) && firstRung !== undefined) {
+    const expected = plan.frameCount * frame;
+    const total = sum(rungs.get(firstRung) ?? []);
+    const tolerance = Math.max(2 * plan.gopSeconds, 0.01 * expected);
+    if (expected - total > tolerance) {
+      issues.push({ level: 'error', message: `video is truncated: ${total.toFixed(1)} s of ${expected.toFixed(1)} s` });
+    }
+  }
+
   return { rungs, issues };
 }
 

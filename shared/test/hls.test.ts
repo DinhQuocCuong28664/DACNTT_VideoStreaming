@@ -169,6 +169,14 @@ describe('stitchChunks', () => {
     expect(hasErrors(fourFrames)).toBe(true);
   });
 
+  it('refuses a stitched video much shorter than the plan', () => {
+    const twoChunks = buildChunkPlan({ frameCount: 30 * 600, fps, gopsPerChunk: 50 });
+    const r = (index: number, n: number): ChunkResult => ({ index, rungs: { '360p': { segments: segs(n) }, '720p': { segments: segs(n) } } });
+    const issues = stitchChunks(twoChunks, rungs, [r(0, 50), r(1, 0)]).issues;
+    expect(issues.map((i) => i.message).join()).toMatch(/truncated/);
+    expect(hasErrors(stitchChunks(twoChunks, rungs, [r(0, 50), r(1, 50)]).issues)).toBe(false);
+  });
+
   it('flags a chunk index outside the plan', () => {
     expect(hasErrors(stitchChunks(plan, rungs, [result(0), result(1), result(2), result(7)]).issues)).toBe(true);
   });
