@@ -55,6 +55,17 @@ export async function ensureIndexes(db: Db): Promise<void> {
       { key: { comment: 1, reporter: 1 }, name: 'one_open_per_reporter', unique: true, partialFilterExpression: { status: 'open' } },
       { key: { status: 1, createdAt: -1 }, name: 'queue' },
     ]),
+    db.collection('subscriptions').createIndexes([
+      { key: { subscriber: 1, channel: 1 }, name: 'pair_unique', unique: true },
+      { key: { channel: 1 }, name: 'by_channel' },
+    ]),
+    db.collection('membershipTiers').createIndexes([
+      { key: { channel: 1, level: 1 }, name: 'active_level_unique', unique: true, partialFilterExpression: { active: true } },
+    ]),
+    db.collection('memberships').createIndexes([
+      { key: { member: 1, channel: 1 }, name: 'pair_unique', unique: true },
+      { key: { channel: 1, expiresAt: -1 }, name: 'roster' },
+    ]),
     db.collection('emailTokens').createIndexes([
       { key: { tokenHash: 1 }, name: 'token_unique', unique: true },
       { key: { user: 1, kind: 1 }, name: 'user_kind' },

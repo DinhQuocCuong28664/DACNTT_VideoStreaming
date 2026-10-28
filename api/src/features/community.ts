@@ -59,7 +59,7 @@ export const communityFeature: Feature = (r, deps) => {
     const access = await decideAccess({
       video: v, viewer: req.user,
       unlocked: unlock ? deps.tokens.verifyUnlock(unlock, v._id.toHexString()) : false,
-      isMember: () => hasMembership(db, req.user?.id, v.owner, now()),
+      isMember: () => hasMembership(db, req.user?.id, v.owner, now(), v.minTierLevel ?? 1),
     });
     if (!access.play && access.as === 'viewer') throw forbidden('VIDEO_LOCKED', 'Unlock the video to see its comments');
     return v;

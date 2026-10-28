@@ -103,7 +103,7 @@ describe('access rule', () => {
     expect(play.body.error.code).toBe('MEMBERS_ONLY');
     expect(JSON.stringify(play.body)).not.toContain('master.m3u8');
 
-    await db.collection('memberships').insertOne({ member: new ObjectId(viewer.id), channel: new ObjectId(owner.id), tier: new ObjectId(), expiresAt: new Date(ctx.clock.now.getTime() + 86_400_000) });
+    await db.collection('memberships').insertOne({ member: new ObjectId(viewer.id), channel: new ObjectId(owner.id), tier: new ObjectId(), level: 1, expiresAt: new Date(ctx.clock.now.getTime() + 86_400_000) });
     expect((await send('get', `/videos/${id}/playback`, undefined, { token: viewer.token })).status).toBe(200);
   });
 

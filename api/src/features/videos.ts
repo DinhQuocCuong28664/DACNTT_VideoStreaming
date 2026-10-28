@@ -32,6 +32,7 @@ const updateBody = z.object({
   /** Required when switching to `password`; keeps the old one when omitted. */
   password: z.string().min(4).max(72),
   audience: z.enum(AUDIENCES),
+  minTierLevel: z.number().int().min(1).max(5),
   hasViolence: z.boolean(),
 }).partial().strict();
 const unlockBody = z.object({ password: z.string().min(1).max(72) });
@@ -121,7 +122,7 @@ export const videosFeature: Feature = (r, deps) => {
       video: v,
       viewer: req.user,
       unlocked: unlockToken ? deps.tokens.verifyUnlock(unlockToken, v._id.toHexString()) : false,
-      isMember: () => hasMembership(deps.db, req.user?.id, v.owner, now()),
+      isMember: () => hasMembership(deps.db, req.user?.id, v.owner, now(), v.minTierLevel ?? 1),
     });
     return { v, access };
   }
@@ -221,7 +222,7 @@ export const videosFeature: Feature = (r, deps) => {
     const body = updateBody.parse(req.body);
     const v = await ownVideo(videos, req);
     const set: Record<string, unknown> = { updatedAt: now() };
-    for (const k of ['title', 'description', 'tags', 'category', 'visibility', 'audience', 'hasViolence'] as const) {
+    for (const k of ['title', 'description', 'tags', 'category', 'visibility', 'audience', 'minTierLevel', 'hasViolence'] as const) {
       // eslint-disable-next-line security/detect-object-injection -- k comes from the fixed list above
       if (body[k] !== undefined) set[k] = body[k];
     }

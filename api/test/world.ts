@@ -55,6 +55,12 @@ export function world(db: Db) {
 
   const tick = (ms: number) => { ctx.clock.now = new Date(ctx.clock.now.getTime() + ms); };
 
-  return { app, ctx: ctx as TestContext, call, user, video, tick, db };
+  /** A fresh access token, for tests that move the clock past the token lifetime. */
+  async function relogin(who: Who): Promise<Who> {
+    const u = await db.collection('users').findOne({ _id: new ObjectId(who.id) });
+    return { id: who.id, token: ctx.deps.tokens.access({ sub: who.id, role: u?.['role'] ?? 'user', tv: Number(u?.['tokenVersion'] ?? 0) }) };
+  }
+
+  return { app, ctx: ctx as TestContext, call, user, video, tick, relogin, db };
 }
 export type World = ReturnType<typeof world>;

@@ -44,11 +44,11 @@ export async function decideAccess({ video, viewer, unlocked, isMember }: Access
   return { see: 'full', play: true, as: 'viewer' };
 }
 
-/** An active membership of `userId` in the channel `channelId`. */
-export async function hasMembership(db: Db, userId: string | undefined, channelId: ObjectId, now: Date): Promise<boolean> {
+/** An active membership of `userId` in the channel `channelId`, at `minLevel` or above. */
+export async function hasMembership(db: Db, userId: string | undefined, channelId: ObjectId, now: Date, minLevel = 1): Promise<boolean> {
   if (!userId || !/^[a-f0-9]{24}$/.test(userId)) return false;
   const m = await db.collection('memberships').findOne(
-    { member: new ObjectId(userId), channel: channelId, expiresAt: { $gt: now } },
+    { member: new ObjectId(userId), channel: channelId, expiresAt: { $gt: now }, level: { $gte: minLevel } },
     { projection: { _id: 1 } },
   );
   return Boolean(m);

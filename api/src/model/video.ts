@@ -32,6 +32,8 @@ export interface VideoDoc {
   visibility: Visibility;
   passwordHash: string | null;
   audience: Audience;
+  /** Lowest membership tier level that unlocks a members-only video. */
+  minTierLevel?: number;
   publishAt: Date | null;
   scheduleName: string | null;
   upload: UploadInfo;
