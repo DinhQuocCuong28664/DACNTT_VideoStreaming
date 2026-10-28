@@ -42,6 +42,19 @@ export async function ensureIndexes(db: Db): Promise<void> {
       // The daily reconciler finds abandoned drafts.
       { key: { status: 1, 'upload.startedAt': 1 }, name: 'drafts' },
     ]),
+    db.collection('comments').createIndexes([
+      { key: { video: 1, parent: 1, pinned: 1, _id: -1 }, name: 'thread' },
+      { key: { parent: 1, _id: 1 }, name: 'replies' },
+      { key: { openReports: -1, _id: -1 }, name: 'reported', partialFilterExpression: { openReports: { $gt: 0 } } },
+    ]),
+    db.collection('reactions').createIndexes([
+      { key: { video: 1, user: 1 }, name: 'one_per_user', unique: true },
+      { key: { video: 1, kind: 1 }, name: 'count' },
+    ]),
+    db.collection('commentReports').createIndexes([
+      { key: { comment: 1, reporter: 1 }, name: 'one_open_per_reporter', unique: true, partialFilterExpression: { status: 'open' } },
+      { key: { status: 1, createdAt: -1 }, name: 'queue' },
+    ]),
     db.collection('emailTokens').createIndexes([
       { key: { tokenHash: 1 }, name: 'token_unique', unique: true },
       { key: { user: 1, kind: 1 }, name: 'user_kind' },
