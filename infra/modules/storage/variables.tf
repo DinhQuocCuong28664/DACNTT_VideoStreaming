@@ -20,6 +20,12 @@ variable "processed_policy_documents" {
   default     = []
 }
 
+variable "raw_infrequent_access_days" {
+  description = "Days before original uploads move to S3 Standard-IA"
+  type        = number
+  default     = 30
+}
+
 variable "work_retention_days" {
   description = "Days before temporary workflow files expire"
   type        = number

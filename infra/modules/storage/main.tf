@@ -100,6 +100,9 @@ resource "aws_s3_bucket_cors_configuration" "raw" {
   }
 }
 
+# Originals are kept (as YouTube keeps them) for re-encoding, but rarely read after
+# processing, so they move to Standard-IA after a month. Sources of deleted videos and
+# abandoned drafts are removed by the API and the reconciler, not by age.
 resource "aws_s3_bucket_lifecycle_configuration" "raw" {
   bucket = aws_s3_bucket.this["raw"].id
   rule {
@@ -108,6 +111,17 @@ resource "aws_s3_bucket_lifecycle_configuration" "raw" {
     filter {}
     abort_incomplete_multipart_upload {
       days_after_initiation = 1
+    }
+  }
+  rule {
+    id     = "originals-to-infrequent-access"
+    status = "Enabled"
+    filter {
+      prefix = "raw/"
+    }
+    transition {
+      days          = var.raw_infrequent_access_days
+      storage_class = "STANDARD_IA"
     }
   }
 }

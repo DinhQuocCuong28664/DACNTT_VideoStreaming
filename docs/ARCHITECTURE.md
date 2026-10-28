@@ -198,6 +198,17 @@ The API creates, moves or deletes one EventBridge Scheduler one-time schedule wh
 `SCHEDULED`; a schedule that fires before processing has finished does nothing, and
 `Publish` then sets `READY` directly. Schedules delete themselves after running.
 
+### 4.5 Clean-up
+
+| What | Removed by | When |
+|---|---|---|
+| Incomplete multipart uploads | S3 lifecycle | 1 day after they started |
+| Work files (plans, chunk results, audio tracks, abort markers) | S3 lifecycle | 7 days |
+| Originals of published videos | kept; S3 lifecycle moves them to Standard-IA | after 30 days |
+| Raw, processed and key objects of a deleted video | the API, when the owner deletes the video | at once |
+| Drafts still `UPLOADING` after 24 h (abandoned uploads) | a daily scheduled reconciler: aborts the multipart upload, deletes the raw object and the draft | daily |
+| Videos stuck in `PROCESSING` | the workflow timeout (24 h) sends them to `MarkFailed` | — |
+
 ### 4.3 Compute
 
 - One container image, one job definition per role (`analyse`, `encode`, `audio`, `chunk`),
