@@ -25,4 +25,4 @@ routes = [
 ]
 
 [env.staging.vars]
-TARGET_HOST = ""
+TARGET_HOST = "yokkx67nj2pqaz5rqojzvq2gjm0yrqlx.lambda-url.ap-southeast-1.on.aws"
