@@ -9,6 +9,7 @@ import type { GoogleIdentity } from '../src/auth/google.js';
 import { memoryMailer } from '../src/services/mail.js';
 import { memoryStorage } from '../src/services/storage.js';
 import { fakeCdn } from '../src/services/cdn.js';
+import { memoryActivity } from '../src/services/activity.js';
 
 export const ORIGIN_SECRET = 'o'.repeat(40);
 export const WEB = 'https://v2-staging.zelostech.site';
@@ -39,6 +40,7 @@ export interface TestContext {
   /** password -> breach count returned by the fake Pwned Passwords check. */
   breached: Map<string, number | null>;
   s3: ReturnType<typeof memoryStorage>;
+  activity: ReturnType<typeof memoryActivity>;
 }
 
 /** Builds the app with in-memory fakes; pass `db` for features that need MongoDB. */
@@ -51,6 +53,7 @@ export function testApp(features: readonly Feature[] = [], opts: { db?: Db; conf
   const breached = new Map<string, number | null>();
   const bcrypt = bcryptPasswords(4);
   const s3 = memoryStorage();
+  const activity = memoryActivity();
   const deps: Deps = {
     config: opts.config ?? testConfig(),
     db: opts.db ?? ({} as Db),
@@ -64,8 +67,9 @@ export function testApp(features: readonly Feature[] = [], opts: { db?: Db; conf
     mail,
     storage: s3.storage,
     cdn: fakeCdn(),
+    activity: activity.activity,
   };
-  const ctx: TestContext = { deps, kv, users, clock, mail, google, breached, s3 };
+  const ctx: TestContext = { deps, kv, users, clock, mail, google, breached, s3, activity };
   return { app: createApp(deps, features), ctx };
 }
 

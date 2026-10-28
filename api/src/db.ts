@@ -66,6 +66,11 @@ export async function ensureIndexes(db: Db): Promise<void> {
       { key: { member: 1, channel: 1 }, name: 'pair_unique', unique: true },
       { key: { channel: 1, expiresAt: -1 }, name: 'roster' },
     ]),
+    db.collection('playlists').createIndexes([
+      { key: { owner: 1, kind: 1 }, name: 'one_watch_later', unique: true, partialFilterExpression: { kind: 'watch_later' } },
+      { key: { owner: 1, updatedAt: -1 }, name: 'by_owner' },
+      { key: { 'items.video': 1 }, name: 'by_video' },
+    ]),
     db.collection('emailTokens').createIndexes([
       { key: { tokenHash: 1 }, name: 'token_unique', unique: true },
       { key: { user: 1, kind: 1 }, name: 'user_kind' },
