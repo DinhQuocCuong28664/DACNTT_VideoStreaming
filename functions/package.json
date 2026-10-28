@@ -7,7 +7,8 @@
   "scripts": {
     "build": "node build.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "layer:ffprobe": "node scripts/extract-ffprobe.mjs"
   },
   "devDependencies": {
     "esbuild": "^0.24.2"
