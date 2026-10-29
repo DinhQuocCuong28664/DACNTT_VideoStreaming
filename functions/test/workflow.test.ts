@@ -94,6 +94,11 @@ function memoryStore(initial: VideoDoc & Record<string, unknown>) {
     async fail(id, v, reason) {
       if (id !== doc._id || v !== doc.uploadVersion || !['UPLOADING', 'PROCESSING'].includes(doc.status)) return null;
       Object.assign(doc, { status: 'ERROR', error: reason });
+      return { ...doc };
+    },
+    async release(id, v, at) {
+      if (id !== doc._id || v !== doc.uploadVersion || doc.status !== 'SCHEDULED' || !doc.publishAt || doc.publishAt.getTime() > at.getTime() + 60_000) return null;
+      Object.assign(doc, { status: 'READY', publishAt: null });
       return doc;
     },
   };
@@ -177,6 +182,33 @@ describe('status', () => {
     const { deps, published } = statusDeps(store, workFor(clean));
     await handle({ action: 'publish', videoId, uploadVersion: 1 }, deps);
     expect(doc.status).toBe('SCHEDULED');
+    expect(published).toHaveLength(0);
+  });
+
+  it('release publishes a due scheduled video once and announces it if public and approved', async () => {
+    const { store, doc } = memoryStore({ ...base, status: 'SCHEDULED', publishAt: new Date('2026-11-01T00:00:00Z'), visibility: 'public', moderationStatus: 'approved' });
+    const { deps, published } = statusDeps(store);
+    expect(await handle({ action: 'release', videoId, uploadVersion: 1 }, deps)).toEqual({ found: true, status: 'READY', published: true });
+    expect(doc.status).toBe('READY');
+    expect(published).toHaveLength(1);
+    expect(await handle({ action: 'release', videoId, uploadVersion: 1 }, deps)).toEqual({ found: false });
+    expect(published).toHaveLength(1);
+  });
+
+  it('release does nothing while processing, for a later publishAt or an older version', async () => {
+    for (const over of [{ status: 'PROCESSING' }, { status: 'SCHEDULED', publishAt: new Date('2026-11-02T00:00:00Z') }, { status: 'SCHEDULED', uploadVersion: 2 }]) {
+      const { store, doc } = memoryStore({ ...base, publishAt: new Date('2026-10-31T00:00:00Z'), visibility: 'public', moderationStatus: 'approved', ...over });
+      const { deps, published } = statusDeps(store);
+      expect(await handle({ action: 'release', videoId, uploadVersion: 1 }, deps)).toEqual({ found: false });
+      expect(doc.status).toBe(over.status);
+      expect(published).toHaveLength(0);
+    }
+  });
+
+  it('release of an unlisted video publishes without announcing it', async () => {
+    const { store } = memoryStore({ ...base, status: 'SCHEDULED', publishAt: new Date('2026-10-31T00:00:00Z'), visibility: 'unlisted', moderationStatus: 'approved' });
+    const { deps, published } = statusDeps(store);
+    await handle({ action: 'release', videoId, uploadVersion: 1 }, deps);
     expect(published).toHaveLength(0);
   });
 

@@ -28,7 +28,9 @@ const FailInput = Ref.extend({
   // Step Functions Catch output: { Error, Cause }.
   error: z.object({ Error: z.string().optional(), Cause: z.string().optional() }).passthrough(),
 });
-const WorkflowAction = z.discriminatedUnion('action', [StartInput, PublishInput, FailInput]);
+/** Sent by the one-time EventBridge Scheduler schedule of a scheduled video (§4.4). */
+const ReleaseInput = Ref.extend({ action: z.literal('release') });
+const WorkflowAction = z.discriminatedUnion('action', [StartInput, PublishInput, FailInput, ReleaseInput]);
 
 /** Fields of a video document this function reads or writes. */
 export interface VideoDoc {
@@ -38,6 +40,8 @@ export interface VideoDoc {
   uploadVersion: number;
   publishAt?: Date | null;
   progress?: ProgressState;
+  visibility?: string;
+  moderationStatus?: string;
 }
 
 /** Narrow persistence interface, so the handler can be tested without a database. */
@@ -50,6 +54,8 @@ export interface VideoStore {
   /** Sets the published fields if the video is still PROCESSING; returns whether it changed. */
   publish(videoId: string, uploadVersion: number, fields: Record<string, unknown>): Promise<VideoDoc | null>;
   fail(videoId: string, uploadVersion: number, reason: string): Promise<VideoDoc | null>;
+  /** SCHEDULED -> READY once publishAt has passed; null when there is nothing to release. */
+  release(videoId: string, uploadVersion: number, now: Date): Promise<VideoDoc | null>;
 }
 
 export interface StatusDeps {
@@ -121,6 +127,20 @@ async function fail(input: z.infer<typeof FailInput>, deps: StatusDeps): Promise
   return doc ? { found: true, status: 'ERROR' } : { found: false };
 }
 
+async function release(input: z.infer<typeof ReleaseInput>, deps: StatusDeps): Promise<StatusResult> {
+  // A schedule that fires before processing ends finds no SCHEDULED video and does nothing;
+  // Publish sets READY itself once publishAt has passed.
+  const doc = await deps.videos.release(input.videoId, input.uploadVersion, deps.now());
+  if (!doc) {
+    deps.log({ level: 'info', msg: 'nothing to release', videoId: input.videoId });
+    return { found: false };
+  }
+  if (doc.visibility === 'public' && doc.moderationStatus === 'approved') {
+    await deps.emitPublished({ videoId: input.videoId, ownerId: String(doc.owner), publishedAt: deps.now().toISOString() });
+  }
+  return { found: true, status: doc.status, published: true };
+}
+
 async function progress(detail: unknown, deps: StatusDeps): Promise<StatusResult> {
   const event = TranscodeProgress.parse(detail);
   const doc = await deps.videos.recordProgress(event.videoId, event.uploadVersion, event);
@@ -136,6 +156,7 @@ export async function handle(event: unknown, deps: StatusDeps): Promise<StatusRe
   const action = WorkflowAction.parse(event);
   if (action.action === 'start') return start(action, deps);
   if (action.action === 'publish') return publish(action, deps);
+  if (action.action === 'release') return release(action, deps);
   return fail(action, deps);
 }
 

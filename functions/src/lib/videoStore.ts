@@ -16,7 +16,7 @@ export async function videosCollection(uri: string, dbName: string): Promise<Col
 }
 
 const toDoc = (d: Document | null): VideoDoc | null =>
-  d ? { _id: String(d['_id']), owner: String(d['owner']), status: String(d['status']), uploadVersion: Number(d['uploadVersion']), publishAt: d['publishAt'] ?? null, progress: d['progress'] } : null;
+  d ? { _id: String(d['_id']), owner: String(d['owner']), status: String(d['status']), uploadVersion: Number(d['uploadVersion']), publishAt: d['publishAt'] ?? null, progress: d['progress'], visibility: d['visibility'], moderationStatus: d['moderation']?.['status'] } : null;
 
 export function mongoVideoStore(videos: Collection<Document>, now: () => Date = () => new Date()): VideoStore {
   const id = (videoId: string) => new ObjectId(videoId);
@@ -62,6 +62,16 @@ export function mongoVideoStore(videos: Collection<Document>, now: () => Date = 
             updatedAt: at,
           },
         }],
+        { returnDocument: 'after' },
+      );
+      return toDoc(d);
+    },
+
+    async release(videoId, uploadVersion, at) {
+      // Schedules fire on the minute; a minute of slack keeps an on-time schedule from missing.
+      const d = await videos.findOneAndUpdate(
+        { _id: id(videoId), uploadVersion, status: 'SCHEDULED', publishAt: { $lte: new Date(at.getTime() + 60_000) } },
+        { $set: { status: 'READY', publishAt: null, scheduleName: null, processedAt: at, updatedAt: at } },
         { returnDocument: 'after' },
       );
       return toDoc(d);
