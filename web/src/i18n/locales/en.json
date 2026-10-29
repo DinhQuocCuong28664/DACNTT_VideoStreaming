@@ -178,7 +178,8 @@
       "oldest": "Oldest"
     },
     "editViolenceLabel": "Violence / Sensitive Content Warning",
-    "editViolenceHelp": "Show a viewer discretion warning screen before playing."
+    "editViolenceHelp": "Show a viewer discretion warning screen before playing.",
+    "manageVideos": "Manage videos"
   },
   "auth": {
     "or": "or",
@@ -753,7 +754,8 @@
     "shelfDesc": "Enjoy exclusive perks like members-only videos and more",
     "exploreNow": "Explore now",
     "showMore": "Show more",
-    "badgeText": "Members priority"
+    "badgeText": "Members priority",
+    "month": "month"
   },
   "errors": {
     "NETWORK": "Cannot reach the server.",

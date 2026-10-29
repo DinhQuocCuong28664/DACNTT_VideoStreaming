@@ -177,7 +177,8 @@
       "oldest": "Cũ nhất"
     },
     "editViolenceLabel": "Cảnh báo nội dung bạo lực / nhạy cảm",
-    "editViolenceHelp": "Hiển thị màn hình cảnh báo người xem trước khi phát video."
+    "editViolenceHelp": "Hiển thị màn hình cảnh báo người xem trước khi phát video.",
+    "manageVideos": "Quản lý video"
   },
   "auth": {
     "or": "hoặc",
@@ -749,7 +750,8 @@
     "shelfDesc": "Tận hưởng đặc quyền như video chỉ cho hội viên và nhiều lợi ích khác",
     "exploreNow": "Khám phá ngay",
     "showMore": "Hiện thêm",
-    "badgeText": "Ưu tiên hội viên"
+    "badgeText": "Ưu tiên hội viên",
+    "month": "tháng"
   },
   "errors": {
     "NETWORK": "Không kết nối được máy chủ.",

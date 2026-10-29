@@ -19,6 +19,7 @@ const AuthPages = {
   Verify: lazy(() => loadAuth().then((m) => ({ default: m.VerifyEmailPage }))),
 };
 const Pending = lazy(() => import('./pages/Pending'));
+const ChannelPage = lazy(() => import('./pages/ChannelPage'));
 
 
 function prefetchWatchPageWhenIdle() {
@@ -57,7 +58,7 @@ function GuestOnly({ children }: { children: ReactNode }) {
 /** Channel pages live at /@handle; anything else at the root level is a 404. */
 function ChannelRoute() {
   const { ref = '' } = useParams();
-  return ref.startsWith('@') ? <Pending name="channel" /> : <NotFoundPage />;
+  return ref.startsWith('@') && ref.length > 1 ? <ChannelPage handle={ref.slice(1).toLowerCase()} /> : <NotFoundPage />;
 }
 
 export default function App() {

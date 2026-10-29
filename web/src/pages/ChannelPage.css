@@ -246,3 +246,23 @@
     gap: var(--space-md);
   }
 }
+
+/* v2: channel banner and the loading header. */
+.channel-banner {
+  width: 100%;
+  aspect-ratio: 6 / 1;
+  border-radius: var(--radius-lg, 12px);
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.channel-banner img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.channel-skeleton-header {
+  height: 160px;
+  border-radius: var(--radius-lg, 12px);
+}
