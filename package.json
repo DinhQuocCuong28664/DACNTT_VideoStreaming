@@ -9,7 +9,8 @@
     "shared",
     "transcoder",
     "functions",
-    "api"
+    "api",
+    "web"
   ],
   "scripts": {
     "lint": "eslint . --max-warnings=0",

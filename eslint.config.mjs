@@ -37,6 +37,11 @@ export default tseslint.config(
     },
   },
   {
+    // The web app runs in the browser.
+    files: ['web/**/*.{ts,tsx,js}'],
+    languageOptions: { globals: { ...globals.browser } },
+  },
+  {
     // The transcoder container only touches files under its own mkdtemp scratch directory,
     // joined with rung names from the validated plan; no path comes from a user. The rule
     // stays on for the API, which handles user input.
