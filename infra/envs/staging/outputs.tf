@@ -45,3 +45,15 @@ output "cdn_base_url" {
 output "cdn_key_pair_id" {
   value = module.cdn.key_pair_id
 }
+
+output "web_url" {
+  value = module.web.url
+}
+
+output "web_bucket" {
+  value = module.web.bucket_name
+}
+
+output "web_distribution_id" {
+  value = module.web.distribution_id
+}

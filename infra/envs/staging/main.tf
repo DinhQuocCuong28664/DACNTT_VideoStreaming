@@ -105,6 +105,18 @@ module "cdn" {
   cloudflare_zone_id                    = local.cloudflare_zone_id
 }
 
+module "web" {
+  source = "../../modules/web"
+  providers = {
+    aws.account_a = aws.account_a
+    aws.us_east_1 = aws.account_a_us_east_1
+  }
+  name               = local.name
+  host               = trimprefix(local.web_origin, "https://")
+  cloudflare_zone_id = local.cloudflare_zone_id
+  force_destroy      = true
+}
+
 module "events" {
   source       = "../../modules/events"
   name         = local.name
