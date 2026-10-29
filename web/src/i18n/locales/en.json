@@ -329,7 +329,12 @@
     "goBackButton": "Go Back",
     "stagePreparing": "Preparing and moderating content...",
     "stageTranscoding": "Transcoding multi-bitrate HLS streams...",
-    "stageFinalizing": "Packaging and finalizing cloud storage..."
+    "stageFinalizing": "Packaging and finalizing cloud storage...",
+    "passwordTitle": "This video is password protected",
+    "passwordDesc": "Enter the password the creator shared to watch it.",
+    "passwordLabel": "Video password",
+    "unlock": "Unlock",
+    "wrongPassword": "The password is wrong."
   },
   "player": {
     "authFailed": "Could not authorise this playback session. Please reload the page.",
@@ -356,7 +361,9 @@
     "copyUrl": "Copy video URL",
     "copyUrlAtTime": "Copy video URL at current time",
     "linkCopied": "Link copied",
-    "copyFailed": "Could not copy the link"
+    "copyFailed": "Could not copy the link",
+    "captions": "Captions",
+    "captionsOff": "Off"
   },
   "settings": {
     "avatarSection": "Your picture",

@@ -326,7 +326,12 @@
     "goBackButton": "Quay lại",
     "stagePreparing": "Đang chuẩn bị và kiểm duyệt nội dung...",
     "stageTranscoding": "Đang chuyển mã HLS đa độ phân giải...",
-    "stageFinalizing": "Đang đóng gói và hoàn tất lưu trữ..."
+    "stageFinalizing": "Đang đóng gói và hoàn tất lưu trữ...",
+    "passwordTitle": "Video được bảo vệ bằng mật khẩu",
+    "passwordDesc": "Nhập mật khẩu chủ kênh đã chia sẻ để xem video này.",
+    "passwordLabel": "Mật khẩu video",
+    "unlock": "Mở khoá",
+    "wrongPassword": "Mật khẩu không đúng."
   },
   "player": {
     "authFailed": "Không xác thực được phiên xem video. Vui lòng tải lại trang.",
@@ -353,7 +358,9 @@
     "copyUrl": "Sao chép URL của video",
     "copyUrlAtTime": "Sao chép URL tại thời điểm hiện tại",
     "linkCopied": "Đã sao chép liên kết",
-    "copyFailed": "Không sao chép được liên kết"
+    "copyFailed": "Không sao chép được liên kết",
+    "captions": "Phụ đề",
+    "captionsOff": "Tắt"
   },
   "settings": {
     "avatarSection": "Ảnh của bạn",

@@ -436,3 +436,28 @@
     width: 196px;
   }
 }
+
+/* v2: chapter gaps on the timeline and the chapter title in the scrub tooltip. */
+.player-chapter-gap {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  background: rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+}
+
+.player-scrub-chapter {
+  display: block;
+  max-width: 180px;
+  font-size: 12px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.player-scrub-preview {
+  background-repeat: no-repeat;
+}

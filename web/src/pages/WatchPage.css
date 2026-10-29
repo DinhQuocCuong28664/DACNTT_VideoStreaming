@@ -682,3 +682,36 @@
 .comment-member-badge .member-badge-icon {
   font-size: 0.85rem;
 }
+
+/* v2: members-only cover, chapters in the description, password gate. */
+.player-locked-wrapper {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.player-locked-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.watch-chapters {
+  margin: 12px 0 0;
+  padding-left: 0;
+  list-style: none;
+  display: grid;
+  gap: 4px;
+}
+
+.watch-password {
+  max-width: 420px;
+  margin: 48px auto;
+  gap: 12px;
+}
+
+.watch-password .form-input {
+  width: 100%;
+}
