@@ -9,7 +9,8 @@ set -euo pipefail
 export MSYS_NO_PATHCONV=1
 
 ENVIRONMENT="${1:-staging}"
-ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# Git Bash on Windows: hand Windows paths to terraform and aws (MSYS_NO_PATHCONV is set).
+ROOT="$(cd "$(dirname "$0")/.." && (pwd -W 2>/dev/null || pwd))"
 TF_DIR="$ROOT/infra/envs/$ENVIRONMENT"
 
 out() { terraform -chdir="$TF_DIR" output -raw "$1"; }
