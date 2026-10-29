@@ -26,3 +26,7 @@ f0353adc6793f9dde960a6e5beec229448887042:backend/tests/s3Service.test.js:aws-acc
 # nhầm. Commit sau đã đổi sang IV entropy thấp, nhưng Gitleaks quét từng commit nên bỏ
 # qua đúng finding này. Nếu lịch sử bị viết lại thì cập nhật SHA ở dòng dưới.
 f63c8d8cdd566d63c7d67168d24005dd0f42759c:transcoder/tests/chunkedPlaylist.test.js:generic-api-key:208
+
+# Test fixtures: a made-up AES key (00112233...eeff) that the key endpoint tests expect back.
+3ae2943691f5f1feb1c3c3d0fd26533e3e041a19:api/test/world.ts:generic-api-key:52
+cfcee40ffbb7fd2e57e73b39251d45ce6d747af5:api/test/videos.test.ts:generic-api-key:56
