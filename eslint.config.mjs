@@ -37,6 +37,12 @@ export default tseslint.config(
     },
   },
   {
+    // The Playwright harness reads the accounts file named by its configuration and writes
+    // session files into its own .auth folder; no path comes from a user.
+    files: ['e2e/**/*.ts'],
+    rules: { 'security/detect-non-literal-fs-filename': 'off' },
+  },
+  {
     // The web app runs in the browser.
     files: ['web/**/*.{ts,tsx,js}'],
     languageOptions: { globals: { ...globals.browser } },

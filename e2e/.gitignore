@@ -1,0 +1,4 @@
+# Signed-in sessions and run output; never committed.
+.auth/
+report/
+test-results/

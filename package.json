@@ -10,7 +10,8 @@
     "transcoder",
     "functions",
     "api",
-    "web"
+    "web",
+    "e2e"
   ],
   "scripts": {
     "lint": "eslint . --max-warnings=0",
