@@ -9,3 +9,7 @@ output "function_names" {
 output "mongodb_secret_arn" {
   value = aws_secretsmanager_secret.mongodb_uri.arn
 }
+
+output "function_arns" {
+  value = { for k, f in aws_lambda_function.fn : k => f.arn }
+}

@@ -29,3 +29,11 @@ output "state_machine_arn" {
 output "mongodb_secret_arn" {
   value = module.workflow.mongodb_secret_arn
 }
+
+output "api_function_url" {
+  value = module.app.api_function_url
+}
+
+output "api_secret_arn" {
+  value = module.app.api_secret_arn
+}

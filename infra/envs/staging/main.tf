@@ -27,6 +27,8 @@ locals {
   # transcoder writes (docs/ARCHITECTURE.md §5.1), so it must be final before the first video.
   web_origin   = "https://v2-staging.zelostech.site"
   api_base_url = "https://api-v2-staging.zelostech.site"
+  # CloudFront of v2 lives in account A and is not built yet (S4); playback answers 503 until then.
+  cdn_base_url = "https://cdn-v2-staging.zelostech.site"
 }
 
 provider "aws" {
@@ -110,4 +112,26 @@ module "workflow" {
   api_base_url         = local.api_base_url
   db_name              = "zelos_staging"
   secret_recovery_days = 0 # staging is disposable
+}
+
+module "app" {
+  source                   = "../../modules/app"
+  name                     = local.name
+  environment_name         = local.environment
+  api_dist_dir             = "${path.root}/../../../api/dist"
+  functions_dist_dir       = "${path.root}/../../../functions/dist"
+  db_name                  = "zelos_staging"
+  web_origins              = [local.web_origin, "http://localhost:5173"]
+  web_base_url             = local.web_origin
+  api_base_url             = local.api_base_url
+  cdn_base_url             = local.cdn_base_url
+  bucket_names             = module.storage.bucket_names
+  bucket_arns              = module.storage.bucket_arns
+  table_names              = module.kv.table_names
+  table_arns               = module.kv.table_arns
+  event_bus_name           = module.events.bus_name
+  alert_topic_arn          = module.events.alerts_topic_arn
+  status_function_arn      = module.workflow.function_arns["status"]
+  api_reserved_concurrency = 20
+  secret_recovery_days     = 0 # staging is disposable
 }

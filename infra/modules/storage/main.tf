@@ -124,6 +124,17 @@ resource "aws_s3_bucket_lifecycle_configuration" "raw" {
       storage_class = "STANDARD_IA"
     }
   }
+  # Image uploads are copied to the processed bucket within minutes; leftovers are abandoned.
+  rule {
+    id     = "expire-image-uploads"
+    status = "Enabled"
+    filter {
+      prefix = "images/"
+    }
+    expiration {
+      days = 1
+    }
+  }
 }
 
 resource "aws_s3_bucket_lifecycle_configuration" "work" {
