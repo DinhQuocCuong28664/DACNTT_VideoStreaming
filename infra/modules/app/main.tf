@@ -214,6 +214,27 @@ resource "aws_lambda_function_url" "api" {
   authorization_type = "NONE"
 }
 
+# Function URLs also need lambda:InvokeFunction limited to calls through the URL
+# (condition lambda:InvokedViaFunctionUrl). Provider 5.x cannot express that condition, so
+# the AWS CLI adds the statement once; it is skipped when it already exists.
+resource "terraform_data" "api_url_invoke" {
+  triggers_replace = [aws_lambda_function.api.arn, aws_lambda_function_url.api.function_url]
+
+  provisioner "local-exec" {
+    interpreter = ["bash", "-c"]
+    command     = <<-EOT
+      set -e
+      if aws lambda get-policy --region ${local.region} --function-name ${aws_lambda_function.api.function_name} --query Policy --output text 2>/dev/null | grep -q FunctionURLInvokeOnly; then
+        echo "permission already present"
+      else
+        aws lambda add-permission --region ${local.region} --function-name ${aws_lambda_function.api.function_name} \
+          --statement-id FunctionURLInvokeOnly --action lambda:InvokeFunction --principal '*' --invoked-via-function-url >/dev/null
+        echo "permission added"
+      fi
+    EOT
+  }
+}
+
 # ── Scheduled publishing ──────────────────────────────────────────────
 
 resource "aws_scheduler_schedule_group" "publish" {
