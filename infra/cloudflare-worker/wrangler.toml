@@ -1,0 +1,19 @@
+# API gateway of v2, separate from the old stack's zelostech-api-gateway.
+# Deploy: npx wrangler deploy --env staging   (from this folder)
+# Secret: the originSecret field of Secrets Manager zelos-staging/api, set with
+#   wrangler secret put ORIGIN_VERIFY_SECRET --env staging
+# A custom domain lets Cloudflare create the DNS record and certificate of the host.
+name = "zelos-api-gateway"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+workers_dev = false
+
+[env.staging]
+name = "zelos-api-gateway-staging"
+routes = [
+  { pattern = "api-v2-staging.zelostech.site", custom_domain = true }
+]
+
+# Host of `terraform output api_function_url` in infra/envs/staging.
+[env.staging.vars]
+TARGET_HOST = "bqylpvyegc7mydlj6k7bgxf7ne0mbhth.lambda-url.ap-southeast-1.on.aws"
