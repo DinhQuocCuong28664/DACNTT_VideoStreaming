@@ -23,6 +23,7 @@ const ChannelPage = lazy(() => import('./pages/ChannelPage'));
 const UploadPage = lazy(() => import('./pages/UploadPage'));
 const StudioPage = lazy(() => import('./pages/StudioPages'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
+const AdminPage = lazy(() => import('./pages/AdminPage'));
 const loadLibrary = () => import('./pages/LibraryPages');
 const Library = {
   Subscriptions: lazy(() => loadLibrary().then((m) => ({ default: m.SubscriptionsPage }))),
@@ -90,7 +91,7 @@ export default function App() {
           <Route path="/upload" element={<Protected><UploadPage /></Protected>} />
           <Route path="/studio" element={<Protected><StudioPage /></Protected>} />
           <Route path="/settings" element={<Protected><SettingsPage /></Protected>} />
-          <Route path="/admin" element={<Protected staff><Pending name="admin" /></Protected>} />
+          <Route path="/admin" element={<Protected staff><AdminPage /></Protected>} />
           <Route path="/:ref" element={<ChannelRoute />} />
         </Route>
         <Route path="/login" element={<GuestOnly><AuthPages.Login /></GuestOnly>} />

@@ -2,7 +2,7 @@
 import { api, request } from './http';
 import type {
   Category, Channel, ChannelPage, Comment, LockedStub, Membership, Notification, Page, Playback,
-  PlaylistItem, PlaylistSummary, Session, Tier, UploadGrant, User, VideoCard, VideoDetails, Visibility,
+  PlaylistItem, PlaylistSummary, Role, Session, Tier, UploadGrant, User, VideoCard, VideoDetails, Visibility,
 } from './types';
 
 const enc = encodeURIComponent;
@@ -116,4 +116,36 @@ export const uploads = {
 export const discovery = {
   search: (q: string, page = 1, category?: Category | null) => api.get<{ items: VideoCard[]; channels: Channel[]; nextPage: number | null }>('/search', { query: { q, page, category } }),
   suggest: (q: string, signal?: AbortSignal) => api.get<{ items: string[] }>('/search/suggest', { query: { q }, ...(signal ? { signal } : {}) }),
+};
+
+/** A video in the moderation queue: the card plus the moderation record. */
+export type QueueItem = VideoCard & { status: string; ownerEmail?: string | null; moderation: { status: string; source?: string; reasonCode?: string; openReports?: number; labels?: { timestamp: number; labels: { Name?: string; ParentName?: string; Confidence?: number }[] }[]; error?: string | null } };
+export type Interval = { value: number; low: number; high: number; n: number } | null;
+export interface Metrics {
+  autoRemoved: { reviewed: number; falsePositive: number; unreviewed: number; falsePositiveRate: Interval };
+  autoHeld: { reviewed: number; confirmed: number; unreviewed: number; precision: Interval };
+  missed: { falseNegative: number };
+  audit: { pending: number; labelled: number; failed: number; falseNegativeRate: Interval };
+  byReason: { outcome: string; reasonCode: string; count: number }[];
+}
+export interface ModerationEvent { video: string; actorRole: Role; decision: string; action: string; outcome: string; reasonCode: string; note: string; createdAt: string }
+export interface StaffUser { id: string; email: string; handle: string; displayName: string; role: Role; disabled?: boolean; createdAt: string }
+
+export const admin = {
+  stats: () => api.get<{ review: number; removed: number; reportedComments: number; openAppeals: number }>('/admin/stats'),
+  queue: (tab: 'review' | 'removed', cursor?: string | null) => api.get<Page<QueueItem>>('/admin/queue', { query: { tab, cursor } }),
+  reports: (id: string) => api.get<{ items: { reason: string; details: string; status: string; createdAt: string }[]; openByReason: Record<string, number> }>(`/admin/videos/${enc(id)}/reports`),
+  decide: (id: string, b: { decision: 'approve' | 'block'; reasonCode: string; note: string }) => api.post<{ moderation: { status: string } }>(`/admin/videos/${enc(id)}/decision`, b),
+  comments: () => api.get<{ items: { id: string; video: string; body: string; openReports: number }[] }>('/admin/comments'),
+  decideComment: (id: string, decision: 'dismiss' | 'remove') => api.post<{ decision: string }>(`/admin/comments/${enc(id)}/decision`, { decision }),
+  appeals: (status: 'open' | 'upheld' | 'rejected' = 'open') => api.get<{ items: { id: string; message: string; status: string; createdAt: string; video: VideoCard | null }[] }>('/admin/appeals', { query: { status } }),
+  decideAppeal: (id: string, decision: 'uphold' | 'reject', resolution: string) => api.post<{ appeal: { status: string } }>(`/admin/appeals/${enc(id)}/decision`, { decision, resolution }),
+  sample: (size: number) => api.post<{ sampled: number }>('/admin/audit/sample', { size }),
+  audit: () => api.get<{ items: { id: string; video: VideoCard | null }[] }>('/admin/audit'),
+  label: (id: string, result: 'pass' | 'fail', note: string) => api.post<{ sample: { status: string } }>(`/admin/audit/${enc(id)}`, { result, note }),
+  metrics: () => api.get<Metrics>('/admin/metrics'),
+  events: (outcome?: string | null, cursor?: string | null) => api.get<Page<ModerationEvent>>('/admin/events', { query: { outcome, cursor } }),
+  users: (q?: string, role?: Role | null) => api.get<{ items: StaffUser[] }>('/admin/users', { query: { q, role } }),
+  setRole: (id: string, role: Role) => api.put<{ user: { id: string; role: Role } }>(`/admin/users/${enc(id)}/role`, { role }),
+  roleChanges: () => api.get<{ items: { user: string; from: Role; to: Role; by: string; at: string }[] }>('/admin/role-changes'),
 };
