@@ -190,6 +190,7 @@ describe('views', () => {
     expect((await view(pt, viewer.token)).body.counted).toBe(false); // too early
     ctx.clock.now = new Date(ctx.clock.now.getTime() + 31_000);
     expect((await view(pt, viewer.token)).body).toEqual({ counted: true, views: 1 });
+    expect(ctx.activity.beats.get(`${ctx.clock.now.toISOString().slice(0, 13)}|${id}`)?.get('views')).toBe(1);
     expect((await view(pt, viewer.token)).body.counted).toBe(false);
 
     const ownPt = await grant(owner.token);

@@ -23,6 +23,8 @@ export interface WatchStore {
 export const RETENTION_BUCKETS = 20;
 export interface HeartbeatStore {
   add(hour: string, videoId: string, watchedSec: number, bucket: number, expiresAt: Date): Promise<void>;
+  /** One counted view in this hour, for the daily views of creator analytics. */
+  view(hour: string, videoId: string, expiresAt: Date): Promise<void>;
 }
 
 export interface Notification { id: string; type: string; createdAt: string; read: boolean; data: Record<string, unknown> }
@@ -80,6 +82,14 @@ export function dynamoActivity(tables: { watchProgress: string; heartbeats: stri
     },
   };
   const heartbeats: HeartbeatStore = {
+    async view(hour, videoId, expiresAt) {
+      await client.send(new UpdateCommand({
+        TableName: tables.heartbeats, Key: { hour, videoId },
+        UpdateExpression: 'ADD #v :one SET expiresAt = if_not_exists(expiresAt, :exp)',
+        ExpressionAttributeNames: { '#v': 'views' },
+        ExpressionAttributeValues: { ':one': 1, ':exp': Math.floor(expiresAt.getTime() / 1000) },
+      }));
+    },
     async add(hour, videoId, watchedSec, bucket, expiresAt) {
       await client.send(new UpdateCommand({
         TableName: tables.heartbeats, Key: { hour, videoId },
@@ -141,6 +151,12 @@ export function memoryActivity() {
       async clear(userId) { const n = progress.get(userId)?.size ?? 0; progress.delete(userId); return n; },
     },
     heartbeats: {
+      async view(hour, videoId) {
+        const k = `${hour}|${videoId}`;
+        const row = beats.get(k) ?? new Map<string, number>();
+        row.set('views', (row.get('views') ?? 0) + 1);
+        beats.set(k, row);
+      },
       async add(hour, videoId, watchedSec, bucket) {
         const k = `${hour}|${videoId}`;
         const row = beats.get(k) ?? new Map<string, number>();

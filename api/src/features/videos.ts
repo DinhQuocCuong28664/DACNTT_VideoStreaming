@@ -215,6 +215,8 @@ export const videosFeature: Feature = (r, deps) => {
     const fresh = await kv.markOnce(config.tables.viewMarks, `${viewer}#${id}`, new Date(now().getTime() + VIEW_WINDOW_SEC * 1000), now());
     if (!fresh) return void res.json({ counted: false, views: v.counters.views });
     const after = await videos.findOneAndUpdate({ _id: v._id }, { $inc: { 'counters.views': 1 } }, { returnDocument: 'after', projection: { counters: 1 } });
+    // Hourly row for the daily views of creator analytics; kept a week until the roll-up reads it.
+    await deps.activity.heartbeats.view(now().toISOString().slice(0, 13), id, new Date(now().getTime() + 7 * 86_400_000));
     res.json({ counted: true, views: after?.counters.views ?? v.counters.views + 1 });
   });
 
