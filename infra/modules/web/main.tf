@@ -31,7 +31,6 @@ locals {
 # ── Bucket (account B) ──────────────────────────────────────────────
 
 #trivy:ignore:AVD-AWS-0089 -- access logging would need another bucket; CloudFront metrics are enough
-#trivy:ignore:AVD-AWS-0132 -- SSE-S3 is enough for public web files; a KMS key adds cost for no gain
 resource "aws_s3_bucket" "web" {
   bucket        = local.bucket
   force_destroy = var.force_destroy
@@ -53,6 +52,7 @@ resource "aws_s3_bucket_ownership_controls" "web" {
   }
 }
 
+#trivy:ignore:AVD-AWS-0132 -- SSE-S3 is enough for public web files; a KMS key adds cost for no gain
 resource "aws_s3_bucket_server_side_encryption_configuration" "web" {
   bucket = aws_s3_bucket.web.id
   rule {
