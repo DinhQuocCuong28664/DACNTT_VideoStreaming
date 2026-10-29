@@ -125,7 +125,10 @@
     "violenceLabel": "Violence / Sensitive Content Warning",
     "violenceHelp": "Check if this video contains graphic violence or sensitive material. Viewers will see a warning screen before playback.",
     "visibilitySubtitle": "Choose when to publish and who can see your video",
-    "draftSaved": "Saved as draft"
+    "draftSaved": "Saved as draft",
+    "errorPassword": "Set a password of at least 4 characters.",
+    "errorNoTiers": "Create at least one membership tier in Settings before posting a members-only video.",
+    "passwordPlaceholder": "Video password"
   },
   "visibility": {
     "public": "Public",
@@ -138,7 +141,9 @@
     "saveOrPublish": "Save or publish",
     "saveOrPublishDesc": "Make your video public, unlisted, or private",
     "members_only": "Members only",
-    "members_onlyDesc": "Only members of your channel can watch this video."
+    "members_onlyDesc": "Only members of your channel can watch this video.",
+    "password": "Password",
+    "passwordDesc": "People with the link and the password can watch. The title stays hidden until unlocked."
   },
   "channel": {
     "videos": "Videos",

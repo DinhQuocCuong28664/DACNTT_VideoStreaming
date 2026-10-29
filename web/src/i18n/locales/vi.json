@@ -124,7 +124,10 @@
     "violenceLabel": "Cảnh báo nội dung bạo lực / nhạy cảm",
     "violenceHelp": "Đánh dấu nếu video chứa cảnh bạo lực hoặc hình ảnh không phù hợp với trẻ em. Người xem sẽ thấy màn hình cảnh báo trước khi phát.",
     "visibilitySubtitle": "Chọn thời điểm xuất bản và đối tượng có thể xem video của bạn",
-    "draftSaved": "Đã lưu bản nháp"
+    "draftSaved": "Đã lưu bản nháp",
+    "errorPassword": "Đặt mật khẩu từ 4 ký tự cho video có mật khẩu.",
+    "errorNoTiers": "Hãy tạo ít nhất một cấp hội viên trong Cài đặt trước khi đăng video dành cho hội viên.",
+    "passwordPlaceholder": "Mật khẩu xem video"
   },
   "visibility": {
     "public": "Công khai",
@@ -137,7 +140,9 @@
     "saveOrPublish": "Lưu hoặc xuất bản",
     "saveOrPublishDesc": "Đặt video của bạn ở chế độ công khai, không công khai hoặc riêng tư",
     "members_only": "Dành cho hội viên",
-    "members_onlyDesc": "Chỉ hội viên của kênh bạn mới có thể xem video này."
+    "members_onlyDesc": "Chỉ hội viên của kênh bạn mới có thể xem video này.",
+    "password": "Có mật khẩu",
+    "passwordDesc": "Người có đường liên kết và mật khẩu mới xem được. Tiêu đề được ẩn cho tới khi mở khoá."
   },
   "channel": {
     "videos": "Video",

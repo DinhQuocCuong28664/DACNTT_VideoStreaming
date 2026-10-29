@@ -20,6 +20,7 @@ const AuthPages = {
 };
 const Pending = lazy(() => import('./pages/Pending'));
 const ChannelPage = lazy(() => import('./pages/ChannelPage'));
+const UploadPage = lazy(() => import('./pages/UploadPage'));
 
 
 function prefetchWatchPageWhenIdle() {
@@ -76,7 +77,7 @@ export default function App() {
           <Route path="/playlists" element={<Protected><Pending name="playlists" /></Protected>} />
           <Route path="/playlist/:id" element={<Pending name="playlist" />} />
           <Route path="/notifications" element={<Protected><Pending name="notifications" /></Protected>} />
-          <Route path="/upload" element={<Protected><Pending name="upload" /></Protected>} />
+          <Route path="/upload" element={<Protected><UploadPage /></Protected>} />
           <Route path="/studio/*" element={<Protected><Pending name="studio" /></Protected>} />
           <Route path="/settings" element={<Protected><Pending name="settings" /></Protected>} />
           <Route path="/admin" element={<Protected staff><Pending name="admin" /></Protected>} />

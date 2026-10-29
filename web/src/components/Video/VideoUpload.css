@@ -393,3 +393,30 @@
     display: none;
   }
 }
+
+/* v2: violence checkbox and the password field of the visibility picker. */
+.studio-checkbox-field {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 16px;
+  cursor: pointer;
+}
+
+.studio-checkbox-field input {
+  margin-top: 4px;
+  width: 16px;
+  height: 16px;
+}
+
+.studio-checkbox-title {
+  display: block;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--text-primary);
+}
+
+.visibility-password {
+  margin-top: 8px;
+  max-width: 280px;
+}
