@@ -8,6 +8,10 @@ terraform {
       source  = "hashicorp/aws"
       version = "~> 5.80"
     }
+    cloudflare = {
+      source  = "cloudflare/cloudflare"
+      version = "~> 5.0"
+    }
   }
 
   backend "s3" {
@@ -27,8 +31,10 @@ locals {
   # transcoder writes (docs/ARCHITECTURE.md §5.1), so it must be final before the first video.
   web_origin   = "https://v2-staging.zelostech.site"
   api_base_url = "https://api-v2-staging.zelostech.site"
-  # CloudFront of v2 lives in account A and is not built yet (S4); playback answers 503 until then.
-  cdn_base_url = "https://cdn-v2-staging.zelostech.site"
+  cdn_host     = "cdn-v2-staging.zelostech.site"
+
+  # Cloudflare zone of zelostech.site (an identifier, not a secret).
+  cloudflare_zone_id = "d2ade2da1df8b663763db24000786b3a"
 }
 
 provider "aws" {
@@ -42,6 +48,29 @@ provider "aws" {
     }
   }
 }
+
+# Account A holds only CloudFront and its certificate (account B may not create
+# distributions). Profile dacntt-a; ACM for CloudFront must be in us-east-1.
+provider "aws" {
+  alias   = "account_a"
+  region  = "ap-southeast-1"
+  profile = "dacntt-a"
+  default_tags {
+    tags = { Project = "DACNTT", Stack = "v2", Environment = local.environment, ManagedBy = "Terraform" }
+  }
+}
+
+provider "aws" {
+  alias   = "account_a_us_east_1"
+  region  = "us-east-1"
+  profile = "dacntt-a"
+  default_tags {
+    tags = { Project = "DACNTT", Stack = "v2", Environment = local.environment, ManagedBy = "Terraform" }
+  }
+}
+
+# Token from CLOUDFLARE_API_TOKEN (Secrets Manager dacntt-dev/cloudflare-api-token in account B).
+provider "cloudflare" {}
 
 data "terraform_remote_state" "shared" {
   backend = "s3"
@@ -57,6 +86,23 @@ module "storage" {
   name           = local.name
   upload_origins = [local.web_origin, "http://localhost:5173"]
   force_destroy  = true # staging data is disposable
+
+  processed_policy_documents = [module.cdn.bucket_policy_json]
+}
+
+module "cdn" {
+  source = "../../modules/cdn"
+  providers = {
+    aws.account_a = aws.account_a
+    aws.us_east_1 = aws.account_a_us_east_1
+  }
+  name                                  = local.name
+  host                                  = local.cdn_host
+  web_origins                           = [local.web_origin, "http://localhost:5173"]
+  signing_public_key_pem                = file("${path.module}/cdn-signing-public.pem")
+  processed_bucket_arn                  = module.storage.bucket_arns["processed"]
+  processed_bucket_regional_domain_name = module.storage.processed_bucket_regional_domain_name
+  cloudflare_zone_id                    = local.cloudflare_zone_id
 }
 
 module "events" {
@@ -124,7 +170,7 @@ module "app" {
   web_origins              = [local.web_origin, "http://localhost:5173"]
   web_base_url             = local.web_origin
   api_base_url             = local.api_base_url
-  cdn_base_url             = local.cdn_base_url
+  cdn_base_url             = module.cdn.base_url
   bucket_names             = module.storage.bucket_names
   bucket_arns              = module.storage.bucket_arns
   table_names              = module.kv.table_names
