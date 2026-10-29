@@ -2,7 +2,7 @@
  * Signs the test accounts in through the API and stores each session as Playwright storage
  * state (the token in localStorage), so tests start signed in without typing passwords.
  */
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { FullConfig } from '@playwright/test';
@@ -16,12 +16,27 @@ export const statePath = (role: E2eRole) => join(STATE_DIR, `${role}.json`);
 
 interface Account { email: string; password: string; handle: string }
 
+/** The token of a stored session that the API still accepts, so runs do not sign in again. */
+async function storedToken(role: E2eRole, origin: string): Promise<string | null> {
+  if (!existsSync(statePath(role))) return null;
+  try {
+    const state = JSON.parse(readFileSync(statePath(role), 'utf8')) as { origins: { origin: string; localStorage: { name: string; value: string }[] }[] };
+    const token = state.origins.find((o) => o.origin === origin)?.localStorage.find((x) => x.name === 'zelos-token')?.value;
+    if (!token) return null;
+    const res = await fetch(`${API}/v1/auth/me`, { headers: { authorization: `Bearer ${token}`, origin } });
+    return res.ok ? token : null;
+  } catch {
+    return null;
+  }
+}
+
 export default async function globalSetup(config: FullConfig): Promise<void> {
   const file = process.env['E2E_ACCOUNTS'] ?? join(here, '..', '.local-notes', 'e2e-accounts.json');
   const accounts = new Map(Object.entries(JSON.parse(readFileSync(file, 'utf8')) as Record<string, Account>));
   const origin = new URL(config.projects[0]?.use.baseURL ?? 'http://localhost:5173').origin;
   mkdirSync(STATE_DIR, { recursive: true });
   for (const role of ROLES) {
+    if (await storedToken(role, origin)) continue;
     const a = accounts.get(role);
     if (!a) throw new Error(`no ${role} account in ${file}`);
     const res = await fetch(`${API}/v1/auth/login`, {
