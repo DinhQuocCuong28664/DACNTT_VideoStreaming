@@ -21,6 +21,8 @@ const AuthPages = {
 const Pending = lazy(() => import('./pages/Pending'));
 const ChannelPage = lazy(() => import('./pages/ChannelPage'));
 const UploadPage = lazy(() => import('./pages/UploadPage'));
+const StudioPage = lazy(() => import('./pages/StudioPages'));
+const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 const loadLibrary = () => import('./pages/LibraryPages');
 const Library = {
   Subscriptions: lazy(() => loadLibrary().then((m) => ({ default: m.SubscriptionsPage }))),
@@ -86,8 +88,8 @@ export default function App() {
           <Route path="/playlist/:id" element={<Library.Playlist />} />
           <Route path="/notifications" element={<Protected><Library.Notifications /></Protected>} />
           <Route path="/upload" element={<Protected><UploadPage /></Protected>} />
-          <Route path="/studio/*" element={<Protected><Pending name="studio" /></Protected>} />
-          <Route path="/settings" element={<Protected><Pending name="settings" /></Protected>} />
+          <Route path="/studio" element={<Protected><StudioPage /></Protected>} />
+          <Route path="/settings" element={<Protected><SettingsPage /></Protected>} />
           <Route path="/admin" element={<Protected staff><Pending name="admin" /></Protected>} />
           <Route path="/:ref" element={<ChannelRoute />} />
         </Route>
