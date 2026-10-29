@@ -209,7 +209,8 @@ export const videosFeature: Feature = (r, deps) => {
     if (!v) throw notFound('Video');
     const viewerId = req.user?.id ?? (grant.u || null);
     const playedSec = now().getTime() / 1000 - grant.iat;
-    const needed = Math.min(VIEW_AFTER_SEC, Math.max(1, Math.floor(v.durationSec ?? VIEW_AFTER_SEC)));
+    // The player counts a little less than the whole of a short video; allow one second of slack.
+    const needed = Math.min(VIEW_AFTER_SEC, Math.max(1, Math.floor((v.durationSec ?? VIEW_AFTER_SEC + 1) - 1)));
     const countable = v.status === 'READY' && v.moderation.status === 'approved' && viewerId !== v.owner.toHexString() && playedSec >= needed;
     if (!countable) return void res.json({ counted: false, views: v.counters.views });
     const viewer = viewerId ? `u:${viewerId}` : `ip:${req.clientKey}`;
