@@ -472,7 +472,10 @@
   "moderationStatus": {
     "approved": "Đã duyệt",
     "flagged": "Chờ rà soát",
-    "blocked": "Đã gỡ"
+    "blocked": "Đã gỡ",
+    "pending": "Đang kiểm tra",
+    "review": "Đang xem xét",
+    "removed": "Đã gỡ"
   },
   "report": {
     "title": "Báo cáo video",

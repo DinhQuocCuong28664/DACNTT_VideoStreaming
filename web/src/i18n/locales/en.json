@@ -475,7 +475,10 @@
   "moderationStatus": {
     "approved": "Approved",
     "flagged": "Under review",
-    "blocked": "Removed"
+    "blocked": "Removed",
+    "pending": "Checking",
+    "review": "Under review",
+    "removed": "Removed"
   },
   "report": {
     "title": "Report video",

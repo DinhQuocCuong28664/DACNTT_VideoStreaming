@@ -98,7 +98,7 @@ function ContentTab() {
                     <span className={`studio-status studio-status-${(v.status ?? 'READY').toLowerCase()}`}>{t(`studio.status.${v.status ?? 'READY'}`)}</span>
                     {v.status === 'PROCESSING' && typeof v.processingProgress === 'number' && <span className="studio-progress"> {Math.round(v.processingProgress)}%</span>}
                     {v.status === 'SCHEDULED' && v.publishAt && <span className="studio-sub">{new Date(v.publishAt).toLocaleString(locale)}</span>}
-                    {v.moderation && v.moderation.status !== 'APPROVED' && <span className="studio-sub">{t(`moderationStatus.${v.moderation.status}`, { defaultValue: v.moderation.status })}</span>}
+                    {v.moderation && v.moderation.status !== 'approved' && v.moderation.status !== 'pending' && <span className="studio-sub">{t(`moderationStatus.${v.moderation.status}`, { defaultValue: v.moderation.status })}</span>}
                   </td>
                   <td>{v.publishedAt ? new Date(v.publishedAt).toLocaleDateString(locale) : '—'}</td>
                   <td className="num">{v.counters.views.toLocaleString(locale)}</td>
