@@ -1,0 +1,278 @@
+/* ── Trang xác thực kiểu đăng nhập tài khoản Google ──
+   Nền xám nhạt, một thẻ lớn ở giữa chia hai nửa: giới thiệu bên trái, biểu
+   mẫu bên phải. Nút hành động chính ở góc dưới phải thẻ. */
+
+.auth-page {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-lg);
+  background: #f0f4f9;
+}
+
+[data-theme='dark'] .auth-page {
+  background: #0f0f0f;
+}
+
+.auth-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-xl);
+  width: 100%;
+  max-width: 1040px;
+  padding: 36px;
+  border-radius: 28px;
+  background: #ffffff;
+}
+
+[data-theme='dark'] .auth-card {
+  background: #1f1f1f;
+}
+
+.auth-card-intro {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.auth-logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  margin-bottom: var(--space-lg);
+  border-radius: 12px;
+  background: var(--brand);
+  color: #ffffff;
+}
+
+.auth-title {
+  font-size: 2.25rem;
+  font-weight: 400;
+  line-height: 44px;
+  color: var(--text-primary);
+}
+
+.auth-subtitle {
+  margin-top: var(--space-md);
+  font-size: var(--font-size-base);
+  line-height: 24px;
+  color: var(--text-primary);
+}
+
+.auth-card-body {
+  min-width: 0;
+  padding-top: 64px;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.auth-field {
+  min-width: 0;
+}
+
+.auth-field .studio-field {
+  padding-top: 10px;
+  padding-bottom: 12px;
+}
+
+.auth-field-pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-md);
+}
+
+.auth-field-pair + .field-help {
+  margin-top: calc(-1 * var(--space-sm));
+}
+
+.auth-error {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-sm);
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-size: var(--font-size-sm);
+  line-height: 20px;
+}
+
+.auth-error svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  font-size: 1rem;
+}
+
+.auth-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+
+.auth-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+}
+
+.auth-check input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent-primary);
+}
+
+.auth-link {
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--accent-primary);
+}
+
+.auth-link:hover {
+  text-decoration: underline;
+}
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border-color);
+}
+
+.auth-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-sm);
+  margin-top: var(--space-lg);
+}
+
+.auth-actions .btn {
+  min-height: 40px;
+  padding: 0 24px;
+  border-radius: 20px;
+}
+
+.auth-actions .btn-ghost {
+  padding: 0 12px;
+}
+
+/* Trạng thái đã gửi / đã đặt lại xong */
+.auth-state {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-sm);
+}
+
+.auth-state-icon {
+  font-size: 3rem;
+  color: var(--text-secondary);
+}
+
+.auth-state-icon.is-success {
+  color: var(--success);
+}
+
+.auth-state-title {
+  font-size: var(--font-size-lg);
+  font-weight: 500;
+}
+
+.auth-state-desc {
+  font-size: var(--font-size-sm);
+  line-height: 20px;
+  color: var(--text-secondary);
+}
+
+.auth-page-footer {
+  display: flex;
+  justify-content: flex-start;
+  width: 100%;
+  max-width: 1040px;
+  margin-top: var(--space-sm);
+}
+
+.auth-lang select {
+  padding: 8px 28px 8px 12px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='%23606060'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E") no-repeat right 4px center;
+  color: var(--text-primary);
+  font-size: var(--font-size-xs);
+  appearance: none;
+  cursor: pointer;
+}
+
+.auth-lang select:hover {
+  background-color: var(--bg-tertiary);
+}
+
+.auth-lang option {
+  background: var(--bg-secondary);
+}
+
+@media (max-width: 840px) {
+  .auth-page {
+    justify-content: flex-start;
+    padding: 0;
+    background: var(--bg-primary);
+  }
+
+  [data-theme='dark'] .auth-page {
+    background: var(--bg-primary);
+  }
+
+  .auth-card {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-lg);
+    max-width: none;
+    min-height: calc(100dvh - 48px);
+    padding: var(--space-lg);
+    border-radius: 0;
+    background: var(--bg-primary);
+  }
+
+  [data-theme='dark'] .auth-card {
+    background: var(--bg-primary);
+  }
+
+  .auth-card-body {
+    padding-top: 0;
+  }
+
+  .auth-title {
+    font-size: 1.75rem;
+    line-height: 36px;
+  }
+
+  .auth-page-footer {
+    padding: 0 var(--space-lg) var(--space-md);
+  }
+}
+
+@media (max-width: 480px) {
+  .auth-field-pair {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

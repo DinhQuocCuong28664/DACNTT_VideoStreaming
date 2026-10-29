@@ -1,0 +1,177 @@
+/* ==========================================================================
+   YouTube-Style Channel Subscribe Button & Notification Menu
+   VidShare · DACNTT
+   Matches 1:1 with YouTube Web UI specifications.
+   ========================================================================== */
+
+.yt-subscribe-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/* Base button shape: 36px pill */
+.yt-subscribe-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  min-height: 36px;
+  border-radius: 18px;
+  border: 1px solid transparent;
+  font-family: var(--font-family);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  line-height: 36px;
+  white-space: nowrap;
+  user-select: none;
+  cursor: pointer;
+  outline: none;
+  box-sizing: border-box;
+  transition: background-color var(--transition-fast), color var(--transition-fast), transform 0.08s ease;
+}
+
+.yt-subscribe-btn:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.yt-subscribe-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.yt-subscribe-btn.loading {
+  cursor: wait;
+}
+
+/* ── 1. Unsubscribed State (Solid Inverse Pill) ──
+   Light mode: Solid Black (#0f0f0f) with White text
+   Dark mode: Solid White (#f1f1f1) with Black text */
+.yt-subscribe-btn.unsubscribed {
+  background-color: var(--inverse-bg);
+  color: var(--inverse-fg);
+  padding: 0 16px;
+  letter-spacing: 0.15px;
+}
+
+.yt-subscribe-btn.unsubscribed:hover:not(:disabled) {
+  background-color: var(--inverse-bg-hover);
+}
+
+/* ── 2. Subscribed State (Subtle Tertiary Pill with Bell + Text + Arrow) ──
+   Light mode: #f2f2f2 pill with #0f0f0f text
+   Dark mode: #272727 pill with #f1f1f1 text */
+.yt-subscribe-btn.subscribed {
+  background-color: var(--bg-tertiary);
+  color: var(--text-primary);
+  padding: 0 12px 0 14px;
+  gap: 6px;
+}
+
+.yt-subscribe-btn.subscribed:hover:not(:disabled) {
+  background-color: var(--bg-pressed);
+}
+
+.yt-subscribe-btn.subscribed .yt-bell-icon {
+  font-size: 1.15rem;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.yt-subscribe-btn.subscribed .yt-btn-text {
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+}
+
+.yt-subscribe-btn.subscribed .yt-arrow-icon {
+  font-size: 1.2rem;
+  margin-left: 1px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1);
+}
+
+.yt-subscribe-wrapper.menu-open .yt-arrow-icon {
+  transform: rotate(180deg);
+}
+
+/* ── 3. YouTube Notification Dropdown Menu ── */
+.yt-sub-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 220px;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15);
+  padding: 8px 0;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  animation: ytSubFadeIn 0.15s cubic-bezier(0.2, 0, 0, 1);
+}
+
+@keyframes ytSubFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.yt-sub-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 16px;
+  background: transparent;
+  border: none;
+  font-family: var(--font-family);
+  font-size: var(--font-size-sm);
+  color: var(--text-primary);
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  user-select: none;
+  transition: background-color var(--transition-fast);
+}
+
+.yt-sub-menu-item:hover {
+  background-color: var(--bg-tertiary);
+}
+
+.yt-sub-menu-item .yt-item-icon {
+  font-size: 1.25rem;
+  flex-shrink: 0;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.yt-sub-menu-item .yt-item-label {
+  flex: 1;
+  font-size: var(--font-size-sm);
+  font-weight: 400;
+}
+
+.yt-sub-menu-item .yt-item-check {
+  font-size: 1.15rem;
+  color: var(--text-primary);
+  flex-shrink: 0;
+}
+
+.yt-sub-menu-divider {
+  height: 1px;
+  background-color: var(--border-color);
+  margin: 6px 0;
+}

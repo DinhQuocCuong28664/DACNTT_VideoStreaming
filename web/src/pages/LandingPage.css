@@ -1,0 +1,257 @@
+/* ── Trang giới thiệu ──
+   Cùng ngôn ngữ phẳng, đơn sắc với sản phẩm: Roboto, nền trắng, nút viên
+   thuốc đen, xanh ngọc lục chỉ có ở logo. Không gradient, không hoạ tiết nền. */
+
+.landing {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 var(--space-lg) var(--space-3xl);
+}
+
+/* ── 1. Hero ── */
+.landing-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--space-3xl) 0 var(--space-2xl);
+  text-align: center;
+}
+
+.landing-hero-title {
+  max-width: 18ch;
+  font-size: clamp(2rem, 5vw, 3rem);
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.landing-hero-subtitle {
+  max-width: 56ch;
+  margin-top: var(--space-md);
+  font-size: var(--font-size-lg);
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.landing-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin-top: var(--space-xl);
+}
+
+.landing-shot {
+  width: 100%;
+  margin-top: var(--space-2xl);
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-xl);
+  background: var(--bg-tertiary);
+}
+
+.landing-shot img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* ── 2. Số liệu ── */
+.landing-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  padding: var(--space-xl) 0;
+  border-top: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--border-color);
+}
+
+/* Nhãn nằm cùng một hàng ngang ở cả bốn cột kể cả khi một giá trị xuống
+   dòng: mỗi ô là một lưới ba hàng, hàng giá trị căn đáy. */
+.landing-stat {
+  display: grid;
+  grid-template-rows: minmax(48px, auto) auto 1fr;
+  align-content: start;
+  padding: 0 var(--space-lg);
+}
+
+.landing-stat + .landing-stat {
+  border-left: 1px solid var(--border-color);
+}
+
+.landing-stat-value {
+  align-self: end;
+  font-size: 2.5rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.landing-stat-label {
+  margin-top: var(--space-sm);
+  font-size: var(--font-size-base);
+  font-weight: 500;
+}
+
+.landing-stat-desc {
+  margin-top: 4px;
+  font-size: var(--font-size-sm);
+  line-height: 20px;
+  color: var(--text-secondary);
+}
+
+/* ── Khu vực chung ── */
+.landing-section {
+  padding-top: var(--space-3xl);
+}
+
+.landing-section-head {
+  max-width: 64ch;
+  margin-bottom: var(--space-xl);
+}
+
+.landing-section-title {
+  font-size: var(--font-size-3xl);
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.landing-section-subtitle {
+  margin-top: var(--space-sm);
+  font-size: var(--font-size-base);
+  line-height: 24px;
+  color: var(--text-secondary);
+}
+
+/* ── 3. Cách hoạt động ── */
+.landing-steps {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-xl);
+  list-style: none;
+}
+
+.landing-step-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  margin-bottom: var(--space-md);
+  border-radius: 50%;
+  background: var(--bg-tertiary);
+  font-size: 1.5rem;
+}
+
+.landing-step-title {
+  font-size: var(--font-size-base);
+  font-weight: 500;
+}
+
+.landing-step-num {
+  color: var(--text-secondary);
+}
+
+.landing-step-desc {
+  margin-top: var(--space-sm);
+  font-size: var(--font-size-sm);
+  line-height: 20px;
+  color: var(--text-secondary);
+}
+
+/* ── 4. Tính năng ── */
+.landing-features {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2xl) var(--space-xl);
+}
+
+.landing-feature-icon {
+  margin-bottom: 12px;
+  font-size: 1.75rem;
+}
+
+.landing-feature-title {
+  font-size: var(--font-size-base);
+  font-weight: 500;
+}
+
+.landing-feature-desc {
+  margin-top: var(--space-sm);
+  font-size: var(--font-size-sm);
+  line-height: 20px;
+  color: var(--text-secondary);
+}
+
+/* ── 5. Kêu gọi hành động ── */
+.landing-cta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: var(--space-3xl);
+  padding: var(--space-2xl) var(--space-lg);
+  border-radius: var(--radius-xl);
+  background: var(--bg-tertiary);
+  text-align: center;
+}
+
+.landing-cta-title {
+  font-size: var(--font-size-3xl);
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.landing-cta-desc {
+  max-width: 52ch;
+  margin-top: var(--space-sm);
+  color: var(--text-secondary);
+}
+
+.landing-cta .landing-hero-actions {
+  margin-top: var(--space-lg);
+}
+
+@media (max-width: 992px) {
+  .landing-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    row-gap: var(--space-xl);
+  }
+
+  .landing-stat:nth-child(3) {
+    border-left: none;
+  }
+
+  .landing-steps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .landing-features {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .landing {
+    padding: 0 var(--space-md) var(--space-2xl);
+  }
+
+  .landing-hero {
+    padding-top: var(--space-2xl);
+  }
+
+  .landing-stats,
+  .landing-steps,
+  .landing-features {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .landing-stat {
+    padding: 0;
+  }
+
+  .landing-stat + .landing-stat {
+    border-left: none;
+  }
+
+  .landing-section-title,
+  .landing-cta-title {
+    font-size: var(--font-size-2xl);
+  }
+}

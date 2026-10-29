@@ -33,7 +33,13 @@
     "signInPrompt": "Sign in to upload videos, comment and like.",
     "languageRow": "Language: {{lang}}",
     "admin": "Moderation",
-    "subscriptions": "Subscriptions"
+    "subscriptions": "Subscriptions",
+    "history": "History",
+    "watchLater": "Watch later",
+    "playlists": "Playlists",
+    "notifications": "Notifications",
+    "studio": "Studio",
+    "library": "Library"
   },
   "categories": {
     "all": "All",
@@ -42,7 +48,8 @@
     "entertainment": "Entertainment",
     "music": "Music",
     "game": "Gaming",
-    "other": "Other"
+    "other": "Other",
+    "gaming": "Gaming"
   },
   "home": {
     "filterByCategory": "Filter by category",
@@ -235,7 +242,8 @@
     "uploadDesc": "We sent a verification link to {{email}}. Open the link in that email, then come back to this page.",
     "statusLabel": "Email verification",
     "statusVerified": "Verified",
-    "statusUnverified": "Not verified yet. Verify your email to upload videos."
+    "statusUnverified": "Not verified yet. Verify your email to upload videos.",
+    "resendSent": "Verification e-mail sent. Check your inbox."
   },
   "errorBoundary": {
     "title": "Something went wrong",
@@ -443,7 +451,10 @@
     "cancel": "Cancel",
     "close": "Close",
     "delete": "Delete",
-    "required": "required"
+    "required": "required",
+    "loadMore": "Load more",
+    "retry": "Retry",
+    "unavailable": "Video unavailable"
   },
   "moderationStatus": {
     "approved": "Approved",
@@ -734,5 +745,20 @@
     "exploreNow": "Explore now",
     "showMore": "Show more",
     "badgeText": "Members priority"
+  },
+  "errors": {
+    "NETWORK": "Cannot reach the server.",
+    "RATE_LIMITED": "Too many requests, try again later.",
+    "UNAUTHORIZED": "Sign in to continue.",
+    "INVALID_CREDENTIALS": "The e-mail or password is wrong.",
+    "EMAIL_TAKEN": "This e-mail already belongs to another account.",
+    "HANDLE_TAKEN": "This handle is not available.",
+    "WEAK_PASSWORD": "The password is too weak.",
+    "INVALID_TOKEN": "This link is invalid or has expired.",
+    "ACCOUNT_EXISTS": "An account with this e-mail exists. Sign in and link Google in Settings.",
+    "VIDEO_REMOVED": "This video was removed for breaking the rules.",
+    "VIDEO_UNDER_REVIEW": "This video is being reviewed.",
+    "PLAYBACK_UNAVAILABLE": "Playback is not available right now.",
+    "default": "Something went wrong. Please try again."
   }
 }

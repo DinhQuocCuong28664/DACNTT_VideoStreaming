@@ -33,7 +33,13 @@
     "signInPrompt": "Đăng nhập để tải video lên, bình luận và thích video.",
     "languageRow": "Ngôn ngữ: {{lang}}",
     "admin": "Kiểm duyệt",
-    "subscriptions": "Kênh đăng ký"
+    "subscriptions": "Kênh đăng ký",
+    "history": "Video đã xem",
+    "watchLater": "Xem sau",
+    "playlists": "Danh sách phát",
+    "notifications": "Thông báo",
+    "studio": "Studio",
+    "library": "Thư viện"
   },
   "categories": {
     "all": "Tất cả",
@@ -42,7 +48,8 @@
     "entertainment": "Giải trí",
     "music": "Âm nhạc",
     "game": "Game",
-    "other": "Khác"
+    "other": "Khác",
+    "gaming": "Game"
   },
   "home": {
     "filterByCategory": "Lọc theo danh mục",
@@ -234,7 +241,8 @@
     "uploadDesc": "Chúng tôi đã gửi liên kết xác minh tới {{email}}. Bấm vào liên kết trong thư rồi quay lại trang này.",
     "statusLabel": "Xác minh email",
     "statusVerified": "Đã xác minh",
-    "statusUnverified": "Chưa xác minh. Bạn cần xác minh email để tải video lên."
+    "statusUnverified": "Chưa xác minh. Bạn cần xác minh email để tải video lên.",
+    "resendSent": "Đã gửi email xác minh. Hãy kiểm tra hộp thư."
   },
   "errorBoundary": {
     "title": "Đã có lỗi xảy ra",
@@ -440,7 +448,10 @@
     "cancel": "Huỷ",
     "close": "Đóng",
     "delete": "Xoá",
-    "required": "bắt buộc"
+    "required": "bắt buộc",
+    "loadMore": "Xem thêm",
+    "retry": "Thử lại",
+    "unavailable": "Video không còn khả dụng"
   },
   "moderationStatus": {
     "approved": "Đã duyệt",
@@ -730,5 +741,20 @@
     "exploreNow": "Khám phá ngay",
     "showMore": "Hiện thêm",
     "badgeText": "Ưu tiên hội viên"
+  },
+  "errors": {
+    "NETWORK": "Không kết nối được máy chủ.",
+    "RATE_LIMITED": "Bạn thao tác quá nhanh, vui lòng thử lại sau.",
+    "UNAUTHORIZED": "Vui lòng đăng nhập để tiếp tục.",
+    "INVALID_CREDENTIALS": "Email hoặc mật khẩu không đúng.",
+    "EMAIL_TAKEN": "Email này đã được dùng cho một tài khoản khác.",
+    "HANDLE_TAKEN": "Tên kênh này không dùng được.",
+    "WEAK_PASSWORD": "Mật khẩu quá yếu.",
+    "INVALID_TOKEN": "Liên kết không hợp lệ hoặc đã hết hạn.",
+    "ACCOUNT_EXISTS": "Đã có tài khoản dùng email này. Hãy đăng nhập rồi liên kết Google trong Cài đặt.",
+    "VIDEO_REMOVED": "Video đã bị gỡ vì vi phạm quy định.",
+    "VIDEO_UNDER_REVIEW": "Video đang được rà soát.",
+    "PLAYBACK_UNAVAILABLE": "Chưa phát được video lúc này.",
+    "default": "Đã có lỗi xảy ra. Vui lòng thử lại."
   }
 }
