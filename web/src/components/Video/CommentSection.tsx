@@ -150,9 +150,11 @@ export default function CommentSection({ videoId, creatorId, creatorHandle, unlo
   const post = async (text: string) => {
     try {
       const { comment } = await api.create(videoId, text);
+      // A page load that ran after the insert may already hold the comment.
       setList((prev) => {
-        const [first, ...rest] = prev;
-        return first?.pinned ? [first, comment, ...rest] : [comment, ...prev];
+        const others = prev.filter((c) => c.id !== comment.id);
+        const [first, ...rest] = others;
+        return first?.pinned ? [first, comment, ...rest] : [comment, ...others];
       });
       setTotal((n) => n + 1);
       return true;
@@ -193,7 +195,7 @@ export default function CommentSection({ videoId, creatorId, creatorHandle, unlo
   const postReply = async (topId: string, text: string) => {
     try {
       const { comment } = await api.create(videoId, text, topId);
-      patchThread(topId, { items: [...thread(topId).items, comment], open: true });
+      patchThread(topId, { items: mergeById(thread(topId).items, [comment]), open: true });
       setList((prev) => prev.map((c) => (c.id === topId ? { ...c, replyCount: c.replyCount + 1 } : c)));
       setTotal((n) => n + 1);
       setReplying(null);
