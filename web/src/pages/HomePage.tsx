@@ -6,6 +6,7 @@ import { discovery, videos } from '../api/endpoints';
 import { CATEGORIES, type Category, type Channel, type VideoCard as Card } from '../api/types';
 import VideoCard, { LoadMoreFooter, SkeletonCard } from '../components/Video/VideoCard';
 import Avatar from '../components/Common/Avatar';
+import VideoCardMenu from '../components/Video/VideoCardMenu';
 import { useInfiniteList } from '../hooks/useInfiniteList';
 import { formatViews } from '../lib/format';
 import './HomePage.css';
@@ -75,7 +76,7 @@ export default function HomePage() {
     body = (
       <>
         <div className={listClass}>
-          {list.items.map((v) => <VideoCard key={v.id} video={v} variant={isSearch ? 'row' : 'grid'} />)}
+          {list.items.map((v) => <VideoCard key={v.id} video={v} variant={isSearch ? 'row' : 'grid'} menu={<VideoCardMenu video={v} />} />)}
           {list.status === 'loadingMore' && Array.from({ length: isSearch ? 2 : 4 }, (_, i) => <SkeletonCard key={`more-${i}`} row={isSearch} />)}
         </div>
         <LoadMoreFooter list={list} />

@@ -779,5 +779,34 @@
       "personal": "Đừng dùng tên, email hay tên trang web trong mật khẩu.",
       "breached": "Mật khẩu này đã xuất hiện trong một vụ lộ dữ liệu; hãy chọn mật khẩu khác."
     }
+  },
+  "library": {
+    "saveTo": "Lưu vào danh sách phát",
+    "saveWatchLater": "Lưu vào Xem sau",
+    "savedTo": "Đã lưu vào {{name}}",
+    "removedFrom": "Đã xoá khỏi {{name}}",
+    "alreadyIn": "Video đã có trong danh sách này",
+    "newPlaylist": "Tên danh sách phát mới",
+    "create": "Tạo",
+    "clearHistory": "Xoá toàn bộ lịch sử xem",
+    "clearHistoryConfirm": "Xoá mọi video khỏi lịch sử xem? Vị trí xem dở cũng bị xoá.",
+    "historyEmpty": "Bạn chưa xem video nào.",
+    "removeFromHistory": "Xoá khỏi lịch sử",
+    "videoCount_one": "{{count}} video",
+    "videoCount_other": "{{count}} video",
+    "playAll": "Phát tất cả",
+    "deletePlaylist": "Xoá danh sách phát",
+    "deletePlaylistConfirm": "Xoá danh sách “{{name}}”? Video trong đó vẫn còn.",
+    "playlistEmpty": "Danh sách này chưa có video.",
+    "moveUp": "Đưa lên",
+    "moveDown": "Đưa xuống",
+    "removeFromPlaylist": "Xoá khỏi danh sách",
+    "notificationsEmpty": "Chưa có thông báo nào.",
+    "uploadNotice": "{{channel}} đã đăng: {{title}}",
+    "visibility": {
+      "public": "Công khai",
+      "unlisted": "Không liệt kê",
+      "private": "Riêng tư"
+    }
   }
 }

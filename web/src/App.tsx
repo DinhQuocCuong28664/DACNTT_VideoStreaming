@@ -21,6 +21,14 @@ const AuthPages = {
 const Pending = lazy(() => import('./pages/Pending'));
 const ChannelPage = lazy(() => import('./pages/ChannelPage'));
 const UploadPage = lazy(() => import('./pages/UploadPage'));
+const loadLibrary = () => import('./pages/LibraryPages');
+const Library = {
+  Subscriptions: lazy(() => loadLibrary().then((m) => ({ default: m.SubscriptionsPage }))),
+  History: lazy(() => loadLibrary().then((m) => ({ default: m.HistoryPage }))),
+  Playlists: lazy(() => loadLibrary().then((m) => ({ default: m.PlaylistsPage }))),
+  Playlist: lazy(() => loadLibrary().then((m) => ({ default: m.PlaylistPage }))),
+  Notifications: lazy(() => loadLibrary().then((m) => ({ default: m.NotificationsPage }))),
+};
 
 
 function prefetchWatchPageWhenIdle() {
@@ -72,11 +80,11 @@ export default function App() {
           <Route path="/results" element={<HomePage />} />
           <Route path="/watch/:id" element={<WatchPage />} />
           <Route path="/landing" element={<Pending name="landing" />} />
-          <Route path="/subscriptions" element={<Protected><Pending name="subscriptions" /></Protected>} />
-          <Route path="/history" element={<Protected><Pending name="history" /></Protected>} />
-          <Route path="/playlists" element={<Protected><Pending name="playlists" /></Protected>} />
-          <Route path="/playlist/:id" element={<Pending name="playlist" />} />
-          <Route path="/notifications" element={<Protected><Pending name="notifications" /></Protected>} />
+          <Route path="/subscriptions" element={<Protected><Library.Subscriptions /></Protected>} />
+          <Route path="/history" element={<Protected><Library.History /></Protected>} />
+          <Route path="/playlists" element={<Protected><Library.Playlists /></Protected>} />
+          <Route path="/playlist/:id" element={<Library.Playlist />} />
+          <Route path="/notifications" element={<Protected><Library.Notifications /></Protected>} />
           <Route path="/upload" element={<Protected><UploadPage /></Protected>} />
           <Route path="/studio/*" element={<Protected><Pending name="studio" /></Protected>} />
           <Route path="/settings" element={<Protected><Pending name="settings" /></Protected>} />

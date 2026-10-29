@@ -783,5 +783,34 @@
       "personal": "Do not use your name, e-mail or the site name in the password.",
       "breached": "This password appeared in a data breach; choose another one."
     }
+  },
+  "library": {
+    "saveTo": "Save to playlist",
+    "saveWatchLater": "Save to Watch later",
+    "savedTo": "Saved to {{name}}",
+    "removedFrom": "Removed from {{name}}",
+    "alreadyIn": "The video is already in this list",
+    "newPlaylist": "New playlist name",
+    "create": "Create",
+    "clearHistory": "Clear all watch history",
+    "clearHistoryConfirm": "Remove every video from your history? Resume positions go too.",
+    "historyEmpty": "You have not watched any video yet.",
+    "removeFromHistory": "Remove from history",
+    "videoCount_one": "{{count}} video",
+    "videoCount_other": "{{count}} videos",
+    "playAll": "Play all",
+    "deletePlaylist": "Delete playlist",
+    "deletePlaylistConfirm": "Delete “{{name}}”? Its videos stay.",
+    "playlistEmpty": "This list has no videos yet.",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "removeFromPlaylist": "Remove from list",
+    "notificationsEmpty": "No notifications yet.",
+    "uploadNotice": "{{channel}} uploaded: {{title}}",
+    "visibility": {
+      "public": "Public",
+      "unlisted": "Unlisted",
+      "private": "Private"
+    }
   }
 }
