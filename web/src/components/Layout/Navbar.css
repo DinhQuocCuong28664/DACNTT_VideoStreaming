@@ -317,11 +317,11 @@
 }
 
 /* Menu thu gọn 72 px: biểu tượng trên, nhãn 10 px dưới */
-.guide-mini {
+.guide.guide-mini {
   padding: 4px;
 }
 
-.guide-mini .guide-item {
+.guide.guide-mini .guide-item {
   flex-direction: column;
   justify-content: center;
   gap: 6px;
@@ -329,18 +329,18 @@
   padding: 16px 0 14px;
 }
 
-.guide-mini .guide-label {
+.guide.guide-mini .guide-label {
   max-width: 100%;
   font-size: 0.625rem;
   line-height: 14px;
 }
 
-.guide-mini .guide-item[aria-current='page'] {
+.guide.guide-mini .guide-item[aria-current='page'] {
   background: transparent;
 }
 
-.guide-mini .guide-item[aria-current='page']:hover,
-.guide-mini .guide-item:hover {
+.guide.guide-mini .guide-item[aria-current='page']:hover,
+.guide.guide-mini .guide-item:hover {
   background: var(--bg-tertiary);
 }
 
