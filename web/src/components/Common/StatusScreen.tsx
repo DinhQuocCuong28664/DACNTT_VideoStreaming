@@ -1,4 +1,4 @@
-import { Component, useEffect, useRef, type ErrorInfo, type ReactNode } from 'react';
+import { Component, useEffect, useRef, useState, type ErrorInfo, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation, withTranslation, type WithTranslation } from 'react-i18next';
 import { MdErrorOutline } from 'react-icons/md';
@@ -13,11 +13,19 @@ export function Spinner() {
   return <div className="flex-center full-screen-center"><div className="spinner" /></div>;
 }
 
-/** YouTube-style "page isn't available" screen shared by 404 and 403, with the cat mascot. */
+/**
+ * Mascots from page-mascot (MIT), each two sprite sheets in public/mascots. One is picked at
+ * random each time the screen shows; only that pair is downloaded.
+ */
+export const MASCOTS = ['bear', 'cat', 'deer', 'dino', 'fox', 'hamster', 'owl', 'penguin', 'raccoon', 'sloth'] as const;
+export const pickMascot = (random: () => number = Math.random) => MASCOTS[Math.floor(random() * MASCOTS.length)] ?? 'cat';
+
+/** YouTube-style "page isn't available" screen shared by 404 and 403, with a random mascot. */
 export function StatusScreen({ code, namespace, secondaryAction }: { code: string; namespace: 'notFound' | 'forbidden'; secondaryAction?: ReactNode }) {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const mascotRef = useRef<HTMLDivElement>(null);
+  const [mascot] = useState(() => pickMascot());
 
   // The library labels its button "Boop the <label>" in English; replace the whole label.
   useEffect(() => {
@@ -29,7 +37,7 @@ export function StatusScreen({ code, namespace, secondaryAction }: { code: strin
       <header className="status-topbar"><Logo /></header>
       <main className="status-content">
         <div className="status-mascot" ref={mascotRef}>
-          <Mascot directions="/mascots/cat-directions.webp" reactions="/mascots/cat-reactions.webp" size={200} label={t(`${namespace}.mascotLabel`)} />
+          <Mascot directions={`/mascots/${mascot}-directions.webp`} reactions={`/mascots/${mascot}-reactions.webp`} size={200} label={t(`${namespace}.mascotLabel`)} />
         </div>
         <h1 className="status-message">{t(`${namespace}.message`)}</h1>
         <p className="status-submessage">{t(`${namespace}.body`)}</p>
