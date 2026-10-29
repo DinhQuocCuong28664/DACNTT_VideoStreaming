@@ -44,4 +44,15 @@ test.describe('guest', () => {
     await page.goto('/history');
     await expect(page).toHaveURL(/\/login$/);
   });
+
+  test('the landing page opens', async ({ page }) => {
+    await page.goto('/landing');
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+    await expect(page.getByText('Terraform modules')).toBeVisible();
+  });
+
+  test('the embed page says when a video does not exist', async ({ page }) => {
+    await page.goto('/embed/000000000000000000000000');
+    await expect(page.getByText('This video is unavailable.')).toBeVisible();
+  });
 });
