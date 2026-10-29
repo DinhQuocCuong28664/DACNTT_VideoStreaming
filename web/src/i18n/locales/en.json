@@ -201,7 +201,7 @@
     "passwordMismatch": "The passwords do not match",
     "forgotTitle": "Account recovery",
     "forgotSubtitle": "Enter the email you signed up with",
-    "forgotSent": "If that email exists in the system, a reset link has been sent to <1>{{email}}</1>. The link is valid for 15 minutes.",
+    "forgotSent": "If the e-mail exists, a password reset link was sent to <1>{{email}}</1>. The link is valid for one hour.",
     "forgotSubmit": "Send link",
     "forgotSubmitting": "Sending...",
     "forgotFailed": "Could not send the email. Please try again.",
@@ -219,7 +219,9 @@
     "showPassword": "Show password",
     "createAccount": "Create account",
     "usernameHelp": "At least 3 characters. This is your @handle.",
-    "signInInstead": "Sign in instead"
+    "signInInstead": "Sign in instead",
+    "displayNameLabel": "Display name",
+    "handleHelp": "Optional. 3–30 lowercase letters, digits, dots or underscores; this is your @handle."
   },
   "verify": {
     "title": "Verify your email",
@@ -766,6 +768,13 @@
     "VIDEO_REMOVED": "This video was removed for breaking the rules.",
     "VIDEO_UNDER_REVIEW": "This video is being reviewed.",
     "PLAYBACK_UNAVAILABLE": "Playback is not available right now.",
-    "default": "Something went wrong. Please try again."
+    "default": "Something went wrong. Please try again.",
+    "weak": {
+      "too_short": "Use at least 8 characters.",
+      "too_long": "Use at most 72 bytes (accented letters count as 2–3).",
+      "common": "This password is too easy to guess.",
+      "personal": "Do not use your name, e-mail or the site name in the password.",
+      "breached": "This password appeared in a data breach; choose another one."
+    }
   }
 }

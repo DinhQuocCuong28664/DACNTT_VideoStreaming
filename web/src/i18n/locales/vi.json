@@ -200,7 +200,7 @@
     "passwordMismatch": "Mật khẩu xác nhận không khớp",
     "forgotTitle": "Khôi phục tài khoản",
     "forgotSubtitle": "Nhập email bạn đã dùng để đăng ký",
-    "forgotSent": "Nếu email tồn tại trong hệ thống, một liên kết đặt lại mật khẩu đã được gửi tới <1>{{email}}</1>. Liên kết có hiệu lực trong 15 phút.",
+    "forgotSent": "Nếu email tồn tại trong hệ thống, một liên kết đặt lại mật khẩu đã được gửi tới <1>{{email}}</1>. Liên kết có hiệu lực trong 1 giờ.",
     "forgotSubmit": "Gửi liên kết",
     "forgotSubmitting": "Đang gửi...",
     "forgotFailed": "Không thể gửi email. Vui lòng thử lại.",
@@ -218,7 +218,9 @@
     "showPassword": "Hiện mật khẩu",
     "createAccount": "Tạo tài khoản",
     "usernameHelp": "Tối thiểu 3 ký tự. Đây là @tên kênh của bạn.",
-    "signInInstead": "Đăng nhập"
+    "signInInstead": "Đăng nhập",
+    "displayNameLabel": "Tên hiển thị",
+    "handleHelp": "Không bắt buộc. 3–30 chữ thường, số, dấu chấm hoặc gạch dưới; đây là @tên kênh của bạn."
   },
   "verify": {
     "title": "Xác minh email",
@@ -762,6 +764,13 @@
     "VIDEO_REMOVED": "Video đã bị gỡ vì vi phạm quy định.",
     "VIDEO_UNDER_REVIEW": "Video đang được rà soát.",
     "PLAYBACK_UNAVAILABLE": "Chưa phát được video lúc này.",
-    "default": "Đã có lỗi xảy ra. Vui lòng thử lại."
+    "default": "Đã có lỗi xảy ra. Vui lòng thử lại.",
+    "weak": {
+      "too_short": "Mật khẩu cần ít nhất 8 ký tự.",
+      "too_long": "Mật khẩu tối đa 72 byte (chữ có dấu tính 2–3 byte).",
+      "common": "Mật khẩu này quá dễ đoán.",
+      "personal": "Đừng dùng tên, email hay tên trang web trong mật khẩu.",
+      "breached": "Mật khẩu này đã xuất hiện trong một vụ lộ dữ liệu; hãy chọn mật khẩu khác."
+    }
   }
 }

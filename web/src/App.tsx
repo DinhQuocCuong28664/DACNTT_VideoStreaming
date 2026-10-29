@@ -4,21 +4,22 @@ import { useAuth } from './context/auth';
 import MainLayout from './components/Layout/MainLayout';
 import { ForbiddenPage, NotFoundPage, Spinner } from './components/Common/StatusScreen';
 import HomePage from './pages/HomePage';
+import { isInternalPath } from './lib/paths';
 
 // The watch page pulls hls.js (about 160 kB gzip); it loads on its route and is prefetched
 // when the browser is idle, so the first page stays light.
 const loadWatchPage = () => import('./pages/WatchPage');
 const WatchPage = lazy(loadWatchPage);
+const loadAuth = () => import('./pages/auth/AuthPages');
 const AuthPages = {
-  Login: lazy(() => import('./pages/auth/LoginPage')),
-  Register: lazy(() => import('./pages/auth/RegisterPage')),
-  Forgot: lazy(() => import('./pages/auth/ForgotPasswordPage')),
-  Reset: lazy(() => import('./pages/auth/ResetPasswordPage')),
-  Verify: lazy(() => import('./pages/auth/VerifyEmailPage')),
+  Login: lazy(() => loadAuth().then((m) => ({ default: m.LoginPage }))),
+  Register: lazy(() => loadAuth().then((m) => ({ default: m.RegisterPage }))),
+  Forgot: lazy(() => loadAuth().then((m) => ({ default: m.ForgotPasswordPage }))),
+  Reset: lazy(() => loadAuth().then((m) => ({ default: m.ResetPasswordPage }))),
+  Verify: lazy(() => loadAuth().then((m) => ({ default: m.VerifyEmailPage }))),
 };
 const Pending = lazy(() => import('./pages/Pending'));
 
-export const isInternalPath = (v: unknown): v is string => typeof v === 'string' && v.startsWith('/') && !v.startsWith('//');
 
 function prefetchWatchPageWhenIdle() {
   const nav = navigator as Navigator & { connection?: { saveData?: boolean } };
