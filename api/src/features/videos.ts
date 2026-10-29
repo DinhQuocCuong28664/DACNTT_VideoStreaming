@@ -59,7 +59,8 @@ export function decodeCursor(raw: string | undefined): { at: Date; id: ObjectId 
 
 export function videoViews(deps: Deps) {
   const users = deps.db.collection<UserDoc>('users');
-  const file = (path: string | null) => (path ? deps.cdn.fileUrl(path, deps.now()) : null);
+  // Without CloudFront keys a listing still works, only without images.
+  const file = (path: string | null) => (path && deps.cdn.signing ? deps.cdn.fileUrl(path, deps.now()) : null);
 
   /** Card in listings: never anything a stranger may not see. */
   const card = (v: VideoDoc, channel?: Pick<UserDoc, 'displayName' | 'handle' | 'avatar'> | null) => ({

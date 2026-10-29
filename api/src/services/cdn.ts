@@ -15,6 +15,8 @@ export interface Cdn {
   /** A signed URL for one file of the processed bucket. */
   fileUrl(path: string, now: Date): string;
   baseUrl: string;
+  /** False until the CloudFront key pair is configured; listings then show no images. */
+  signing: boolean;
 }
 
 const SIX_HOURS = 6 * 3600 * 1000;
@@ -29,6 +31,7 @@ export function cloudFrontCdn(baseUrl: string, keyPairId: string | undefined, pr
   };
   return {
     baseUrl: base,
+    signing: Boolean(keyPairId && privateKey),
     videoPolicy(videoId, expiresAt) {
       const policy = JSON.stringify({
         Statement: [{
@@ -49,6 +52,7 @@ export function cloudFrontCdn(baseUrl: string, keyPairId: string | undefined, pr
 export function fakeCdn(baseUrl = 'https://cdn.example.test'): Cdn {
   return {
     baseUrl,
+    signing: true,
     videoPolicy: (videoId, expiresAt) => ({ Policy: `videos/${videoId}/*`, Signature: `sig-${expiresAt.getTime()}`, 'Key-Pair-Id': 'TESTKEY' }),
     fileUrl: (path, now) => `${baseUrl}/${path}?Expires=${listingExpiry(now).getTime() / 1000}`,
   };

@@ -120,7 +120,7 @@ export const studioFeature: Feature = (r, deps) => {
     const v = await ownVideo(videos, req);
     const path = await takeImage(deps, req, (ext, id) => `videos/${v._id.toHexString()}/thumbs/custom-${id}.${ext}`);
     await videos.updateOne({ _id: v._id }, { $set: { customThumbnail: path, updatedAt: now() } });
-    res.json({ thumbnail: deps.cdn.fileUrl(path, now()) });
+    res.json({ thumbnail: deps.cdn.signing ? deps.cdn.fileUrl(path, now()) : null });
   });
 
   r.delete('/videos/:id/thumbnail', requireUser, async (req, res) => {

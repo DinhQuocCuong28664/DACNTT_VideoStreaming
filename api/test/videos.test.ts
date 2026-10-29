@@ -8,6 +8,7 @@ import { uploadsFeature } from '../src/features/uploads.js';
 import { videosFeature, VIEW_WINDOW_SEC } from '../src/features/videos.js';
 import { mongoSessionLookup } from '../src/auth/sessions.js';
 import type { VideoDoc } from '../src/model/video.js';
+import { cloudFrontCdn } from '../src/services/cdn.js';
 import { ORIGIN_SECRET, WEB, memoryDb, testApp, type TestContext } from './helpers.js';
 
 let mongo: Awaited<ReturnType<typeof memoryDb>>;
@@ -230,6 +231,15 @@ describe('listing, editing and deleting', () => {
     expect(second.body.items.map((v: { id: string }) => v.id)).toEqual(ids.slice(3));
     expect(second.body.nextCursor).toBeNull();
     expect((await send('get', '/videos?cursor=bad')).status).toBe(400);
+  });
+
+  it('still lists videos, without images, before CloudFront keys exist', async () => {
+    await seedVideo(owner.id);
+    ctx.deps.cdn = cloudFrontCdn('https://cdn.example.test', undefined, undefined);
+    const res = await send('get', '/videos');
+    expect(res.status).toBe(200);
+    expect(res.body.items[0].thumbnail).toBeNull();
+    expect((await send('get', `/videos/${res.body.items[0].id}/playback`)).body.error.code).toBe('PLAYBACK_UNAVAILABLE');
   });
 
   it('lets only the owner edit, and needs a password for password visibility', async () => {
