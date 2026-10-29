@@ -368,7 +368,9 @@
     "linkCopied": "Đã sao chép liên kết",
     "copyFailed": "Không sao chép được liên kết",
     "captions": "Phụ đề",
-    "captionsOff": "Tắt"
+    "captionsOff": "Tắt",
+    "copyEmbed": "Sao chép mã nhúng",
+    "embedCopied": "Đã sao chép mã nhúng"
   },
   "settings": {
     "avatarSection": "Ảnh của bạn",
@@ -421,26 +423,23 @@
   "landing": {
     "heroSubtitle": "Tải lên một lần, VidShare tự chuyển mã thành các mức chất lượng từ 144p đến 1080p rồi phát qua CDN toàn cầu.",
     "heroExplore": "Xem danh sách video",
-    "statCostLabel": "Chi phí AWS hằng tháng thấp hơn",
-    "statCostDesc": "So với một máy EC2 chạy suốt ngày đêm, đã tính CloudFront ở cả hai vế. Riêng compute và lưu trữ giảm 98,87%.",
-    "statCdnDesc": "Đo qua CloudFront từ TP. Hồ Chí Minh, phục vụ bởi edge SGN50 trong nước.",
     "statAbrDesc": "Tự động điều chỉnh độ phân giải theo băng thông mạng người dùng.",
-    "statCicdLabel": "Tự động hóa CI/CD",
-    "statCicdDesc": "11 module Terraform và 7 workflow GitHub Actions có kiểm tra DevSecOps.",
+    "statCicdLabel": "Module Terraform",
+    "statCicdDesc": "Mọi tài nguyên đều là mã; CI chạy lint, test, kiểm tra Terraform, Gitleaks, Trivy và SAST ở mỗi lần đẩy mã.",
     "featuresSubtitle": "Giải pháp toàn diện từ khâu tải lên, nén video bất đồng bộ đến phân phối đa luồng bảo mật trên AWS Cloud.",
     "featureHlsTitle": "Chuyển mã HLS và ABR tự động",
-    "featureHlsDesc": "Container FFmpeg tự động phân tách video gốc thành các đoạn `.ts` (6s) và khởi tạo file `master.m3u8` liệt kê tối đa 6 mức (144p, 240p, 360p, 480p, 720p, 1080p), không vượt quá độ phân giải gốc.",
-    "featureScaleDesc": "Khởi tạo AWS Batch Job trên Fargate SPOT giải phóng 100% tài nguyên khi không có video (Scale to 0), tối ưu hóa bài toán Idle Resource Cost.",
-    "featureEventDesc": "Luồng xử lý bất đồng bộ kết nối Amazon S3 Event Notification, Amazon SQS Queue, AWS Lambda Submitter và CSDL MongoDB Atlas.",
+    "featureHlsDesc": "FFmpeg cắt video thành các đoạn 6 giây ở tối đa sáu bậc chất lượng từ 144p đến 1080p, không vượt bản gốc, kèm playlist chính cho phát thích ứng.",
+    "featureScaleDesc": "AWS Batch trên Fargate Spot, có Fargate On-Demand để tràn, chỉ khởi tác vụ khi có việc trong hàng đợi và về 0 khi hàng đợi trống.",
+    "featureEventDesc": "Sự kiện S3, bộ đệm SQS, quy trình Step Functions và sự kiện EventBridge nối các khâu tải lên, xử lý, công khai và thông báo; video dài được chia khúc chuyển mã song song.",
     "featureCdnTitle": "Phân phối CloudFront CDN và OAC",
-    "featureCdnDesc": "Bảo mật S3 Processed Bucket bằng Origin Access Control (OAC), chặn hoàn toàn truy cập public trực tiếp, phát video tốc độ cao toàn cầu.",
+    "featureCdnDesc": "Tệp đã xử lý nằm riêng tư sau CloudFront Origin Access Control; mỗi lượt phát có quyền truy cập ký riêng và khoá AES-128 chỉ trao cho mã phát hợp lệ.",
     "featureThemeTitle": "Giao diện sáng và tối",
     "featureThemeDesc": "Thiết kế trải nghiệm người dùng hiện đại kiểu YouTube, hỗ trợ chuyển đổi chủ đề Sáng/Tối mượt mà tự động lưu bộ nhớ trình duyệt.",
-    "featureCicdDesc": "Tự động hóa kiểm thử Jest Unit Tests, rà soát mã nguồn Gitleaks, quét container Trivy SCA và kiểm thử tải k6 Stress Test.",
-    "archSubtitle": "Quy trình nén và phát video tự động 4 bước với các thành phần hạ tầng AWS Cloud tiên tiến.",
-    "archStep1": "Tải trực tiếp video từ trình duyệt người dùng lên Amazon S3 qua Pre-signed URL, loại bỏ nút thắt nghẽn Server Backend.",
-    "archStep3": "Container Docker FFmpeg tự động khởi tạo trên Fargate SPOT nén HLS m3u8 và tự giải phóng 100% tài nguyên sau khi làm xong.",
-    "archStep4": "Phân phối luồng video HLS siêu mượt qua CloudFront CDN toàn cầu bảo mật OAC tới trình phát HLS.js trên Web UI.",
+    "featureCicdDesc": "GitHub Actions chạy ESLint với luật bảo mật, kiểm thử đơn vị, kiểm tra Terraform, quét bí mật Gitleaks và quét thư viện Trivy trước mỗi lần hợp nhất.",
+    "archSubtitle": "Đường ống hướng sự kiện biến một lần tải lên thành luồng phát thích ứng mà không cần máy chủ chạy thường trực.",
+    "archStep1": "Trình duyệt tải tệp gốc thẳng lên Amazon S3 bằng URL ký trước có hạn ngắn, không qua máy chủ trung gian.",
+    "archStep3": "S3 đưa lượt tải vào hàng đợi SQS, AWS Step Functions chạy container FFmpeg trên AWS Batch Fargate Spot: dò thông tin, kiểm duyệt và chuyển mã song song.",
+    "archStep4": "Các bậc HLS đã mã hoá nằm trong bucket riêng tư và tới người xem qua CloudFront với Origin Access Control và yêu cầu có chữ ký.",
     "ctaTitle": "Sẵn sàng trải nghiệm hệ thống phát video HLS thế hệ mới?",
     "ctaSubtitle": "Trải nghiệm nền tảng chia sẻ video trực tuyến với công nghệ chuyển mã HLS tự động và giao diện hiện đại ngay hôm nay.",
     "ctaRegister": "Đăng ký tài khoản",
@@ -448,7 +447,6 @@
     "heroTitle": "Chia sẻ video. Phần phát trực tuyến để chúng tôi lo.",
     "stepsTitle": "Cách hoạt động",
     "featuresTitle": "Bên trong có gì",
-    "statTtffLabel": "Trung vị thời gian tới khung hình đầu",
     "statAbrLabel": "Chất lượng thích ứng",
     "step1Title": "Tải thẳng lên S3",
     "step2Title": "Chuyển mã trên Fargate Spot",
@@ -457,7 +455,11 @@
     "step4Desc": "Trình phát HLS.js chọn bậc chất lượng hợp với băng thông và kích thước màn hình của người xem, và đổi khi điều kiện thay đổi.",
     "featureScaleTitle": "Container serverless",
     "featureEventTitle": "Đường ống hướng sự kiện",
-    "featureCicdTitle": "Cổng bảo mật trong CI"
+    "featureCicdTitle": "Cổng bảo mật trong CI",
+    "statIdleLabel": "Máy chạy chờ khi rảnh",
+    "statIdleDesc": "Chuyển mã chạy bằng tác vụ Fargate chỉ khi có video cần xử lý, rồi tự về 0.",
+    "statSecureLabel": "Phát video được mã hoá",
+    "statSecureDesc": "Các đoạn video mã hoá AES-128 và chỉ phát qua yêu cầu CloudFront có chữ ký."
   },
   "common": {
     "cancel": "Huỷ",
@@ -925,5 +927,10 @@
     "topVideos": "Video nổi bật",
     "noData": "Chưa có số liệu.",
     "analyticsFailed": "Không tải được số liệu."
+  },
+  "embed": {
+    "restricted": "Video này chỉ xem được trên VidShare.",
+    "missing": "Video này không còn khả dụng.",
+    "watchOnSite": "Xem trên VidShare"
   }
 }

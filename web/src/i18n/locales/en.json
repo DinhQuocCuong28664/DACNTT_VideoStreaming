@@ -371,7 +371,9 @@
     "linkCopied": "Link copied",
     "copyFailed": "Could not copy the link",
     "captions": "Captions",
-    "captionsOff": "Off"
+    "captionsOff": "Off",
+    "copyEmbed": "Copy embed code",
+    "embedCopied": "Embed code copied"
   },
   "settings": {
     "avatarSection": "Your picture",
@@ -424,26 +426,23 @@
   "landing": {
     "heroSubtitle": "Upload once and VidShare transcodes it into quality levels from 144p to 1080p, then streams it through a global CDN.",
     "heroExplore": "Browse the catalogue",
-    "statCostLabel": "Lower monthly AWS cost",
-    "statCostDesc": "Against an EC2 instance billed around the clock, with CloudFront counted on both sides. Compute and storage alone fall by 98.87%.",
-    "statCdnDesc": "Measured through CloudFront from Ho Chi Minh City, served by the local SGN50 edge.",
     "statAbrDesc": "Resolution adapts automatically to the viewer's available bandwidth.",
-    "statCicdLabel": "CI/CD automation",
-    "statCicdDesc": "Eleven Terraform modules and seven GitHub Actions workflows with DevSecOps checks.",
+    "statCicdLabel": "Terraform modules",
+    "statCicdDesc": "Every resource is code; CI runs lint, tests, Terraform checks, Gitleaks, Trivy and SAST on each push.",
     "featuresSubtitle": "An end-to-end solution from upload, through asynchronous transcoding, to secure multi-rendition delivery on AWS.",
     "featureHlsTitle": "Automatic HLS and ABR transcoding",
-    "featureHlsDesc": "An FFmpeg container splits the source into six-second `.ts` segments and writes a `master.m3u8` listing up to six renditions (144p, 240p, 360p, 480p, 720p, 1080p), never above the source's resolution.",
-    "featureScaleDesc": "An AWS Batch job on Fargate Spot releases every resource when no video is waiting (scale to zero), which removes the cost of idle capacity.",
-    "featureEventDesc": "The asynchronous pipeline connects an Amazon S3 event notification, an Amazon SQS queue, an AWS Lambda submitter and MongoDB Atlas.",
+    "featureHlsDesc": "FFmpeg cuts each video into 6-second segments in up to six renditions from 144p to 1080p, never above the source, with a master playlist for adaptive playback.",
+    "featureScaleDesc": "AWS Batch on Fargate Spot, with Fargate On-Demand as overflow, starts tasks only for queued work and returns to zero when the queue is empty.",
+    "featureEventDesc": "S3 events, an SQS buffer, a Step Functions workflow and EventBridge events connect upload, processing, publishing and notifications; long videos are split into chunks encoded in parallel.",
     "featureCdnTitle": "CloudFront delivery with OAC",
-    "featureCdnDesc": "Origin Access Control keeps the processed bucket entirely private, blocking direct public access while delivering video quickly worldwide.",
+    "featureCdnDesc": "Processed files stay private behind CloudFront Origin Access Control; each playback gets a signed grant and the AES-128 key is released only to a valid playback token.",
     "featureThemeTitle": "Dark and light themes",
     "featureThemeDesc": "A modern viewing experience with a smooth light and dark theme switch, remembered in the browser.",
-    "featureCicdDesc": "Automated Jest unit tests, Gitleaks secret scanning, Trivy container scanning and k6 load testing.",
-    "archSubtitle": "Four automated steps from upload to playback, built on managed AWS components.",
-    "archStep1": "The browser uploads the video straight to Amazon S3 through a pre-signed URL, so no file passes through the backend.",
-    "archStep3": "An FFmpeg container starts on Fargate Spot, produces the HLS renditions, and releases every resource when it finishes.",
-    "archStep4": "CloudFront delivers the HLS stream worldwide, protected by OAC, to the HLS.js player in the browser.",
+    "featureCicdDesc": "GitHub Actions run ESLint with security rules, unit tests, Terraform validation, Gitleaks secret scanning and Trivy dependency scanning before anything merges.",
+    "archSubtitle": "An event-driven pipeline that turns an upload into adaptive streams without a server left running.",
+    "archStep1": "The browser uploads the original file straight to Amazon S3 with a short-lived presigned URL, so no server sits in the path.",
+    "archStep3": "S3 queues the upload in SQS and AWS Step Functions runs FFmpeg containers on AWS Batch Fargate Spot: probe, moderation check and encoding in parallel.",
+    "archStep4": "The encrypted HLS renditions stay in a private bucket and reach viewers through CloudFront with Origin Access Control and signed requests.",
     "ctaTitle": "Ready to try the platform?",
     "ctaSubtitle": "Share videos online with automatic HLS transcoding and a modern interface.",
     "ctaRegister": "Create an account",
@@ -451,7 +450,6 @@
     "heroTitle": "Share video. We handle the streaming.",
     "stepsTitle": "How it works",
     "featuresTitle": "What's inside",
-    "statTtffLabel": "Median time to first frame",
     "statAbrLabel": "Adaptive quality",
     "step1Title": "Upload straight to S3",
     "step2Title": "Transcode on Fargate Spot",
@@ -460,7 +458,11 @@
     "step4Desc": "The HLS.js player picks the rendition that fits the viewer's bandwidth and screen size, and switches as conditions change.",
     "featureScaleTitle": "Serverless containers",
     "featureEventTitle": "Event-driven pipeline",
-    "featureCicdTitle": "Security gates in CI"
+    "featureCicdTitle": "Security gates in CI",
+    "statIdleLabel": "Machines waiting when idle",
+    "statIdleDesc": "Transcoding runs as Fargate tasks only while there is a video to process, then scales to zero.",
+    "statSecureLabel": "Encrypted playback",
+    "statSecureDesc": "Segments are AES-128 encrypted and served only through signed CloudFront requests."
   },
   "common": {
     "cancel": "Cancel",
@@ -929,5 +931,10 @@
     "topVideos": "Top videos",
     "noData": "No data yet.",
     "analyticsFailed": "Could not load analytics."
+  },
+  "embed": {
+    "restricted": "This video can only be watched on VidShare.",
+    "missing": "This video is unavailable.",
+    "watchOnSite": "Watch on VidShare"
   }
 }

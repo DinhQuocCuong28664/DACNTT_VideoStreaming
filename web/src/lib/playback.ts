@@ -97,3 +97,10 @@ export function qualityLabel(width: number, height: number): string {
   for (const step of [2160, 1440, 1080, 720, 480, 360, 240]) if (h >= step) return `${step}p`;
   return `${h}p`;
 }
+
+const escapeAttr = (s: string) => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+/** The iframe snippet for /embed/:id, sized 16:9 like the usual 560 x 315 default. */
+export function embedCode(origin: string, id: string, title: string): string {
+  return `<iframe width="560" height="315" src="${origin}/embed/${encodeURIComponent(id)}" title="${escapeAttr(title)}" frameborder="0" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowfullscreen></iframe>`;
+}

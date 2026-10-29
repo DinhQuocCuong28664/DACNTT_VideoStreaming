@@ -19,9 +19,13 @@ import ReportDialog from '../components/Video/ReportDialog';
 import AppealBox from '../components/Video/AppealBox';
 import { errorText, isApiError } from '../lib/errors';
 import { formatDate, formatViews } from '../lib/format';
-import { parseStartTime } from '../lib/playback';
+import { embedCode, parseStartTime } from '../lib/playback';
 import './WatchPage.css';
 import '../components/Video/LockedVideoOverlay.css';
+
+/** Embeds play public and unlisted videos that are open to everyone (docs/ARCHITECTURE.md §5.5). */
+const embedCodeFor = (v: VideoDetails) =>
+  (v.visibility === 'public' || v.visibility === 'unlisted') && v.audience === 'public' ? embedCode(window.location.origin, v.id, v.title) : null;
 
 const UNLOCK_KEY = (id: string) => `unlock:${id}`;
 const readUnlock = (id: string) => { try { return sessionStorage.getItem(UNLOCK_KEY(id)); } catch { return null; } };
@@ -236,7 +240,7 @@ export default function WatchPage() {
     player = (
       <VideoPlayer
         grant={grant} renew={renew} poster={v.thumbnail} previewVtt={v.previewVtt} chapters={v.chapters} startTime={startTime}
-        shareUrl={`${window.location.origin}/watch/${v.id}`} onView={onView} onHeartbeat={onHeartbeat}
+        shareUrl={`${window.location.origin}/watch/${v.id}`} embedCode={embedCodeFor(v)} onView={onView} onHeartbeat={onHeartbeat}
       />
     );
   }

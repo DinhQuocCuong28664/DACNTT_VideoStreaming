@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addWatched, cueAt, parseSpriteVtt, parseStartTime, qualityLabel, reachedView, signUrl, viewThreshold, withStartTime } from '../src/lib/playback';
+import { addWatched, cueAt, embedCode, parseSpriteVtt, parseStartTime, qualityLabel, reachedView, signUrl, viewThreshold, withStartTime } from '../src/lib/playback';
 
 describe('view rule', () => {
   it('needs 30 seconds, or the whole of a shorter video', () => {
@@ -64,5 +64,14 @@ describe('quality labels', () => {
     expect(qualityLabel(1080, 1920)).toBe('1080p');
     expect(qualityLabel(1920, 800)).toBe('1080p');
     expect(qualityLabel(256, 144)).toBe('144p');
+  });
+});
+
+describe('embedCode', () => {
+  it('builds an iframe for the embed route and escapes the title', () => {
+    const code = embedCode('https://v2-staging.zelostech.site', 'abc123', 'Tom & "Jerry" <live>');
+    expect(code).toContain('src="https://v2-staging.zelostech.site/embed/abc123"');
+    expect(code).toContain('title="Tom &amp; &quot;Jerry&quot; &lt;live&gt;"');
+    expect(code).toContain('allowfullscreen');
   });
 });

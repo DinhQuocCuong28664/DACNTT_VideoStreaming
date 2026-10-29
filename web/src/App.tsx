@@ -18,12 +18,13 @@ const AuthPages = {
   Reset: lazy(() => loadAuth().then((m) => ({ default: m.ResetPasswordPage }))),
   Verify: lazy(() => loadAuth().then((m) => ({ default: m.VerifyEmailPage }))),
 };
-const Pending = lazy(() => import('./pages/Pending'));
 const ChannelPage = lazy(() => import('./pages/ChannelPage'));
 const UploadPage = lazy(() => import('./pages/UploadPage'));
 const StudioPage = lazy(() => import('./pages/StudioPages'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 const AdminPage = lazy(() => import('./pages/AdminPage'));
+const LandingPage = lazy(() => import('./pages/LandingPage'));
+const EmbedPage = lazy(() => import('./pages/EmbedPage'));
 const loadLibrary = () => import('./pages/LibraryPages');
 const Library = {
   Subscriptions: lazy(() => loadLibrary().then((m) => ({ default: m.SubscriptionsPage }))),
@@ -82,7 +83,7 @@ export default function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/results" element={<HomePage />} />
           <Route path="/watch/:id" element={<WatchPage />} />
-          <Route path="/landing" element={<Pending name="landing" />} />
+          <Route path="/landing" element={<LandingPage />} />
           <Route path="/subscriptions" element={<Protected><Library.Subscriptions /></Protected>} />
           <Route path="/history" element={<Protected><Library.History /></Protected>} />
           <Route path="/playlists" element={<Protected><Library.Playlists /></Protected>} />
@@ -100,6 +101,7 @@ export default function App() {
         <Route path="/reset-password" element={<GuestOnly><AuthPages.Reset /></GuestOnly>} />
         {/* Signed-in users open verification links too. */}
         <Route path="/verify-email" element={<AuthPages.Verify />} />
+        <Route path="/embed/:id" element={<EmbedPage />} />
         <Route path="/403" element={<ForbiddenPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>

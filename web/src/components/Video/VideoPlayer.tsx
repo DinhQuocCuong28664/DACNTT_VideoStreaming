@@ -10,7 +10,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, type Keyboar
 import { useTranslation } from 'react-i18next';
 import Hls, { type Level } from 'hls.js';
 import {
-  FiCheck, FiChevronLeft, FiChevronRight, FiClock, FiLink, FiMaximize, FiMinimize, FiPause, FiPlay, FiRepeat, FiSettings,
+  FiCheck, FiChevronLeft, FiChevronRight, FiClock, FiCode, FiLink, FiMaximize, FiMinimize, FiPause, FiPlay, FiRepeat, FiSettings,
   FiVolume1, FiVolume2, FiVolumeX,
 } from 'react-icons/fi';
 import { MdClosedCaption, MdClosedCaptionOff } from 'react-icons/md';
@@ -52,11 +52,13 @@ export interface VideoPlayerProps {
   chapters?: { startSec: number; title: string }[];
   startTime?: number | null;
   shareUrl?: string | null;
+  /** The iframe snippet offered as "Copy embed code"; null hides the item. */
+  embedCode?: string | null;
   onView?: (playbackToken: string) => void;
   onHeartbeat?: (b: { positionSec: number; watchedSec: number; playbackToken: string }) => void;
 }
 
-export default function VideoPlayer({ grant, renew, poster, previewVtt, chapters = [], startTime = null, shareUrl = null, onView, onHeartbeat }: VideoPlayerProps) {
+export default function VideoPlayer({ grant, renew, poster, previewVtt, chapters = [], startTime = null, shareUrl = null, embedCode = null, onView, onHeartbeat }: VideoPlayerProps) {
   const { t } = useTranslation();
   const tRef = useRef(t);
   tRef.current = t;
@@ -415,15 +417,17 @@ export default function VideoPlayer({ grant, renew, poster, previewVtt, chapters
     else if (e.key === 'ArrowDown') { e.preventDefault(); focusAt(index + 1); }
     else if (e.key === 'ArrowUp') { e.preventDefault(); focusAt(index - 1); }
   };
-  const copyUrl = async (atTime: boolean) => {
+  const copyText = async (text: string, done: string) => {
     closeContextMenu();
-    if (!shareUrl) return;
     try {
-      await navigator.clipboard.writeText(withStartTime(shareUrl, atTime ? video()?.currentTime ?? 0 : 0));
-      showNotice(t('player.linkCopied'));
+      await navigator.clipboard.writeText(text);
+      showNotice(done);
     } catch {
       showNotice(t('player.copyFailed'));
     }
+  };
+  const copyUrl = (atTime: boolean) => {
+    if (shareUrl) void copyText(withStartTime(shareUrl, atTime ? video()?.currentTime ?? 0 : 0), t('player.linkCopied'));
   };
 
   const level = levels.at(currentLevel);
@@ -460,8 +464,9 @@ export default function VideoPlayer({ grant, renew, poster, previewVtt, chapters
           </button>
           {shareUrl && (
             <>
-              <button type="button" role="menuitem" tabIndex={-1} className="player-context-item" onClick={() => void copyUrl(false)}><FiLink aria-hidden="true" /><span>{t('player.copyUrl')}</span></button>
-              <button type="button" role="menuitem" tabIndex={-1} className="player-context-item" onClick={() => void copyUrl(true)}><FiClock aria-hidden="true" /><span>{t('player.copyUrlAtTime')}</span></button>
+              <button type="button" role="menuitem" tabIndex={-1} className="player-context-item" onClick={() => copyUrl(false)}><FiLink aria-hidden="true" /><span>{t('player.copyUrl')}</span></button>
+              <button type="button" role="menuitem" tabIndex={-1} className="player-context-item" onClick={() => copyUrl(true)}><FiClock aria-hidden="true" /><span>{t('player.copyUrlAtTime')}</span></button>
+              {embedCode && <button type="button" role="menuitem" tabIndex={-1} className="player-context-item" onClick={() => void copyText(embedCode, t('player.embedCopied'))}><FiCode aria-hidden="true" /><span>{t('player.copyEmbed')}</span></button>}
             </>
           )}
         </div>
