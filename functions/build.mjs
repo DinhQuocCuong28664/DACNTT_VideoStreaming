@@ -1,7 +1,7 @@
 // Bundles each handler into dist/<name>/index.mjs for its own Lambda function.
 import { build } from 'esbuild';
 
-const handlers = ['starter', 'probe', 'status', 'stitch'];
+const handlers = ['starter', 'probe', 'status', 'stitch', 'notifier', 'rollup', 'reconciler'];
 
 await Promise.all(handlers.map((name) => build({
   entryPoints: [`src/${name}.ts`],
