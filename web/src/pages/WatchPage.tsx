@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   MdBlock, MdCheck, MdErrorOutline, MdLock, MdOutlineShare, MdOutlineShield, MdOutlineThumbDown, MdOutlineThumbUp, MdStars,
-  MdThumbDown, MdThumbUp, MdWarningAmber,
+  MdOutlinedFlag, MdThumbDown, MdThumbUp, MdWarningAmber,
 } from 'react-icons/md';
 import { channels, me, videos } from '../api/endpoints';
 import type { LockedStub, Playback, VideoCard as Card, VideoDetails } from '../api/types';
@@ -14,6 +14,9 @@ import { NotFoundPage } from '../components/Common/StatusScreen';
 import VideoPlayer from '../components/Video/VideoPlayer';
 import VideoCard from '../components/Video/VideoCard';
 import SubscribeButton from '../components/Channel/SubscribeButton';
+import CommentSection from '../components/Video/CommentSection';
+import ReportDialog from '../components/Video/ReportDialog';
+import AppealBox from '../components/Video/AppealBox';
 import { errorText, isApiError } from '../lib/errors';
 import { formatDate, formatViews } from '../lib/format';
 import { parseStartTime } from '../lib/playback';
@@ -52,6 +55,7 @@ export default function WatchPage() {
   const [descExpanded, setDescExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
   const [reload, setReload] = useState(0);
+  const [reportOpen, setReportOpen] = useState(false);
 
   // ── Load the video, then its playback grant ─────────────────────────────────────────
   useEffect(() => {
@@ -246,7 +250,10 @@ export default function WatchPage() {
           {(moderation === 'review' || moderation === 'removed') && (
             <div className={`watch-moderation-notice${moderation === 'removed' ? ' is-removed' : ''}`} role="status">
               {moderation === 'removed' ? <MdBlock aria-hidden="true" /> : <MdOutlineShield aria-hidden="true" />}
-              <p>{isOwner ? (moderation === 'removed' ? t('watch.ownerRemovedNotice') : t('watch.ownerUnderReviewNotice')) : t('watch.adminNotice', { status: t(`moderationStatus.${moderation}`) })}</p>
+              <div>
+                <p>{isOwner ? (moderation === 'removed' ? t('watch.ownerRemovedNotice') : t('watch.ownerUnderReviewNotice')) : t('watch.adminNotice', { status: t(`moderationStatus.${moderation}`) })}</p>
+                {isOwner && <AppealBox videoId={v.id} />}
+              </div>
             </div>
           )}
 
@@ -279,6 +286,11 @@ export default function WatchPage() {
               <button type="button" className="btn btn-secondary" onClick={() => void share()}>
                 {copied ? <MdCheck /> : <MdOutlineShare />}<span>{copied ? t('watch.copied') : t('watch.share')}</span>
               </button>
+              {!isOwner && v.locked === null && (
+                <button type="button" className="btn btn-secondary" onClick={() => (isAuthenticated ? setReportOpen(true) : goToLogin())}>
+                  <MdOutlinedFlag /><span>{t('watch.report')}</span>
+                </button>
+              )}
             </div>
           </div>
 
@@ -299,6 +311,8 @@ export default function WatchPage() {
               </button>
             )}
           </div>
+
+          {(v.locked === null || isOwner) && <CommentSection videoId={v.id} creatorId={v.channel.id} creatorHandle={v.channel.handle} unlockToken={unlockToken} />}
         </div>
 
         {related.length > 0 && (
@@ -313,6 +327,10 @@ export default function WatchPage() {
           </aside>
         )}
       </div>
+      {reportOpen && (
+        <ReportDialog target={{ kind: 'video', id: v.id }} onClose={() => setReportOpen(false)}
+          onReported={(repeated) => { setReportOpen(false); showToast(repeated ? t('report.already') : t('report.success')); }} />
+      )}
       {toast}
     </div>
   );
