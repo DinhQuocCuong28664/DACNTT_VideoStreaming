@@ -1,0 +1,893 @@
+{
+  "schema": 1,
+  "title": "S5-1: time to first frame (prod, v2)",
+  "runs": [
+    {
+      "id": "2026-11-04-prod-v2-ttff-local-vn",
+      "date": "2026-11-04",
+      "environment": "prod",
+      "stack": "v2",
+      "path": "ttff",
+      "vantage": "local-vn",
+      "video": {
+        "id": "6aea3d0094989c6980c6c03c",
+        "rendition": "720p"
+      },
+      "first_sample_ms": 1424.9,
+      "summary_ms": {
+        "n": 19,
+        "mean": 319.5,
+        "p50": 307.5,
+        "p95": 435.2,
+        "min": 288.4,
+        "max": 435.2
+      },
+      "per_step_ms": {
+        "grant": {
+          "n": 19,
+          "mean": 122.3,
+          "p50": 121.6,
+          "p95": 137.5,
+          "min": 108.2,
+          "max": 137.5
+        },
+        "master": {
+          "n": 19,
+          "mean": 8.2,
+          "p50": 6.9,
+          "p95": 18,
+          "min": 5.5,
+          "max": 18
+        },
+        "playlist": {
+          "n": 19,
+          "mean": 10.8,
+          "p50": 8.1,
+          "p95": 56.9,
+          "min": 5.7,
+          "max": 56.9
+        },
+        "key": {
+          "n": 19,
+          "mean": 150,
+          "p50": 144.2,
+          "p95": 216.6,
+          "min": 125.2,
+          "max": 216.6
+        },
+        "segment": {
+          "n": 19,
+          "mean": 28.1,
+          "p50": 22.7,
+          "p95": 81.4,
+          "min": 19.7,
+          "max": 81.4
+        }
+      },
+      "samples": [
+        {
+          "total_ms": 1424.9,
+          "rendition": "720p",
+          "steps": [
+            {
+              "name": "grant",
+              "ms": 479.4,
+              "bytes": 1012,
+              "cache": null,
+              "pop": null
+            },
+            {
+              "name": "master",
+              "ms": 376.4,
+              "bytes": 926,
+              "cache": "Miss from cloudfront",
+              "pop": "SGN50-P2"
+            },
+            {
+              "name": "playlist",
+              "ms": 128.3,
+              "bytes": 1738,
+              "cache": "Miss from cloudfront",
+              "pop": "SGN50-P2"
+            },
+            {
+              "name": "key",
+              "ms": 175.4,
+              "bytes": 16,
+              "cache": null,
+              "pop": null
+            },
+            {
+              "name": "segment",
+              "ms": 265,
+              "bytes": 1486720,
+              "cache": "Miss from cloudfront",
+              "pop": "SGN50-P2"
+            }
+          ]
+        },
+        {
+          "total_ms": 435.2,
+          "rendition": "720p",
+          "steps": [
+            {
+              "name": "grant",
+              "ms": 133.1,
+              "bytes": 1012,
+              "cache": null,
+              "pop": null
+            },
+            {
+              "name": "master",
+              "ms": 5.8,
+              "bytes": 926,
+              "cache": "Hit from cloudfront",
+              "pop": "SGN50-P2"
+            },
+            {
+              "name": "playlist",
+              "ms": 56.9,
+              "bytes": 1738,
+              "cache": "Miss from cloudfront",
+              "pop": "SGN50-P2"
+            },
+            {
+              "name": "key",
+              "ms": 157.8,
+              "bytes": 16,
+              "cache": null,
+              "pop": null
+            },
+            {
+              "name": "segment",
+              "ms": 81.4,
+              "bytes": 1486720,
+              "cache": "Miss from cloudfront",
+              "pop": "SGN50-P2"
+            }
+          ]
+        },
+        {
+          "total_ms": 338.4,
+          "rendition": "720p",
+          "steps": [
+            {
+              "name": "grant",
+              "ms": 137.5,
+              "bytes": 1012,
+              "cache": null,
+              "pop": null
+            },
+            {
+              "name": "master",
+              "ms": 9.1,
+              "bytes": 926,
+              "cache": "Hit from cloudfront",
+              "pop": "SGN50-P2"
+            },
+            {
+              "name": "playlist",
+              "ms": 8.1,
+              "bytes": 1738,
+              "cache": "Hit from cloudfront",
+              "pop": "SGN50-P2"
+            },
+            {
+              "name": "key",
+              "ms": 161.6,
+              "bytes": 16,
+              "cache": null,
+              "pop": null
+            },
+            {
+              "name": "segment",
+              "ms": 21.9,
+              "bytes": 1486720,
+              "cache": "Hit from cloudfront",
+              "pop": "SGN50-P2"
+            }
+          ]
+        },
+        {
+          "total_ms": 288.4,
+          "rendition": "720p",
+          "steps": [
+            {
+              "name": "grant",
+              "ms": 122,
+              "bytes": 1012,
+              "cache": null,
+              "pop": null
+            },
+            {
+              "name": "master",
+              "ms": 9.7,
+              "bytes": 926,
+              "cache": "Hit from cloudfront",
+              "pop": "SGN50-P2"
+            },
+            {
+              "name": "playlist",
+              "ms": 9.1,
+              "bytes": 1738,
+              "cache": "Hit from cloudfront",
+              "pop": "SGN50-P2"
+            },
+            {
+              "name": "key",
+              "ms": 125.2,
+              "bytes": 16,
+              "cache": null,
+              "pop": null
+            },
+            {
+              "name": "segment",
+              "ms": 22.2,
+              "bytes": 1486720,
+              "cache": "Hit from cloudfront",
+              "pop": "SGN50-P2"
+            }
+          ]
+        },
+        {
+          "total_ms": 307.4,
+          "rendition": "720p",
+          "steps": [
+            {
+              "name": "grant",
+              "ms": 129.6,
+              "bytes": 1012,
+              "cache": null,
+              "pop": null
+            },
+            {
+              "name": "master",
+              "ms": 7.6,
+              "bytes": 926,
+              "cache": "Hit from cloudfront",
+              "pop": "SGN50-P2"
+            },
+            {
+              "name": "playlist",
+              "ms": 6.6,
+              "bytes": 1738,
+              "cache": "Hit from cloudfront",
+              "pop": "SGN50-P2"
+            },
+            {
+              "name": "key",
+              "ms": 143.6,
+              "bytes": 16,
+              "cache": null,
+              "pop": null
+            },
+            {
+              "name": "segment",
+              "ms": 19.9,
+              "bytes": 1486720,
+              "cache": "Hit from cloudfront",
+              "pop": "SGN50-P2"
+            }
+          ]
+        },
+        {
+          "total_ms": 331.9,
+          "rendition": "720p",
+          "steps": [
+            {
+              "name": "grant",
+              "ms": 135.3,
+              "bytes": 1012,
+              "cache": null,
+              "pop": null
+            },
+            {
+              "name": "master",
+              "ms": 6,
+              "bytes": 926,
+              "cache": "Hit from cloudfront",
+              "pop": "SGN50-P2"
+            },
+            {
+              "name": "playlist",
+              "ms": 5.9,
+              "bytes": 1738,
+              "cache": "Hit from cloudfront",
+              "pop": "SGN50-P2"
+            },
+            {
+              "name": "key",
+              "ms": 164.9,
+              "bytes": 16,
+              "cache": null,
+              "pop": null
+            },
+            {
+              "name": "segment",
+              "ms": 19.7,
+              "bytes": 1486720,
+              "cache": "Hit from cloudfront",
+              "pop": "SGN50-P2"
+            }
+          ]
+        },
+        {
+          "total_ms": 323.6,
+          "rendition": "720p",
+          "steps": [
+            {
+              "name": "grant",
+              "ms": 116.8,
+              "bytes": 1012,
+              "cache": null,
+              "pop": null
+            },
+            {
+              "name": "master",
+              "ms": 6,
+              "bytes": 926,
+              "cache": "Hit from cloudfront",
+              "pop": "SGN50-P2"
+            },
+            {
+              "name": "playlist",
+              "ms": 11.3,
+              "bytes": 1738,
+              "cache": "Hit from cloudfront",
+              "pop": "SGN50-P2"
+            },
+            {
+              "name": "key",
+              "ms": 167.4,
+              "bytes": 16,
+              "cache": null,
+              "pop": null
+            },
+            {
+              "name": "segment",
+              "ms": 22.1,
+              "bytes": 1486720,
+              "cache": "Hit from cloudfront",
+              "pop": "SGN50-P2"
+            }
+          ]
+        },
+        {
+          "total_ms": 382,
+          "rendition": "720p",
+          "steps": [
+            {
+              "name": "grant",
+              "ms": 120.4,
+              "bytes": 1012,
+              "cache": null,
+              "pop": null
+            },
+            {
+              "name": "master",
+              "ms": 11.7,
+              "bytes": 926,
+              "cache": "Hit from cloudfront",
+              "pop": "SGN50-P2"
+            },
+            {
+              "name": "playlist",
+              "ms": 8.3,
+              "bytes": 1738,
+              "cache": "Hit from cloudfront",
+              "pop": "SGN50-P2"
+            },
+            {
+              "name": "key",
+              "ms": 216.6,
+              "bytes": 16,
+              "cache": null,
+              "pop": null
+            },
+            {
+              "name": "segment",
+              "ms": 24.7,
+              "bytes": 1486720,
+              "cache": "Hit from cloudfront",
+              "pop": "SGN50-P2"
+            }
+          ]
+        },
+        {
+          "total_ms": 307.5,
+          "rendition": "720p",
+          "steps": [
+            {
+              "name": "grant",
+              "ms": 119.7,
+              "bytes": 1012,
+              "cache": null,
+              "pop": null
+            },
+            {
+              "name": "master",
+              "ms": 7.9,
+              "bytes": 926,
+              "cache": "Hit from cloudfront",
+              "pop": "SGN50-P2"
+            },
+            {
+              "name": "playlist",
+              "ms": 7.3,
+              "bytes": 1738,
+              "cache": "Hit from cloudfront",
+              "pop": "SGN50-P2"
+            },
+            {
+              "name": "key",
+              "ms": 149.8,
+              "bytes": 16,
+              "cache": null,
+              "pop": null
+            },
+            {
+              "name": "segment",
+              "ms": 22.7,
+              "bytes": 1486720,
+              "cache": "Hit from cloudfront",
+              "pop": "SGN50-P2"
+            }
+          ]
+        },
+        {
+          "total_ms": 294.2,
+          "rendition": "720p",
+          "steps": [
+            {
+              "name": "grant",
+              "ms": 114,
+              "bytes": 1012,
+              "cache": null,
+              "pop": null
+            },
+            {
+              "name": "master",
+              "ms": 11.7,
+              "bytes": 926,
+              "cache": "Hit from cloudfront",
+              "pop": "SGN50-P2"
+            },
+            {
+              "name": "playlist",
+              "ms": 12.9,
+              "bytes": 1738,
+              "cache": "Hit from cloudfront",
+              "pop": "SGN50-P2"
+            },
+            {
+              "name": "key",
+              "ms": 135.5,
+              "bytes": 16,
+              "cache": null,
+              "pop": null
+            },
+            {
+              "name": "segment",
+              "ms": 20,
+              "bytes": 1486720,
+              "cache": "Hit from cloudfront",
+              "pop": "SGN50-P2"
+            }
+          ]
+        },
+        {
+          "total_ms": 320.3,
+          "rendition": "720p",
+          "steps": [
+            {
+              "name": "grant",
+              "ms": 127.9,
+              "bytes": 1012,
+              "cache": null,
+              "pop": null
+            },
+            {
+              "name": "master",
+              "ms": 6.9,
+              "bytes": 926,
+              "cache": "Hit from cloudfront",
+              "pop": "SGN50-P2"
+            },
+            {
+              "name": "playlist",
+              "ms": 10.2,
+              "bytes": 1738,
+              "cache": "Hit from cloudfront",
+              "pop": "SGN50-P2"
+            },
+            {
+              "name": "key",
+              "ms": 141.7,
+              "bytes": 16,
+              "cache": null,
+              "pop": null
+            },
+            {
+              "name": "segment",
+              "ms": 33.4,
+              "bytes": 1486720,
+              "cache": "Hit from cloudfront",
+              "pop": "SGN50-P2"
+            }
+          ]
+        },
+        {
+          "total_ms": 316,
+          "rendition": "720p",
+          "steps": [
+            {
+              "name": "grant",
+              "ms": 132.7,
+              "bytes": 1012,
+              "cache": null,
+              "pop": null
+            },
+            {
+              "name": "master",
+              "ms": 6.7,
+              "bytes": 926,
+              "cache": "Hit from cloudfront",
+              "pop": "SGN50-P2"
+            },
+            {
+              "name": "playlist",
+              "ms": 8.5,
+              "bytes": 1738,
+              "cache": "Hit from cloudfront",
+              "pop": "SGN50-P2"
+            },
+            {
+              "name": "key",
+              "ms": 136.1,
+              "bytes": 16,
+              "cache": null,
+              "pop": null
+            },
+            {
+              "name": "segment",
+              "ms": 31.7,
+              "bytes": 1486720,
+              "cache": "Hit from cloudfront",
+              "pop": "SGN50-P2"
+            }
+          ]
+        },
+        {
+          "total_ms": 302.6,
+          "rendition": "720p",
+          "steps": [
+            {
+              "name": "grant",
+              "ms": 109.9,
+              "bytes": 1012,
+              "cache": null,
+              "pop": null
+            },
+            {
+              "name": "master",
+              "ms": 6,
+              "bytes": 926,
+              "cache": "Hit from cloudfront",
+              "pop": "SGN50-P2"
+            },
+            {
+              "name": "playlist",
+              "ms": 5.7,
+              "bytes": 1738,
+              "cache": "Hit from cloudfront",
+              "pop": "SGN50-P2"
+            },
+            {
+              "name": "key",
+              "ms": 159,
+              "bytes": 16,
+              "cache": null,
+              "pop": null
+            },
+            {
+              "name": "segment",
+              "ms": 21.9,
+              "bytes": 1486720,
+              "cache": "Hit from cloudfront",
+              "pop": "SGN50-P2"
+            }
+          ]
+        },
+        {
+          "total_ms": 307,
+          "rendition": "720p",
+          "steps": [
+            {
+              "name": "grant",
+              "ms": 114.4,
+              "bytes": 1012,
+              "cache": null,
+              "pop": null
+            },
+            {
+              "name": "master",
+              "ms": 6.5,
+              "bytes": 926,
+              "cache": "Hit from cloudfront",
+              "pop": "SGN50-P2"
+            },
+            {
+              "name": "playlist",
+              "ms": 6.1,
+              "bytes": 1738,
+              "cache": "Hit from cloudfront",
+              "pop": "SGN50-P2"
+            },
+            {
+              "name": "key",
+              "ms": 138.8,
+              "bytes": 16,
+              "cache": null,
+              "pop": null
+            },
+            {
+              "name": "segment",
+              "ms": 41.1,
+              "bytes": 1486720,
+              "cache": "Hit from cloudfront",
+              "pop": "SGN50-P2"
+            }
+          ]
+        },
+        {
+          "total_ms": 294.7,
+          "rendition": "720p",
+          "steps": [
+            {
+              "name": "grant",
+              "ms": 108.2,
+              "bytes": 1012,
+              "cache": null,
+              "pop": null
+            },
+            {
+              "name": "master",
+              "ms": 18,
+              "bytes": 926,
+              "cache": "Hit from cloudfront",
+              "pop": "SGN50-P2"
+            },
+            {
+              "name": "playlist",
+              "ms": 9.6,
+              "bytes": 1738,
+              "cache": "Hit from cloudfront",
+              "pop": "SGN50-P2"
+            },
+            {
+              "name": "key",
+              "ms": 136.8,
+              "bytes": 16,
+              "cache": null,
+              "pop": null
+            },
+            {
+              "name": "segment",
+              "ms": 22,
+              "bytes": 1486720,
+              "cache": "Hit from cloudfront",
+              "pop": "SGN50-P2"
+            }
+          ]
+        },
+        {
+          "total_ms": 321,
+          "rendition": "720p",
+          "steps": [
+            {
+              "name": "grant",
+              "ms": 123.9,
+              "bytes": 1012,
+              "cache": null,
+              "pop": null
+            },
+            {
+              "name": "master",
+              "ms": 6.2,
+              "bytes": 926,
+              "cache": "Hit from cloudfront",
+              "pop": "SGN50-P2"
+            },
+            {
+              "name": "playlist",
+              "ms": 7.4,
+              "bytes": 1738,
+              "cache": "Hit from cloudfront",
+              "pop": "SGN50-P2"
+            },
+            {
+              "name": "key",
+              "ms": 150.1,
+              "bytes": 16,
+              "cache": null,
+              "pop": null
+            },
+            {
+              "name": "segment",
+              "ms": 33.4,
+              "bytes": 1486720,
+              "cache": "Hit from cloudfront",
+              "pop": "SGN50-P2"
+            }
+          ]
+        },
+        {
+          "total_ms": 298.7,
+          "rendition": "720p",
+          "steps": [
+            {
+              "name": "grant",
+              "ms": 127,
+              "bytes": 1012,
+              "cache": null,
+              "pop": null
+            },
+            {
+              "name": "master",
+              "ms": 6.4,
+              "bytes": 926,
+              "cache": "Hit from cloudfront",
+              "pop": "SGN50-P2"
+            },
+            {
+              "name": "playlist",
+              "ms": 7.2,
+              "bytes": 1738,
+              "cache": "Hit from cloudfront",
+              "pop": "SGN50-P2"
+            },
+            {
+              "name": "key",
+              "ms": 129.7,
+              "bytes": 16,
+              "cache": null,
+              "pop": null
+            },
+            {
+              "name": "segment",
+              "ms": 28.3,
+              "bytes": 1486720,
+              "cache": "Hit from cloudfront",
+              "pop": "SGN50-P2"
+            }
+          ]
+        },
+        {
+          "total_ms": 310.6,
+          "rendition": "720p",
+          "steps": [
+            {
+              "name": "grant",
+              "ms": 121.6,
+              "bytes": 1012,
+              "cache": null,
+              "pop": null
+            },
+            {
+              "name": "master",
+              "ms": 6.9,
+              "bytes": 926,
+              "cache": "Hit from cloudfront",
+              "pop": "SGN50-P2"
+            },
+            {
+              "name": "playlist",
+              "ms": 6.5,
+              "bytes": 1738,
+              "cache": "Hit from cloudfront",
+              "pop": "SGN50-P2"
+            },
+            {
+              "name": "key",
+              "ms": 155.2,
+              "bytes": 16,
+              "cache": null,
+              "pop": null
+            },
+            {
+              "name": "segment",
+              "ms": 20.3,
+              "bytes": 1486720,
+              "cache": "Hit from cloudfront",
+              "pop": "SGN50-P2"
+            }
+          ]
+        },
+        {
+          "total_ms": 288.8,
+          "rendition": "720p",
+          "steps": [
+            {
+              "name": "grant",
+              "ms": 113.9,
+              "bytes": 1012,
+              "cache": null,
+              "pop": null
+            },
+            {
+              "name": "master",
+              "ms": 5.5,
+              "bytes": 926,
+              "cache": "Hit from cloudfront",
+              "pop": "SGN50-P2"
+            },
+            {
+              "name": "playlist",
+              "ms": 9.5,
+              "bytes": 1738,
+              "cache": "Hit from cloudfront",
+              "pop": "SGN50-P2"
+            },
+            {
+              "name": "key",
+              "ms": 136.3,
+              "bytes": 16,
+              "cache": null,
+              "pop": null
+            },
+            {
+              "name": "segment",
+              "ms": 23.6,
+              "bytes": 1486720,
+              "cache": "Hit from cloudfront",
+              "pop": "SGN50-P2"
+            }
+          ]
+        },
+        {
+          "total_ms": 302.6,
+          "rendition": "720p",
+          "steps": [
+            {
+              "name": "grant",
+              "ms": 116.2,
+              "bytes": 1012,
+              "cache": null,
+              "pop": null
+            },
+            {
+              "name": "master",
+              "ms": 10.6,
+              "bytes": 926,
+              "cache": "Hit from cloudfront",
+              "pop": "SGN50-P2"
+            },
+            {
+              "name": "playlist",
+              "ms": 7.6,
+              "bytes": 1738,
+              "cache": "Hit from cloudfront",
+              "pop": "SGN50-P2"
+            },
+            {
+              "name": "key",
+              "ms": 144.2,
+              "bytes": 16,
+              "cache": null,
+              "pop": null
+            },
+            {
+              "name": "segment",
+              "ms": 23.9,
+              "bytes": 1486720,
+              "cache": "Hit from cloudfront",
+              "pop": "SGN50-P2"
+            }
+          ]
+        }
+      ],
+      "provenance": "measured",
+      "source": "scripts/bench/ttff.mjs"
+    }
+  ]
+}
