@@ -20,12 +20,21 @@ import AppealBox from '../components/Video/AppealBox';
 import { errorText, isApiError } from '../lib/errors';
 import { formatDate, formatViews } from '../lib/format';
 import { embedCode, parseStartTime } from '../lib/playback';
+import { processingPercent, processingStage, type ProcessingStage } from '../lib/processing';
 import './WatchPage.css';
 import '../components/Video/LockedVideoOverlay.css';
 
 /** Embeds play public and unlisted videos that are open to everyone (docs/ARCHITECTURE.md §5.5). */
 const embedCodeFor = (v: VideoDetails) =>
   (v.visibility === 'public' || v.visibility === 'unlisted') && v.audience === 'public' ? embedCode(window.location.origin, v.id, v.title) : null;
+
+const STAGE_KEY: Record<ProcessingStage, string> = {
+  queued: 'watch.stageQueued',
+  starting: 'watch.stageStarting',
+  preparing: 'watch.stagePreparing',
+  transcoding: 'watch.stageTranscoding',
+  finalizing: 'watch.stageFinalizing',
+};
 
 const UNLOCK_KEY = (id: string) => `unlock:${id}`;
 const readUnlock = (id: string) => { try { return sessionStorage.getItem(UNLOCK_KEY(id)); } catch { return null; } };
@@ -201,6 +210,7 @@ export default function WatchPage() {
       </div>
     );
   } else if (v.locked === 'not_ready') {
+    const percent = processingPercent(v.processingProgress);
     player = (
       <div className="player-placeholder">
         {v.status === 'ERROR' ? (
@@ -208,11 +218,17 @@ export default function WatchPage() {
         ) : (
           <div className="processing-progress-box">
             <div className="spinner" />
-            <p className="processing-status-text">{t('watch.transcoding')} {v.processingProgress ? `(${v.processingProgress}%)` : ''}</p>
-            {Boolean(v.processingProgress) && (
-              <div className="processing-progress-bar-container"><div className="processing-progress-bar-fill" style={{ width: `${Math.min(100, Math.max(5, v.processingProgress ?? 0))}%` }} /></div>
-            )}
-            <p className="processing-status-subtext">{(v.processingProgress ?? 0) < 25 ? t('watch.stagePreparing') : (v.processingProgress ?? 0) < 90 ? t('watch.stageTranscoding') : t('watch.stageFinalizing')}</p>
+            <p className="processing-status-text">{t('watch.transcoding')}</p>
+            <div
+              className={`processing-progress-bar-container${percent === 0 ? ' is-waiting' : ''}`}
+              role="progressbar" aria-label={t('watch.processingLabel')}
+              aria-valuemin={0} aria-valuemax={100} {...(percent > 0 ? { 'aria-valuenow': percent } : {})}
+            >
+              <div className="processing-progress-bar-fill" style={percent > 0 ? { width: `${Math.max(5, percent)}%` } : undefined} />
+            </div>
+            <p className="processing-status-subtext">
+              {t(STAGE_KEY[processingStage(v.step, percent)])}{percent > 0 ? ` · ${percent}%` : ''}
+            </p>
           </div>
         )}
       </div>

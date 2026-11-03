@@ -659,6 +659,25 @@
   transition: width 0.4s ease-in-out;
 }
 
+/* No percent yet (queue, task start): a segment slides across instead of a bar stuck at 0. */
+.processing-progress-bar-container.is-waiting .processing-progress-bar-fill {
+  width: 30%;
+  animation: processing-wait 1.4s ease-in-out infinite;
+}
+
+@keyframes processing-wait {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(340%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .processing-progress-bar-container.is-waiting .processing-progress-bar-fill {
+    animation: none;
+    width: 100%;
+    opacity: 0.35;
+  }
+}
+
 .processing-status-subtext {
   font-size: 0.85rem;
   color: #94a3b8;
