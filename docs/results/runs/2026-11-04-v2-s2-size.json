@@ -1,0 +1,510 @@
+{
+  "schema": 1,
+  "title": "S5-2: transcode time by file size (prod, v2, Spot 24 + On-Demand 24 vCPU)",
+  "runs": [
+    {
+      "id": "2026-11-04-prod-v2-100MB-r1",
+      "date": "2026-11-04",
+      "account": "B",
+      "region": "ap-southeast-1",
+      "environment": "prod",
+      "stack": "v2",
+      "path": "single",
+      "capacity": {
+        "spot_max_vcpus": 24,
+        "ondemand_max_vcpus": 24
+      },
+      "chunk": null,
+      "video": {
+        "label": "100MB",
+        "file": "video-100mb.mp4",
+        "size_gib": 0.094,
+        "duration_s": 120,
+        "resolution": "1920x1080",
+        "fps": 30
+      },
+      "concurrency": 1,
+      "queue_position": 1,
+      "measured_from": "upload_complete",
+      "timings_s": {
+        "upload": 2.5,
+        "ingest": 10.5,
+        "probe": 2.3,
+        "queue_to_first_job": 35.3,
+        "startup_max": 21.2,
+        "analyse": 50.9,
+        "encode": 363.6,
+        "audio": null,
+        "chunks": null,
+        "stitch": null,
+        "publish": 0.3,
+        "end_to_end": 401.6,
+        "end_to_end_with_upload": 404.1
+      },
+      "vcpu_seconds": 414,
+      "vcpu_seconds_scope": "all_jobs",
+      "capacity_used": {
+        "spot": 2,
+        "ondemand": 0
+      },
+      "result": {
+        "final_status": "READY",
+        "hls_verified": true,
+        "variants": 6
+      },
+      "provenance": "measured",
+      "source": "scripts/bench/transcode.mjs",
+      "notes": "Sequential runs, one upload at a time; samples/video-100mb.mp4 (1080p test pattern)."
+    },
+    {
+      "id": "2026-11-04-prod-v2-100MB-r2",
+      "date": "2026-11-04",
+      "account": "B",
+      "region": "ap-southeast-1",
+      "environment": "prod",
+      "stack": "v2",
+      "path": "single",
+      "capacity": {
+        "spot_max_vcpus": 24,
+        "ondemand_max_vcpus": 24
+      },
+      "chunk": null,
+      "video": {
+        "label": "100MB",
+        "file": "video-100mb.mp4",
+        "size_gib": 0.094,
+        "duration_s": 120,
+        "resolution": "1920x1080",
+        "fps": 30
+      },
+      "concurrency": 1,
+      "queue_position": 1,
+      "measured_from": "upload_complete",
+      "timings_s": {
+        "upload": 17.7,
+        "ingest": 22.6,
+        "probe": 2.4,
+        "queue_to_first_job": 41.7,
+        "startup_max": 18.5,
+        "analyse": 43.8,
+        "encode": 330.7,
+        "audio": null,
+        "chunks": null,
+        "stitch": null,
+        "publish": 0.2,
+        "end_to_end": 376.2,
+        "end_to_end_with_upload": 393.9
+      },
+      "vcpu_seconds": 374,
+      "vcpu_seconds_scope": "all_jobs",
+      "capacity_used": {
+        "spot": 2,
+        "ondemand": 0
+      },
+      "result": {
+        "final_status": "READY",
+        "hls_verified": true,
+        "variants": 6
+      },
+      "provenance": "measured",
+      "source": "scripts/bench/transcode.mjs",
+      "notes": "Sequential runs, one upload at a time; samples/video-100mb.mp4 (1080p test pattern)."
+    },
+    {
+      "id": "2026-11-04-prod-v2-100MB-r3",
+      "date": "2026-11-04",
+      "account": "B",
+      "region": "ap-southeast-1",
+      "environment": "prod",
+      "stack": "v2",
+      "path": "single",
+      "capacity": {
+        "spot_max_vcpus": 24,
+        "ondemand_max_vcpus": 24
+      },
+      "chunk": null,
+      "video": {
+        "label": "100MB",
+        "file": "video-100mb.mp4",
+        "size_gib": 0.094,
+        "duration_s": 120,
+        "resolution": "1920x1080",
+        "fps": 30
+      },
+      "concurrency": 1,
+      "queue_position": 1,
+      "measured_from": "upload_complete",
+      "timings_s": {
+        "upload": 5.8,
+        "ingest": 8.8,
+        "probe": 2.2,
+        "queue_to_first_job": 35.8,
+        "startup_max": 36.5,
+        "analyse": 48,
+        "encode": 482.2,
+        "audio": null,
+        "chunks": null,
+        "stitch": null,
+        "publish": 0.2,
+        "end_to_end": 532.1,
+        "end_to_end_with_upload": 537.9
+      },
+      "vcpu_seconds": 530,
+      "vcpu_seconds_scope": "all_jobs",
+      "capacity_used": {
+        "spot": 2,
+        "ondemand": 0
+      },
+      "result": {
+        "final_status": "READY",
+        "hls_verified": true,
+        "variants": 6
+      },
+      "provenance": "measured",
+      "source": "scripts/bench/transcode.mjs",
+      "notes": "Sequential runs, one upload at a time; samples/video-100mb.mp4 (1080p test pattern)."
+    },
+    {
+      "id": "2026-11-04-prod-v2-500MB-r1",
+      "date": "2026-11-04",
+      "account": "B",
+      "region": "ap-southeast-1",
+      "environment": "prod",
+      "stack": "v2",
+      "path": "chunked",
+      "capacity": {
+        "spot_max_vcpus": 24,
+        "ondemand_max_vcpus": 24
+      },
+      "chunk": {
+        "count": 10,
+        "vcpu": 4
+      },
+      "video": {
+        "label": "500MB",
+        "file": "video-500mb.mp4",
+        "size_gib": 0.468,
+        "duration_s": 600,
+        "resolution": "1920x1080",
+        "fps": 30
+      },
+      "concurrency": 1,
+      "queue_position": 1,
+      "measured_from": "upload_complete",
+      "timings_s": {
+        "upload": 43,
+        "ingest": 11,
+        "probe": 2.2,
+        "queue_to_first_job": 37.7,
+        "startup_max": 42.9,
+        "analyse": 152.4,
+        "encode": null,
+        "audio": null,
+        "chunks": 112.1,
+        "stitch": 1.4,
+        "publish": 0.2,
+        "end_to_end": 196.4,
+        "end_to_end_with_upload": 239.4
+      },
+      "vcpu_seconds": 3499,
+      "vcpu_seconds_scope": "all_jobs",
+      "capacity_used": {
+        "spot": 6,
+        "ondemand": 5
+      },
+      "result": {
+        "final_status": "READY",
+        "hls_verified": true,
+        "variants": 6
+      },
+      "provenance": "measured",
+      "source": "scripts/bench/transcode.mjs",
+      "notes": "Sequential runs, one upload at a time; samples/video-500mb.mp4 (1080p test pattern)."
+    },
+    {
+      "id": "2026-11-04-prod-v2-500MB-r2",
+      "date": "2026-11-04",
+      "account": "B",
+      "region": "ap-southeast-1",
+      "environment": "prod",
+      "stack": "v2",
+      "path": "chunked",
+      "capacity": {
+        "spot_max_vcpus": 24,
+        "ondemand_max_vcpus": 24
+      },
+      "chunk": {
+        "count": 10,
+        "vcpu": 4
+      },
+      "video": {
+        "label": "500MB",
+        "file": "video-500mb.mp4",
+        "size_gib": 0.468,
+        "duration_s": 600,
+        "resolution": "1920x1080",
+        "fps": 30
+      },
+      "concurrency": 1,
+      "queue_position": 1,
+      "measured_from": "upload_complete",
+      "timings_s": {
+        "upload": 53.9,
+        "ingest": 22.7,
+        "probe": 0.7,
+        "queue_to_first_job": 42.8,
+        "startup_max": 31.3,
+        "analyse": 98.7,
+        "encode": null,
+        "audio": null,
+        "chunks": 100.1,
+        "stitch": 0.8,
+        "publish": 0.2,
+        "end_to_end": 146.1,
+        "end_to_end_with_upload": 200
+      },
+      "vcpu_seconds": 3109,
+      "vcpu_seconds_scope": "all_jobs",
+      "capacity_used": {
+        "spot": 6,
+        "ondemand": 5
+      },
+      "result": {
+        "final_status": "READY",
+        "hls_verified": true,
+        "variants": 6
+      },
+      "provenance": "measured",
+      "source": "scripts/bench/transcode.mjs",
+      "notes": "Sequential runs, one upload at a time; samples/video-500mb.mp4 (1080p test pattern)."
+    },
+    {
+      "id": "2026-11-04-prod-v2-500MB-r3",
+      "date": "2026-11-04",
+      "account": "B",
+      "region": "ap-southeast-1",
+      "environment": "prod",
+      "stack": "v2",
+      "path": "chunked",
+      "capacity": {
+        "spot_max_vcpus": 24,
+        "ondemand_max_vcpus": 24
+      },
+      "chunk": {
+        "count": 10,
+        "vcpu": 4
+      },
+      "video": {
+        "label": "500MB",
+        "file": "video-500mb.mp4",
+        "size_gib": 0.468,
+        "duration_s": 600,
+        "resolution": "1920x1080",
+        "fps": 30
+      },
+      "concurrency": 1,
+      "queue_position": 1,
+      "measured_from": "upload_complete",
+      "timings_s": {
+        "upload": 14.9,
+        "ingest": 21.3,
+        "probe": 0.6,
+        "queue_to_first_job": 44.7,
+        "startup_max": 42.9,
+        "analyse": 151.7,
+        "encode": null,
+        "audio": null,
+        "chunks": 102.2,
+        "stitch": 0.8,
+        "publish": 0.2,
+        "end_to_end": 218.9,
+        "end_to_end_with_upload": 233.8
+      },
+      "vcpu_seconds": 3537,
+      "vcpu_seconds_scope": "all_jobs",
+      "capacity_used": {
+        "spot": 6,
+        "ondemand": 5
+      },
+      "result": {
+        "final_status": "READY",
+        "hls_verified": true,
+        "variants": 6
+      },
+      "provenance": "measured",
+      "source": "scripts/bench/transcode.mjs",
+      "notes": "Sequential runs, one upload at a time; samples/video-500mb.mp4 (1080p test pattern)."
+    },
+    {
+      "id": "2026-11-04-prod-v2-1GB-r1",
+      "date": "2026-11-04",
+      "account": "B",
+      "region": "ap-southeast-1",
+      "environment": "prod",
+      "stack": "v2",
+      "path": "chunked",
+      "capacity": {
+        "spot_max_vcpus": 24,
+        "ondemand_max_vcpus": 24
+      },
+      "chunk": {
+        "count": 18,
+        "vcpu": 4
+      },
+      "video": {
+        "label": "1GB",
+        "file": "video-1gb.mp4",
+        "size_gib": 0.997,
+        "duration_s": 1600,
+        "resolution": "1920x1080",
+        "fps": 30
+      },
+      "concurrency": 1,
+      "queue_position": 1,
+      "measured_from": "upload_complete",
+      "timings_s": {
+        "upload": 59.4,
+        "ingest": 21.9,
+        "probe": 0.6,
+        "queue_to_first_job": 43,
+        "startup_max": 156.3,
+        "analyse": 98.2,
+        "encode": null,
+        "audio": null,
+        "chunks": 249.7,
+        "stitch": 1.5,
+        "publish": 0.2,
+        "end_to_end": 297,
+        "end_to_end_with_upload": 356.4
+      },
+      "vcpu_seconds": 7763,
+      "vcpu_seconds_scope": "all_jobs",
+      "capacity_used": {
+        "spot": 10,
+        "ondemand": 9
+      },
+      "result": {
+        "final_status": "READY",
+        "hls_verified": true,
+        "variants": 6
+      },
+      "provenance": "measured",
+      "source": "scripts/bench/transcode.mjs",
+      "notes": "Sequential runs, one upload at a time; samples/video-1gb.mp4 (1080p test pattern)."
+    },
+    {
+      "id": "2026-11-04-prod-v2-1GB-r2",
+      "date": "2026-11-04",
+      "account": "B",
+      "region": "ap-southeast-1",
+      "environment": "prod",
+      "stack": "v2",
+      "path": "chunked",
+      "capacity": {
+        "spot_max_vcpus": 24,
+        "ondemand_max_vcpus": 24
+      },
+      "chunk": {
+        "count": 18,
+        "vcpu": 4
+      },
+      "video": {
+        "label": "1GB",
+        "file": "video-1gb.mp4",
+        "size_gib": 0.997,
+        "duration_s": 1600,
+        "resolution": "1920x1080",
+        "fps": 30
+      },
+      "concurrency": 1,
+      "queue_position": 1,
+      "measured_from": "upload_complete",
+      "timings_s": {
+        "upload": 73.4,
+        "ingest": 22.4,
+        "probe": 2.3,
+        "queue_to_first_job": 43.6,
+        "startup_max": 149.2,
+        "analyse": 103.9,
+        "encode": null,
+        "audio": null,
+        "chunks": 255,
+        "stitch": 1.6,
+        "publish": 0.2,
+        "end_to_end": 303.7,
+        "end_to_end_with_upload": 377.1
+      },
+      "vcpu_seconds": 7494,
+      "vcpu_seconds_scope": "all_jobs",
+      "capacity_used": {
+        "spot": 9,
+        "ondemand": 10
+      },
+      "result": {
+        "final_status": "READY",
+        "hls_verified": true,
+        "variants": 6
+      },
+      "provenance": "measured",
+      "source": "scripts/bench/transcode.mjs",
+      "notes": "Sequential runs, one upload at a time; samples/video-1gb.mp4 (1080p test pattern)."
+    },
+    {
+      "id": "2026-11-04-prod-v2-1GB-r3",
+      "date": "2026-11-04",
+      "account": "B",
+      "region": "ap-southeast-1",
+      "environment": "prod",
+      "stack": "v2",
+      "path": "chunked",
+      "capacity": {
+        "spot_max_vcpus": 24,
+        "ondemand_max_vcpus": 24
+      },
+      "chunk": {
+        "count": 18,
+        "vcpu": 4
+      },
+      "video": {
+        "label": "1GB",
+        "file": "video-1gb.mp4",
+        "size_gib": 0.997,
+        "duration_s": 1600,
+        "resolution": "1920x1080",
+        "fps": 30
+      },
+      "concurrency": 1,
+      "queue_position": 1,
+      "measured_from": "upload_complete",
+      "timings_s": {
+        "upload": 65.4,
+        "ingest": 21.7,
+        "probe": 2.3,
+        "queue_to_first_job": 42.6,
+        "startup_max": 176.4,
+        "analyse": 149,
+        "encode": null,
+        "audio": null,
+        "chunks": 269.8,
+        "stitch": 1.6,
+        "publish": 0.2,
+        "end_to_end": 316.1,
+        "end_to_end_with_upload": 381.5
+      },
+      "vcpu_seconds": 8070,
+      "vcpu_seconds_scope": "all_jobs",
+      "capacity_used": {
+        "spot": 10,
+        "ondemand": 9
+      },
+      "result": {
+        "final_status": "READY",
+        "hls_verified": true,
+        "variants": 6
+      },
+      "provenance": "measured",
+      "source": "scripts/bench/transcode.mjs",
+      "notes": "Sequential runs, one upload at a time; samples/video-1gb.mp4 (1080p test pattern)."
+    }
+  ]
+}
