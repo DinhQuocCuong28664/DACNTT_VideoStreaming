@@ -66,6 +66,7 @@ const date = today();
 /** One upload measured end to end, as a record of docs/results/runs (schema 1). */
 async function measure(runIndex, position) {
   const api = apis[(position - 1) % apis.length];
+  const retriesBefore = api.stats.retries;
   const title = `bench ${o.label} r${runIndex}${concurrency > 1 ? ` #${position}` : ''}`;
   const up = await upload(api, file, { title });
   const arn = executionArn(o.env, up.id, up.uploadVersion);
@@ -126,6 +127,7 @@ async function measure(runIndex, position) {
     vcpu_seconds_scope: 'all_jobs',
     capacity_used: { spot: jobs.filter((j) => j.capacity === 'spot').length, ondemand: jobs.filter((j) => j.capacity === 'ondemand').length },
     result: { final_status: exec.status === 'SUCCEEDED' ? 'READY' : exec.status, hls_verified: variants > 0, variants },
+    api_retries: api.stats.retries - retriesBefore,
     provenance: 'measured',
     source: 'scripts/bench/transcode.mjs',
     notes: o.notes,
@@ -135,13 +137,16 @@ async function measure(runIndex, position) {
 }
 
 const out = resolve(o.out);
-const records = existsSync(out) ? JSON.parse(readFileSync(out, 'utf8')).runs : [];
+const prior = existsSync(out) ? JSON.parse(readFileSync(out, 'utf8')) : { runs: [], failures: [] };
+const records = prior.runs;
+const failures = prior.failures ?? [];
 for (let r = 1; r <= runs; r++) {
   const batch = await Promise.all(Array.from({ length: concurrency }, (_, i) => measure(r, i + 1).catch((err) => {
     console.error(`run ${r} #${i + 1} failed: ${err.message}`);
+    failures.push({ date: today(), label: o.label, run: r, position: i + 1, concurrency, error: err.message });
     return null;
   })));
   records.push(...batch.filter(Boolean));
-  writeResults(out, o.title, records);
+  writeResults(out, o.title, records, failures);
 }
-console.log(`wrote ${records.length} records to ${out}`);
+console.log(`wrote ${records.length} records and ${failures.length} failures to ${out}`);

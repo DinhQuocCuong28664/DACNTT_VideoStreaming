@@ -34,13 +34,22 @@ export function client(envName) {
   const env = ENVS[envName];
   if (!env) throw new Error(`unknown environment ${envName}`);
   let token = null;
+  const stats = { retries: 0 };
 
+  // Like web/src/api/http.ts: 429 and 503 come before any handler runs, so they are retried
+  // (0.5 s, 1 s, 2 s with jitter) and counted.
   async function call(path, { body, method = body === undefined ? 'GET' : 'POST', auth = true } = {}) {
-    const res = await fetch(`${env.api}/v1${path}`, {
-      method,
-      headers: { origin: env.web, ...(body === undefined ? {} : { 'content-type': 'application/json' }), ...(auth && token ? { authorization: `Bearer ${token}` } : {}) },
-      body: body === undefined ? undefined : JSON.stringify(body),
-    });
+    let res;
+    for (let attempt = 0; ; attempt++) {
+      res = await fetch(`${env.api}/v1${path}`, {
+        method,
+        headers: { origin: env.web, ...(body === undefined ? {} : { 'content-type': 'application/json' }), ...(auth && token ? { authorization: `Bearer ${token}` } : {}) },
+        body: body === undefined ? undefined : JSON.stringify(body),
+      });
+      if ((res.status !== 429 && res.status !== 503) || attempt >= 3) break;
+      stats.retries++;
+      await sleep(Math.round(500 * 2 ** attempt * (0.75 + Math.random() * 0.5)));
+    }
     if (res.status === 204) return null;
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(`${method} ${path}: ${res.status} ${data?.error?.code ?? ''}`.trim());
@@ -50,6 +59,7 @@ export function client(envName) {
   return {
     env,
     call,
+    stats,
     /** Signs in as `account`, or as the E2E creator (scripts/seed.mjs e2e); passwords stay in files. */
     async signIn(account) {
       let a = account;
@@ -196,6 +206,6 @@ export function benchAccounts(envName) {
   return existsSync(file) ? Object.values(JSON.parse(readFileSync(file, 'utf8'))) : [];
 }
 
-export function writeResults(file, title, runs) {
-  writeFileSync(file, `${JSON.stringify({ schema: 1, title, runs }, null, 2)}\n`);
+export function writeResults(file, title, runs, failures) {
+  writeFileSync(file, `${JSON.stringify({ schema: 1, title, runs, ...(failures ? { failures } : {}) }, null, 2)}\n`);
 }
