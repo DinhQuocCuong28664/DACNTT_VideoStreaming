@@ -187,22 +187,23 @@ module "workflow" {
 }
 
 module "app" {
-  source                   = "../../modules/app"
-  name                     = local.name
-  environment_name         = local.environment
-  api_dist_dir             = "${path.root}/../../../api/dist"
-  functions_dist_dir       = "${path.root}/../../../functions/dist"
-  db_name                  = local.db_name
-  web_origins              = [local.web_origin]
-  web_base_url             = local.web_origin
-  api_base_url             = local.api_base_url
-  cdn_base_url             = module.cdn.base_url
-  bucket_names             = module.storage.bucket_names
-  bucket_arns              = module.storage.bucket_arns
-  table_names              = module.kv.table_names
-  table_arns               = module.kv.table_arns
-  event_bus_name           = module.events.bus_name
-  alert_topic_arn          = module.events.alerts_topic_arn
-  status_function_arn      = module.workflow.function_arns["status"]
-  api_reserved_concurrency = 20
+  source              = "../../modules/app"
+  name                = local.name
+  environment_name    = local.environment
+  api_dist_dir        = "${path.root}/../../../api/dist"
+  functions_dist_dir  = "${path.root}/../../../functions/dist"
+  db_name             = local.db_name
+  web_origins         = [local.web_origin]
+  web_base_url        = local.web_origin
+  api_base_url        = local.api_base_url
+  cdn_base_url        = module.cdn.base_url
+  bucket_names        = module.storage.bucket_names
+  bucket_arns         = module.storage.bucket_arns
+  table_names         = module.kv.table_names
+  table_arns          = module.kv.table_arns
+  event_bus_name      = module.events.bus_name
+  alert_topic_arn     = module.events.alerts_topic_arn
+  status_function_arn = module.workflow.function_arns["status"]
+  # docs/ARCHITECTURE.md §5.8: 80 x 3 connections stay well inside the prod cluster budget.
+  api_reserved_concurrency = 80
 }
