@@ -67,7 +67,6 @@ export default function WatchPage() {
   const [warningDismissed, setWarningDismissed] = useState(false);
   const [descExpanded, setDescExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [reload, setReload] = useState(0);
   const [reportOpen, setReportOpen] = useState(false);
 
   // ── Load the video, then its playback grant ─────────────────────────────────────────
@@ -92,9 +91,8 @@ export default function WatchPage() {
         else setState({ kind: 'missing' });
       }
     })();
-    videos.related(id).then((r) => { if (live) setRelated(r.items); }).catch(() => undefined);
     return () => { live = false; };
-  }, [id, unlockToken, reload, user?.id]);
+  }, [id, unlockToken, user?.id]);
 
   const video = state.kind === 'video' ? state.video : null;
   const playable = video !== null && video.locked === null;
@@ -117,13 +115,30 @@ export default function WatchPage() {
     channels.get(channelId).then((c) => setSubscribed(Boolean(c.viewer?.subscribed))).catch(() => undefined);
   }, [channelId, isAuthenticated]);
 
-  // Poll while the owner watches their video being processed.
+  // While the owner watches their video being processed, only its state is asked for again and
+  // updated in place; the rest of the page (comments, channel) stays as it is.
   const processing = video?.status === 'PROCESSING' || video?.status === 'UPLOADING';
   useEffect(() => {
     if (!processing) return undefined;
-    const timer = setInterval(() => setReload((n) => n + 1), 5000);
-    return () => clearInterval(timer);
-  }, [processing]);
+    let live = true;
+    const timer = setInterval(() => {
+      videos.get(id, unlockToken).then(({ video: next }) => {
+        if (live && 'title' in next) setState((s) => (s.kind === 'video' ? { kind: 'video', video: next as VideoDetails } : s));
+      }).catch(() => undefined);
+    }, 5000);
+    return () => { live = false; clearInterval(timer); };
+  }, [processing, id, unlockToken]);
+
+  // Related videos exist only around a listed video (the API answers 404 otherwise).
+  const listed = video !== null && (video.status ?? 'READY') === 'READY' && video.visibility === 'public'
+    && (video.moderation?.status ?? 'approved') === 'approved';
+  useEffect(() => {
+    setRelated([]);
+    if (!listed) return undefined;
+    let live = true;
+    videos.related(id).then((r) => { if (live) setRelated(r.items); }).catch(() => undefined);
+    return () => { live = false; };
+  }, [id, listed]);
 
   const renew = useCallback(() => videos.playback(id, unlockToken).then((g) => { setGrant(g); return g; }), [id, unlockToken]);
   const onView = useCallback((token: string) => {
