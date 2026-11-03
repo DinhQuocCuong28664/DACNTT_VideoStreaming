@@ -44,13 +44,26 @@ export default function GoogleSignInButton({ onCredential, onError, text = 'cont
     let cancelled = false;
     let observer: ResizeObserver | undefined;
     let timer: ReturnType<typeof setTimeout> | undefined;
+    let frame = 0;
+    let renderedWidth = 0;
 
+    // The width comes from the parent: the element itself may size to the button Google inserts
+    // (fit-content in settings), and the personalised "Continue as …" button does not keep the
+    // requested width, so measuring the element made each render trigger the next one (flicker).
+    const box = el.parentElement ?? el;
     const render = () => {
       const id = gis();
-      const width = Math.min(el.clientWidth, GIS_MAX_WIDTH);
-      if (!id || width <= 0) return;
+      const style = getComputedStyle(box);
+      const inner = box.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+      const width = Math.floor(Math.min(inner, GIS_MAX_WIDTH));
+      if (!id || width <= 0 || width === renderedWidth) return;
+      renderedWidth = width;
       el.replaceChildren();
       id.renderButton(el, { theme: 'outline', size: 'large', width, text, locale, shape: 'pill' });
+    };
+    const scheduleRender = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(render);
     };
     const tryInit = () => {
       if (cancelled) return;
@@ -62,13 +75,14 @@ export default function GoogleSignInButton({ onCredential, onError, text = 'cont
       }
       activeHandler = handler;
       render();
-      observer = new ResizeObserver(render);
-      observer.observe(el);
+      observer = new ResizeObserver(scheduleRender);
+      observer.observe(box);
     };
     tryInit();
     return () => {
       cancelled = true;
       clearTimeout(timer);
+      cancelAnimationFrame(frame);
       observer?.disconnect();
       if (activeHandler === handler) activeHandler = null;
     };
