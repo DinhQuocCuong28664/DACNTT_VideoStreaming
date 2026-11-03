@@ -12,6 +12,7 @@
  * polling. The video is deleted afterwards unless --keep is given. Runs are sequential; a burst
  * runs its uploads in parallel.
  */
+import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { basename, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
@@ -48,6 +49,17 @@ for (const account of pool.length ? pool : [undefined]) {
   apis.push(c);
 }
 
+/** Duration, size and frame rate of the input, from ffprobe on this machine. */
+function describe(path) {
+  const r = spawnSync('ffprobe', ['-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=width,height,avg_frame_rate:format=duration', '-of', 'json', path], { encoding: 'utf8' });
+  if (r.status !== 0) return { duration_s: null, resolution: null, fps: null };
+  const j = JSON.parse(r.stdout);
+  const v = j.streams?.[0] ?? {};
+  const [n, d] = String(v.avg_frame_rate ?? '0/1').split('/').map(Number);
+  return { duration_s: Math.round(Number(j.format?.duration ?? 0) * 10) / 10, resolution: v.width ? `${v.width}x${v.height}` : null, fps: d ? Math.round((n / d) * 100) / 100 : null };
+}
+const input = describe(file);
+
 const span = (s) => (s?.entered && s?.exited ? seconds(s.entered, s.exited) : null);
 const date = today();
 
@@ -61,7 +73,7 @@ async function measure(runIndex, position) {
   if (!exec) throw new Error(`no execution for ${up.id}`);
   const { states, jobs } = await timeline(arn);
 
-  const probe = states['Probe']?.output?.Payload ?? states['Probe']?.output ?? {};
+  const probe = states['Probe']?.output?.probe ?? {};
   const t0 = up.uploadedAt;
   const done = exec.stopDate.getTime();
   const started = jobs.filter((j) => j.started).map((j) => j.started);
@@ -91,7 +103,7 @@ async function measure(runIndex, position) {
     path: probe.mode ?? (chunks.length ? 'chunked' : 'single'),
     capacity: env.capacity,
     chunk: chunks.length ? { count: chunks.length, vcpu: chunks[0].vcpu } : null,
-    video: { label: o.label, file: basename(file), size_gib: Math.round((up.size / 1024 ** 3) * 1000) / 1000, duration_s: probe.durationSec ?? null },
+    video: { label: o.label, file: basename(file), size_gib: Math.round((up.size / 1024 ** 3) * 1000) / 1000, ...input },
     concurrency,
     queue_position: concurrency > 1 ? position : 1,
     measured_from: 'upload_complete',
