@@ -13,6 +13,11 @@
  *     The account's generated password is kept in .local-notes/<env>-demo-account.json
  *     (git-ignored) and never printed.
  *
+ *   node scripts/seed.mjs e2e --env prod
+ *     Creates the E2E test accounts (creator with the admin role, viewer) with verified e-mail
+ *     and writes them to .local-notes/<env>-e2e-accounts.json, the E2E_ACCOUNTS format of
+ *     e2e/global-setup.ts. Accounts that already exist in the file are kept.
+ *
  * The database is reached with the mongodbUri of Secrets Manager zelos-<env>/api (account B).
  * Run it only after the API host is live: every key URI the transcoder writes contains it.
  */
@@ -136,6 +141,38 @@ async function uploadDemo() {
   console.log('Uploaded; the pipeline publishes each video when its renditions are ready.');
 }
 
+/** Registers an account once, keeping its generated password in `file` under `key`. */
+async function ensureAccount(file, key, profile) {
+  const all = existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : {};
+  if (all[key]) return all[key];
+  const account = { ...profile, password: randomBytes(18).toString('base64url') };
+  writeFileSync(file, `${JSON.stringify({ ...all, [key]: account }, null, 2)}
+`, { mode: 0o600 });
+  try {
+    await api('/auth/register', { body: account });
+  } catch (err) {
+    writeFileSync(file, `${JSON.stringify(all, null, 2)}
+`, { mode: 0o600 });
+    throw err;
+  }
+  console.log(`created @${account.handle}`);
+  return account;
+}
+
+async function e2eAccounts() {
+  const file = join(ROOT, '.local-notes', `${values.env}-e2e-accounts.json`);
+  const creator = await ensureAccount(file, 'creator', { email: 'e2e.creator@zelostech.site', handle: 'e2e.creator', displayName: 'E2E Creator' });
+  const viewer = await ensureAccount(file, 'viewer', { email: 'e2e.viewer@zelostech.site', handle: 'e2e.viewer', displayName: 'E2E Viewer' });
+  await withDb(async (db) => {
+    const users = db.collection('users');
+    await users.updateMany({ email: { $in: [creator.email, viewer.email] } }, { $set: { emailVerified: true } });
+    // The admin tests run as the creator, as on staging.
+    await users.updateOne({ email: creator.email, role: { $ne: 'admin' } }, { $set: { role: 'admin', updatedAt: new Date() }, $inc: { tokenVersion: 1 } });
+  });
+  console.log(`E2E_ACCOUNTS=${file}`);
+}
+
 if (command === 'role') await setRole();
+else if (command === 'e2e') await e2eAccounts();
 else if (command === 'demo') await uploadDemo();
-else fail('usage: seed.mjs role|demo --env staging|prod ...');
+else fail('usage: seed.mjs role|demo|e2e --env staging|prod ...');
