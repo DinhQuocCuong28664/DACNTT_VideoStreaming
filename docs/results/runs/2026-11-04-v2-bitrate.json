@@ -1,0 +1,498 @@
+{
+  "schema": 1,
+  "title": "S5-5: declared vs delivered bitrate (prod, v2)",
+  "runs": [
+    {
+      "id": "2026-11-04-prod-v2-bitrate-6aea3d0094989c6980c6c03c",
+      "date": "2026-11-04",
+      "environment": "prod",
+      "stack": "v2",
+      "path": "bitrate",
+      "video": {
+        "id": "6aea3d0094989c6980c6c03c"
+      },
+      "renditions": [
+        {
+          "rendition": "144p",
+          "resolution": "256x144",
+          "declared_kbps": 200.589,
+          "declared_average_kbps": 153.783,
+          "delivered_average_kbps": 154,
+          "delivered_peak_kbps": 201,
+          "delivered_peak_without_last_kbps": 201,
+          "last_segment": {
+            "seconds": 3.970633,
+            "kbps": 164
+          },
+          "peak_over_declared": 1,
+          "average_over_declared": 1,
+          "segments": 47,
+          "segment_seconds": {
+            "min": 5.972633,
+            "max": 6.006,
+            "mean": 6
+          },
+          "segment_kib": {
+            "mean": 112,
+            "max": 147
+          }
+        },
+        {
+          "rendition": "240p",
+          "resolution": "426x240",
+          "declared_kbps": 407.934,
+          "declared_average_kbps": 248.723,
+          "delivered_average_kbps": 249,
+          "delivered_peak_kbps": 408,
+          "delivered_peak_without_last_kbps": 408,
+          "last_segment": {
+            "seconds": 3.970633,
+            "kbps": 280
+          },
+          "peak_over_declared": 1,
+          "average_over_declared": 1,
+          "segments": 47,
+          "segment_seconds": {
+            "min": 5.972633,
+            "max": 6.006,
+            "mean": 6
+          },
+          "segment_kib": {
+            "mean": 181,
+            "max": 299
+          }
+        },
+        {
+          "rendition": "360p",
+          "resolution": "638x360",
+          "declared_kbps": 688.166,
+          "declared_average_kbps": 420.059,
+          "delivered_average_kbps": 420,
+          "delivered_peak_kbps": 688,
+          "delivered_peak_without_last_kbps": 688,
+          "last_segment": {
+            "seconds": 3.970633,
+            "kbps": 503
+          },
+          "peak_over_declared": 1,
+          "average_over_declared": 1,
+          "segments": 47,
+          "segment_seconds": {
+            "min": 5.972633,
+            "max": 6.006,
+            "mean": 6
+          },
+          "segment_kib": {
+            "mean": 305,
+            "max": 505
+          }
+        },
+        {
+          "rendition": "480p",
+          "resolution": "850x480",
+          "declared_kbps": 1177.98,
+          "declared_average_kbps": 715.686,
+          "delivered_average_kbps": 716,
+          "delivered_peak_kbps": 1178,
+          "delivered_peak_without_last_kbps": 1178,
+          "last_segment": {
+            "seconds": 3.970633,
+            "kbps": 844
+          },
+          "peak_over_declared": 1,
+          "average_over_declared": 1,
+          "segments": 47,
+          "segment_seconds": {
+            "min": 5.972633,
+            "max": 6.006,
+            "mean": 6
+          },
+          "segment_kib": {
+            "mean": 520,
+            "max": 864
+          }
+        },
+        {
+          "rendition": "720p",
+          "resolution": "1276x720",
+          "declared_kbps": 2443.317,
+          "declared_average_kbps": 1578.346,
+          "delivered_average_kbps": 1578,
+          "delivered_peak_kbps": 2443,
+          "delivered_peak_without_last_kbps": 2443,
+          "last_segment": {
+            "seconds": 3.970633,
+            "kbps": 1858
+          },
+          "peak_over_declared": 1,
+          "average_over_declared": 1,
+          "segments": 47,
+          "segment_seconds": {
+            "min": 5.972633,
+            "max": 6.006,
+            "mean": 6
+          },
+          "segment_kib": {
+            "mean": 1148,
+            "max": 1791
+          }
+        },
+        {
+          "rendition": "1080p",
+          "resolution": "1912x1080",
+          "declared_kbps": 4932.815,
+          "declared_average_kbps": 3561.55,
+          "delivered_average_kbps": 3562,
+          "delivered_peak_kbps": 4933,
+          "delivered_peak_without_last_kbps": 4933,
+          "last_segment": {
+            "seconds": 3.970633,
+            "kbps": 4310
+          },
+          "peak_over_declared": 1,
+          "average_over_declared": 1,
+          "segments": 47,
+          "segment_seconds": {
+            "min": 5.972633,
+            "max": 6.006,
+            "mean": 6
+          },
+          "segment_kib": {
+            "mean": 2590,
+            "max": 3596
+          }
+        }
+      ],
+      "provenance": "measured",
+      "source": "scripts/bench/bitrate.mjs"
+    },
+    {
+      "id": "2026-11-04-prod-v2-bitrate-6aea3d0e94989c6980c6c03d",
+      "date": "2026-11-04",
+      "environment": "prod",
+      "stack": "v2",
+      "path": "bitrate",
+      "video": {
+        "id": "6aea3d0e94989c6980c6c03d"
+      },
+      "renditions": [
+        {
+          "rendition": "144p",
+          "resolution": "256x144",
+          "declared_kbps": 181.248,
+          "declared_average_kbps": 59.466,
+          "delivered_average_kbps": 59,
+          "delivered_peak_kbps": 181,
+          "delivered_peak_without_last_kbps": 64,
+          "last_segment": {
+            "seconds": 0.166667,
+            "kbps": 181
+          },
+          "peak_over_declared": 1,
+          "average_over_declared": 0.99,
+          "segments": 31,
+          "segment_seconds": {
+            "min": 6,
+            "max": 6,
+            "mean": 6
+          },
+          "segment_kib": {
+            "mean": 42,
+            "max": 47
+          }
+        },
+        {
+          "rendition": "240p",
+          "resolution": "426x240",
+          "declared_kbps": 253.44,
+          "declared_average_kbps": 74.077,
+          "delivered_average_kbps": 74,
+          "delivered_peak_kbps": 253,
+          "delivered_peak_without_last_kbps": 75,
+          "last_segment": {
+            "seconds": 0.166667,
+            "kbps": 253
+          },
+          "peak_over_declared": 1,
+          "average_over_declared": 1,
+          "segments": 31,
+          "segment_seconds": {
+            "min": 6,
+            "max": 6,
+            "mean": 6
+          },
+          "segment_kib": {
+            "mean": 53,
+            "max": 55
+          }
+        },
+        {
+          "rendition": "360p",
+          "resolution": "640x360",
+          "declared_kbps": 334.08,
+          "declared_average_kbps": 88.768,
+          "delivered_average_kbps": 89,
+          "delivered_peak_kbps": 334,
+          "delivered_peak_without_last_kbps": 92,
+          "last_segment": {
+            "seconds": 0.166667,
+            "kbps": 334
+          },
+          "peak_over_declared": 1,
+          "average_over_declared": 1,
+          "segments": 31,
+          "segment_seconds": {
+            "min": 6,
+            "max": 6,
+            "mean": 6
+          },
+          "segment_kib": {
+            "mean": 63,
+            "max": 67
+          }
+        },
+        {
+          "rendition": "480p",
+          "resolution": "854x480",
+          "declared_kbps": 406.272,
+          "declared_average_kbps": 122.15,
+          "delivered_average_kbps": 122,
+          "delivered_peak_kbps": 406,
+          "delivered_peak_without_last_kbps": 124,
+          "last_segment": {
+            "seconds": 0.166667,
+            "kbps": 406
+          },
+          "peak_over_declared": 1,
+          "average_over_declared": 1,
+          "segments": 31,
+          "segment_seconds": {
+            "min": 6,
+            "max": 6,
+            "mean": 6
+          },
+          "segment_kib": {
+            "mean": 87,
+            "max": 91
+          }
+        },
+        {
+          "rendition": "720p",
+          "resolution": "1280x720",
+          "declared_kbps": 569.087,
+          "declared_average_kbps": 188.706,
+          "delivered_average_kbps": 189,
+          "delivered_peak_kbps": 569,
+          "delivered_peak_without_last_kbps": 192,
+          "last_segment": {
+            "seconds": 0.166667,
+            "kbps": 569
+          },
+          "peak_over_declared": 1,
+          "average_over_declared": 1,
+          "segments": 31,
+          "segment_seconds": {
+            "min": 6,
+            "max": 6,
+            "mean": 6
+          },
+          "segment_kib": {
+            "mean": 134,
+            "max": 140
+          }
+        },
+        {
+          "rendition": "1080p",
+          "resolution": "1920x1080",
+          "declared_kbps": 749.567,
+          "declared_average_kbps": 274.496,
+          "delivered_average_kbps": 274,
+          "delivered_peak_kbps": 750,
+          "delivered_peak_without_last_kbps": 278,
+          "last_segment": {
+            "seconds": 0.166667,
+            "kbps": 750
+          },
+          "peak_over_declared": 1,
+          "average_over_declared": 1,
+          "segments": 31,
+          "segment_seconds": {
+            "min": 6,
+            "max": 6,
+            "mean": 6
+          },
+          "segment_kib": {
+            "mean": 195,
+            "max": 204
+          }
+        }
+      ],
+      "provenance": "measured",
+      "source": "scripts/bench/bitrate.mjs"
+    },
+    {
+      "id": "2026-11-04-prod-v2-bitrate-6aea3d2294989c6980c6c03e",
+      "date": "2026-11-04",
+      "environment": "prod",
+      "stack": "v2",
+      "path": "bitrate",
+      "video": {
+        "id": "6aea3d2294989c6980c6c03e"
+      },
+      "renditions": [
+        {
+          "rendition": "144p",
+          "resolution": "256x144",
+          "declared_kbps": 60.672,
+          "declared_average_kbps": 58.707,
+          "delivered_average_kbps": 59,
+          "delivered_peak_kbps": 61,
+          "delivered_peak_without_last_kbps": 61,
+          "last_segment": {
+            "seconds": 6,
+            "kbps": 58
+          },
+          "peak_over_declared": 1.01,
+          "average_over_declared": 1,
+          "segments": 20,
+          "segment_seconds": {
+            "min": 6,
+            "max": 6,
+            "mean": 6
+          },
+          "segment_kib": {
+            "mean": 43,
+            "max": 44
+          }
+        },
+        {
+          "rendition": "240p",
+          "resolution": "426x240",
+          "declared_kbps": 74.219,
+          "declared_average_kbps": 73.447,
+          "delivered_average_kbps": 73,
+          "delivered_peak_kbps": 74,
+          "delivered_peak_without_last_kbps": 74,
+          "last_segment": {
+            "seconds": 6,
+            "kbps": 73
+          },
+          "peak_over_declared": 1,
+          "average_over_declared": 0.99,
+          "segments": 20,
+          "segment_seconds": {
+            "min": 6,
+            "max": 6,
+            "mean": 6
+          },
+          "segment_kib": {
+            "mean": 54,
+            "max": 54
+          }
+        },
+        {
+          "rendition": "360p",
+          "resolution": "640x360",
+          "declared_kbps": 91.008,
+          "declared_average_kbps": 88.473,
+          "delivered_average_kbps": 88,
+          "delivered_peak_kbps": 91,
+          "delivered_peak_without_last_kbps": 91,
+          "last_segment": {
+            "seconds": 6,
+            "kbps": 86
+          },
+          "peak_over_declared": 1,
+          "average_over_declared": 0.99,
+          "segments": 20,
+          "segment_seconds": {
+            "min": 6,
+            "max": 6,
+            "mean": 6
+          },
+          "segment_kib": {
+            "mean": 65,
+            "max": 67
+          }
+        },
+        {
+          "rendition": "480p",
+          "resolution": "854x480",
+          "declared_kbps": 122.347,
+          "declared_average_kbps": 121.649,
+          "delivered_average_kbps": 122,
+          "delivered_peak_kbps": 122,
+          "delivered_peak_without_last_kbps": 122,
+          "last_segment": {
+            "seconds": 6,
+            "kbps": 121
+          },
+          "peak_over_declared": 1,
+          "average_over_declared": 1,
+          "segments": 20,
+          "segment_seconds": {
+            "min": 6,
+            "max": 6,
+            "mean": 6
+          },
+          "segment_kib": {
+            "mean": 89,
+            "max": 90
+          }
+        },
+        {
+          "rendition": "720p",
+          "resolution": "1280x720",
+          "declared_kbps": 190.272,
+          "declared_average_kbps": 188.354,
+          "delivered_average_kbps": 188,
+          "delivered_peak_kbps": 190,
+          "delivered_peak_without_last_kbps": 190,
+          "last_segment": {
+            "seconds": 6,
+            "kbps": 185
+          },
+          "peak_over_declared": 1,
+          "average_over_declared": 1,
+          "segments": 20,
+          "segment_seconds": {
+            "min": 6,
+            "max": 6,
+            "mean": 6
+          },
+          "segment_kib": {
+            "mean": 138,
+            "max": 139
+          }
+        },
+        {
+          "rendition": "1080p",
+          "resolution": "1920x1080",
+          "declared_kbps": 277.504,
+          "declared_average_kbps": 273.979,
+          "delivered_average_kbps": 274,
+          "delivered_peak_kbps": 278,
+          "delivered_peak_without_last_kbps": 278,
+          "last_segment": {
+            "seconds": 6,
+            "kbps": 271
+          },
+          "peak_over_declared": 1,
+          "average_over_declared": 1,
+          "segments": 20,
+          "segment_seconds": {
+            "min": 6,
+            "max": 6,
+            "mean": 6
+          },
+          "segment_kib": {
+            "mean": 201,
+            "max": 203
+          }
+        }
+      ],
+      "provenance": "measured",
+      "source": "scripts/bench/bitrate.mjs"
+    }
+  ]
+}
