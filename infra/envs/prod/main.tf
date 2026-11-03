@@ -182,6 +182,8 @@ module "workflow" {
   job_definition_arns = module.batch.job_definition_arns
   api_base_url        = local.api_base_url
   db_name             = local.db_name
+  # Spot ceiling 24 / 4 vCPU per chunk job: the plan cuts a long video into 3 x 6 chunks.
+  chunk_parallel_slots = 6
 }
 
 module "app" {
