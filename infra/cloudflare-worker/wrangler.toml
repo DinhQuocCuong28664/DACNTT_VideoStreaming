@@ -17,3 +17,16 @@ routes = [
 # Host of `terraform output api_function_url` in infra/envs/staging.
 [env.staging.vars]
 TARGET_HOST = "bqylpvyegc7mydlj6k7bgxf7ne0mbhth.lambda-url.ap-southeast-1.on.aws"
+
+# Production. Deployed at cutover (docs/ops/cutover.md): the custom domain can only be added
+# once the old stack's api.zelostech.site record and Worker route are gone.
+# Secret: wrangler secret put ORIGIN_VERIFY_SECRET --env prod (originSecret of zelos-prod/api).
+[env.prod]
+name = "zelos-api-gateway-prod"
+routes = [
+  { pattern = "api.zelostech.site", custom_domain = true }
+]
+
+# Host of `terraform output api_function_url` in infra/envs/prod (filled in after the first apply).
+[env.prod.vars]
+TARGET_HOST = "PROD_FUNCTION_URL_HOST"
