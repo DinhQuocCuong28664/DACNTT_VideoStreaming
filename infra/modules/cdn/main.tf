@@ -6,7 +6,9 @@
 #             cache key ignores query strings and every viewer shares cached segments
 #   images/*  public: avatars and banners screened before upload
 #
-# The certificate and its DNS validation, and the CNAME of the host, are on Cloudflare.
+# The certificate is issued here and validated on Cloudflare, or an existing one is given.
+# attach_host = false builds the distribution without its host, so the host can be moved over
+# from the old distribution at cutover (docs/ops/cutover.md).
 
 terraform {
   required_providers {
@@ -18,6 +20,10 @@ terraform {
       source = "cloudflare/cloudflare"
     }
   }
+}
+
+locals {
+  issue_certificate = var.certificate_arn == null
 }
 
 resource "aws_cloudfront_origin_access_control" "processed" {
@@ -105,6 +111,7 @@ resource "aws_cloudfront_response_headers_policy" "cors" {
 # ── Certificate (us-east-1 in account A), validated on Cloudflare ──
 
 resource "aws_acm_certificate" "cdn" {
+  count             = local.issue_certificate ? 1 : 0
   provider          = aws.us_east_1
   domain_name       = var.host
   validation_method = "DNS"
@@ -115,7 +122,7 @@ resource "aws_acm_certificate" "cdn" {
 }
 
 resource "cloudflare_dns_record" "validation" {
-  for_each = { for o in aws_acm_certificate.cdn.domain_validation_options : o.domain_name => o }
+  for_each = local.issue_certificate ? { for o in aws_acm_certificate.cdn[0].domain_validation_options : o.domain_name => o } : {}
   zone_id  = var.cloudflare_zone_id
   name     = trimsuffix(each.value.resource_record_name, ".")
   type     = each.value.resource_record_type
@@ -126,8 +133,9 @@ resource "cloudflare_dns_record" "validation" {
 }
 
 resource "aws_acm_certificate_validation" "cdn" {
+  count                   = local.issue_certificate ? 1 : 0
   provider                = aws.us_east_1
-  certificate_arn         = aws_acm_certificate.cdn.arn
+  certificate_arn         = aws_acm_certificate.cdn[0].arn
   validation_record_fqdns = [for r in cloudflare_dns_record.validation : r.name]
 }
 
@@ -142,7 +150,7 @@ resource "aws_cloudfront_distribution" "this" {
   http_version    = "http2and3"
   comment         = "${var.name} media"
   price_class     = var.price_class
-  aliases         = [var.host]
+  aliases         = var.attach_host ? [var.host] : []
 
   origin {
     domain_name              = var.processed_bucket_regional_domain_name
@@ -180,7 +188,7 @@ resource "aws_cloudfront_distribution" "this" {
   }
 
   viewer_certificate {
-    acm_certificate_arn      = aws_acm_certificate_validation.cdn.certificate_arn
+    acm_certificate_arn      = local.issue_certificate ? aws_acm_certificate_validation.cdn[0].certificate_arn : var.certificate_arn
     ssl_support_method       = "sni-only"
     minimum_protocol_version = "TLSv1.2_2021"
   }
@@ -188,6 +196,7 @@ resource "aws_cloudfront_distribution" "this" {
 
 # DNS only (not proxied): CloudFront terminates TLS with its own certificate.
 resource "cloudflare_dns_record" "host" {
+  count   = var.attach_host ? 1 : 0
   zone_id = var.cloudflare_zone_id
   name    = var.host
   type    = "CNAME"
@@ -213,4 +222,19 @@ data "aws_iam_policy_document" "bucket_read" {
       values   = [aws_cloudfront_distribution.this.arn]
     }
   }
+}
+
+moved {
+  from = aws_acm_certificate.cdn
+  to   = aws_acm_certificate.cdn[0]
+}
+
+moved {
+  from = aws_acm_certificate_validation.cdn
+  to   = aws_acm_certificate_validation.cdn[0]
+}
+
+moved {
+  from = cloudflare_dns_record.host
+  to   = cloudflare_dns_record.host[0]
 }

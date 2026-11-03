@@ -7,8 +7,10 @@
 #   default   index.html and top-level files: short cache; a CloudFront Function sends
 #             app routes (paths without a file extension) to /index.html
 #
-# Every page except embed/* refuses framing. The certificate, its validation and the CNAME
-# of the host are on Cloudflare.
+# Every page except embed/* refuses framing. The certificate is issued here and validated on
+# Cloudflare, or an existing one is given (production reuses the certificate of the old stack).
+# attach_hosts = false builds the distribution without its hosts, so they can be moved over
+# from the old distribution at cutover (docs/ops/cutover.md).
 
 terraform {
   required_providers {
@@ -26,6 +28,9 @@ data "aws_caller_identity" "current" {}
 
 locals {
   bucket = "${var.name}-web-${data.aws_caller_identity.current.account_id}"
+  hosts  = concat([var.host], var.redirect_hosts)
+  # A given certificate skips issuing and validating a new one.
+  issue_certificate = var.certificate_arn == null
 }
 
 # ── Bucket (account B) ──────────────────────────────────────────────
@@ -228,9 +233,11 @@ resource "aws_cloudfront_response_headers_policy" "embed" {
 }
 
 resource "aws_acm_certificate" "web" {
-  provider          = aws.us_east_1
-  domain_name       = var.host
-  validation_method = "DNS"
+  count                     = local.issue_certificate ? 1 : 0
+  provider                  = aws.us_east_1
+  domain_name               = var.host
+  subject_alternative_names = var.redirect_hosts
+  validation_method         = "DNS"
 
   lifecycle {
     create_before_destroy = true
@@ -238,7 +245,7 @@ resource "aws_acm_certificate" "web" {
 }
 
 resource "cloudflare_dns_record" "validation" {
-  for_each = { for o in aws_acm_certificate.web.domain_validation_options : o.domain_name => o }
+  for_each = local.issue_certificate ? { for o in aws_acm_certificate.web[0].domain_validation_options : o.domain_name => o } : {}
   zone_id  = var.cloudflare_zone_id
   name     = trimsuffix(each.value.resource_record_name, ".")
   type     = each.value.resource_record_type
@@ -249,8 +256,9 @@ resource "cloudflare_dns_record" "validation" {
 }
 
 resource "aws_acm_certificate_validation" "web" {
+  count                   = local.issue_certificate ? 1 : 0
   provider                = aws.us_east_1
-  certificate_arn         = aws_acm_certificate.web.arn
+  certificate_arn         = aws_acm_certificate.web[0].arn
   validation_record_fqdns = [for r in cloudflare_dns_record.validation : r.name]
 }
 
@@ -263,7 +271,7 @@ resource "aws_cloudfront_distribution" "web" {
   http_version        = "http2and3"
   comment             = "${var.name} web"
   price_class         = var.price_class
-  aliases             = [var.host]
+  aliases             = var.attach_hosts ? local.hosts : []
   default_root_object = "index.html"
 
   origin {
@@ -321,7 +329,7 @@ resource "aws_cloudfront_distribution" "web" {
   }
 
   viewer_certificate {
-    acm_certificate_arn      = aws_acm_certificate_validation.web.certificate_arn
+    acm_certificate_arn      = local.issue_certificate ? aws_acm_certificate_validation.web[0].certificate_arn : var.certificate_arn
     ssl_support_method       = "sni-only"
     minimum_protocol_version = "TLSv1.2_2021"
   }
@@ -329,6 +337,7 @@ resource "aws_cloudfront_distribution" "web" {
 
 # DNS only (not proxied): CloudFront terminates TLS with its own certificate.
 resource "cloudflare_dns_record" "host" {
+  count   = var.attach_hosts ? 1 : 0
   zone_id = var.cloudflare_zone_id
   name    = var.host
   type    = "CNAME"
@@ -336,4 +345,30 @@ resource "cloudflare_dns_record" "host" {
   ttl     = 300
   proxied = false
   comment = "Web app of ${var.name} (Terraform, v2)"
+}
+
+resource "cloudflare_dns_record" "redirect" {
+  for_each = var.attach_hosts ? toset(var.redirect_hosts) : toset([])
+  zone_id  = var.cloudflare_zone_id
+  name     = each.key
+  type     = "CNAME"
+  content  = aws_cloudfront_distribution.web.domain_name
+  ttl      = 300
+  proxied  = false
+  comment  = "Redirects to ${var.host} (Terraform, v2)"
+}
+
+moved {
+  from = aws_acm_certificate.web
+  to   = aws_acm_certificate.web[0]
+}
+
+moved {
+  from = aws_acm_certificate_validation.web
+  to   = aws_acm_certificate_validation.web[0]
+}
+
+moved {
+  from = cloudflare_dns_record.host
+  to   = cloudflare_dns_record.host[0]
 }

@@ -35,3 +35,15 @@ variable "price_class" {
   type        = string
   default     = "PriceClass_200"
 }
+
+variable "certificate_arn" {
+  description = "Existing ACM certificate (us-east-1, account A) covering host; null issues a new one validated on Cloudflare"
+  type        = string
+  default     = null
+}
+
+variable "attach_host" {
+  description = "Put the host on the distribution and create its CNAME. False while another distribution still owns it (cutover)"
+  type        = bool
+  default     = true
+}
