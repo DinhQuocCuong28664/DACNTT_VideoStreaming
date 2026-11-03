@@ -1,0 +1,96 @@
+# CI for the v2 monorepo: lint (with the security rules), typecheck, unit tests and build
+# for every workspace. Deployment workflows are added per environment in their own files.
+
+name: CI
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [master, rebuild/v2]
+  pull_request:
+    branches: [master, rebuild/v2]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: "Lint, typecheck, test, build"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+  transcoder-smoke:
+    # Runs the real ffmpeg pipeline inside the image: single and chunked paths encrypted, packaged,
+    # decrypted and decoded end to end, audio continuity at chunk boundaries, preview sprites.
+    name: "Transcoder image smoke test"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build the smoke stage
+        run: docker build -f transcoder/Dockerfile --target smoke -t zelos-smoke .
+
+      - name: Run the smoke test
+        run: docker run --rm zelos-smoke
+
+  terraform:
+    name: "Terraform format, validate, config scan"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.14.8
+
+      - name: Format
+        run: terraform fmt -check -recursive infra
+
+      # Validation needs no AWS access: the backend is skipped.
+      - name: Validate every environment
+        run: |
+          for env in infra/envs/*/; do
+            echo "::group::$env"
+            terraform -chdir="$env" init -backend=false -input=false
+            terraform -chdir="$env" validate
+            echo "::endgroup::"
+          done
+
+      - name: Misconfiguration scan (HIGH and CRITICAL fail the build)
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        with:
+          scan-type: 'config'
+          scan-ref: 'infra'
+          severity: 'HIGH,CRITICAL'
+          exit-code: '1'
+          format: 'table'

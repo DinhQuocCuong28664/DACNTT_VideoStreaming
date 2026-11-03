@@ -1,67 +1,41 @@
-# ═══════════════════════════════════════════════════════
-# DACNTT Video Transcoder — Multi-stage Dockerfile
-# Base: node:24-slim (glibc, không phải alpine; FFmpeg là bản dựng tĩnh lấy từ Stage 0)
-# Node 20+ required: the mongodb/mongoose driver needs the global
-# Web Crypto API (globalThis.crypto), which isn't available by default
-# on Node 18 and causes "crypto is not defined" at connect time.
-# Nâng từ node:20-slim lên node:24-slim (2026-08-10): Node 20 đã EOL từ
-# 30/4/2026, không còn nhận vá bảo mật. Node 24 là bản Active LTS hiện tại
-# (hỗ trợ tới 4/2028) — chọn LTS thay vì bản Current (26) để giữ ổn định
-# cho production.
-# ═══════════════════════════════════════════════════════
+# Transcoder image. Build from the repository root:
+#   docker build -f transcoder/Dockerfile -t zelos-transcoder .                 # runtime image
+#   docker build -f transcoder/Dockerfile --target smoke -t zelos-smoke .       # CI smoke test
+#
+# Base images are pinned by digest (node 22.23.4, ffmpeg 8.1.2) so every build is the same.
+# Stage "build" builds the shared package and bundles the entry points into single files.
+# Stage "runtime" holds Node, a pinned static ffmpeg and the job bundle: no node_modules, no
+# ffprobe (probing runs in a Lambda), no build tools, a non-root user. Every Fargate task pulls
+# this image, so it is kept small. Stage "smoke" adds ffprobe and the smoke test on top.
 
-# Stage 0: FFmpeg — bản dựng tĩnh, GHIM theo digest
-#
-# Trước đây ffmpeg cài bằng apt, tức bản của Debian trong image gốc: node:24-slim dựa trên Debian
-# bookworm nên là 5.1.9, trong khi toàn bộ phép đo của pipeline chia đoạn chạy trên máy phát triển
-# là 8.1. Hai bản cho kết quả KHÁC NHAU ở đúng chỗ chia đoạn cần chính xác (ffmpeg 7 viết lại bộ điều
-# phối luồng): `-frames:v` trên 5.1 đóng mọi luồng của đầu ra nên cắt dở tiếng sao chép, và chế độ CFR
-# nhân đôi khung cuối. Mã nay đúng trên cả hai (xem buildChunkArgs), nhưng production phải chạy đúng bản
-# đã đo, và không được đổi phiên bản âm thầm mỗi khi Debian cập nhật image gốc.
-#
-# Ghim theo digest của image đa kiến trúc (không phải theo tag): tag có thể bị đẩy lại, digest thì
-# không. Nâng cấp = đổi cả tag lẫn digest, rồi chạy lại scripts/verify-chunked.js trong image mới.
-# Nguồn: https://github.com/wader/static-ffmpeg (dựng từ mã nguồn, có x264, libx264 GPL).
-# Bản này chỉ chạy nội bộ trong job Batch, không phân phối lại.
 FROM mwader/static-ffmpeg:8.1.2@sha256:33f770f812cbfc3de96c547157fc9faf8bd95a36481753439ffa761045167585 AS ffmpeg
 
-# Stage 1: Builder — Install Node.js dependencies
-FROM node:24-slim AS builder
+FROM node:22-slim@sha256:4b150b48b4116e2a22f2c39cc27025fbf4f153e2078fd3b14d159fdb5c7279da AS build
+WORKDIR /src
+COPY package.json package-lock.json tsconfig.base.json ./
+COPY shared/package.json shared/package.json
+COPY transcoder/package.json transcoder/package.json
+COPY functions/package.json functions/package.json
+RUN npm ci --ignore-scripts
+COPY shared/ shared/
+COPY transcoder/ transcoder/
+RUN npm run build --workspace=@zelos/shared && npm run build --workspace=@zelos/transcoder
 
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci --production
-
-# Stage 2: Runtime — FFmpeg + Node.js runtime
-FROM node:24-slim AS runtime
-
-# FFmpeg tĩnh từ Stage 0, thay cho gói apt (xem ghi chú ở Stage 0). Không cần thư viện hệ thống nào đi kèm.
+FROM node:22-slim@sha256:4b150b48b4116e2a22f2c39cc27025fbf4f153e2078fd3b14d159fdb5c7279da AS base
 COPY --from=ffmpeg /ffmpeg /usr/local/bin/ffmpeg
-COPY --from=ffmpeg /ffprobe /usr/local/bin/ffprobe
-
-# node:24-slim bundles an npm CLI whose vendored node-tar has a known CRITICAL
-# CVE (gzip bomb DoS, fixed upstream in tar 7.5.19). Update the global npm CLI
-# to pull in the patched dependency — the app's own node_modules (installed
-# via `npm ci` in the builder stage) are unaffected, this only touches the
-# CLI tool baked into the base image.
-RUN npm install -g npm@latest
-
-# Create app user (security: don't run as root)
-RUN useradd --create-home --shell /bin/bash appuser
-
+RUN useradd --create-home --shell /usr/sbin/nologin transcoder
 WORKDIR /app
+COPY --from=build /src/transcoder/dist/main.js /src/transcoder/dist/main.js.map ./dist/
+ENV NODE_ENV=production
+ENTRYPOINT []
 
-# Copy dependencies from builder stage
-COPY --from=builder /app/node_modules ./node_modules
+FROM base AS smoke
+COPY --from=ffmpeg /ffprobe /usr/local/bin/ffprobe
+COPY --from=build /src/transcoder/dist/smoke.js ./dist/
+USER transcoder
+CMD ["node", "dist/smoke.js"]
 
-# Copy application source
-COPY src/ ./src/
-COPY package.json ./
-
-# Create temp directory for transcoding workspace
-RUN mkdir -p /tmp/vidshare-transcoder && chown appuser:appuser /tmp/vidshare-transcoder
-
-USER appuser
-
-# Default command: AWS Batch mode
-CMD ["node", "src/index.js", "batch"]
+# Last stage = the default target, so a build without --target never ships the smoke tools.
+FROM base AS runtime
+USER transcoder
+CMD ["node", "dist/main.js"]

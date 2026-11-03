@@ -1,35 +1,23 @@
 {
-  "name": "dacntt-video-transcoder",
-  "version": "1.0.0",
-  "description": "FFmpeg HLS Transcoder Container for Video Sharing Platform",
-  "main": "src/index.js",
+  "name": "@zelos/transcoder",
+  "version": "0.1.0",
+  "private": true,
+  "description": "FFmpeg container image: analyse, encode, audio and chunk jobs on AWS Batch Fargate",
+  "type": "module",
   "scripts": {
-    "start": "node src/index.js batch",
-    "dev:worker": "node src/index.js worker",
-    "dev:manual": "node src/index.js manual",
-    "test": "jest --passWithNoTests"
+    "build": "node build.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
   },
-  "keywords": [
-    "ffmpeg",
-    "hls",
-    "transcoder",
-    "docker"
-  ],
-  "author": "DQC & VHMD",
-  "license": "ISC",
-  "type": "commonjs",
   "dependencies": {
-    "@aws-sdk/client-batch": "^3.1147.0",
-    "@aws-sdk/client-rekognition": "^3.1147.0",
-    "@aws-sdk/client-s3": "^3.1147.0",
-    "@aws-sdk/client-sqs": "^3.1147.0",
-    "@aws-sdk/s3-request-presigner": "^3.1147.0",
-    "dotenv": "^18.0.6",
-    "mongoose": "^9.11.1",
-    "nodemailer": "^10.0.16",
-    "uuid": "^14.0.2"
+    "@aws-sdk/client-eventbridge": "^3.1158.0",
+    "@aws-sdk/client-rekognition": "^3.1158.0",
+    "@aws-sdk/client-s3": "^3.1158.0",
+    "@aws-sdk/s3-request-presigner": "^3.1158.0",
+    "@zelos/shared": "^0.1.0"
   },
   "devDependencies": {
-    "jest": "^30.5.2"
+    "esbuild": "^0.24.2",
+    "zod": "^4.6.7"
   }
 }
