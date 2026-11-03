@@ -38,6 +38,29 @@ export interface RequestOptions {
   raw?: { body: BodyInit; contentType: string };
 }
 
+/**
+ * Answers worth another try: 429 (the API Lambda at its instance ceiling, or the API rate limit)
+ * and 503. Both come before any handler runs, so retrying a POST does not repeat its effect.
+ */
+const RETRY_STATUS = new Set([429, 503]);
+export const MAX_RETRIES = 3;
+
+/** Wait before retry `attempt` (1-based): Retry-After when given, else 0.5 s, 1 s, 2 s with jitter. */
+export function retryDelayMs(attempt: number, retryAfter: string | null, random: () => number = Math.random): number {
+  const seconds = retryAfter === null ? NaN : Number(retryAfter);
+  if (Number.isFinite(seconds) && seconds >= 0) return Math.min(seconds, 10) * 1000;
+  const base = 500 * 2 ** (attempt - 1);
+  return Math.round(base * (0.75 + random() * 0.5));
+}
+
+function wait(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) return reject(new DOMException('Aborted', 'AbortError'));
+    const timer = setTimeout(resolve, ms);
+    signal?.addEventListener('abort', () => { clearTimeout(timer); reject(new DOMException('Aborted', 'AbortError')); }, { once: true });
+  });
+}
+
 export async function request<T>(method: string, path: string, opts: RequestOptions = {}): Promise<T> {
   const url = new URL(`${API_BASE_URL}/v1${path}`);
   for (const [k, v] of Object.entries(opts.query ?? {})) {
@@ -56,11 +79,15 @@ export async function request<T>(method: string, path: string, opts: RequestOpti
   }
 
   let res: Response;
-  try {
-    res = await fetch(url, { method, headers, body, signal: opts.signal });
-  } catch (err) {
-    if ((err as Error).name === 'AbortError') throw err;
-    throw new ApiError(0, 'NETWORK', 'Cannot reach the server');
+  for (let attempt = 0; ; attempt++) {
+    try {
+      res = await fetch(url, { method, headers, body, signal: opts.signal });
+    } catch (err) {
+      if ((err as Error).name === 'AbortError') throw err;
+      throw new ApiError(0, 'NETWORK', 'Cannot reach the server');
+    }
+    if (!RETRY_STATUS.has(res.status) || attempt >= MAX_RETRIES) break;
+    await wait(retryDelayMs(attempt + 1, res.headers.get('retry-after')), opts.signal);
   }
   if (res.status === 204) return undefined as T;
   const data: unknown = res.headers.get('content-type')?.includes('application/json') ? await res.json() : null;
