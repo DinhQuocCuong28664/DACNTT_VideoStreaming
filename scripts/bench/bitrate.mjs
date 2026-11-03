@@ -66,8 +66,11 @@ async function video(id) {
     const withSize = segs.map((s) => ({ ...s, bytes: size.get(s.file) ?? 0 }));
     const totalSec = withSize.reduce((a, s) => a + s.duration, 0);
     const totalBytes = withSize.reduce((a, s) => a + s.bytes, 0);
-    // The last segment is short; its bitrate is noisy, so the peak leaves it out.
-    const peak = Math.max(...withSize.slice(0, -1).map((s) => kbps(s.bytes, s.duration)), 0);
+    // RFC 8216 4.3.4.2: BANDWIDTH is the peak over every segment, the short last one included.
+    // The peak without it is kept too, since a short tail segment is often the outlier.
+    const rates = withSize.map((s) => kbps(s.bytes, s.duration));
+    const peak = Math.max(...rates, 0);
+    const peakBody = Math.max(...rates.slice(0, -1), 0);
     const durs = withSize.slice(0, -1).map((s) => s.duration);
     const declared = Number(attr('BANDWIDTH')) / 1000;
     const declaredAvg = attr('AVERAGE-BANDWIDTH') ? Number(attr('AVERAGE-BANDWIDTH')) / 1000 : null;
@@ -78,13 +81,15 @@ async function video(id) {
       declared_average_kbps: declaredAvg,
       delivered_average_kbps: kbps(totalBytes, totalSec),
       delivered_peak_kbps: peak,
+      delivered_peak_without_last_kbps: peakBody,
+      last_segment: { seconds: withSize.at(-1)?.duration ?? null, kbps: rates.at(-1) ?? null },
       peak_over_declared: round(peak / declared),
       average_over_declared: round(kbps(totalBytes, totalSec) / (declaredAvg ?? declared)),
       segments: withSize.length,
       segment_seconds: durs.length ? { min: Math.min(...durs), max: Math.max(...durs), mean: round(durs.reduce((a, b) => a + b, 0) / durs.length) } : null,
       segment_kib: { mean: Math.round(totalBytes / withSize.length / 1024), max: Math.round(Math.max(...withSize.map((s) => s.bytes)) / 1024) },
     });
-    console.log(`${id} ${dir}: declared ${declared}${declaredAvg ? `/${declaredAvg}` : ''} kbps, delivered avg ${kbps(totalBytes, totalSec)} peak ${peak} kbps, ${withSize.length} segments`);
+    console.log(`${id} ${dir}: declared ${declared}${declaredAvg ? `/${declaredAvg}` : ''} kbps, delivered avg ${kbps(totalBytes, totalSec)} peak ${peak} (without last ${peakBody}) kbps, ${withSize.length} segments`);
   }
   return renditions;
 }
