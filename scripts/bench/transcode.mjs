@@ -15,7 +15,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { basename, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
-import { ENVS, client, executionArn, seconds, signUrl, timeline, upload, waitForExecution, writeResults } from './lib.mjs';
+import { ENVS, benchAccounts, client, executionArn, seconds, signUrl, timeline, upload, waitForExecution, writeResults } from './lib.mjs';
 
 const { values: o } = parseArgs({
   options: {
@@ -35,14 +35,25 @@ const file = resolve(o.file);
 const runs = Number(o.runs);
 const concurrency = Number(o.concurrency);
 const env = ENVS[o.env];
-const api = client(o.env);
-await api.signIn();
+// An account may start 20 uploads an hour; a burst spreads its uploads over the bench accounts.
+const PER_ACCOUNT = 20;
+const pool = concurrency > 1 ? benchAccounts(o.env) : [];
+if (concurrency * runs > PER_ACCOUNT * Math.max(1, pool.length)) {
+  throw new Error(`${concurrency * runs} uploads need ${Math.ceil((concurrency * runs) / PER_ACCOUNT)} accounts; run node scripts/seed.mjs bench --env ${o.env}`);
+}
+const apis = [];
+for (const account of pool.length ? pool : [undefined]) {
+  const c = client(o.env);
+  await c.signIn(account);
+  apis.push(c);
+}
 
 const span = (s) => (s?.entered && s?.exited ? seconds(s.entered, s.exited) : null);
 const date = new Date().toISOString().slice(0, 10);
 
 /** One upload measured end to end, as a record of docs/results/runs (schema 1). */
 async function measure(runIndex, position) {
+  const api = apis[(position - 1) % apis.length];
   const title = `bench ${o.label} r${runIndex}${concurrency > 1 ? ` #${position}` : ''}`;
   const up = await upload(api, file, { title });
   const arn = executionArn(o.env, up.id, up.uploadVersion);

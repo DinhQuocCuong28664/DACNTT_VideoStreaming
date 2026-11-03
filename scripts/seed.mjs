@@ -18,6 +18,11 @@
  *     and writes them to .local-notes/<env>-e2e-accounts.json, the E2E_ACCOUNTS format of
  *     e2e/global-setup.ts. Accounts that already exist in the file are kept.
  *
+ *   node scripts/seed.mjs bench --env prod --count 5
+ *     Creates bench.1 .. bench.N with verified e-mail for the upload burst of the measurements
+ *     (an account may start 20 uploads an hour) in .local-notes/<env>-bench-accounts.json.
+ *     The API allows five sign-ups an hour from one address.
+ *
  * The database is reached with the mongodbUri of Secrets Manager zelos-<env>/api (account B).
  * Run it only after the API host is live: every key URI the transcoder writes contains it.
  */
@@ -43,6 +48,7 @@ const { positionals, values } = parseArgs({
     email: { type: 'string' },
     role: { type: 'string' },
     manifest: { type: 'string' },
+    count: { type: 'string', default: '5' },
   },
 });
 const command = positionals[0];
@@ -172,7 +178,18 @@ async function e2eAccounts() {
   console.log(`E2E_ACCOUNTS=${file}`);
 }
 
+async function benchAccounts() {
+  const file = join(ROOT, '.local-notes', `${values.env}-bench-accounts.json`);
+  const made = [];
+  for (let i = 1; i <= Number(values.count); i++) {
+    made.push(await ensureAccount(file, `bench${i}`, { email: `bench.${i}@zelostech.site`, handle: `bench.${i}`, displayName: `Bench ${i}` }));
+  }
+  await withDb((db) => db.collection('users').updateMany({ email: { $in: made.map((a) => a.email) } }, { $set: { emailVerified: true } }));
+  console.log(`${made.length} bench accounts in ${file}`);
+}
+
 if (command === 'role') await setRole();
+else if (command === 'bench') await benchAccounts();
 else if (command === 'e2e') await e2eAccounts();
 else if (command === 'demo') await uploadDemo();
-else fail('usage: seed.mjs role|demo|e2e --env staging|prod ...');
+else fail('usage: seed.mjs role|demo|e2e|bench --env staging|prod ...');

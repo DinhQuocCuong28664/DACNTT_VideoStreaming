@@ -48,12 +48,15 @@ export function client(envName) {
   return {
     env,
     call,
-    /** Signs in as the E2E creator (scripts/seed.mjs e2e); the password stays in the file. */
-    async signIn() {
-      const file = join(ROOT, '.local-notes', `${envName}-e2e-accounts.json`);
-      if (!existsSync(file)) throw new Error(`no ${file}; run node scripts/seed.mjs e2e --env ${envName}`);
-      const { creator } = JSON.parse(readFileSync(file, 'utf8'));
-      ({ token } = await call('/auth/login', { body: { email: creator.email, password: creator.password }, auth: false }));
+    /** Signs in as `account`, or as the E2E creator (scripts/seed.mjs e2e); passwords stay in files. */
+    async signIn(account) {
+      let a = account;
+      if (!a) {
+        const file = join(ROOT, '.local-notes', `${envName}-e2e-accounts.json`);
+        if (!existsSync(file)) throw new Error(`no ${file}; run node scripts/seed.mjs e2e --env ${envName}`);
+        a = JSON.parse(readFileSync(file, 'utf8')).creator;
+      }
+      ({ token } = await call('/auth/login', { body: { email: a.email, password: a.password }, auth: false }));
     },
   };
 }
@@ -183,6 +186,12 @@ export async function timeline(arn) {
     }
   }
   return { states, jobs };
+}
+
+/** The bench accounts of scripts/seed.mjs bench, for bursts larger than one account's limit. */
+export function benchAccounts(envName) {
+  const file = join(ROOT, '.local-notes', `${envName}-bench-accounts.json`);
+  return existsSync(file) ? Object.values(JSON.parse(readFileSync(file, 'utf8'))) : [];
 }
 
 export function writeResults(file, title, runs) {
