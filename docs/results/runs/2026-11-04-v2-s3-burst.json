@@ -1,0 +1,1259 @@
+{
+  "schema": 1,
+  "title": "S5-3: 100 concurrent uploads (prod, v2, Spot 24 + On-Demand 24 vCPU)",
+  "runs": [
+    {
+      "id": "2026-11-04-prod-v2-clip36-r1-c100-1",
+      "date": "2026-11-04",
+      "account": "B",
+      "region": "ap-southeast-1",
+      "environment": "prod",
+      "stack": "v2",
+      "path": "single",
+      "capacity": {
+        "spot_max_vcpus": 24,
+        "ondemand_max_vcpus": 24
+      },
+      "chunk": null,
+      "video": {
+        "label": "clip36",
+        "file": "clip36.mp4",
+        "size_gib": 0.001,
+        "duration_s": 36,
+        "resolution": "640x360",
+        "fps": 24
+      },
+      "concurrency": 100,
+      "queue_position": 1,
+      "measured_from": "upload_complete",
+      "timings_s": {
+        "upload": 2,
+        "ingest": 3.1,
+        "probe": 1.8,
+        "queue_to_first_job": 26.5,
+        "startup_max": 24.5,
+        "analyse": 25.8,
+        "encode": 46.5,
+        "audio": null,
+        "chunks": null,
+        "stitch": null,
+        "publish": 0.1,
+        "end_to_end": 80,
+        "end_to_end_with_upload": 82
+      },
+      "vcpu_seconds": 72,
+      "vcpu_seconds_scope": "all_jobs",
+      "capacity_used": {
+        "spot": 1,
+        "ondemand": 1
+      },
+      "result": {
+        "final_status": "READY",
+        "hls_verified": true,
+        "variants": 3
+      },
+      "provenance": "measured",
+      "source": "scripts/bench/transcode.mjs",
+      "notes": "100 uploads started at once over five bench accounts (20 each); 36 s 640x360 clip."
+    },
+    {
+      "id": "2026-11-04-prod-v2-clip36-r1-c100-7",
+      "date": "2026-11-04",
+      "account": "B",
+      "region": "ap-southeast-1",
+      "environment": "prod",
+      "stack": "v2",
+      "path": "single",
+      "capacity": {
+        "spot_max_vcpus": 24,
+        "ondemand_max_vcpus": 24
+      },
+      "chunk": null,
+      "video": {
+        "label": "clip36",
+        "file": "clip36.mp4",
+        "size_gib": 0.001,
+        "duration_s": 36,
+        "resolution": "640x360",
+        "fps": 24
+      },
+      "concurrency": 100,
+      "queue_position": 7,
+      "measured_from": "upload_complete",
+      "timings_s": {
+        "upload": 0.7,
+        "ingest": 2.9,
+        "probe": 0.2,
+        "queue_to_first_job": 26.5,
+        "startup_max": 24.6,
+        "analyse": 41.3,
+        "encode": 47.5,
+        "audio": null,
+        "chunks": null,
+        "stitch": null,
+        "publish": 0.1,
+        "end_to_end": 77.5,
+        "end_to_end_with_upload": 78.2
+      },
+      "vcpu_seconds": 89,
+      "vcpu_seconds_scope": "all_jobs",
+      "capacity_used": {
+        "spot": 0,
+        "ondemand": 2
+      },
+      "result": {
+        "final_status": "READY",
+        "hls_verified": true,
+        "variants": 3
+      },
+      "provenance": "measured",
+      "source": "scripts/bench/transcode.mjs",
+      "notes": "100 uploads started at once over five bench accounts (20 each); 36 s 640x360 clip."
+    },
+    {
+      "id": "2026-11-04-prod-v2-clip36-r1-c100-9",
+      "date": "2026-11-04",
+      "account": "B",
+      "region": "ap-southeast-1",
+      "environment": "prod",
+      "stack": "v2",
+      "path": "single",
+      "capacity": {
+        "spot_max_vcpus": 24,
+        "ondemand_max_vcpus": 24
+      },
+      "chunk": null,
+      "video": {
+        "label": "clip36",
+        "file": "clip36.mp4",
+        "size_gib": 0.001,
+        "duration_s": 36,
+        "resolution": "640x360",
+        "fps": 24
+      },
+      "concurrency": 100,
+      "queue_position": 9,
+      "measured_from": "upload_complete",
+      "timings_s": {
+        "upload": 1.6,
+        "ingest": 1.8,
+        "probe": 0.2,
+        "queue_to_first_job": 19.4,
+        "startup_max": 23.7,
+        "analyse": 36.5,
+        "encode": 48.2,
+        "audio": null,
+        "chunks": null,
+        "stitch": null,
+        "publish": 0.1,
+        "end_to_end": 76.1,
+        "end_to_end_with_upload": 77.69999999999999
+      },
+      "vcpu_seconds": 85,
+      "vcpu_seconds_scope": "all_jobs",
+      "capacity_used": {
+        "spot": 2,
+        "ondemand": 0
+      },
+      "result": {
+        "final_status": "READY",
+        "hls_verified": true,
+        "variants": 3
+      },
+      "provenance": "measured",
+      "source": "scripts/bench/transcode.mjs",
+      "notes": "100 uploads started at once over five bench accounts (20 each); 36 s 640x360 clip."
+    },
+    {
+      "id": "2026-11-04-prod-v2-clip36-r1-c100-10",
+      "date": "2026-11-04",
+      "account": "B",
+      "region": "ap-southeast-1",
+      "environment": "prod",
+      "stack": "v2",
+      "path": "single",
+      "capacity": {
+        "spot_max_vcpus": 24,
+        "ondemand_max_vcpus": 24
+      },
+      "chunk": null,
+      "video": {
+        "label": "clip36",
+        "file": "clip36.mp4",
+        "size_gib": 0.001,
+        "duration_s": 36,
+        "resolution": "640x360",
+        "fps": 24
+      },
+      "concurrency": 100,
+      "queue_position": 10,
+      "measured_from": "upload_complete",
+      "timings_s": {
+        "upload": 0.7,
+        "ingest": 6.2,
+        "probe": 0.2,
+        "queue_to_first_job": 30.3,
+        "startup_max": 25,
+        "analyse": 51.1,
+        "encode": 46.7,
+        "audio": null,
+        "chunks": null,
+        "stitch": null,
+        "publish": 0.1,
+        "end_to_end": 83.4,
+        "end_to_end_with_upload": 84.10000000000001
+      },
+      "vcpu_seconds": 98,
+      "vcpu_seconds_scope": "all_jobs",
+      "capacity_used": {
+        "spot": 0,
+        "ondemand": 2
+      },
+      "result": {
+        "final_status": "READY",
+        "hls_verified": true,
+        "variants": 3
+      },
+      "provenance": "measured",
+      "source": "scripts/bench/transcode.mjs",
+      "notes": "100 uploads started at once over five bench accounts (20 each); 36 s 640x360 clip."
+    },
+    {
+      "id": "2026-11-04-prod-v2-clip36-r1-c100-13",
+      "date": "2026-11-04",
+      "account": "B",
+      "region": "ap-southeast-1",
+      "environment": "prod",
+      "stack": "v2",
+      "path": "single",
+      "capacity": {
+        "spot_max_vcpus": 24,
+        "ondemand_max_vcpus": 24
+      },
+      "chunk": null,
+      "video": {
+        "label": "clip36",
+        "file": "clip36.mp4",
+        "size_gib": 0.001,
+        "duration_s": 36,
+        "resolution": "640x360",
+        "fps": 24
+      },
+      "concurrency": 100,
+      "queue_position": 13,
+      "measured_from": "upload_complete",
+      "timings_s": {
+        "upload": 2.5,
+        "ingest": 6.2,
+        "probe": 0.3,
+        "queue_to_first_job": 29.1,
+        "startup_max": 24.2,
+        "analyse": 33.2,
+        "encode": 37.4,
+        "audio": null,
+        "chunks": null,
+        "stitch": null,
+        "publish": 0.1,
+        "end_to_end": 68.3,
+        "end_to_end_with_upload": 70.8
+      },
+      "vcpu_seconds": 71,
+      "vcpu_seconds_scope": "all_jobs",
+      "capacity_used": {
+        "spot": 2,
+        "ondemand": 0
+      },
+      "result": {
+        "final_status": "READY",
+        "hls_verified": true,
+        "variants": 3
+      },
+      "provenance": "measured",
+      "source": "scripts/bench/transcode.mjs",
+      "notes": "100 uploads started at once over five bench accounts (20 each); 36 s 640x360 clip."
+    },
+    {
+      "id": "2026-11-04-prod-v2-clip36-r1-c100-16",
+      "date": "2026-11-04",
+      "account": "B",
+      "region": "ap-southeast-1",
+      "environment": "prod",
+      "stack": "v2",
+      "path": "single",
+      "capacity": {
+        "spot_max_vcpus": 24,
+        "ondemand_max_vcpus": 24
+      },
+      "chunk": null,
+      "video": {
+        "label": "clip36",
+        "file": "clip36.mp4",
+        "size_gib": 0.001,
+        "duration_s": 36,
+        "resolution": "640x360",
+        "fps": 24
+      },
+      "concurrency": 100,
+      "queue_position": 16,
+      "measured_from": "upload_complete",
+      "timings_s": {
+        "upload": 0.6,
+        "ingest": 3,
+        "probe": 0.3,
+        "queue_to_first_job": 21.1,
+        "startup_max": 18.3,
+        "analyse": 39.7,
+        "encode": 38.4,
+        "audio": null,
+        "chunks": null,
+        "stitch": null,
+        "publish": 0.5,
+        "end_to_end": 63.1,
+        "end_to_end_with_upload": 63.7
+      },
+      "vcpu_seconds": 78,
+      "vcpu_seconds_scope": "all_jobs",
+      "capacity_used": {
+        "spot": 2,
+        "ondemand": 0
+      },
+      "result": {
+        "final_status": "READY",
+        "hls_verified": true,
+        "variants": 3
+      },
+      "provenance": "measured",
+      "source": "scripts/bench/transcode.mjs",
+      "notes": "100 uploads started at once over five bench accounts (20 each); 36 s 640x360 clip."
+    },
+    {
+      "id": "2026-11-04-prod-v2-clip36-r1-c100-17",
+      "date": "2026-11-04",
+      "account": "B",
+      "region": "ap-southeast-1",
+      "environment": "prod",
+      "stack": "v2",
+      "path": "single",
+      "capacity": {
+        "spot_max_vcpus": 24,
+        "ondemand_max_vcpus": 24
+      },
+      "chunk": null,
+      "video": {
+        "label": "clip36",
+        "file": "clip36.mp4",
+        "size_gib": 0.001,
+        "duration_s": 36,
+        "resolution": "640x360",
+        "fps": 24
+      },
+      "concurrency": 100,
+      "queue_position": 17,
+      "measured_from": "upload_complete",
+      "timings_s": {
+        "upload": 0.8,
+        "ingest": 6.2,
+        "probe": 0.2,
+        "queue_to_first_job": 31.7,
+        "startup_max": 25.8,
+        "analyse": 44,
+        "encode": 48.1,
+        "audio": null,
+        "chunks": null,
+        "stitch": null,
+        "publish": 0.1,
+        "end_to_end": 82.2,
+        "end_to_end_with_upload": 83
+      },
+      "vcpu_seconds": 92,
+      "vcpu_seconds_scope": "all_jobs",
+      "capacity_used": {
+        "spot": 0,
+        "ondemand": 2
+      },
+      "result": {
+        "final_status": "READY",
+        "hls_verified": true,
+        "variants": 3
+      },
+      "provenance": "measured",
+      "source": "scripts/bench/transcode.mjs",
+      "notes": "100 uploads started at once over five bench accounts (20 each); 36 s 640x360 clip."
+    },
+    {
+      "id": "2026-11-04-prod-v2-clip36-r1-c100-27",
+      "date": "2026-11-04",
+      "account": "B",
+      "region": "ap-southeast-1",
+      "environment": "prod",
+      "stack": "v2",
+      "path": "single",
+      "capacity": {
+        "spot_max_vcpus": 24,
+        "ondemand_max_vcpus": 24
+      },
+      "chunk": null,
+      "video": {
+        "label": "clip36",
+        "file": "clip36.mp4",
+        "size_gib": 0.001,
+        "duration_s": 36,
+        "resolution": "640x360",
+        "fps": 24
+      },
+      "concurrency": 100,
+      "queue_position": 27,
+      "measured_from": "upload_complete",
+      "timings_s": {
+        "upload": 2.1,
+        "ingest": 20.7,
+        "probe": 0.2,
+        "queue_to_first_job": 41.6,
+        "startup_max": 22.8,
+        "analyse": 39.9,
+        "encode": 46.5,
+        "audio": null,
+        "chunks": null,
+        "stitch": null,
+        "publish": 0.1,
+        "end_to_end": 92.1,
+        "end_to_end_with_upload": 94.19999999999999
+      },
+      "vcpu_seconds": 86,
+      "vcpu_seconds_scope": "all_jobs",
+      "capacity_used": {
+        "spot": 0,
+        "ondemand": 2
+      },
+      "result": {
+        "final_status": "READY",
+        "hls_verified": true,
+        "variants": 3
+      },
+      "provenance": "measured",
+      "source": "scripts/bench/transcode.mjs",
+      "notes": "100 uploads started at once over five bench accounts (20 each); 36 s 640x360 clip."
+    },
+    {
+      "id": "2026-11-04-prod-v2-clip36-r1-c100-28",
+      "date": "2026-11-04",
+      "account": "B",
+      "region": "ap-southeast-1",
+      "environment": "prod",
+      "stack": "v2",
+      "path": "single",
+      "capacity": {
+        "spot_max_vcpus": 24,
+        "ondemand_max_vcpus": 24
+      },
+      "chunk": null,
+      "video": {
+        "label": "clip36",
+        "file": "clip36.mp4",
+        "size_gib": 0.001,
+        "duration_s": 36,
+        "resolution": "640x360",
+        "fps": 24
+      },
+      "concurrency": 100,
+      "queue_position": 28,
+      "measured_from": "upload_complete",
+      "timings_s": {
+        "upload": 0.8,
+        "ingest": 2.3,
+        "probe": 0.2,
+        "queue_to_first_job": 20,
+        "startup_max": 23,
+        "analyse": 35.3,
+        "encode": 47.8,
+        "audio": null,
+        "chunks": null,
+        "stitch": null,
+        "publish": 0.1,
+        "end_to_end": 75.2,
+        "end_to_end_with_upload": 76
+      },
+      "vcpu_seconds": 83,
+      "vcpu_seconds_scope": "all_jobs",
+      "capacity_used": {
+        "spot": 2,
+        "ondemand": 0
+      },
+      "result": {
+        "final_status": "READY",
+        "hls_verified": true,
+        "variants": 3
+      },
+      "provenance": "measured",
+      "source": "scripts/bench/transcode.mjs",
+      "notes": "100 uploads started at once over five bench accounts (20 each); 36 s 640x360 clip."
+    },
+    {
+      "id": "2026-11-04-prod-v2-clip36-r1-c100-29",
+      "date": "2026-11-04",
+      "account": "B",
+      "region": "ap-southeast-1",
+      "environment": "prod",
+      "stack": "v2",
+      "path": "single",
+      "capacity": {
+        "spot_max_vcpus": 24,
+        "ondemand_max_vcpus": 24
+      },
+      "chunk": null,
+      "video": {
+        "label": "clip36",
+        "file": "clip36.mp4",
+        "size_gib": 0.001,
+        "duration_s": 36,
+        "resolution": "640x360",
+        "fps": 24
+      },
+      "concurrency": 100,
+      "queue_position": 29,
+      "measured_from": "upload_complete",
+      "timings_s": {
+        "upload": 0.8,
+        "ingest": 2.4,
+        "probe": 0.2,
+        "queue_to_first_job": 20.4,
+        "startup_max": 20.6,
+        "analyse": 29.9,
+        "encode": 39.5,
+        "audio": null,
+        "chunks": null,
+        "stitch": null,
+        "publish": 0.2,
+        "end_to_end": 62,
+        "end_to_end_with_upload": 62.8
+      },
+      "vcpu_seconds": 69,
+      "vcpu_seconds_scope": "all_jobs",
+      "capacity_used": {
+        "spot": 2,
+        "ondemand": 0
+      },
+      "result": {
+        "final_status": "READY",
+        "hls_verified": true,
+        "variants": 3
+      },
+      "provenance": "measured",
+      "source": "scripts/bench/transcode.mjs",
+      "notes": "100 uploads started at once over five bench accounts (20 each); 36 s 640x360 clip."
+    },
+    {
+      "id": "2026-11-04-prod-v2-clip36-r1-c100-34",
+      "date": "2026-11-04",
+      "account": "B",
+      "region": "ap-southeast-1",
+      "environment": "prod",
+      "stack": "v2",
+      "path": "single",
+      "capacity": {
+        "spot_max_vcpus": 24,
+        "ondemand_max_vcpus": 24
+      },
+      "chunk": null,
+      "video": {
+        "label": "clip36",
+        "file": "clip36.mp4",
+        "size_gib": 0.001,
+        "duration_s": 36,
+        "resolution": "640x360",
+        "fps": 24
+      },
+      "concurrency": 100,
+      "queue_position": 34,
+      "measured_from": "upload_complete",
+      "timings_s": {
+        "upload": 0.8,
+        "ingest": 2.8,
+        "probe": 0.2,
+        "queue_to_first_job": 22.6,
+        "startup_max": 20.7,
+        "analyse": 38.3,
+        "encode": 37.6,
+        "audio": null,
+        "chunks": null,
+        "stitch": null,
+        "publish": 0.1,
+        "end_to_end": 63.5,
+        "end_to_end_with_upload": 64.3
+      },
+      "vcpu_seconds": 76,
+      "vcpu_seconds_scope": "all_jobs",
+      "capacity_used": {
+        "spot": 2,
+        "ondemand": 0
+      },
+      "result": {
+        "final_status": "READY",
+        "hls_verified": true,
+        "variants": 3
+      },
+      "provenance": "measured",
+      "source": "scripts/bench/transcode.mjs",
+      "notes": "100 uploads started at once over five bench accounts (20 each); 36 s 640x360 clip."
+    },
+    {
+      "id": "2026-11-04-prod-v2-clip36-r1-c100-39",
+      "date": "2026-11-04",
+      "account": "B",
+      "region": "ap-southeast-1",
+      "environment": "prod",
+      "stack": "v2",
+      "path": "single",
+      "capacity": {
+        "spot_max_vcpus": 24,
+        "ondemand_max_vcpus": 24
+      },
+      "chunk": null,
+      "video": {
+        "label": "clip36",
+        "file": "clip36.mp4",
+        "size_gib": 0.001,
+        "duration_s": 36,
+        "resolution": "640x360",
+        "fps": 24
+      },
+      "concurrency": 100,
+      "queue_position": 39,
+      "measured_from": "upload_complete",
+      "timings_s": {
+        "upload": 0.8,
+        "ingest": 2.5,
+        "probe": 0.2,
+        "queue_to_first_job": 30.1,
+        "startup_max": 28.5,
+        "analyse": 52.4,
+        "encode": 47.2,
+        "audio": null,
+        "chunks": null,
+        "stitch": null,
+        "publish": 0.1,
+        "end_to_end": 84.1,
+        "end_to_end_with_upload": 84.89999999999999
+      },
+      "vcpu_seconds": 100,
+      "vcpu_seconds_scope": "all_jobs",
+      "capacity_used": {
+        "spot": 1,
+        "ondemand": 1
+      },
+      "result": {
+        "final_status": "READY",
+        "hls_verified": true,
+        "variants": 3
+      },
+      "provenance": "measured",
+      "source": "scripts/bench/transcode.mjs",
+      "notes": "100 uploads started at once over five bench accounts (20 each); 36 s 640x360 clip."
+    },
+    {
+      "id": "2026-11-04-prod-v2-clip36-r1-c100-43",
+      "date": "2026-11-04",
+      "account": "B",
+      "region": "ap-southeast-1",
+      "environment": "prod",
+      "stack": "v2",
+      "path": "single",
+      "capacity": {
+        "spot_max_vcpus": 24,
+        "ondemand_max_vcpus": 24
+      },
+      "chunk": null,
+      "video": {
+        "label": "clip36",
+        "file": "clip36.mp4",
+        "size_gib": 0.001,
+        "duration_s": 36,
+        "resolution": "640x360",
+        "fps": 24
+      },
+      "concurrency": 100,
+      "queue_position": 43,
+      "measured_from": "upload_complete",
+      "timings_s": {
+        "upload": 0.7,
+        "ingest": 8.7,
+        "probe": 0.2,
+        "queue_to_first_job": 34.8,
+        "startup_max": 45.4,
+        "analyse": 34.4,
+        "encode": 49.5,
+        "audio": null,
+        "chunks": null,
+        "stitch": null,
+        "publish": 0.1,
+        "end_to_end": 90.7,
+        "end_to_end_with_upload": 91.4
+      },
+      "vcpu_seconds": 84,
+      "vcpu_seconds_scope": "all_jobs",
+      "capacity_used": {
+        "spot": 1,
+        "ondemand": 1
+      },
+      "result": {
+        "final_status": "READY",
+        "hls_verified": true,
+        "variants": 3
+      },
+      "provenance": "measured",
+      "source": "scripts/bench/transcode.mjs",
+      "notes": "100 uploads started at once over five bench accounts (20 each); 36 s 640x360 clip."
+    },
+    {
+      "id": "2026-11-04-prod-v2-clip36-r1-c100-49",
+      "date": "2026-11-04",
+      "account": "B",
+      "region": "ap-southeast-1",
+      "environment": "prod",
+      "stack": "v2",
+      "path": "single",
+      "capacity": {
+        "spot_max_vcpus": 24,
+        "ondemand_max_vcpus": 24
+      },
+      "chunk": null,
+      "video": {
+        "label": "clip36",
+        "file": "clip36.mp4",
+        "size_gib": 0.001,
+        "duration_s": 36,
+        "resolution": "640x360",
+        "fps": 24
+      },
+      "concurrency": 100,
+      "queue_position": 49,
+      "measured_from": "upload_complete",
+      "timings_s": {
+        "upload": 0.9,
+        "ingest": 21.4,
+        "probe": 0.2,
+        "queue_to_first_job": 42.7,
+        "startup_max": 23.4,
+        "analyse": 34.8,
+        "encode": 47.5,
+        "audio": null,
+        "chunks": null,
+        "stitch": null,
+        "publish": 0.1,
+        "end_to_end": 94.6,
+        "end_to_end_with_upload": 95.5
+      },
+      "vcpu_seconds": 82,
+      "vcpu_seconds_scope": "all_jobs",
+      "capacity_used": {
+        "spot": 0,
+        "ondemand": 2
+      },
+      "result": {
+        "final_status": "READY",
+        "hls_verified": true,
+        "variants": 3
+      },
+      "provenance": "measured",
+      "source": "scripts/bench/transcode.mjs",
+      "notes": "100 uploads started at once over five bench accounts (20 each); 36 s 640x360 clip."
+    },
+    {
+      "id": "2026-11-04-prod-v2-clip36-r1-c100-51",
+      "date": "2026-11-04",
+      "account": "B",
+      "region": "ap-southeast-1",
+      "environment": "prod",
+      "stack": "v2",
+      "path": "single",
+      "capacity": {
+        "spot_max_vcpus": 24,
+        "ondemand_max_vcpus": 24
+      },
+      "chunk": null,
+      "video": {
+        "label": "clip36",
+        "file": "clip36.mp4",
+        "size_gib": 0.001,
+        "duration_s": 36,
+        "resolution": "640x360",
+        "fps": 24
+      },
+      "concurrency": 100,
+      "queue_position": 51,
+      "measured_from": "upload_complete",
+      "timings_s": {
+        "upload": 0.7,
+        "ingest": 2.7,
+        "probe": 0.3,
+        "queue_to_first_job": 30.5,
+        "startup_max": 31,
+        "analyse": 36.9,
+        "encode": 36.3,
+        "audio": null,
+        "chunks": null,
+        "stitch": null,
+        "publish": 0.1,
+        "end_to_end": 72.2,
+        "end_to_end_with_upload": 72.9
+      },
+      "vcpu_seconds": 73,
+      "vcpu_seconds_scope": "all_jobs",
+      "capacity_used": {
+        "spot": 1,
+        "ondemand": 1
+      },
+      "result": {
+        "final_status": "READY",
+        "hls_verified": true,
+        "variants": 3
+      },
+      "provenance": "measured",
+      "source": "scripts/bench/transcode.mjs",
+      "notes": "100 uploads started at once over five bench accounts (20 each); 36 s 640x360 clip."
+    },
+    {
+      "id": "2026-11-04-prod-v2-clip36-r1-c100-55",
+      "date": "2026-11-04",
+      "account": "B",
+      "region": "ap-southeast-1",
+      "environment": "prod",
+      "stack": "v2",
+      "path": "single",
+      "capacity": {
+        "spot_max_vcpus": 24,
+        "ondemand_max_vcpus": 24
+      },
+      "chunk": null,
+      "video": {
+        "label": "clip36",
+        "file": "clip36.mp4",
+        "size_gib": 0.001,
+        "duration_s": 36,
+        "resolution": "640x360",
+        "fps": 24
+      },
+      "concurrency": 100,
+      "queue_position": 55,
+      "measured_from": "upload_complete",
+      "timings_s": {
+        "upload": 7.6,
+        "ingest": -2.8,
+        "probe": 2.1,
+        "queue_to_first_job": 24.2,
+        "startup_max": 24.5,
+        "analyse": 51.5,
+        "encode": 46.8,
+        "audio": null,
+        "chunks": null,
+        "stitch": null,
+        "publish": 0.1,
+        "end_to_end": 77.3,
+        "end_to_end_with_upload": 84.89999999999999
+      },
+      "vcpu_seconds": 98,
+      "vcpu_seconds_scope": "all_jobs",
+      "capacity_used": {
+        "spot": 1,
+        "ondemand": 1
+      },
+      "result": {
+        "final_status": "READY",
+        "hls_verified": true,
+        "variants": 3
+      },
+      "provenance": "measured",
+      "source": "scripts/bench/transcode.mjs",
+      "notes": "100 uploads started at once over five bench accounts (20 each); 36 s 640x360 clip."
+    },
+    {
+      "id": "2026-11-04-prod-v2-clip36-r1-c100-69",
+      "date": "2026-11-04",
+      "account": "B",
+      "region": "ap-southeast-1",
+      "environment": "prod",
+      "stack": "v2",
+      "path": "single",
+      "capacity": {
+        "spot_max_vcpus": 24,
+        "ondemand_max_vcpus": 24
+      },
+      "chunk": null,
+      "video": {
+        "label": "clip36",
+        "file": "clip36.mp4",
+        "size_gib": 0.001,
+        "duration_s": 36,
+        "resolution": "640x360",
+        "fps": 24
+      },
+      "concurrency": 100,
+      "queue_position": 69,
+      "measured_from": "upload_complete",
+      "timings_s": {
+        "upload": 1.7,
+        "ingest": 14.5,
+        "probe": 0.3,
+        "queue_to_first_job": 34.3,
+        "startup_max": 21.5,
+        "analyse": 39.2,
+        "encode": 43.1,
+        "audio": null,
+        "chunks": null,
+        "stitch": null,
+        "publish": 0.3,
+        "end_to_end": 79.4,
+        "end_to_end_with_upload": 81.10000000000001
+      },
+      "vcpu_seconds": 82,
+      "vcpu_seconds_scope": "all_jobs",
+      "capacity_used": {
+        "spot": 0,
+        "ondemand": 2
+      },
+      "result": {
+        "final_status": "READY",
+        "hls_verified": true,
+        "variants": 3
+      },
+      "provenance": "measured",
+      "source": "scripts/bench/transcode.mjs",
+      "notes": "100 uploads started at once over five bench accounts (20 each); 36 s 640x360 clip."
+    },
+    {
+      "id": "2026-11-04-prod-v2-clip36-r1-c100-71",
+      "date": "2026-11-04",
+      "account": "B",
+      "region": "ap-southeast-1",
+      "environment": "prod",
+      "stack": "v2",
+      "path": "single",
+      "capacity": {
+        "spot_max_vcpus": 24,
+        "ondemand_max_vcpus": 24
+      },
+      "chunk": null,
+      "video": {
+        "label": "clip36",
+        "file": "clip36.mp4",
+        "size_gib": 0.001,
+        "duration_s": 36,
+        "resolution": "640x360",
+        "fps": 24
+      },
+      "concurrency": 100,
+      "queue_position": 71,
+      "measured_from": "upload_complete",
+      "timings_s": {
+        "upload": 2,
+        "ingest": 21.8,
+        "probe": 0.2,
+        "queue_to_first_job": 41.4,
+        "startup_max": 53.4,
+        "analyse": 39.2,
+        "encode": 45.7,
+        "audio": null,
+        "chunks": null,
+        "stitch": null,
+        "publish": 0.1,
+        "end_to_end": 123.1,
+        "end_to_end_with_upload": 125.1
+      },
+      "vcpu_seconds": 85,
+      "vcpu_seconds_scope": "all_jobs",
+      "capacity_used": {
+        "spot": 1,
+        "ondemand": 1
+      },
+      "result": {
+        "final_status": "READY",
+        "hls_verified": true,
+        "variants": 3
+      },
+      "provenance": "measured",
+      "source": "scripts/bench/transcode.mjs",
+      "notes": "100 uploads started at once over five bench accounts (20 each); 36 s 640x360 clip."
+    },
+    {
+      "id": "2026-11-04-prod-v2-clip36-r1-c100-76",
+      "date": "2026-11-04",
+      "account": "B",
+      "region": "ap-southeast-1",
+      "environment": "prod",
+      "stack": "v2",
+      "path": "single",
+      "capacity": {
+        "spot_max_vcpus": 24,
+        "ondemand_max_vcpus": 24
+      },
+      "chunk": null,
+      "video": {
+        "label": "clip36",
+        "file": "clip36.mp4",
+        "size_gib": 0.001,
+        "duration_s": 36,
+        "resolution": "640x360",
+        "fps": 24
+      },
+      "concurrency": 100,
+      "queue_position": 76,
+      "measured_from": "upload_complete",
+      "timings_s": {
+        "upload": 0.6,
+        "ingest": 2.5,
+        "probe": 0.2,
+        "queue_to_first_job": 19.7,
+        "startup_max": 28.9,
+        "analyse": 36.9,
+        "encode": 38,
+        "audio": null,
+        "chunks": null,
+        "stitch": null,
+        "publish": 0.2,
+        "end_to_end": 70.4,
+        "end_to_end_with_upload": 71
+      },
+      "vcpu_seconds": 75,
+      "vcpu_seconds_scope": "all_jobs",
+      "capacity_used": {
+        "spot": 2,
+        "ondemand": 0
+      },
+      "result": {
+        "final_status": "READY",
+        "hls_verified": true,
+        "variants": 3
+      },
+      "provenance": "measured",
+      "source": "scripts/bench/transcode.mjs",
+      "notes": "100 uploads started at once over five bench accounts (20 each); 36 s 640x360 clip."
+    },
+    {
+      "id": "2026-11-04-prod-v2-clip36-r1-c100-77",
+      "date": "2026-11-04",
+      "account": "B",
+      "region": "ap-southeast-1",
+      "environment": "prod",
+      "stack": "v2",
+      "path": "single",
+      "capacity": {
+        "spot_max_vcpus": 24,
+        "ondemand_max_vcpus": 24
+      },
+      "chunk": null,
+      "video": {
+        "label": "clip36",
+        "file": "clip36.mp4",
+        "size_gib": 0.001,
+        "duration_s": 36,
+        "resolution": "640x360",
+        "fps": 24
+      },
+      "concurrency": 100,
+      "queue_position": 77,
+      "measured_from": "upload_complete",
+      "timings_s": {
+        "upload": 0.8,
+        "ingest": 2.5,
+        "probe": 0.3,
+        "queue_to_first_job": 22.6,
+        "startup_max": 22.5,
+        "analyse": 41.7,
+        "encode": 41.6,
+        "audio": null,
+        "chunks": null,
+        "stitch": null,
+        "publish": 0.1,
+        "end_to_end": 68.9,
+        "end_to_end_with_upload": 69.7
+      },
+      "vcpu_seconds": 83,
+      "vcpu_seconds_scope": "all_jobs",
+      "capacity_used": {
+        "spot": 1,
+        "ondemand": 1
+      },
+      "result": {
+        "final_status": "READY",
+        "hls_verified": true,
+        "variants": 3
+      },
+      "provenance": "measured",
+      "source": "scripts/bench/transcode.mjs",
+      "notes": "100 uploads started at once over five bench accounts (20 each); 36 s 640x360 clip."
+    },
+    {
+      "id": "2026-11-04-prod-v2-clip36-r1-c100-85",
+      "date": "2026-11-04",
+      "account": "B",
+      "region": "ap-southeast-1",
+      "environment": "prod",
+      "stack": "v2",
+      "path": "single",
+      "capacity": {
+        "spot_max_vcpus": 24,
+        "ondemand_max_vcpus": 24
+      },
+      "chunk": null,
+      "video": {
+        "label": "clip36",
+        "file": "clip36.mp4",
+        "size_gib": 0.001,
+        "duration_s": 36,
+        "resolution": "640x360",
+        "fps": 24
+      },
+      "concurrency": 100,
+      "queue_position": 85,
+      "measured_from": "upload_complete",
+      "timings_s": {
+        "upload": 1.7,
+        "ingest": 14.6,
+        "probe": 0.2,
+        "queue_to_first_job": 37.9,
+        "startup_max": 24.9,
+        "analyse": 39.9,
+        "encode": 45.9,
+        "audio": null,
+        "chunks": null,
+        "stitch": null,
+        "publish": 0.1,
+        "end_to_end": 87.8,
+        "end_to_end_with_upload": 89.5
+      },
+      "vcpu_seconds": 86,
+      "vcpu_seconds_scope": "all_jobs",
+      "capacity_used": {
+        "spot": 0,
+        "ondemand": 2
+      },
+      "result": {
+        "final_status": "READY",
+        "hls_verified": true,
+        "variants": 3
+      },
+      "provenance": "measured",
+      "source": "scripts/bench/transcode.mjs",
+      "notes": "100 uploads started at once over five bench accounts (20 each); 36 s 640x360 clip."
+    },
+    {
+      "id": "2026-11-04-prod-v2-clip36-r1-c100-95",
+      "date": "2026-11-04",
+      "account": "B",
+      "region": "ap-southeast-1",
+      "environment": "prod",
+      "stack": "v2",
+      "path": "single",
+      "capacity": {
+        "spot_max_vcpus": 24,
+        "ondemand_max_vcpus": 24
+      },
+      "chunk": null,
+      "video": {
+        "label": "clip36",
+        "file": "clip36.mp4",
+        "size_gib": 0.001,
+        "duration_s": 36,
+        "resolution": "640x360",
+        "fps": 24
+      },
+      "concurrency": 100,
+      "queue_position": 95,
+      "measured_from": "upload_complete",
+      "timings_s": {
+        "upload": 0.7,
+        "ingest": 4,
+        "probe": 1.8,
+        "queue_to_first_job": 36.2,
+        "startup_max": 36.2,
+        "analyse": 46.4,
+        "encode": 47,
+        "audio": null,
+        "chunks": null,
+        "stitch": null,
+        "publish": 0.1,
+        "end_to_end": 92.3,
+        "end_to_end_with_upload": 93
+      },
+      "vcpu_seconds": 93,
+      "vcpu_seconds_scope": "all_jobs",
+      "capacity_used": {
+        "spot": 1,
+        "ondemand": 1
+      },
+      "result": {
+        "final_status": "READY",
+        "hls_verified": true,
+        "variants": 3
+      },
+      "provenance": "measured",
+      "source": "scripts/bench/transcode.mjs",
+      "notes": "100 uploads started at once over five bench accounts (20 each); 36 s 640x360 clip."
+    },
+    {
+      "id": "2026-11-04-prod-v2-clip36-r1-c100-96",
+      "date": "2026-11-04",
+      "account": "B",
+      "region": "ap-southeast-1",
+      "environment": "prod",
+      "stack": "v2",
+      "path": "single",
+      "capacity": {
+        "spot_max_vcpus": 24,
+        "ondemand_max_vcpus": 24
+      },
+      "chunk": null,
+      "video": {
+        "label": "clip36",
+        "file": "clip36.mp4",
+        "size_gib": 0.001,
+        "duration_s": 36,
+        "resolution": "640x360",
+        "fps": 24
+      },
+      "concurrency": 100,
+      "queue_position": 96,
+      "measured_from": "upload_complete",
+      "timings_s": {
+        "upload": 1.7,
+        "ingest": 21.2,
+        "probe": 0.3,
+        "queue_to_first_job": 44.8,
+        "startup_max": 54.5,
+        "analyse": 30.9,
+        "encode": 37.3,
+        "audio": null,
+        "chunks": null,
+        "stitch": null,
+        "publish": 0.2,
+        "end_to_end": 115.6,
+        "end_to_end_with_upload": 117.3
+      },
+      "vcpu_seconds": 68,
+      "vcpu_seconds_scope": "all_jobs",
+      "capacity_used": {
+        "spot": 1,
+        "ondemand": 1
+      },
+      "result": {
+        "final_status": "READY",
+        "hls_verified": true,
+        "variants": 3
+      },
+      "provenance": "measured",
+      "source": "scripts/bench/transcode.mjs",
+      "notes": "100 uploads started at once over five bench accounts (20 each); 36 s 640x360 clip."
+    }
+  ],
+  "failures_summary": {
+    "started": 100,
+    "recorded": 23,
+    "failed": 77,
+    "cause": "POST /v1/uploads answered 429: the prod API Lambda had 20 reserved instances (copied from staging; docs/ARCHITECTURE.md 5.8 sets 80) and the client did not retry. Inferred from the API load run of the same day (429 beyond 20 concurrent requests, CloudWatch Throttles) and from the 25 videos the bench accounts created; the per-run errors were not kept by this version of the tool.",
+    "fixed_by": [
+      "7b3b9f1 (80 instances)",
+      "304e828 (web retries 429/503)",
+      "ac31218 (tool retries and records failures)"
+    ]
+  }
+}
