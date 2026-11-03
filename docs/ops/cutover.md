@@ -45,8 +45,8 @@ scripts/deploy-web.sh prod
 
 ## 4. API host (a few minutes without API)
 
-1. Remove the old Worker route `api.zelostech.site/*` (Worker `zelostech-api-gateway`,
-   Settings → Domains & Routes) and the proxied CNAME `api.zelostech.site` on Cloudflare.
+1. Delete the proxied CNAME `api.zelostech.site` on Cloudflare (a Custom Domain cannot be
+   created over an existing CNAME).
 2. Put the host of `terraform output api_function_url` into `TARGET_HOST` of `[env.prod.vars]`
    in `infra/cloudflare-worker/wrangler.toml`, then from that folder:
 
@@ -55,20 +55,29 @@ scripts/deploy-web.sh prod
    npx wrangler deploy --env prod
    ```
 
-3. `https://api.zelostech.site/v1/health` answers `{"ok":true,"env":"prod"}`.
+3. Remove the old route `api.zelostech.site/*` in the zone's Workers Routes page (dashboard →
+   zelostech.site → Workers Routes → Edit → Remove). While it exists it wins over the Custom
+   Domain and the old API keeps answering; `wrangler triggers deploy` with no routes does not
+   remove it, and the DNS token has no Workers permission.
+4. `https://api.zelostech.site/v1/health` answers `{"ok":true,"env":"prod"}`.
 
 ## 5. Web and CDN hosts
 
-1. Prove ownership to CloudFront: TXT records `_zelostech.site`, `_www.zelostech.site` with the
-   value of `terraform output web_distribution_domain`, and `_cdn.zelostech.site` with
+1. Prove ownership to CloudFront: TXT records `_www.zelostech.site` with the value of
+   `terraform output web_distribution_domain`, and `_cdn.zelostech.site` with
    `terraform output cdn_distribution_domain`.
-2. Move each name (account A):
+2. Move the two subdomains (account A):
 
    ```bash
-   aws cloudfront associate-alias --profile dacntt-a --target-distribution-id <web id> --alias zelostech.site
    aws cloudfront associate-alias --profile dacntt-a --target-distribution-id <web id> --alias www.zelostech.site
    aws cloudfront associate-alias --profile dacntt-a --target-distribution-id <cdn id> --alias cdn.zelostech.site
    ```
+
+   The apex cannot move this way: its proof record `_zelostech.site` would sit in the `.site`
+   zone, not in ours (Cloudflare turns the name into `_zelostech.site.zelostech.site`). Remove
+   `zelostech.site` from the aliases of the old web distribution instead
+   (`get-distribution-config`, empty `Aliases`, `update-distribution --if-match <ETag>`); the
+   apply below then adds it to the new one.
 
 3. Bring the existing Cloudflare records under the production state instead of deleting them
    (no gap in DNS), then let Terraform point them at the new distributions, DNS only:
@@ -83,7 +92,10 @@ scripts/deploy-web.sh prod
    ```
 
    Then set `attach_hosts` to `true` by default in `infra/envs/prod/variables.tf` and delete the
-   three TXT records.
+   TXT records.
+
+   The public key file must keep LF line ends (`.gitattributes`): with CRLF the plan replaces
+   the CloudFront public key, which changes the key pair id stored in `zelos-prod/api`.
 
 ## 6. Seed
 
@@ -107,9 +119,12 @@ No video may be processed before step 4: the transcoder writes the API host into
 ## Rollback
 
 The old distributions, Worker and Lambda keep running. Move the names back the same way
-(`associate-alias` to the old distribution IDs with TXT records pointing at their domains, the
-DNS records back to their old targets and proxied, the old Worker route back on
-`api.zelostech.site/*`).
+(`associate-alias` to the old distribution IDs with TXT records pointing at their domains for
+www and cdn; for the apex remove it from the new distribution and add it back to
+`E2XCGWPL9BDVKL`), the DNS records back to their old targets and proxied, and the old Worker
+route back on `api.zelostech.site/*`.
+
+Done on 2026-11-04: the API first, the web and CDN hosts a few minutes later.
 
 ## Retiring the old stack (after the submission, owner approval)
 
