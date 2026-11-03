@@ -15,7 +15,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { parseArgs } from 'node:util';
-import { ENVS, signUrl as signed, writeResults } from './lib.mjs';
+import { ENVS, signUrl as signed, today, writeResults } from './lib.mjs';
 
 const { values: o } = parseArgs({
   options: {
@@ -78,7 +78,7 @@ for (let i = 0; i < Number(o.iterations); i++) {
   await new Promise((r) => setTimeout(r, Number(o.pause)));
 }
 
-const date = new Date().toISOString().slice(0, 10);
+const date = today();
 const record = {
   id: `${date}-${o.env}-v2-ttff-${o.label}`,
   date,

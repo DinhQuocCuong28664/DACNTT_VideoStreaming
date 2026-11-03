@@ -19,6 +19,8 @@ export const ENVS = {
 };
 
 export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+/** The measurement date in Vietnam (UTC+7), as the report uses it. */
+export const today = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date());
 
 /** Adds the signed policy of a playback grant to a CDN URL, as web/src/lib/playback.ts does. */
 export function signUrl(url, query) {

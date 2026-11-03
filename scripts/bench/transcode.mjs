@@ -15,7 +15,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { basename, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
-import { ENVS, benchAccounts, client, executionArn, seconds, signUrl, timeline, upload, waitForExecution, writeResults } from './lib.mjs';
+import { ENVS, benchAccounts, client, executionArn, seconds, signUrl, timeline, today, upload, waitForExecution, writeResults } from './lib.mjs';
 
 const { values: o } = parseArgs({
   options: {
@@ -49,7 +49,7 @@ for (const account of pool.length ? pool : [undefined]) {
 }
 
 const span = (s) => (s?.entered && s?.exited ? seconds(s.entered, s.exited) : null);
-const date = new Date().toISOString().slice(0, 10);
+const date = today();
 
 /** One upload measured end to end, as a record of docs/results/runs (schema 1). */
 async function measure(runIndex, position) {

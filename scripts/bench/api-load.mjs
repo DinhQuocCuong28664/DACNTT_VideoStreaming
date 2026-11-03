@@ -17,7 +17,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 import { CloudWatchLogsClient, FilterLogEventsCommand } from '@aws-sdk/client-cloudwatch-logs';
-import { ENVS, REGION, sleep, writeResults } from './lib.mjs';
+import { ENVS, REGION, sleep, today, writeResults } from './lib.mjs';
 
 const { values: o } = parseArgs({
   options: {
@@ -84,7 +84,7 @@ do {
 const inits = reports.map((m) => /Init Duration: ([\d.]+) ms/.exec(m)?.[1]).filter(Boolean).map(Number);
 const durations = reports.map((m) => /\tDuration: ([\d.]+) ms/.exec(m)?.[1]).filter(Boolean).map(Number);
 
-const date = new Date().toISOString().slice(0, 10);
+const date = today();
 const record = {
   id: `${date}-${o.env}-v2-api-load`,
   date,
