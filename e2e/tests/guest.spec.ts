@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { API } from '../global-setup';
 import { SAMPLE_VIDEO } from './fixtures';
 
 test.describe('guest', () => {
@@ -6,14 +7,21 @@ test.describe('guest', () => {
     await page.goto('/');
     const cards = page.locator('.video-card');
     await expect(cards.first()).toBeVisible();
-    const src = await cards.first().locator('img').getAttribute('src');
+    const src = await cards.first().locator('.video-card-thumbnail img').getAttribute('src');
     expect(src).toContain('Signature=');
   });
 
-  test('search tolerates one typo', async ({ page }) => {
-    await page.goto('/results?q=uplaod');
-    await expect(page.getByRole('heading', { level: 1 })).toContainText('uplaod');
-    await expect(page.locator('.video-card').first()).toContainText('upload');
+  test('search tolerates one typo', async ({ page, request }) => {
+    // A word of the sample video's title with two inner letters swapped, so the test holds on
+    // every environment: "Bảng" becomes "Bảgn".
+    const res = await request.get(`${API}/v1/videos/${SAMPLE_VIDEO}`);
+    const { video } = (await res.json()) as { video: { title: string } };
+    const word = video.title.split(/\s+/).map((w) => w.replace(/[^\p{L}]/gu, '')).find((w) => w.length >= 4) ?? '';
+    expect(word, 'the sample title needs a word of four letters or more').not.toBe('');
+    const typo = word.slice(0, 2) + word[3] + word[2] + word.slice(4);
+    await page.goto(`/results?q=${encodeURIComponent(typo)}`);
+    await expect(page.getByRole('heading', { level: 1 })).toContainText(typo);
+    await expect(page.locator('.video-card', { hasText: video.title }).first()).toBeVisible();
   });
 
   test('a video plays through the CDN with its AES key', async ({ page }) => {
