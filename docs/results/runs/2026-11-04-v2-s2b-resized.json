@@ -1,0 +1,395 @@
+{
+  "schema": 1,
+  "title": "S5-2b: transcode time after resizing (encode 4-8 vCPU, analyse 2 vCPU)",
+  "runs": [
+    {
+      "id": "2026-11-04-prod-v2-clip36-r1",
+      "date": "2026-11-04",
+      "account": "B",
+      "region": "ap-southeast-1",
+      "environment": "prod",
+      "stack": "v2",
+      "path": "single",
+      "capacity": {
+        "spot_max_vcpus": 24,
+        "ondemand_max_vcpus": 24
+      },
+      "chunk": null,
+      "video": {
+        "label": "clip36",
+        "file": "clip36.mp4",
+        "size_gib": 0.001,
+        "duration_s": 36,
+        "resolution": "640x360",
+        "fps": 24
+      },
+      "concurrency": 1,
+      "queue_position": 1,
+      "measured_from": "upload_complete",
+      "timings_s": {
+        "upload": 1.2,
+        "ingest": 22.9,
+        "probe": 2,
+        "queue_to_first_job": 55.2,
+        "startup_max": 53.1,
+        "analyse": 24.9,
+        "encode": 30.4,
+        "audio": null,
+        "chunks": null,
+        "stitch": null,
+        "publish": 0.3,
+        "end_to_end": 112.1,
+        "end_to_end_with_upload": 113.3
+      },
+      "vcpu_seconds": 171,
+      "vcpu_seconds_scope": "all_jobs",
+      "capacity_used": {
+        "spot": 2,
+        "ondemand": 0
+      },
+      "result": {
+        "final_status": "READY",
+        "hls_verified": true,
+        "variants": 3
+      },
+      "api_retries": 0,
+      "provenance": "measured",
+      "source": "scripts/bench/transcode.mjs",
+      "notes": "After 9237774: single-path encode 4 vCPU up to 60 s, 8 vCPU above; analyse 2 vCPU."
+    },
+    {
+      "id": "2026-11-04-prod-v2-clip36-r2",
+      "date": "2026-11-04",
+      "account": "B",
+      "region": "ap-southeast-1",
+      "environment": "prod",
+      "stack": "v2",
+      "path": "single",
+      "capacity": {
+        "spot_max_vcpus": 24,
+        "ondemand_max_vcpus": 24
+      },
+      "chunk": null,
+      "video": {
+        "label": "clip36",
+        "file": "clip36.mp4",
+        "size_gib": 0.001,
+        "duration_s": 36,
+        "resolution": "640x360",
+        "fps": 24
+      },
+      "concurrency": 1,
+      "queue_position": 1,
+      "measured_from": "upload_complete",
+      "timings_s": {
+        "upload": 0.9,
+        "ingest": 21.8,
+        "probe": 0.4,
+        "queue_to_first_job": 55.6,
+        "startup_max": 39.8,
+        "analyse": 24.1,
+        "encode": 30,
+        "audio": null,
+        "chunks": null,
+        "stitch": null,
+        "publish": 0.2,
+        "end_to_end": 94.1,
+        "end_to_end_with_upload": 95
+      },
+      "vcpu_seconds": 168,
+      "vcpu_seconds_scope": "all_jobs",
+      "capacity_used": {
+        "spot": 2,
+        "ondemand": 0
+      },
+      "result": {
+        "final_status": "READY",
+        "hls_verified": true,
+        "variants": 3
+      },
+      "api_retries": 0,
+      "provenance": "measured",
+      "source": "scripts/bench/transcode.mjs",
+      "notes": "After 9237774: single-path encode 4 vCPU up to 60 s, 8 vCPU above; analyse 2 vCPU."
+    },
+    {
+      "id": "2026-11-04-prod-v2-clip36-r3",
+      "date": "2026-11-04",
+      "account": "B",
+      "region": "ap-southeast-1",
+      "environment": "prod",
+      "stack": "v2",
+      "path": "single",
+      "capacity": {
+        "spot_max_vcpus": 24,
+        "ondemand_max_vcpus": 24
+      },
+      "chunk": null,
+      "video": {
+        "label": "clip36",
+        "file": "clip36.mp4",
+        "size_gib": 0.001,
+        "duration_s": 36,
+        "resolution": "640x360",
+        "fps": 24
+      },
+      "concurrency": 1,
+      "queue_position": 1,
+      "measured_from": "upload_complete",
+      "timings_s": {
+        "upload": 0.8,
+        "ingest": 21.9,
+        "probe": 0.3,
+        "queue_to_first_job": 45.3,
+        "startup_max": 58.3,
+        "analyse": 24.4,
+        "encode": 28,
+        "audio": null,
+        "chunks": null,
+        "stitch": null,
+        "publish": 0.2,
+        "end_to_end": 110.6,
+        "end_to_end_with_upload": 111.39999999999999
+      },
+      "vcpu_seconds": 161,
+      "vcpu_seconds_scope": "all_jobs",
+      "capacity_used": {
+        "spot": 2,
+        "ondemand": 0
+      },
+      "result": {
+        "final_status": "READY",
+        "hls_verified": true,
+        "variants": 3
+      },
+      "api_retries": 0,
+      "provenance": "measured",
+      "source": "scripts/bench/transcode.mjs",
+      "notes": "After 9237774: single-path encode 4 vCPU up to 60 s, 8 vCPU above; analyse 2 vCPU."
+    },
+    {
+      "id": "2026-11-04-prod-v2-100MB-r1",
+      "date": "2026-11-04",
+      "account": "B",
+      "region": "ap-southeast-1",
+      "environment": "prod",
+      "stack": "v2",
+      "path": "single",
+      "capacity": {
+        "spot_max_vcpus": 24,
+        "ondemand_max_vcpus": 24
+      },
+      "chunk": null,
+      "video": {
+        "label": "100MB",
+        "file": "video-100mb.mp4",
+        "size_gib": 0.094,
+        "duration_s": 120,
+        "resolution": "1920x1080",
+        "fps": 30
+      },
+      "concurrency": 1,
+      "queue_position": 1,
+      "measured_from": "upload_complete",
+      "timings_s": {
+        "upload": 4.1,
+        "ingest": 21.8,
+        "probe": 0.6,
+        "queue_to_first_job": 42.8,
+        "startup_max": 29.6,
+        "analyse": 32.9,
+        "encode": 68.1,
+        "audio": null,
+        "chunks": null,
+        "stitch": null,
+        "publish": 0.2,
+        "end_to_end": 122.2,
+        "end_to_end_with_upload": 126.3
+      },
+      "vcpu_seconds": 611,
+      "vcpu_seconds_scope": "all_jobs",
+      "capacity_used": {
+        "spot": 2,
+        "ondemand": 0
+      },
+      "result": {
+        "final_status": "READY",
+        "hls_verified": true,
+        "variants": 6
+      },
+      "api_retries": 0,
+      "provenance": "measured",
+      "source": "scripts/bench/transcode.mjs",
+      "notes": "After 9237774: single-path encode 4 vCPU up to 60 s, 8 vCPU above; analyse 2 vCPU."
+    },
+    {
+      "id": "2026-11-04-prod-v2-100MB-r2",
+      "date": "2026-11-04",
+      "account": "B",
+      "region": "ap-southeast-1",
+      "environment": "prod",
+      "stack": "v2",
+      "path": "single",
+      "capacity": {
+        "spot_max_vcpus": 24,
+        "ondemand_max_vcpus": 24
+      },
+      "chunk": null,
+      "video": {
+        "label": "100MB",
+        "file": "video-100mb.mp4",
+        "size_gib": 0.094,
+        "duration_s": 120,
+        "resolution": "1920x1080",
+        "fps": 30
+      },
+      "concurrency": 1,
+      "queue_position": 1,
+      "measured_from": "upload_complete",
+      "timings_s": {
+        "upload": 4.2,
+        "ingest": 21.1,
+        "probe": 0.6,
+        "queue_to_first_job": 57,
+        "startup_max": 37.1,
+        "analyse": 35.1,
+        "encode": 89.8,
+        "audio": null,
+        "chunks": null,
+        "stitch": null,
+        "publish": 0.2,
+        "end_to_end": 148.4,
+        "end_to_end_with_upload": 152.6
+      },
+      "vcpu_seconds": 789,
+      "vcpu_seconds_scope": "all_jobs",
+      "capacity_used": {
+        "spot": 2,
+        "ondemand": 0
+      },
+      "result": {
+        "final_status": "READY",
+        "hls_verified": true,
+        "variants": 6
+      },
+      "api_retries": 0,
+      "provenance": "measured",
+      "source": "scripts/bench/transcode.mjs",
+      "notes": "After 9237774: single-path encode 4 vCPU up to 60 s, 8 vCPU above; analyse 2 vCPU."
+    },
+    {
+      "id": "2026-11-04-prod-v2-100MB-r3",
+      "date": "2026-11-04",
+      "account": "B",
+      "region": "ap-southeast-1",
+      "environment": "prod",
+      "stack": "v2",
+      "path": "single",
+      "capacity": {
+        "spot_max_vcpus": 24,
+        "ondemand_max_vcpus": 24
+      },
+      "chunk": null,
+      "video": {
+        "label": "100MB",
+        "file": "video-100mb.mp4",
+        "size_gib": 0.094,
+        "duration_s": 120,
+        "resolution": "1920x1080",
+        "fps": 30
+      },
+      "concurrency": 1,
+      "queue_position": 1,
+      "measured_from": "upload_complete",
+      "timings_s": {
+        "upload": 2.7,
+        "ingest": 21.5,
+        "probe": 0.6,
+        "queue_to_first_job": 48.4,
+        "startup_max": 32.6,
+        "analyse": 39.5,
+        "encode": 62.8,
+        "audio": null,
+        "chunks": null,
+        "stitch": null,
+        "publish": 0.2,
+        "end_to_end": 119.6,
+        "end_to_end_with_upload": 122.3
+      },
+      "vcpu_seconds": 581,
+      "vcpu_seconds_scope": "all_jobs",
+      "capacity_used": {
+        "spot": 2,
+        "ondemand": 0
+      },
+      "result": {
+        "final_status": "READY",
+        "hls_verified": true,
+        "variants": 6
+      },
+      "api_retries": 0,
+      "provenance": "measured",
+      "source": "scripts/bench/transcode.mjs",
+      "notes": "After 9237774: single-path encode 4 vCPU up to 60 s, 8 vCPU above; analyse 2 vCPU."
+    },
+    {
+      "id": "2026-11-04-prod-v2-500MB-r1",
+      "date": "2026-11-04",
+      "account": "B",
+      "region": "ap-southeast-1",
+      "environment": "prod",
+      "stack": "v2",
+      "path": "chunked",
+      "capacity": {
+        "spot_max_vcpus": 24,
+        "ondemand_max_vcpus": 24
+      },
+      "chunk": {
+        "count": 10,
+        "vcpu": 4
+      },
+      "video": {
+        "label": "500MB",
+        "file": "video-500mb.mp4",
+        "size_gib": 0.468,
+        "duration_s": 600,
+        "resolution": "1920x1080",
+        "fps": 30
+      },
+      "concurrency": 1,
+      "queue_position": 1,
+      "measured_from": "upload_complete",
+      "timings_s": {
+        "upload": 19.6,
+        "ingest": 10.6,
+        "probe": 0.6,
+        "queue_to_first_job": 33.8,
+        "startup_max": 37,
+        "analyse": 76.3,
+        "encode": null,
+        "audio": null,
+        "chunks": 111.2,
+        "stitch": 1.5,
+        "publish": 0.3,
+        "end_to_end": 148.7,
+        "end_to_end_with_upload": 168.29999999999998
+      },
+      "vcpu_seconds": 3757,
+      "vcpu_seconds_scope": "all_jobs",
+      "capacity_used": {
+        "spot": 6,
+        "ondemand": 5
+      },
+      "result": {
+        "final_status": "READY",
+        "hls_verified": true,
+        "variants": 6
+      },
+      "api_retries": 0,
+      "provenance": "measured",
+      "source": "scripts/bench/transcode.mjs",
+      "notes": "After 9237774: chunked path; analyse 2 vCPU."
+    }
+  ],
+  "failures": []
+}
