@@ -33,7 +33,7 @@ describe('probe', () => {
   it('stores the plan in the work bucket and returns a single-path summary for a short clip', async () => {
     const { store, objects } = fakeStore();
     const out = await probe(input, { store, ffprobe: async () => ffprobeOf(60), workBucket: 'work', parallelSlots: 4 });
-    expect(out).toMatchObject({ mode: 'single', chunkCount: 0, hasAudio: true, encode: { vcpu: '1' } });
+    expect(out).toMatchObject({ mode: 'single', chunkCount: 0, hasAudio: true, encode: { vcpu: '4' } });
     expect(out.rungs).toHaveLength(6);
     const saved = JSON.parse(objects.get(`work/${workPaths(videoId, 1).plan}`) as string) as TranscodePlan;
     expect(saved.mode).toBe('single');
@@ -51,7 +51,7 @@ describe('probe', () => {
     const out = await probe(input, { store, ffprobe: async () => ffprobeOf(3600, { r_frame_rate: '90000/1' }), workBucket: 'work', parallelSlots: 4 });
     expect(out.mode).toBe('single');
     expect(out.fallbackReason).toMatch(/variable frame rate/);
-    expect(out.encode.vcpu).toBe('4');
+    expect(out.encode.vcpu).toBe('8');
   });
 
   it('refuses input that does not match the workflow contract', async () => {
@@ -60,9 +60,10 @@ describe('probe', () => {
   });
 
   it('sizes the encode task by duration', () => {
-    expect(encodeSize(60)).toEqual({ vcpu: '1', memory: '2048' });
-    expect(encodeSize(300)).toEqual({ vcpu: '2', memory: '4096' });
-    expect(encodeSize(null)).toEqual({ vcpu: '4', memory: '8192' });
+    expect(encodeSize(60)).toEqual({ vcpu: '4', memory: '8192' });
+    expect(encodeSize(61)).toEqual({ vcpu: '8', memory: '16384' });
+    expect(encodeSize(300)).toEqual({ vcpu: '8', memory: '16384' });
+    expect(encodeSize(null)).toEqual({ vcpu: '8', memory: '16384' });
   });
 });
 

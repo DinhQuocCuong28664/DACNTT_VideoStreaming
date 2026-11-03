@@ -160,8 +160,10 @@ resource "aws_cloudwatch_log_group" "jobs" {
 
 locals {
   roles = {
-    analyse = { vcpu = "1", memory = "2048", storage = 30, timeout = 4 * 3600 }
-    encode  = { vcpu = "2", memory = "4096", storage = 100, timeout = 8 * 3600 }
+    # analyse reads the whole source for the preview sprites; with 1 vCPU it was the slowest
+    # branch of the chunked path (S5). encode is resized per job from $.probe.encode.
+    analyse = { vcpu = "2", memory = "4096", storage = 30, timeout = 4 * 3600 }
+    encode  = { vcpu = "4", memory = "8192", storage = 100, timeout = 8 * 3600 }
     audio   = { vcpu = "1", memory = "2048", storage = 50, timeout = 4 * 3600 }
     chunk   = { vcpu = "4", memory = "8192", storage = 30, timeout = 3600 }
   }
