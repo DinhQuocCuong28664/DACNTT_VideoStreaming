@@ -167,7 +167,8 @@ const RECORDER = `
 })();
 `;
 
-const RENDITION_PATTERN = /\/(\d+p)\/(segment_\d+\.ts)/;
+// v1 names segments segment_NNNNN.ts, v2 seg_NNNNN.ts.
+const RENDITION_PATTERN = /\/(\d+p)\/((?:segment|seg)_\d+\.ts)/;
 
 /**
  * Đọc bảng "độ phân giải → bitrate" từ master playlist.
@@ -191,8 +192,8 @@ const parseMasterPlaylist = (text) => {
   return map;
 };
 
-/** Đường dẫn playlist của một rendition, ví dụ `.../1080p/playlist.m3u8`. */
-const RENDITION_PLAYLIST_PATTERN = /\/(\d+p)\/playlist\.m3u8/;
+/** Playlist of one rendition: `.../1080p/playlist.m3u8` in v1, `.../1080p/index.m3u8` in v2. */
+const RENDITION_PLAYLIST_PATTERN = /\/(\d+p)\/(?:playlist|index)\.m3u8/;
 
 /**
  * Đọc thời lượng thật của từng segment từ playlist của một rendition.
