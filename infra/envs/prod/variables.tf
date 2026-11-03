@@ -4,9 +4,9 @@ variable "transcoder_image_tag" {
 }
 
 variable "attach_hosts" {
-  description = "False until cutover: the old distributions still own zelostech.site, www and cdn (docs/ops/cutover.md)"
+  description = "Hosts on the distributions and their CNAMEs; false only while the old stack owns them (docs/ops/cutover.md)"
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "alert_emails" {

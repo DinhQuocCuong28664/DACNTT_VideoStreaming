@@ -27,6 +27,6 @@ routes = [
   { pattern = "api.zelostech.site", custom_domain = true }
 ]
 
-# Host of `terraform output api_function_url` in infra/envs/prod (filled in after the first apply).
+# Host of `terraform output api_function_url` in infra/envs/prod (fixed once the function exists).
 [env.prod.vars]
-TARGET_HOST = "PROD_FUNCTION_URL_HOST"
+TARGET_HOST = "mun7eszxcxx7xcpdq7dj63runq0liynj.lambda-url.ap-southeast-1.on.aws"
