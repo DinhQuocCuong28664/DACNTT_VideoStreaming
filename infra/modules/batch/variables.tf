@@ -18,13 +18,13 @@ variable "subnet_ids" {
 }
 
 variable "spot_max_vcpus" {
-  description = "Ceiling of the Fargate Spot environment (account quota 8, shared with other stacks)"
+  description = "Ceiling of the Fargate Spot environment (account quota 30, shared by every stack in account B)"
   type        = number
   default     = 8
 }
 
 variable "ondemand_max_vcpus" {
-  description = "Ceiling of the Fargate On-Demand overflow environment (account quota 8)"
+  description = "Ceiling of the Fargate On-Demand overflow environment (account quota 30, shared by every stack in account B)"
   type        = number
   default     = 8
 }
