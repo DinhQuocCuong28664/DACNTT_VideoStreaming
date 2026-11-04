@@ -92,7 +92,7 @@ alike, because every playback grant and key comes from the API in that region.
 
 The first extension is a bitrate ladder chosen per video. Encoding short probes of the source at
 several operating points and keeping those that give the best quality for their bit rate, measured
-with a perceptual metric such as VMAF, lowers delivery bandwidth at the same perceived quality;
+with a perceptual metric such as Video Multi-Method Assessment Fusion (VMAF), lowers delivery bandwidth at the same perceived quality;
 streaming services report savings of this kind from per-title and per-shot
 encoding~\cite{netflix2015pertitle,netflix2018dynamic}.
 
@@ -112,8 +112,8 @@ the limit of 100 operations per second.
 The fifth is calibrating the screening from evidence. The console already records the reason codes of
 reversed decisions and an unbiased audit sample; after a few hundred decisions, the thresholds and the
 label policy can be adjusted and the effect measured again. Further ahead, a deployment workflow that
-assumes a role in the account would make releases routine, and GPU-backed serverless
-encoding~\cite{gpuserverless2024} and a codec such as HEVC or AV1 next to H.264 would raise throughput
+assumes a role in the account would make releases routine, and serverless encoding on graphics processing units
+(GPU)~\cite{gpuserverless2024} and a codec such as High Efficiency Video Coding (HEVC) or AV1 next to H.264 would raise throughput
 and reduce bandwidth.
 
 \section{Task Distribution}
@@ -132,7 +132,7 @@ describe them.
 \toprule
 \textbf{MEMBER} & \textbf{STUDENT ID} & \textbf{RESPONSIBILITIES} \\
 \midrule
-Dinh Quoc Cuong (team leader) & 523H0008 & Overall architecture; the transcoding workflow, the container image and the chunked path; the infrastructure in Terraform on AWS and Cloudflare; the CI pipeline and the security scans; the measurements and the evaluation; Chapters~\ref{chap:design} to \ref{chap:evaluation} of the report \\
+Dinh Quoc Cuong & 523H0008 & Overall architecture; the transcoding workflow, the container image and the chunked path; the infrastructure in Terraform on AWS and Cloudflare; the CI pipeline and the security scans; the measurements and the evaluation; Chapters~\ref{chap:design} to \ref{chap:evaluation} of the report \\
 Vo Huynh Minh Duc & 523H0014 & The web application (catalogue, watch page and player, upload, studio, channels, staff console, two languages); the account, community and library parts of the API; testing and the diagrams; Chapters~\ref{chap:introduction} to \ref{chap:requirements} and \ref{chap:conclusion} of the report \\
 \bottomrule
 \end{tabularx}

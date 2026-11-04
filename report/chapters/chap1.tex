@@ -34,12 +34,12 @@ pipeline behind it, and has five objectives. The first is a web platform on whic
 upload videos, watch them at several quality levels, and take part in a community through
 channels, subscriptions, comments, playlists and memberships, with the visibility of each video
 chosen by its owner. The second is a fully event-driven pipeline: the arrival of a source file in
-Amazon S3 alone starts the processing, which is coordinated by AWS Step Functions and ends with an
-encrypted HLS package served through a content delivery network. The third is to run every FFmpeg
+Amazon Simple Storage Service (S3) alone starts the processing, which is coordinated by AWS Step Functions, the workflow service of Amazon Web Services (AWS), and ends with an
+encrypted HLS package served through a content delivery network (CDN). The third is to run every FFmpeg
 job in a container on AWS Batch with AWS Fargate, created on demand and released when the queue is
 empty, using Spot capacity first and On-Demand capacity only as overflow. The fourth is to describe
 the whole environment as Infrastructure as Code and to check every change automatically with a
-continuous integration pipeline that also runs security scans. The fifth is to evaluate the
+continuous integration (CI) pipeline that also runs security scans. The fifth is to evaluate the
 result on the deployed system: playback start time and quality, transcoding time from a two-minute
 clip to a four-hour video, behaviour under one hundred simultaneous uploads, and operating cost.
 
@@ -53,14 +53,14 @@ objective with its result.
 \label{sec:scope}
 
 The project delivers the full vertical slice of a video sharing service: a single-page web
-application with its own HLS player, a REST API, the transcoding workflow and its container image,
+application with its own HLS player, a Representational State Transfer (REST) application programming interface (API), the transcoding workflow and its container image,
 the cloud infrastructure that hosts them, and the scripts used to deploy and measure them. Besides
 viewers and creators, the platform serves three staff roles, operator, auditor and administrator,
 who review flagged content, audit the automatic screening and manage accounts. The production
 system runs at the domain \href{https://zelostech.site}{zelostech.site}.
 
-Several areas are deliberately left out. The project does not implement digital rights management
-such as Widevine or FairPlay: its AES-128 encryption keeps segments unreadable to anyone without
+Several areas are deliberately left out. The project does not implement digital rights management (DRM)
+such as Widevine or FairPlay: its 128-bit Advanced Encryption Standard (AES-128) encryption keeps segments unreadable to anyone without
 access, but cannot stop an authorised viewer from saving what they watch. It does not implement live
 streaming, since the pipeline is designed for video on demand. It does not optimise the bitrate
 ladder per title; every video receives the rungs of a fixed six-rung ladder from 144p to 1080p that
@@ -91,7 +91,7 @@ scans, so each change is reviewed before it is merged.
 
 The evaluation was empirical. Every figure in Chapter~\ref{chap:evaluation} was produced by a
 measurement script kept in the repository and run against the production system in its final
-configuration, and the raw output of each run was stored as a JSON file;
+configuration, and the raw output of each run was stored as a JavaScript Object Notation (JSON) file;
 Table~\ref{tab:provenance} maps each table and figure to the run that produced it.
 
 \section{Practical Significance}

@@ -11,11 +11,11 @@ chosen for each part of the system.
 YouTube, developed by Google, is the largest video sharing platform and the functional model for
 this project: channels, subscriptions, comments, playlists, paid memberships and a creator studio
 with analytics are all features its users expect. Its documentation asks creators to upload an MP4
-file with H.264 video and AAC audio, about 8~Mbit/s for 1080p at 30 frames per
+file with H.264 video and Advanced Audio Coding (AAC) audio, about 8~Mbit/s for 1080p at 30 frames per
 second~\cite{youtubeencoding}, which shows that the platform treats the upload as a high-quality
 master and produces its own delivery formats from it. Vimeo, developed by Vimeo, Inc., targets
 creators and businesses rather than a mass audience. It accepts H.264, H.265 or ProRes and
-recommends encoding the upload at a constant rate factor of 18 or below~\cite{vimeocompression},
+recommends encoding the upload at a constant rate factor (CRF) of 18 or below~\cite{vimeocompression},
 again a quality-targeted master from which the platform builds its own renditions. Neither
 platform documents its internal pipeline, and neither can be self-hosted, so they serve here as the
 reference for features and user expectations rather than for architecture.
@@ -29,7 +29,7 @@ much smaller scale. The first is the separation between a workflow that owns the
 that performs each step. The second is chunk-based encoding, in which many workers encode parts of
 the same title in parallel instead of one worker encoding it from start to end.
 
-Amazon Web Services publishes the Video on Demand on AWS solution, a reference architecture built
+Amazon Web Services publishes the Video on Demand (VOD) on AWS solution, a reference architecture built
 entirely from managed services~\cite{awsvod}. An upload to Amazon S3 starts an AWS Step Functions
 workflow, AWS Elemental MediaConvert produces the renditions, and Amazon CloudFront delivers them.
 The architecture of this project follows the same overall shape, a workflow engine that owns each
@@ -55,7 +55,7 @@ Orchestration & Not documented & Workflow tier & AWS Step Functions & AWS Step F
 Encoding & Not documented & Distributed, chunk-based & AWS Elemental MediaConvert & FFmpeg on Batch with Fargate; chunks for long videos \\
 Bitrate ladder & Not documented & Per title and per shot & Job template & Fixed six-rung Capped-CRF ladder bounded by the source \\
 Protection & Not documented & DRM & Signed URLs or cookies & AES-128 with signed CDN requests \\
-Cost model & Free to creators & Private & Per output minute & Per vCPU-second of real work \\
+Cost model & Free to creators & Private & Per output minute & Per virtual CPU (vCPU) second of real work \\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -118,7 +118,7 @@ In an event-driven architecture, work moves through the emission and consumption
 than through direct calls. The AWS Serverless Applications Lens describes such systems as event
 sources, routers and destinations connected by durable queues and explicit data
 contracts~\cite{awsserverlesslens}. In this project, the event source is Amazon S3: when an upload
-completes, S3 emits a notification that is placed on an Amazon SQS queue. The queue absorbs bursts,
+completes, S3 emits a notification that is placed on an Amazon Simple Queue Service (SQS) queue. The queue absorbs bursts,
 because a hundred simultaneous uploads become a hundred messages that are consumed as fast as the
 downstream steps allow, and a dead-letter queue isolates a message that keeps failing instead of
 retrying it forever. Because a queue delivers each message at least once, never exactly once, every
@@ -203,7 +203,7 @@ obvious decisions.
 Web client & React 19, Vite, TypeScript & Server-rendered pages & Rich interactive pages (player, studio, admin) as one static bundle on the CDN \\
 Player & hls.js & Native HLS & Works in every browser with Media Source Extensions and can add signed parameters to each request \\
 API & Express 5 on one AWS Lambda function & API Gateway with one function per route & One cold-start profile, no API Gateway cost; scales per request \\
-API edge & Cloudflare Worker & Amazon API Gateway & The domain's DNS and TLS are already on Cloudflare; the Worker rewrites the host and adds an origin secret \\
+API edge & Cloudflare Worker & Amazon API Gateway & The domain's Domain Name System (DNS) and Transport Layer Security (TLS) are already on Cloudflare; the Worker rewrites the host and adds an origin secret \\
 Orchestration & AWS Step Functions & Containers that chain jobs themselves & One place for state, retries and failure handling, with a visible history \\
 Encoding & FFmpeg on AWS Batch with Fargate & AWS Elemental MediaConvert & Full control of the encoder, billed per vCPU-second \\
 Documents & MongoDB Atlas & Relational database & Document-shaped data whose schema grows with features; managed service \\
@@ -217,7 +217,7 @@ Checks & GitHub Actions & Separate CI server & Source already on GitHub \\
 \end{table}
 
 The API is written in TypeScript on Node.js~22. Its work is almost entirely input and output:
-checking a token, reading a document, signing a URL. The heavy computation is delegated to the
+checking a token, reading a document, signing a uniform resource locator (URL). The heavy computation is delegated to the
 containers, so the event loop of Node.js suits it, and one language across the API, the Lambda
 steps, the transcoder and the web client lets them share a single package of schemas that both the
 producer and the consumer of each event validate. Running the API as one Express application inside

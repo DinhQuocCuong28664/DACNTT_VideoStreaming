@@ -48,7 +48,7 @@ The third tier is the serverless compute. AWS Batch runs every job as a containe
 EventBridge bus (step 15), and a single function, \name{status}, turns workflow states and progress
 events into the processing fields of the video (steps 16 and 17). The fourth tier handles what
 follows publication: when a video is published, the \name{notifier} function writes a notification
-for each subscriber (step 18), and a failed video raises an alert on Amazon SNS (step 19).
+for each subscriber (step 18), and a failed video raises an alert on Amazon Simple Notification Service (SNS) (step 19).
 
 Delivery closes the loop. The media distribution reads the processed bucket through Origin Access
 Control (step 20) and serves playlists and segments only to requests that carry a valid signed policy
@@ -369,7 +369,7 @@ after it checks access. Figure~\ref{fig:playback-sequence} shows how a player pa
 \label{fig:playback-sequence}
 \end{figure}
 
-\name{MarkProcessing} creates a random 16-byte key and an explicit initialisation vector for each
+\name{MarkProcessing} creates a random 16-byte key and an explicit initialisation vector (IV) for each
 upload version and stores the key in a separate, private, encrypted bucket that only the transcoder
 and the API can read; the workflow passes only a reference, so the key never appears in the
 execution history or the logs. When a player asks to play a video, the API applies one access rule,
@@ -386,7 +386,7 @@ third-party cookies inside an embedded player, and query parameters work everywh
 of the distribution ignores the query, so all viewers share the same cached segments even though
 each viewer's policy is different. The key endpoint accepts only the playback token, checks the
 access rule again for the viewer the token was issued to, and returns sixteen raw bytes that no cache
-may store. The player then decrypts each segment with AES-128 in CBC mode, using the key and the IV of
+may store. The player then decrypts each segment with AES-128 in cipher block chaining (CBC) mode, using the key and the IV of
 the playlist~\cite{rfc8216}.
 
 This design is not digital rights management. A viewer who may play a video can also save the
@@ -567,8 +567,8 @@ The web application is a single-page application of React components. Its pages 
 search results, the watch page, channel pages, the subscriptions feed, the library with history,
 Watch later and playlists, the creator studio with upload, editing, captions, chapters, scheduling,
 tiers and analytics, the settings, the staff console, the embedded player and the pages for errors.
-It is available in Vietnamese and English and in light and dark themes, and its styles are plain CSS
-with design tokens, without a utility framework.
+It is available in Vietnamese and English and in light and dark themes, and its styles are plain Cascading
+Style Sheets (CSS) with design tokens, without a utility framework.
 
 The video player is a custom component built on hls.js rather than the browser's native controls,
 because native controls cannot be extended: the browser has its own menus for speed and

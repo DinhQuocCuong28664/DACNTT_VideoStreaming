@@ -135,7 +135,7 @@ when the viewer cancels.
 
 All cloud resources are described with Terraform in eleven modules, listed in
 Table~\ref{tab:terraform-modules}, and three environments. The \name{shared} environment holds what
-every environment uses once: the VPC and the image registry. The \name{staging} and \name{prod}
+every environment uses once: the virtual private cloud (VPC) and the image registry. The \name{staging} and \name{prod}
 environments compose the modules with their own names (prefix \name{zelos-staging} or
 \name{zelos-prod}), capacity ceilings and hosts. Each environment keeps its state in its own key of
 an S3 bucket, with a DynamoDB table as lock, so two applies can never write the same state at once.
@@ -151,7 +151,7 @@ Every resource carries the tags \name{Project}, \name{Stack}, \name{Environment}
 \toprule
 \textbf{MODULE} & \textbf{RESPONSIBILITY} \\
 \midrule
-\name{network}  & One VPC with public subnets and a free S3 gateway endpoint, so no NAT gateway is billed while idle \\
+\name{network}  & One VPC with public subnets and a free S3 gateway endpoint, so no network address translation (NAT) gateway is billed while idle \\
 \name{ecr}      & Registry of the transcoder image, with scanning on push \\
 \name{storage}  & The raw, processed, work and keys buckets of one environment, their encryption, lifecycle rules and access blocks \\
 \name{ingest}   & The S3 event notification, the ingest queue and its dead letter queue with an alarm on the first message \\
@@ -243,7 +243,7 @@ Indexes are created by a maintenance action invoked once per deployment; a start
 secret and connects \\
 Function URL refused calls from the Worker &
 The permission must carry a condition that the Terraform provider in use cannot express &
-A Terraform resource adds the statement with the AWS CLI, and skips it when it already exists \\
+A Terraform resource adds the statement with the AWS command-line interface (CLI), and skips it when it already exists \\
 ffprobe layer rejected by Lambda &
 The archive exceeds the size that can be uploaded directly &
 The layer is published from an object in an artifacts bucket, named by its checksum so each version
@@ -267,8 +267,8 @@ distribution read the segments. If both wrote the policy, each apply of one woul
 statement of the other, and the bucket would alternate between refusing CloudFront and accepting
 plain HTTP. The \name{cdn} module therefore does not write the policy: it returns the statement that
 grants read access to its distribution, and the \name{storage} module merges it with its own and
-attaches the result. The statement names the CloudFront service with a condition on the ARN of the
-distribution, so the processed bucket accepts no other reader and a segment can be fetched only
+attaches the result. The statement names the CloudFront service with a condition on the Amazon Resource
+Name (ARN) of the distribution, so the processed bucket accepts no other reader and a segment can be fetched only
 through the signed distribution.
 
 \subsection{Index Creation at Start-up}
@@ -281,7 +281,7 @@ commands to the cluster at the same moment; the cluster refused them as too many
 start-up passed its timeout and the uploads that reached those instances received 502.
 Indexes change only when the API code changes, so they are now created by a maintenance action that
 deployment invokes directly. The action cannot be reached through the Function URL: the API accepts it
-only from a direct invocation, which needs an IAM permission that only the operator holds.
+only from a direct invocation, which needs an AWS Identity and Access Management (IAM) permission that only the operator holds.
 
 \section{Testing}
 \label{sec:testing}
