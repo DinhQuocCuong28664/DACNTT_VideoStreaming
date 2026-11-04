@@ -14,9 +14,11 @@ esac
 
 OUT="$(mktemp)"
 trap 'rm -f "$OUT"' EXIT
+# aws is a Windows program in Git Bash: give it the Windows form of the path.
+OUT_NATIVE="$(cygpath -w "$OUT" 2>/dev/null || echo "$OUT")"
 STATUS=$(aws lambda invoke --function-name "zelos-$ENVIRONMENT-api" \
   --cli-binary-format raw-in-base64-out --payload '{"action":"ensure-indexes"}' \
-  --query FunctionError --output text "$OUT")
+  --query FunctionError --output text "$OUT_NATIVE")
 cat "$OUT"; echo
 if [ "$STATUS" != "None" ]; then
   echo "Index setup failed ($STATUS)" >&2
