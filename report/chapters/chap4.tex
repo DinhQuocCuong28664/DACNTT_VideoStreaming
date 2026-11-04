@@ -10,13 +10,12 @@ API, the interface, security and content moderation.
 \section{High-Level Architecture}
 \label{sec:architecture}
 
-Figure~\ref{fig:architecture} shows the deployed architecture with its real boundaries. Three
+Figure~\ref{fig:architecture} shows the deployed architecture with its real boundaries. Two
 regions appear. Outside AWS are the viewer's browser, Cloudflare, which holds the domain's DNS and
 runs the gateway in front of the API, and MongoDB Atlas, which holds the documents and the search
-indexes. AWS account B holds all compute and storage. AWS account A holds only the two CloudFront
-distributions, because account B is not allowed to create distributions; this split is a constraint
-of the accounts available to the project rather than a design preference, and the design makes it
-harmless by letting CloudFront read the storage of account B through Origin Access Control.
+indexes. One AWS account holds everything else: compute and storage in the Singapore region, and
+the two CloudFront distributions that deliver the site and the media from the edge, which read the
+buckets through Origin Access Control.
 
 % Xoay ngang: đặt vừa bề rộng vùng chữ thì chữ dưới 6,2pt khi in.
 \begin{sidewaysfigure}
@@ -27,7 +26,7 @@ are listed in the key on the left}}
 \label{fig:architecture}
 \end{sidewaysfigure}
 
-Account B is divided into four tiers along the path of a video. The first tier serves the API. A
+The account is divided into four tiers along the path of a video, with delivery beside them. The first tier serves the API. A
 request from the browser reaches the Cloudflare Worker, which forwards it to the function URL of a
 single AWS Lambda function running an Express application and adds a secret header, so that the
 function refuses requests that bypassed the gateway (steps 1 and 2). The function reads and writes

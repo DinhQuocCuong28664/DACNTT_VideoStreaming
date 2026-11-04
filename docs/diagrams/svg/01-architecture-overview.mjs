@@ -1,10 +1,10 @@
 /**
  * Hình 4.1 — Kiến trúc tổng thể v2 và ranh giới triển khai.
  *
- * Ba vùng thật: dịch vụ ngoài AWS (trình duyệt, Cloudflare, MongoDB Atlas), tài khoản B giữ mọi
- * thứ tính toán và lưu trữ, tài khoản A chỉ giữ CloudFront (B không được tạo distribution).
- * Tài khoản B chia bốn tầng theo đường đi của một video: API và dữ liệu, nhận và điều phối,
- * tính toán serverless, sự kiện.
+ * Hai vùng thật: dịch vụ ngoài AWS (trình duyệt, Cloudflare, MongoDB Atlas) và một tài khoản AWS
+ * giữ mọi thứ (CloudFront dời về đây ngày 2026-11-05, docs/ops/cdn-to-b.md). Tài khoản chia
+ * bốn tầng theo đường đi của một video: API và dữ liệu, nhận và điều phối, tính toán serverless,
+ * sự kiện; cột bên phải là tầng phân phối.
  *
  * Bước của luồng là HUY HIỆU SỐ, nghĩa nằm ở bảng "Numbered steps" dưới cột trái; nhãn chữ
  * không vừa các khe giữa thẻ. Mỗi cạnh phải đi qua hành lang giữa cột trái và tài khoản B có
@@ -41,7 +41,7 @@ const atlas = card({ x: 62, y: 484, w: 172, h: 150, iconName: 'mongodb', iconSiz
 p.push(browser.svg, cloudflare.svg, atlas.svg);
 
 // ── Tài khoản B ─────────────────────────────────────────────────────────────
-const acctB = group({ x: 380, y: 64, w: 1000, h: 1014, label: 'AWS account B: compute and storage', iconName: 'aws' });
+const acctB = group({ x: 380, y: 64, w: 1328, h: 1014, label: 'AWS account (ap-southeast-1): compute, storage and delivery', iconName: 'aws' });
 p.push(acctB.svg);
 
 const t1 = group({ x: 404, y: 104, w: 952, h: 172, label: 'API and data', stroke: PALETTE.compute.stroke, fill: '#fffaf3' });
@@ -73,8 +73,8 @@ const eb = card({ x: 660, y: 840, w: 180, h: 132, iconName: 'aws-eventbridge', i
 const sns = card({ x: 1120, y: 840, w: 210, h: 132, iconName: 'aws-sns', iconSize: 30, title: 'SNS alerts', sub: ['failed videos'], tone: 'secret' });
 p.push(notifier.svg, eb.svg, sns.svg);
 
-// ── Tài khoản A ─────────────────────────────────────────────────────────────
-const acctA = group({ x: 1424, y: 250, w: 288, h: 470, label: ['AWS account A:', 'delivery only'], iconName: 'aws', stroke: '#8e6bb3', fill: '#faf7fd' });
+// ── Tầng phân phối ──────────────────────────────────────────────────────────
+const acctA = group({ x: 1424, y: 250, w: 268, h: 470, label: 'Delivery (global)', stroke: '#8e6bb3', fill: '#faf7fd' });
 p.push(acctA.svg);
 const cfWeb = card({ x: 1452, y: 320, w: 232, h: 130, iconName: 'aws-cloudfront', iconSize: 32, title: 'CloudFront web', sub: ['zelostech.site'], tone: 'network' });
 const cfMedia = card({ x: 1452, y: 500, w: 232, h: 190, iconName: 'aws-cloudfront', iconSize: 32, title: 'CloudFront media', sub: ['Origin Access Control,', 'signed query policy'], tone: 'network' });

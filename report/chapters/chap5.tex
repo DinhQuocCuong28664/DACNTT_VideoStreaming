@@ -31,7 +31,7 @@ a single file with esbuild, so a Lambda package or the container image carries n
 \name{api} & The REST API: Express~5 application, features, services and models & AWS Lambda behind a Function URL \\
 \name{web} & React~19 single-page application built with Vite, the hls.js player, vanilla CSS & S3 and CloudFront \\
 \name{e2e} & Playwright tests of the web application against a running environment & The developer's machine \\
-\name{infra} & Terraform modules and environments, the Cloudflare Worker & AWS accounts B and A, Cloudflare \\
+\name{infra} & Terraform modules and environments, the Cloudflare Worker & AWS and Cloudflare \\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -160,17 +160,17 @@ Every resource carries the tags \name{Project}, \name{Stack}, \name{Environment}
 \name{batch}    & The Fargate Spot and On-Demand compute environments, the \name{main} and \name{bulk} queues and the four job definitions \\
 \name{workflow} & The state machine, the starter, probe, status and stitch functions, the ffprobe layer and one role per function \\
 \name{app}      & The API function and its Function URL, the notifier, roll-up and reconciler, and the scheduler group for scheduled publishing \\
-\name{cdn}      & The media distribution in account A, its Origin Access Control, signing key group, cache and header policies, certificate and DNS record \\
+\name{cdn}      & The media distribution, its Origin Access Control, signing key group, cache and header policies, certificate and DNS record \\
 \name{web}      & The private bucket and distribution that host the web application, with the rewrite that serves the single-page routes \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
-The split between the two AWS accounts is expressed with provider aliases rather than duplicated
-code. An environment declares one provider for account B, one for account A and one for account A in
-\name{us-east-1}, where CloudFront certificates must be issued, plus the Cloudflare provider for DNS.
-The \name{cdn} and \name{web} modules receive the account A providers, while the buckets they read
-stay in account B. The transcoder image is selected with a variable that holds the commit of the image
+An environment declares three providers: AWS in the Singapore region, which also manages
+CloudFront because CloudFront is a global service, AWS in \name{us-east-1}, the only region where
+CloudFront accepts certificates, and Cloudflare for DNS. The \name{cdn} and \name{web} modules
+receive the first two through aliases, so the account and the regions they use are chosen by the
+environment and not written into the modules. The transcoder image is selected with a variable that holds the commit of the image
 and has no default value, so a production apply cannot fall back to an untested image.
 
 \section{Continuous Integration and Deployment}
@@ -259,16 +259,17 @@ Git on Windows checked the public key out with CRLF line ends, which Terraform s
 \end{tabularx}
 \end{table}
 
-\subsection{CloudFront in a Second Account}
+\subsection{One Policy for the Processed Bucket}
 
-Account B, which holds the compute and storage, is not permitted to create CloudFront distributions.
-The two distributions, their certificates and their signing keys therefore live in account A, while
-every bucket stays in account B. Only the account that owns a bucket can attach its policy, so the
-\name{cdn} and \name{web} modules do not write the policy themselves: they return the policy
-statement that grants read access to their distribution, and the \name{storage} module of account B
-attaches it. The statement names the CloudFront service with a condition on the ARN of the
-distribution, which works whichever account owns the distribution. The processed bucket accepts no
-other reader, so a segment can be fetched only through the signed distribution.
+A bucket has exactly one policy, but two modules need a statement in the policy of the processed
+bucket: \name{storage}, which refuses every request without TLS, and \name{cdn}, which lets its
+distribution read the segments. If both wrote the policy, each apply of one would remove the
+statement of the other, and the bucket would alternate between refusing CloudFront and accepting
+plain HTTP. The \name{cdn} module therefore does not write the policy: it returns the statement that
+grants read access to its distribution, and the \name{storage} module merges it with its own and
+attaches the result. The statement names the CloudFront service with a condition on the ARN of the
+distribution, so the processed bucket accepts no other reader and a segment can be fetched only
+through the signed distribution.
 
 \subsection{Index Creation at Start-up}
 

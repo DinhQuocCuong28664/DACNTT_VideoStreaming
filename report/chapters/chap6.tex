@@ -23,11 +23,11 @@ lower ceilings, and changes are checked there before they reach production (Sect
 \toprule
 \textbf{PART} & \textbf{SERVICE} & \textbf{SETTING} \\
 \midrule
-Web application & S3 bucket behind CloudFront in account A & Hashed assets cached for a year \\
+Web application & S3 bucket behind CloudFront & Hashed assets cached for a year \\
 API & One Lambda function, Node.js 22, 512 MB, behind a Cloudflare Worker & 80 reserved instances \\
 Workflow & S3 events, SQS, the starter, Step Functions and four Lambda steps & One execution per upload version \\
 Compute & AWS Batch on Fargate Spot and Fargate On-Demand, queues \name{main} and \name{bulk} & 24 + 24 vCPUs, six chunk slots \\
-Media delivery & CloudFront in account A, Origin Access Control, signed query policy & Edges of price class 200, which include Asia \\
+Media delivery & CloudFront, Origin Access Control, signed query policy & Edges of price class 200, which include Asia \\
 Documents and search & MongoDB Atlas, free M0 cluster of its own & 500 connections, 100 operations per second \\
 Short-lived data & Five DynamoDB tables on demand & Billed per request \\
 \bottomrule
