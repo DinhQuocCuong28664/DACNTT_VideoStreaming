@@ -1,5 +1,5 @@
 /**
- * Hình 3.1 — Sơ đồ use case.
+ * Hình 3.1 — Sơ đồ use case của người xem (khách và người dùng đã đăng ký).
  *
  * Vẽ lại từ bản Mermaid vì hai lỗi, không phải vì sở thích trình bày.
  *
@@ -35,7 +35,7 @@ Object.assign(TYPE, {
 });
 
 const W = 1060;   // 1000 trước khi nới khe include thêm 60px; vẫn 6,7pt khi in
-const H = 1494;
+const H = 1440;
 const p = [];
 
 const UC_X = 478;          // tâm cột use case chính
@@ -53,7 +53,7 @@ const LANE_SYS = 196;
 
 // ── Ranh giới hệ thống ──────────────────────────────────────────────────────
 p.push(group({
-  x: 300, y: 40, w: 724, h: 1292,
+  x: 300, y: 40, w: 724, h: 1250,
   label: 'Video sharing platform', stroke: '#8a94a6', fill: '#fcfdfe', dash: '7 5',
 }).svg);
 
@@ -70,85 +70,55 @@ const place = (key, i, label, tone = 'network', dy = 0) => {
 
 // Nhóm 1: chỉ khách vãng lai
 place('register', 0, 'Register an account');
-place('login', 1, 'Log in');
-place('google', 2, 'Sign in with Google');
+place('login', 1, ['Sign in with a password', 'or with Google']);
 
 // Nhóm 2: dùng chung cho cả hai tác nhân người
-place('browse', 3, 'Browse public videos');
-place('search', 4, ['Search and filter', 'by category']);
-place('watch', 5, ['Watch HLS video', 'with ABR']);
+place('home', 2, 'Browse the home feed');
+place('search', 3, ['Search videos and', 'channels']);
+place('watch', 4, ['Watch a video', 'with adaptive bitrate']);
+place('unlock', 5, ['Unlock a password-', 'protected video']);
+place('channel', 6, 'Open a channel page');
+place('share', 7, ['Share a link or', 'embed the player']);
 
 // Nhóm 3: chỉ người dùng đã đăng ký
-place('verify', 6, 'Verify the e-mail address');
-place('reset', 7, ['Reset a forgotten', 'password']);
-place('upload', 8, ['Upload a video via', 'a pre-signed URL']);
-place('manage', 9, ['Manage videos on', 'their own channel']);
-place('react', 10, 'Like or dislike a video');
-place('comment', 11, 'Comment on a video');
-place('share', 12, 'Share a video link');
+place('verify', 8, 'Verify the e-mail address');
+place('reset', 9, ['Reset or change', 'the password']);
+place('interact', 10, ['Like, comment', 'and reply']);
+place('subscribe', 11, 'Subscribe to a channel');
+place('member', 12, ['Join a channel', 'membership tier']);
+place('library', 13, ['Keep history, watch', 'later and playlists']);
+place('notify', 14, 'Read notifications');
 
-// Nhóm 4: do hệ thống chuyển mã tự khởi động
-place('transcode', 13, ['Transcode to HLS', 'automatically'], 'compute');
-// Cách xa hơn một nhịp so với các hàng khác: hai ellipse liền nhau chỉ hở 12px,
-// không đủ chỗ cho một mũi tên include nhìn ra được.
-place('thumb', 14, ['Generate a thumbnail', 'and metadata'], 'compute', 38);
-
-// ── Hai đích của quan hệ include, đặt lệch phải ─────────────────────────────
-const visibility = usecase({
-  cx: OFF_X, cy: at(8), rx: OFF_RX, ry: RY,
-  label: ['Set visibility: public,', 'unlisted or private'],
+// ── Đích của quan hệ include, đặt lệch phải ─────────────────────────────────
+const count = usecase({
+  cx: OFF_X, cy: at(4), rx: OFF_RX, ry: RY,
+  label: ['Resume and count', 'a view after 30 s'],
 });
-const del = usecase({
-  cx: OFF_X, cy: at(9), rx: OFF_RX, ry: RY, label: 'Delete a video',
-});
-p.push(visibility.svg, del.svg);
+p.push(count.svg);
 
 // ── Tác nhân ────────────────────────────────────────────────────────────────
-const anon = actor({ cx: 108, cy: at(1) - 12, label: ['Anonymous', 'visitor'] });
-const user = actor({ cx: 108, cy: at(9) - 12, label: ['Registered', 'user'] });
-const sys = actor({ cx: 108, cy: Math.round((at(13) + at(14) + 38) / 2) + 56, label: ['Transcoding', 'system'] });
-p.push(anon.svg, user.svg, sys.svg);
+const anon = actor({ cx: 108, cy: at(3) - 12, label: ['Anonymous', 'visitor'] });
+const user = actor({ cx: 108, cy: at(10) - 12, label: ['Registered', 'user'] });
+p.push(anon.svg, user.svg);
 
 /** Liên kết tác nhân với use case qua một làn dọc riêng. */
 function link(a, lane, target) {
   p.push(assoc([[a.box.r, a.box.cy], [lane, a.box.cy], [lane, target.box.cy], [target.box.l, target.box.cy]]));
 }
 
-['register', 'login', 'google', 'browse', 'search', 'watch']
+['register', 'login', 'home', 'search', 'watch', 'unlock', 'channel', 'share']
   .forEach((k) => link(anon, LANE_ANON, uc[k]));
-['browse', 'search', 'watch', 'verify', 'reset', 'upload', 'manage', 'react', 'comment', 'share']
+['home', 'search', 'watch', 'unlock', 'channel', 'share', 'verify', 'reset', 'interact', 'subscribe', 'member', 'library', 'notify']
   .forEach((k) => link(user, LANE_USER, uc[k]));
-['transcode', 'thumb'].forEach((k) => link(sys, LANE_SYS, uc[k]));
 
-// ── Quan hệ include và trigger ──────────────────────────────────────────────
-p.push(edge([[uc.upload.box.r, uc.upload.box.cy], [visibility.box.l, visibility.box.cy]],
+// ── Quan hệ include ─────────────────────────────────────────────────────────
+p.push(edge([[uc.watch.box.r, uc.watch.box.cy], [count.box.l, count.box.cy]],
   { dashed: true, label: '«include»', labelDy: -8 }));
-// Ngang như include thứ nhất. Nhãn lệch sang phải 10px để không dính đường «trigger» đi xuống ở
-// x = TRIG_X, vốn cắt qua khe này.
-p.push(edge([[uc.manage.box.r, uc.manage.box.cy], [del.box.l, del.box.cy]],
-  { dashed: true, label: '«include»', labelDy: -8, labelDx: 10 }));
-
-// Tải lên kích hoạt chuyển mã. Đi vòng ngoài lề phải để không cắt qua use case
-// nào trong cột chính.
-const TRIG_X = UC_X + RX + 22;   // khe hep giua hai cot, khong cat qua gi
-p.push(edge([
-  [uc.upload.box.r, uc.upload.box.cy + 22], [TRIG_X, uc.upload.box.cy + 22],
-  [TRIG_X, uc.transcode.box.cy], [uc.transcode.box.r, uc.transcode.box.cy],
-], {
-  dashed: true, label: '«trigger»', labelDy: -8, labelAt: 0.62,
-  // Đẩy hẳn sang phải đường: nhãn rộng 89px mà khe giữa hai cột ellipse chỉ hở
-  // 42px, nên căn giữa thì nền trắng của nhãn liếm vào mép ellipse cột chính.
-  // Bên phải đường ở đúng độ cao này đang trống, đặt lệch sang đó là sạch.
-  labelDx: 50,
-}));
-
-p.push(edge([[uc.transcode.box.cx, uc.transcode.box.b], [uc.thumb.box.cx, uc.thumb.box.t]],
-  { dashed: true, label: '«include»', labelDx: 62, labelDy: 5 }));
 
 p.push(text(
-  ['Association lines carry no arrowhead, as UML specifies. Only «include» and',
-   '«trigger» relationships are directed. The transcoding use cases attach to the',
-   'system actor because events start them, not a human action.'],
+  ['Association lines carry no arrowhead, as UML specifies; only «include» is directed.',
+   'A signed-in user can do everything a visitor can. Uploading and the creator studio',
+   'are in Figure 3.2, moderation in Figure 3.3.'],
   40, H - 78, { size: 16, anchor: 'start', fill: PALETTE.muted, lineHeight: 20 }));
 
 const svg = document_({ width: W, height: H, body: p.join('\n') });
