@@ -1,0 +1,85 @@
+{
+  "source": "2026-11-04-v2-s2b-resized.json",
+  "rows": [
+    {
+      "label": "clip36",
+      "duration_s": 36,
+      "size_gib": 0.001,
+      "path": "single",
+      "chunks": null,
+      "runs": 3,
+      "end_to_end_s": {
+        "median": 110.6,
+        "min": 94.1,
+        "max": 112.1
+      },
+      "parts_s": {
+        "intake": 22.2,
+        "wait": 45.3,
+        "work": 43.1
+      },
+      "vcpu_s_per_source_s": 4.67,
+      "id": "2026-11-04-prod-v2-clip36-r3"
+    },
+    {
+      "label": "100MB",
+      "duration_s": 120,
+      "size_gib": 0.094,
+      "path": "single",
+      "chunks": null,
+      "runs": 3,
+      "end_to_end_s": {
+        "median": 122.2,
+        "min": 119.6,
+        "max": 148.4
+      },
+      "parts_s": {
+        "intake": 22.4,
+        "wait": 42.8,
+        "work": 57
+      },
+      "vcpu_s_per_source_s": 5.09,
+      "id": "2026-11-04-prod-v2-100MB-r1"
+    },
+    {
+      "label": "500MB",
+      "duration_s": 600,
+      "size_gib": 0.468,
+      "path": "chunked",
+      "chunks": 10,
+      "runs": 3,
+      "end_to_end_s": {
+        "median": 146.9,
+        "min": 146.9,
+        "max": 148.7
+      },
+      "parts_s": {
+        "intake": 23.2,
+        "wait": 41.8,
+        "work": 81.9
+      },
+      "vcpu_s_per_source_s": 5.8,
+      "id": "2026-11-04-prod-v2-500MB-r1"
+    },
+    {
+      "label": "1GB",
+      "duration_s": 1600,
+      "size_gib": 0.997,
+      "path": "chunked",
+      "chunks": 18,
+      "runs": 3,
+      "end_to_end_s": {
+        "median": 286.6,
+        "min": 284,
+        "max": 291
+      },
+      "parts_s": {
+        "intake": 13.5,
+        "wait": 35.2,
+        "work": 237.9
+      },
+      "vcpu_s_per_source_s": 4.58,
+      "id": "2026-11-04-prod-v2-1GB-r2"
+    }
+  ]
+}

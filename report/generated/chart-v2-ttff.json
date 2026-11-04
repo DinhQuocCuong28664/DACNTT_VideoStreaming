@@ -1,0 +1,30 @@
+{
+  "source": "2026-11-04-v2-ttff.json",
+  "rendition": "720p",
+  "rows": [
+    {
+      "label": "First request",
+      "note": "caches cold",
+      "total_ms": 1424.9,
+      "steps": {
+        "grant": 479.4,
+        "master": 376.4,
+        "playlist": 128.3,
+        "key": 175.4,
+        "segment": 265
+      }
+    },
+    {
+      "label": "Next 19, mean",
+      "note": "p95 435.2 ms",
+      "total_ms": 319.5,
+      "steps": {
+        "grant": 122.3,
+        "master": 8.2,
+        "playlist": 10.8,
+        "key": 150,
+        "segment": 28.1
+      }
+    }
+  ]
+}
