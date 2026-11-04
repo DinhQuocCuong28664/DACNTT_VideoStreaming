@@ -1,171 +1,69 @@
 /**
- * Hình 5.1 — Bảy workflow CI/CD và cổng chất lượng DevSecOps hai tầng.
+ * Hình 5.1 — Kiểm tra tự động trên GitHub Actions và các bước triển khai của v2.
  *
- * Bố cục xếp mỗi workflow thành một hàng ngang, vì đó đúng là cách chúng chạy:
- * độc lập với nhau, kích hoạt theo đường dẫn tệp đã thay đổi. Bản Mermaid cũ vẽ
- * thành một đồ thị nối tiếp, khiến người đọc tưởng workflow này chạy xong mới
- * tới workflow kia.
- *
- * Tên workflow đặt phía trên hàng bước chứ không đặt bên trái. Bản dựng đầu đặt
- * bên trái và bị chính đường phân nhánh dọc cắt ngang qua chữ.
- *
- * Cổng bảo mật tô khác màu vì đó là chỗ duy nhất trong sơ đồ có thể CHẶN, và
- * mục 5.4 dành hẳn một đoạn giải thích vì sao nó chỉ chặn ở mức critical đã có
- * bản vá chứ không chặn mọi phát hiện.
+ * Nguồn: .github/workflows/ci.yml (check, transcoder-smoke, terraform),
+ * .github/workflows/security-scan.yml (gitleaks, trivy-sca, sast), scripts/ensure-indexes.sh,
+ * scripts/deploy-web.sh, e2e/. Không workflow nào giữ quyền vào AWS: triển khai chạy từ máy
+ * người vận hành, mỗi bước được duyệt riêng.
  */
-import { card, chip, group, edge, text, document_, write, PALETTE, TYPE } from './render.mjs';
+import { card, group, edge, text, document_, write, enableLayoutCheck, PALETTE, TYPE } from './render.mjs';
 
-// Canvas rộng 1372px, xoay ngang nên in ra 247mm: 1px là 0,18mm. Muốn chữ nhỏ
-// nhất đạt 7pt thì phải từ 13,7px trở lên, nên nâng mọi cỡ mặc định dưới mức đó.
-Object.assign(TYPE, {
-  chipLabel: 14,
-  chipLabelLH: 16,
-  edgeLabel: 14,
-  cardSub: 14.5,
-  cardSubLH: 17.5,
-  legendLabel: 14.5,
-});
+enableLayoutCheck();
+Object.assign(TYPE, { cardTitle: 20, cardSub: 18.5, cardSubLH: 22, groupLabel: 18.5, edgeLabel: 18.5 });
 
-const W = 1372;
-const H = 888;
+const W = 1320;
+const H = 850;
 const p = [];
 
-const LANE_X = 268;
-const STEP_X = 372;
-const STEP_W = 176;
-const STEP_GAP = 16;
-const CHIP_H = 56;
-const HEADER = 22;   // chiều cao phần tên workflow phía trên hàng bước
+// ── CI ─────────────────────────────────────────────────────────────────────
+const ci = group({ x: 20, y: 20, w: 1280, h: 470, label: 'Continuous integration: GitHub Actions on every push and pull request' });
+p.push(ci.svg);
 
-const stepX = (i) => STEP_X + i * (STEP_W + STEP_GAP);
+const trigger = card({ x: 44, y: 190, w: 180, h: 130, title: 'Push or PR', sub: ['to master or', 'a branch'], tone: 'plain' });
+p.push(trigger.svg);
 
-// ── Kích hoạt ───────────────────────────────────────────────────────────────
-const trigger = card({
-  x: 40, y: 308, w: 196, h: 126, iconName: 'github-octocat', iconSize: 32,
-  title: 'Git push', sub: ['or pull request'], tone: 'plain',
-});
-const filter = card({
-  x: 40, y: 472, w: 196, h: 118, iconName: 'github-actions', iconSize: 30,
-  title: 'GitHub Actions', sub: ['branch and path filter'], tone: 'network',
-});
-p.push(trigger.svg, filter.svg);
-p.push(edge([[trigger.box.cx, trigger.box.b], [filter.box.cx, filter.box.y]]));
+const ciYml = group({ x: 270, y: 70, w: 650, h: 200, label: 'ci.yml', stroke: PALETTE.compute.stroke, fill: '#f7f9fd' });
+const secYml = group({ x: 270, y: 290, w: 650, h: 180, label: 'security-scan.yml', stroke: PALETTE.secret.stroke, fill: '#fdf8f6' });
+p.push(ciYml.svg, secYml.svg);
 
-// ── Bảy hàng workflow ───────────────────────────────────────────────────────
-const rows = [
-  {
-    y: 44, name: 'ci-backend.yml', on: 'on backend/**',
-    steps: [
-      { icon: 'jest', label: 'Jest unit tests', tone: 'compute' },
-      { icon: 'eslint', label: 'ESLint', tone: 'compute' },
-      { icon: 'docker', label: ['Gitleaks and', 'Trivy SCA'], tone: 'secret' },
-    ],
-  },
-  {
-    y: 156, name: 'ci-transcoder.yml', on: 'on transcoder/**',
-    steps: [
-      { icon: 'eslint', label: ['ESLint and', 'Gitleaks'], tone: 'compute' },
-      { icon: 'docker', label: ['Docker', 'multi-stage build'], tone: 'plain' },
-      { icon: 'docker', label: 'Trivy image scan', tone: 'secret' },
-      // Hai dòng: một dòng "Push to Amazon ECR" rộng 172px trong chip 176px nên chữ sát viền phải 2px.
-      { icon: 'aws-ecs', label: ['Push to', 'Amazon ECR'], tone: 'storage' },
-      { icon: 'aws-batch', label: ['Register Batch', 'job definition'], tone: 'compute' },
-    ],
-  },
-  {
-    y: 268, name: 'ci-frontend.yml', on: 'on frontend/**',
-    steps: [
-      { icon: 'eslint', label: 'oxlint', tone: 'compute' },
-      { icon: 'vitejs', label: 'Vite build', tone: 'plain' },
-      { icon: 'aws-s3', label: 'Sync to Amazon S3', tone: 'storage' },
-      { icon: 'aws-cloudfront', label: ['Invalidate', 'CloudFront cache'], tone: 'network' },
-    ],
-  },
-  {
-    y: 380, name: 'ci-infra.yml', on: 'on infrastructure/**',
-    steps: [
-      { icon: 'terraform', label: 'terraform fmt', tone: 'plain' },
-      { icon: 'terraform', label: ['terraform validate', 'dev and prod'], tone: 'plain' },
-      { icon: 'docker', label: 'Trivy IaC scan', tone: 'secret' },
-    ],
-  },
-  {
-    y: 504, name: 'security-scan.yml', on: 'on every pull request',
-    steps: [
-      { icon: 'docker', label: 'Gitleaks secrets', tone: 'secret' },
-      { icon: 'docker', label: ['Trivy SCA reports', 'CRITICAL + HIGH'], tone: 'secret' },
-      { icon: 'eslint', label: ['SAST via', 'eslint-plugin-security'], tone: 'secret' },
-    ],
-  },
-  {
-    y: 638, name: 'cd-staging.yml', on: 'on push to develop',
-    steps: [{ icon: 'aws-ec2', label: ['Deploy to the', 'dev environment'], tone: 'network' }],
-  },
-  {
-    y: 750, name: 'cd-deploy.yml', on: 'on merge to main',
-    steps: [
-      { icon: 'aws-systems-manager', label: ['Deploy to EC2', 'via AWS SSM'], tone: 'network' },
-      { icon: 'aws-cloudwatch', label: ['Verify the API', 'answers HTTP 200'], tone: 'network' },
-    ],
-  },
+const CX = [290, 500, 710];
+const check = card({ x: CX[0], y: 110, w: 196, h: 140, title: 'Check', sub: ['lint, typecheck,', '294 unit tests,', 'build'], tone: 'compute' });
+const smoke = card({ x: CX[1], y: 110, w: 196, h: 140, title: 'Image smoke', sub: ['real FFmpeg in', 'the image,', '13 checks'], tone: 'compute' });
+const tf = card({ x: CX[2], y: 110, w: 196, h: 140, title: 'Terraform', sub: ['fmt, validate,', 'Trivy config', 'scan'], tone: 'compute' });
+const leaks = card({ x: CX[0], y: 330, w: 196, h: 125, title: 'Gitleaks', sub: ['secrets in the', 'whole history'], tone: 'secret' });
+const sca = card({ x: CX[1], y: 330, w: 196, h: 125, title: 'Trivy SCA', sub: ['fails on a', 'fixable CRITICAL'], tone: 'secret' });
+const sast = card({ x: CX[2], y: 330, w: 196, h: 125, title: 'SAST', sub: ['eslint-plugin-', 'security rules'], tone: 'secret' });
+p.push(check.svg, smoke.svg, tf.svg, leaks.svg, sca.svg, sast.svg);
+
+const merge = card({ x: 990, y: 190, w: 270, h: 130, title: 'Merge to master', sub: ['after review; the', 'security jobs are', 'required checks'], tone: 'plain' });
+p.push(merge.svg);
+
+p.push(edge([[trigger.box.r, 240], [247, 240], [247, 170], [ciYml.box.x, 170]]));
+p.push(edge([[trigger.box.r, 270], [247, 270], [247, 380], [secYml.box.x, 380]]));
+p.push(edge([[ciYml.box.r, 170], [955, 170], [955, 240], [merge.box.x, 240]]));
+p.push(edge([[secYml.box.r, 380], [955, 380], [955, 270], [merge.box.x, 270]]));
+
+// ── Deployment ─────────────────────────────────────────────────────────────
+const dep = group({ x: 20, y: 520, w: 1280, h: 270, label: 'Deployment: scripts run by the operator, each step approved' });
+p.push(dep.svg);
+
+const steps = [
+  { title: 'Build', sub: ['esbuild bundles', 'of the API and', 'the functions'] },
+  { title: 'Image', sub: ['docker build,', 'push to ECR,', 'tag = commit'] },
+  { title: 'Terraform', sub: ['apply in B, A', 'and Cloudflare', 'with that tag'] },
+  { title: 'Indexes', sub: ['direct invoke', 'of the API:', 'ensure-indexes'] },
+  { title: 'Web files', sub: ['hashed assets,', 'then index.html,', 'invalidate CDN'] },
+  { title: 'E2E smoke', sub: ['Playwright,', '27 tests on', 'production'] },
 ];
-
-for (const row of rows) {
-  // Tên workflow và điều kiện kích hoạt nằm trên một dòng, phía trên hàng bước
-  p.push(text(row.name, STEP_X, row.y + 14, { size: 14, weight: 'bold', anchor: 'start' }));
-  p.push(text(row.on, STEP_X + row.name.length * 8.4 + 14, row.y + 14,
-    { size: 14, anchor: 'start', fill: PALETTE.muted }));
-
-  const chipY = row.y + HEADER;
-  let prev = null;
-  row.steps.forEach((s, i) => {
-    const c = chip({ x: stepX(i), y: chipY, w: STEP_W, h: CHIP_H, iconName: s.icon, label: s.label, tone: s.tone });
-    p.push(c.svg);
-    if (prev) p.push(edge([[prev.box.r, prev.box.cy], [c.box.x, c.box.cy]]));
-    prev = c;
-  });
-  row.firstY = chipY + CHIP_H / 2;
-  row.lastBox = prev.box;
-
-  p.push(edge([[LANE_X, row.firstY], [stepX(0), row.firstY]]));
+const cards = steps.map((s, i) => card({ x: 72 + i * 204, y: 585, w: 184, h: 150, title: s.title, sub: s.sub, tone: i === 5 ? 'network' : 'storage' }));
+p.push(...cards.map((c) => c.svg));
+for (let i = 0; i < cards.length - 1; i++) {
+  p.push(edge([[cards[i].box.r, cards[i].box.cy], [cards[i + 1].box.x, cards[i + 1].box.cy]]));
 }
+p.push(edge([[merge.box.cx, merge.box.b], [merge.box.cx, 505], [28, 505], [28, cards[0].box.cy], [cards[0].box.x, cards[0].box.cy]], { dashed: true }));
 
-// Làn dọc phân nhánh tới mọi workflow
-p.push(edge([[filter.box.r, filter.box.cy], [LANE_X, filter.box.cy]], { arrow: false }));
-p.push(edge([[LANE_X, rows[0].firstY], [LANE_X, rows[rows.length - 1].firstY]], { arrow: false }));
-
-// ── Cổng chất lượng hai tầng ────────────────────────────────────────────────
-const secRow = rows[4];
-const gate = group({
-  x: 1108, y: secRow.y + 4, w: 218, h: 160,
-  label: 'Two-tier quality gate', stroke: PALETTE.secret.stroke, fill: '#fef7f6', dash: '6 4',
-});
-p.push(gate.svg);
-
-const block = chip({
-  x: 1124, y: secRow.y + 38, w: 186, h: 54,
-  label: ['Fixable CRITICAL', 'blocks the merge'], tone: 'secret',
-});
-const report = chip({
-  x: 1124, y: secRow.y + 102, w: 186, h: 54,
-  label: ['Everything else', 'is reported only'], tone: 'plain',
-});
-p.push(block.svg, report.svg);
-p.push(edge([[secRow.lastBox.r, secRow.lastBox.cy], [gate.box.x, secRow.lastBox.cy]]));
-
-p.push(text(
-  ['Failing on every high-severity finding means failing on',
-   'transitive dependencies that have no patch, and a gate',
-   'like that gets ignored. Blocking only where a fix exists',
-   'keeps each failure actionable. Section 5.4 gives the reasoning.'],
-  // Hạ xuống ngang thân thẻ thay vì ngang dòng tên workflow: ở cỡ chữ 14px thì
-  // dòng "on push to develop" và dòng đầu của khối này gần như chạm nhau.
-  626, rows[5].y + 40,
-  { size: 14, anchor: 'start', fill: PALETTE.muted, lineHeight: 18 }));
-
-// Ghi chú cho hai hàng triển khai
-p.push(text('Deployment runs only after every check on the branch has passed.',
-  STEP_X, rows[5].y - 6, { size: 14, anchor: 'start', fill: PALETTE.muted }));
+p.push(text('No workflow holds AWS credentials: deployment runs from the operator’s machine.',
+  40, H - 26, { size: 18.5, anchor: 'start', fill: PALETTE.muted }));
 
 const svg = document_({ width: W, height: H, body: p.join('\n') });
 const out = write('03-cicd-pipeline', svg, 3);
