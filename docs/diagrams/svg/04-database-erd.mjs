@@ -1,138 +1,100 @@
 /**
- * Hình 4.3 — Sơ đồ quan hệ thực thể của mô hình dữ liệu MongoDB.
+ * Hình 4.9 — Các collection nghiệp vụ của MongoDB (api/src/model, api/src/db.ts).
  *
- * Vẽ lại từ `erDiagram` của Mermaid vì bố cục chứ không vì nội dung: Mermaid
- * xếp ba bảng cạnh nhau và lấy chiều cao theo bảng cao nhất, mà VIDEO có hai
- * mươi dòng còn USER chỉ mười bốn và COMMENT sáu, nên gần bốn mươi phần trăm
- * khung hình là khoảng trắng. Khung to hơn nội dung cần thì khi thu vừa trang
- * chữ nhỏ theo, và bản cũ in ra chỉ còn khoảng 4,5pt.
- *
- * Ở đây USER xếp trên COMMENT thành một cột, đối diện VIDEO. Mười bốn cộng sáu
- * dòng gần bằng hai mươi dòng, nên hai cột cao xấp xỉ nhau và gần như không còn
- * khoảng chết.
- *
- * Nội dung giữ nguyên từ bản cũ, kể cả các ghi chú giải thích cột.
+ * Chín collection không vẽ cạnh nối: mười mấy đường quan hệ giữa ba cột sẽ cắt nhau và đè lên
+ * bảng. Thay vào đó cột ghi chú của mỗi khoá ngoại ghi collection mà nó trỏ tới ("→ users"),
+ * và khoá duy nhất ghi đúng tên index trong db.ts. Chỉ liệt kê các trường mà thiết kế bàn tới.
  */
-import { entity, edge, text, document_, write, PALETTE, TYPE } from './render.mjs';
+import { entity, text, document_, write, enableLayoutCheck, PALETTE, TYPE } from './render.mjs';
 
-// Canvas rộng 1300px, xoay ngang nên in ra 247mm, tức 1px là 0,19mm. Chữ nhỏ
-// nhất là nhãn khoá PK/UK ở cỡ mặc định 12px, chỉ in ra 6,46pt. Bề rộng đã kịch
-// trần nên cần gạt còn lại là font. Nâng lên 13,5px thì cột ghi chú tràn ra
-// ngoài viền, vì cột đó bắt đầu ở x+326 nên chỗ còn lại chỉ bằng bề rộng thực
-// thể trừ 326. Nới USER 470 lên 490 và VIDEO 570 lên 600 là vừa, và nới được
-// vì canvas còn lề chưa dùng. Riêng dòng liệt kê bốn trạng thái là chữ hoa,
-// mà chữ hoa rộng hơn chữ thường chừng một phần tư, nên nó cần tới 325px và
-// canvas phải nới từ 1300 lên 1345. Nới canvas thì cỡ chữ in ra tụt nhẹ từ
-// 7,27 xuống 7,05pt, vẫn trên mức nhắm.
-Object.assign(TYPE, {
-  entityKey: 13.5,
-  entityRow: 13.5,
-  edgeLabel: 13.5,
-});
+enableLayoutCheck();
+Object.assign(TYPE, { entityKey: 14.5, entityRow: 14.5, entityName: 17 });
 
-const W = 1345;
-const H = 884;
+const W = 1620;
+const H = 940;
 const p = [];
+const COL_W = 500;
+const OPTS = { w: COL_W, colType: 100, colName: 160, colKey: 40 };
+const X = [40, 560, 1080];
 
-const LEFT = 40;
-const RIGHT = 670;
-const COL_W = 490;
+const user = entity({ ...OPTS, x: X[0], y: 44, name: 'users', tone: 'storage', rows: [
+  { type: 'ObjectId', name: '_id', key: 'PK' },
+  { type: 'string', name: 'email', key: 'UK', note: 'email_unique' },
+  { type: 'string', name: 'handle', key: 'UK', note: '@handle, handle_unique' },
+  { type: 'string', name: 'passwordHash', note: 'bcrypt; null for Google only' },
+  { type: 'string', name: 'googleSub', key: 'UK', note: 'partial unique' },
+  { type: 'boolean', name: 'emailVerified' },
+  { type: 'string', name: 'role', note: 'four roles' },
+  { type: 'number', name: 'tokenVersion', note: 'bump revokes sessions' },
+  { type: 'string', name: 'avatar, banner', note: 'screened images' },
+  { type: 'object', name: 'counters', note: 'subscribers, videos' },
+] });
+const sub = entity({ ...OPTS, x: X[0], y: user.box.b + 40, name: 'subscriptions', tone: 'network', rows: [
+  { type: 'ObjectId', name: 'subscriber', key: 'FK', note: '→ users' },
+  { type: 'ObjectId', name: 'channel', key: 'FK', note: '→ users; pair unique' },
+  { type: 'Date', name: 'createdAt' },
+] });
+const playlist = entity({ ...OPTS, x: X[0], y: sub.box.b + 40, name: 'playlists', tone: 'network', rows: [
+  { type: 'ObjectId', name: '_id', key: 'PK' },
+  { type: 'ObjectId', name: 'owner', key: 'FK', note: '→ users' },
+  { type: 'string', name: 'kind', note: 'custom or watch_later' },
+  { type: 'string', name: 'visibility', note: 'public, unlisted, private' },
+  { type: 'object[]', name: 'items', key: 'FK', note: '→ videos, ordered' },
+] });
 
-// ── USER ────────────────────────────────────────────────────────────────────
-const user = entity({
-  x: LEFT, y: 44, w: COL_W, name: 'USER', tone: 'storage',
-  rows: [
-    { type: 'ObjectId', name: '_id', key: 'PK' },
-    { type: 'string', name: 'username', key: 'UK' },
-    { type: 'string', name: 'email', key: 'UK' },
-    { type: 'string', name: 'password', note: 'bcrypt, select false' },
-    { type: 'string', name: 'googleId', note: 'sub claim, sparse' },
-    { type: 'string', name: 'displayName' },
-    { type: 'string', name: 'avatar' },
-    { type: 'string', name: 'channelDescription' },
-    { type: 'string', name: 'role', note: 'four roles' },
-    { type: 'number', name: 'subscribers' },
-    { type: 'string', name: 'resetPasswordToken', note: 'SHA-256' },
-    { type: 'Date', name: 'resetPasswordExpire' },
-    { type: 'Date', name: 'passwordChangedAt', note: 'invalidates old JWTs' },
-    { type: 'boolean', name: 'emailVerified', note: 'Google counts too' },
-    { type: 'string', name: 'emailVerificationToken', note: 'SHA-256' },
-    { type: 'Date', name: 'emailVerificationExpire', note: '24 hours' },
-    { type: 'Date', name: 'createdAt' },
-    { type: 'Date', name: 'updatedAt' },
-  ],
-});
-p.push(user.svg);
+const video = entity({ ...OPTS, x: X[1], y: 44, name: 'videos', tone: 'compute', rows: [
+  { type: 'ObjectId', name: '_id', key: 'PK' },
+  { type: 'ObjectId', name: 'owner', key: 'FK', note: '→ users' },
+  { type: 'string', name: 'title, tags', note: 'searched with Atlas Search' },
+  { type: 'string', name: 'status', note: 'five lifecycle states' },
+  { type: 'string', name: 'step', note: 'with processingProgress' },
+  { type: 'number', name: 'uploadVersion', note: 'names files and executions' },
+  { type: 'string', name: 'visibility', note: 'public … password' },
+  { type: 'string', name: 'audience', note: 'public or members' },
+  { type: 'number', name: 'minTierLevel', note: 'members-only threshold' },
+  { type: 'Date', name: 'publishAt', note: 'scheduled publication' },
+  { type: 'string', name: 'hlsPath', note: 'master playlist' },
+  { type: 'object[]', name: 'captions, chapters' },
+  { type: 'object', name: 'moderation', note: 'status, source, labels' },
+  { type: 'object', name: 'counters', note: 'views, likes, comments' },
+] });
+const comment = entity({ ...OPTS, x: X[1], y: video.box.b + 40, name: 'comments', tone: 'network', rows: [
+  { type: 'ObjectId', name: '_id', key: 'PK' },
+  { type: 'ObjectId', name: 'video', key: 'FK', note: '→ videos' },
+  { type: 'ObjectId', name: 'author', key: 'FK', note: '→ users' },
+  { type: 'ObjectId', name: 'parent', key: 'FK', note: '→ comments; one level' },
+  { type: 'string', name: 'body', note: 'at most 1000 characters' },
+  { type: 'boolean', name: 'pinned', note: 'replyCount, openReports' },
+] });
 
-// ── COMMENT ─────────────────────────────────────────────────────────────────
-const comment = entity({
-  x: LEFT, y: user.box.b + 54, w: COL_W, name: 'COMMENT', tone: 'network',
-  rows: [
-    { type: 'ObjectId', name: '_id', key: 'PK' },
-    { type: 'ObjectId', name: 'user', key: 'FK' },
-    { type: 'ObjectId', name: 'video', key: 'FK' },
-    { type: 'string', name: 'content' },
-    { type: 'Date', name: 'createdAt' },
-    { type: 'Date', name: 'updatedAt' },
-  ],
-});
-p.push(comment.svg);
+const reaction = entity({ ...OPTS, x: X[2], y: 44, name: 'reactions', tone: 'network', rows: [
+  { type: 'ObjectId', name: 'video', key: 'FK', note: '→ videos' },
+  { type: 'ObjectId', name: 'user', key: 'FK', note: '→ users; pair unique' },
+  { type: 'string', name: 'kind', note: 'like or dislike' },
+] });
+const tier = entity({ ...OPTS, x: X[2], y: reaction.box.b + 40, name: 'membershipTiers', tone: 'secret', rows: [
+  { type: 'ObjectId', name: '_id', key: 'PK' },
+  { type: 'ObjectId', name: 'channel', key: 'FK', note: '→ users' },
+  { type: 'number', name: 'level', key: 'UK', note: 'unique per channel if active' },
+  { type: 'number', name: 'price', note: 'VND, sandbox payment' },
+  { type: 'string[]', name: 'perks', note: 'with name, badge colour' },
+] });
+const member = entity({ ...OPTS, x: X[2], y: tier.box.b + 40, name: 'memberships', tone: 'secret', rows: [
+  { type: 'ObjectId', name: 'member', key: 'FK', note: '→ users' },
+  { type: 'ObjectId', name: 'channel', key: 'FK', note: '→ users; pair unique' },
+  { type: 'ObjectId', name: 'tier', key: 'FK', note: '→ membershipTiers' },
+  { type: 'Date', name: 'expiresAt', note: 'thirty days; cancelled flag' },
+] });
+const daily = entity({ ...OPTS, x: X[2], y: member.box.b + 40, name: 'analyticsDaily', tone: 'storage', rows: [
+  { type: 'ObjectId', name: 'video', key: 'FK', note: '→ videos' },
+  { type: 'string', name: 'date', note: 'one row per video and day' },
+  { type: 'number', name: 'views, watchSeconds' },
+  { type: 'number[]', name: 'retention', note: 'twenty buckets' },
+] });
 
-// ── VIDEO ───────────────────────────────────────────────────────────────────
-const video = entity({
-  x: RIGHT, y: 44, w: 655, name: 'VIDEO', tone: 'compute',
-  rows: [
-    { type: 'ObjectId', name: '_id', key: 'PK' },
-    { type: 'ObjectId', name: 'user', key: 'FK' },
-    { type: 'string', name: 'title' },
-    { type: 'string', name: 'description' },
-    { type: 'string', name: 'category', note: 'enum of 7 categories' },
-    { type: 'string', name: 'status', note: 'UPLOADING, PROCESSING, READY, ERROR' },
-    { type: 'string', name: 'visibility', note: 'public / private / unlisted' },
-    { type: 'string', name: 'rawS3Key' },
-    { type: 'string', name: 'multipartUploadId', note: 'only while uploading' },
-    { type: 'number', name: 'multipartPartSize', note: 'bytes' },
-    { type: 'string', name: 'hlsUrl', note: 'CloudFront master m3u8' },
-    { type: 'string', name: 'thumbnailUrl' },
-    { type: 'number', name: 'duration', note: 'seconds' },
-    { type: 'number', name: 'fileSize', note: 'bytes' },
-    { type: 'string', name: 'mimeType' },
-    { type: 'number', name: 'views' },
-    { type: 'ObjectId[]', name: 'likes', key: 'FK' },
-    { type: 'ObjectId[]', name: 'dislikes', key: 'FK' },
-    { type: 'string[]', name: 'tags' },
-    { type: 'object', name: 'moderation', note: 'verdict, evidence, reviewer' },
-    { type: 'Date', name: 'createdAt' },
-    { type: 'Date', name: 'updatedAt' },
-  ],
-});
-p.push(video.svg);
-
-// ── Quan hệ ─────────────────────────────────────────────────────────────────
-// Ba quan hệ đều là một-nhiều, ký hiệu bằng chữ chứ không bằng chân quạ, vì ở
-// cỡ chữ này chân quạ nhỏ tới mức không phân biệt được khi in.
-//
-// Khe giữa USER và VIDEO chỉ rộng 140px, mà nhãn rộng khoảng 100px. Bản đầu đặt nhãn lên đoạn
-// ngang cuối của mỗi đường, dài 84px, nên nền trắng của nhãn tràn sang bảng bên cạnh và xoá viền của
-// nó. Ở đây mỗi nhãn nằm trên một đoạn dài hơn nhãn và hoàn toàn trong khe: "uploads" trên đoạn
-// ngang dài 120px, "writes" trên đoạn dọc, "has" trên đoạn ngang dài 110px. Ba làn dọc cách nhau đủ
-// để các đường không cắt nhau (xem thứ tự hàng của COMMENT ở trên).
-const LANE_UPLOADS = RIGHT - 20;
-const LANE_WRITES = 600;
-const LANE_HAS = 640;
-
-p.push(edge([[user.box.r, user.rowY(0)], [LANE_UPLOADS, user.rowY(0)], [LANE_UPLOADS, video.rowY(1)], [video.box.x, video.rowY(1)]],
-  { label: 'uploads  1 : N', labelDy: -8, labelAt: 0.5 }));
-
-p.push(edge([[user.box.r, user.rowY(2)], [LANE_WRITES, user.rowY(2)], [LANE_WRITES, comment.rowY(1)], [comment.box.r, comment.rowY(1)]],
-  { label: 'writes  1 : N', labelDy: 4, labelAt: 0.5 }));
-
-p.push(edge([[video.box.x, video.rowY(20)], [LANE_HAS, video.rowY(20)], [LANE_HAS, comment.rowY(2)], [comment.box.r, comment.rowY(2)]],
-  { label: 'has  1 : N', labelDy: -8, labelAt: 0.5 }));
-
-p.push(text(
-  ['PK primary key  ·  UK unique key  ·  FK foreign key  ·  [] array of references'],
-  LEFT, H - 22, { size: 13.5, anchor: 'start', fill: PALETTE.muted }));
+p.push(user.svg, sub.svg, playlist.svg, video.svg, comment.svg, reaction.svg, tier.svg, member.svg, daily.svg);
+p.push(text('PK primary key  ·  UK unique index  ·  FK reference; the note names the referenced collection',
+  40, H - 24, { size: 15, anchor: 'start', fill: PALETTE.muted }));
 
 const svg = document_({ width: W, height: H, body: p.join('\n') });
 const out = write('04-database-erd', svg, 3);

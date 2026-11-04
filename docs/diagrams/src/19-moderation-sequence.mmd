@@ -3,36 +3,38 @@ sequenceDiagram
     autonumber
     actor User as Viewer or owner
     actor Op as Operator
-    participant API as Backend API
+    participant API as API function
     participant DB as MongoDB
-    participant Job as Transcoding job
+    participant Job as Analyse job
     participant Rek as Rekognition
+    participant St as status function
 
     Job->>Job: 1 frame per 5 s,<br/>at most 120
-    Job->>Rek: Image moderation,<br/>3 at a time
+    Job->>Rek: DetectModerationLabels,<br/>4 at a time
     Rek-->>Job: Labels, confidence
-    Job->>Job: Policy: approved,<br/>flagged, blocked
-    Job->>DB: READY and verdict,<br/>one conditional write
-    Note over DB,Job: Flagged, blocked:<br/>in no listing
+    Job->>Job: Policy: approved,<br/>review or removed
+    Job-->>St: Result in the work bucket,<br/>read by Publish
+    St->>DB: READY with the verdict
+    Note over DB,St: Review and removed:<br/>in no listing
 
     opt A viewer reports
-        User->>API: POST /videos/:id/<br/>report
-        API->>DB: Report, one open<br/>per viewer
+        User->>API: POST /v1/videos/:id/report
+        API->>DB: Report, one open<br/>per viewer, recount
     end
 
-    Op->>API: GET /admin/videos
-    API-->>Op: Review queue
-    Op->>API: PATCH .../moderation,<br/>decision, reason
-    API->>DB: Snapshot verdict once,<br/>set verdict, close reports
-    API->>DB: Append<br/>ModerationEvent
+    Op->>API: GET /v1/admin/queue
+    API-->>Op: Held and reported videos
+    Op->>API: POST .../decision,<br/>decision and reason code
+    API->>DB: Keep the machine verdict,<br/>apply, close reports
+    API->>DB: Append a<br/>moderation event
 
-    opt Owner appeals a removal
-        User->>API: POST /videos/:id/<br/>appeal
-        API->>DB: Appeal, one<br/>per decision
-        Op->>API: PATCH /admin/<br/>appeals/:id
+    opt Owner appeals
+        User->>API: POST /v1/videos/:id/appeal
+        API->>DB: Appeal, one open<br/>per video
+        Op->>API: POST /v1/admin/<br/>appeals/:id/decision
         alt Upheld
-            API->>DB: Approve:<br/>video restored
+            API->>DB: Approve: restored
         else Rejected
-            API->>DB: Removal kept
+            API->>DB: Decision kept
         end
     end

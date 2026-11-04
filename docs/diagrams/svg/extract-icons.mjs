@@ -21,7 +21,7 @@ const WANTED = [
   'aws', 'aws-s3', 'aws-sqs', 'aws-lambda', 'aws-batch', 'aws-fargate',
   'aws-cloudfront', 'aws-ec2', 'aws-secrets-manager', 'aws-cloudwatch',
   'aws-eventbridge', 'aws-sns', 'aws-iam', 'aws-vpc', 'aws-glacier',
-  'aws-ecs', 'aws-systems-manager',
+  'aws-ecs', 'aws-systems-manager', 'aws-step-functions', 'aws-dynamodb', 'aws-kms', 'aws-xray',
   // Ngoài AWS
   'mongodb', 'react', 'nodejs', 'docker', 'terraform', 'github-actions',
   'github-octocat', 'ffmpeg', 'cloudflare', 'jest', 'eslint', 'nginx',
