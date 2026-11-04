@@ -12,9 +12,9 @@ while building the system and how each was solved, and ends with the automated t
 The whole system lives in one repository organised as npm workspaces, so that a change to a
 contract shared by two parts is made, type-checked and tested in one commit.
 Table~\ref{tab:workspaces} lists the workspaces and where each one runs. Every workspace except
-\texttt{infra} is written in TypeScript and runs on Node.js~22; each deployable part is bundled into
+\name{infra} is written in TypeScript and runs on Node.js~22; each deployable part is bundled into
 a single file with esbuild, so a Lambda package or the container image carries no
-\texttt{node\_modules} folder.
+\name{node\_modules} folder.
 
 \begin{table}[H]
 \centering
@@ -25,18 +25,18 @@ a single file with esbuild, so a Lambda package or the container image carries n
 \toprule
 \textbf{WORKSPACE} & \textbf{CONTENT} & \textbf{RUNS ON} \\
 \midrule
-\texttt{shared} & Contracts between producer and consumer (zod schemas of events, job inputs and object metadata), video states and their allowed transitions, the bitrate ladder, the chunk planner, playlist writing and stitching, the moderation label policy & Imported by every other part; never deployed alone \\
-\texttt{transcoder} & The four container roles \texttt{analyse}, \texttt{encode}, \texttt{audio} and \texttt{chunk}, the FFmpeg argument builder, the process runner and the encode guard & AWS Batch on Fargate \\
-\texttt{functions} & \texttt{starter}, \texttt{probe}, \texttt{status}, \texttt{stitch}, \texttt{notifier}, \texttt{rollup} and \texttt{reconciler} & AWS Lambda \\
-\texttt{api} & The REST API: Express~5 application, features, services and models & AWS Lambda behind a Function URL \\
-\texttt{web} & React~19 single-page application built with Vite, the hls.js player, vanilla CSS & S3 and CloudFront \\
-\texttt{e2e} & Playwright tests of the web application against a running environment & The developer's machine \\
-\texttt{infra} & Terraform modules and environments, the Cloudflare Worker & AWS accounts B and A, Cloudflare \\
+\name{shared} & Contracts between producer and consumer (zod schemas of events, job inputs and object metadata), video states and their allowed transitions, the bitrate ladder, the chunk planner, playlist writing and stitching, the moderation label policy & Imported by every other part; never deployed alone \\
+\name{transcoder} & The four container roles \name{analyse}, \name{encode}, \name{audio} and \name{chunk}, the FFmpeg argument builder, the process runner and the encode guard & AWS Batch on Fargate \\
+\name{functions} & \name{starter}, \name{probe}, \name{status}, \name{stitch}, \name{notifier}, \name{rollup} and \name{reconciler} & AWS Lambda \\
+\name{api} & The REST API: Express~5 application, features, services and models & AWS Lambda behind a Function URL \\
+\name{web} & React~19 single-page application built with Vite, the hls.js player, vanilla CSS & S3 and CloudFront \\
+\name{e2e} & Playwright tests of the web application against a running environment & The developer's machine \\
+\name{infra} & Terraform modules and environments, the Cloudflare Worker & AWS accounts B and A, Cloudflare \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
-The \texttt{shared} package is what keeps the event-driven parts consistent. The starter function
+The \name{shared} package is what keeps the event-driven parts consistent. The starter function
 validates an S3 event against the same schema that the API used when it wrote the object metadata,
 and the status function accepts a progress event only if it matches the schema that the container
 used to emit it. A field renamed on one side therefore fails the type check of the other side before
@@ -51,11 +51,11 @@ it can fail in production.
 The seven functions are small and each has its own role with only the permissions it needs. The
 starter turns each record of an SQS batch into one Step Functions execution named after the video and
 its upload version, and reports only the failed records back to SQS, so one bad message does not make
-the whole batch return to the queue. The probe function runs \texttt{ffprobe} from a Lambda layer
-that holds a static build of the tool, plans the job with the functions of \texttt{shared} and stores
+the whole batch return to the queue. The probe function runs \name{ffprobe} from a Lambda layer
+that holds a static build of the tool, plans the job with the functions of \name{shared} and stores
 the plan in the work bucket; the state machine receives only a summary, which keeps the execution
 history small. The status function is the only writer of processing state: it moves a video through
-\texttt{PROCESSING}, \texttt{READY} or \texttt{ERROR}, folds progress events from the two parallel
+\status{processing}, \status{ready} or \status{error}, folds progress events from the two parallel
 branches into one percentage that never goes backwards, and announces a published video exactly once.
 The stitch function joins the chunk playlists and writes every media playlist before the master
 playlist, as Section~\ref{sec:hls-output} requires. The last three functions serve the API: the
@@ -69,10 +69,10 @@ upload never finished.
 The four roles share one container image built in stages. The build stage bundles the entry points;
 the runtime stage holds only Node.js, a static FFmpeg build and the bundle, runs as a non-root user and
 measures 136~MB compressed. Both base images are pinned by digest, so two builds of the same commit
-produce the same image. \texttt{ffprobe} is left out of the runtime image because probing runs in
+produce the same image. \name{ffprobe} is left out of the runtime image because probing runs in
 Lambda. Every Fargate task pulls the image before it starts, and pulling dominates the start-up time
 of a container~\cite{coldstart2023}, so its size bears directly on how quickly a job begins. A separate
-\texttt{smoke} stage adds \texttt{ffprobe} and a test program on top of the runtime stage; it is used
+\name{smoke} stage adds \name{ffprobe} and a test program on top of the runtime stage; it is used
 only by the delivery pipeline of Section~\ref{sec:cicd}, and because the runtime stage is the last one
 in the file, a build without an explicit target can never ship the test tools.
 
@@ -103,13 +103,13 @@ healthy job.
 \section{API and Web Application}
 \label{sec:backend-impl}
 
-The API is one Express~5 application adapted to Lambda with \texttt{serverless-express}. It is
+The API is one Express~5 application adapted to Lambda with \name{serverless-express}. It is
 organised by feature: authentication, uploads, videos, community, channels, library, studio,
 discovery and moderation each register their own routes, and reach storage, the CDN signer, mail, the
 scheduler, image screening and search through service interfaces. In production these interfaces are
 backed by AWS and Atlas; in the tests they are backed by in-memory implementations, which lets a test
 run a whole route without the network. Every request body is validated with a zod schema, and every
-error leaves the API in the shape \texttt{\{error:\{code,message\}\}} of Section~\ref{sec:api-design}.
+error leaves the API in the shape \mbox{\texttt{\{error:\{code,message\}\}}} of Section~\ref{sec:api-design}.
 The rule that decides whether a user may see or play a video is one function, called by every route
 that exposes a video, its comments, its playlist or its key.
 
@@ -124,9 +124,9 @@ trusts the client address in \texttt{CF-Connecting-IP} only on such requests.
 The web application is written in React~19 with React Router and i18next for its two languages.
 Styling uses vanilla CSS with custom properties for the light and dark themes, without a utility
 framework. Two parts of its client code carry most of the robustness. The HTTP client retries a
-request that receives \texttt{429} or \texttt{503} up to three times, after about 0.5, 1 and 2~seconds
+request that receives 429 or 503 up to three times, after about 0.5, 1 and 2~seconds
 with random jitter, and follows a \texttt{Retry-After} header capped at ten seconds; a retry is safe
-even for a \texttt{POST}, because both answers are given before any handler runs. The upload client
+even for a POST, because both answers are given before any handler runs. The upload client
 sends the parts of a multipart upload, retries a failed part with a newly signed URL, and stops at once
 when the viewer cancels.
 
@@ -134,13 +134,13 @@ when the viewer cancels.
 \label{sec:iac}
 
 All cloud resources are described with Terraform in eleven modules, listed in
-Table~\ref{tab:terraform-modules}, and three environments. The \texttt{shared} environment holds what
-every environment uses once: the VPC and the image registry. The \texttt{staging} and \texttt{prod}
-environments compose the modules with their own names (prefix \texttt{zelos-staging} or
-\texttt{zelos-prod}), capacity ceilings and hosts. Each environment keeps its state in its own key of
+Table~\ref{tab:terraform-modules}, and three environments. The \name{shared} environment holds what
+every environment uses once: the VPC and the image registry. The \name{staging} and \name{prod}
+environments compose the modules with their own names (prefix \name{zelos-staging} or
+\name{zelos-prod}), capacity ceilings and hosts. Each environment keeps its state in its own key of
 an S3 bucket, with a DynamoDB table as lock, so two applies can never write the same state at once.
-Every resource carries the tags \texttt{Project}, \texttt{Stack}, \texttt{Environment} and
-\texttt{ManagedBy}.
+Every resource carries the tags \name{Project}, \name{Stack}, \name{Environment} and
+\name{ManagedBy}.
 
 \begin{table}[H]
 \centering
@@ -151,25 +151,25 @@ Every resource carries the tags \texttt{Project}, \texttt{Stack}, \texttt{Enviro
 \toprule
 \textbf{MODULE} & \textbf{RESPONSIBILITY} \\
 \midrule
-\texttt{network}  & One VPC with public subnets and a free S3 gateway endpoint, so no NAT gateway is billed while idle \\
-\texttt{ecr}      & Registry of the transcoder image, with scanning on push \\
-\texttt{storage}  & The raw, processed, work and keys buckets of one environment, their encryption, lifecycle rules and access blocks \\
-\texttt{ingest}   & The S3 event notification, the ingest queue and its dead letter queue with an alarm on the first message \\
-\texttt{events}   & The EventBridge bus for pipeline events and the SNS topic for operator alerts \\
-\texttt{kv}       & The five DynamoDB on-demand tables of Table~\ref{tab:kv-tables}, with time-to-live \\
-\texttt{batch}    & The Fargate Spot and On-Demand compute environments, the \texttt{main} and \texttt{bulk} queues and the four job definitions \\
-\texttt{workflow} & The state machine, the starter, probe, status and stitch functions, the ffprobe layer and one role per function \\
-\texttt{app}      & The API function and its Function URL, the notifier, roll-up and reconciler, and the scheduler group for scheduled publishing \\
-\texttt{cdn}      & The media distribution in account A, its Origin Access Control, signing key group, cache and header policies, certificate and DNS record \\
-\texttt{web}      & The private bucket and distribution that host the web application, with the rewrite that serves the single-page routes \\
+\name{network}  & One VPC with public subnets and a free S3 gateway endpoint, so no NAT gateway is billed while idle \\
+\name{ecr}      & Registry of the transcoder image, with scanning on push \\
+\name{storage}  & The raw, processed, work and keys buckets of one environment, their encryption, lifecycle rules and access blocks \\
+\name{ingest}   & The S3 event notification, the ingest queue and its dead letter queue with an alarm on the first message \\
+\name{events}   & The EventBridge bus for pipeline events and the SNS topic for operator alerts \\
+\name{kv}       & The five DynamoDB on-demand tables of Table~\ref{tab:kv-tables}, with time-to-live \\
+\name{batch}    & The Fargate Spot and On-Demand compute environments, the \name{main} and \name{bulk} queues and the four job definitions \\
+\name{workflow} & The state machine, the starter, probe, status and stitch functions, the ffprobe layer and one role per function \\
+\name{app}      & The API function and its Function URL, the notifier, roll-up and reconciler, and the scheduler group for scheduled publishing \\
+\name{cdn}      & The media distribution in account A, its Origin Access Control, signing key group, cache and header policies, certificate and DNS record \\
+\name{web}      & The private bucket and distribution that host the web application, with the rewrite that serves the single-page routes \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
 The split between the two AWS accounts is expressed with provider aliases rather than duplicated
 code. An environment declares one provider for account B, one for account A and one for account A in
-\texttt{us-east-1}, where CloudFront certificates must be issued, plus the Cloudflare provider for DNS.
-The \texttt{cdn} and \texttt{web} modules receive the account A providers, while the buckets they read
+\name{us-east-1}, where CloudFront certificates must be issued, plus the Cloudflare provider for DNS.
+The \name{cdn} and \name{web} modules receive the account A providers, while the buckets they read
 stay in account B. The transcoder image is selected with a variable that holds the commit of the image
 and has no default value, so a production apply cannot fall back to an untested image.
 
@@ -178,10 +178,10 @@ and has no default value, so a production apply cannot fall back to an untested 
 
 Two GitHub Actions workflows check every push and pull request, as shown in the upper part of
 Figure~\ref{fig:cicd}. The first lints all workspaces, type-checks them, runs the unit tests and builds
-every deployable part; it then builds the \texttt{smoke} stage of the image and runs real FFmpeg in it,
+every deployable part; it then builds the \name{smoke} stage of the image and runs real FFmpeg in it,
 and checks the formatting and validity of the Terraform code without access to any account. The second
 is the security gate: Gitleaks scans the whole history for secrets, Trivy scans the dependencies and
-\texttt{eslint-plugin-security} analyses the code statically. The security jobs are required checks of
+\name{eslint-plugin-security} analyses the code statically. The security jobs are required checks of
 the rule that protects the main branch, so a pull request cannot be merged while one of them fails.
 
 \begin{figure}[htbp]
@@ -214,7 +214,7 @@ as its tag; Terraform applies the environment with that tag; the maintenance act
 indexes; and the web files are uploaded, hashed assets first and the entry page last, so the new
 entry page never refers to a file that is not there yet, after which the distribution is invalidated.
 The end-to-end tests of Section~\ref{sec:testing} then run against the deployed environment. A change
-is applied to \texttt{staging} and checked there before it is applied to \texttt{prod}.
+is applied to \name{staging} and checked there before it is applied to \name{prod}.
 
 \section{Challenges During Development}
 \label{sec:challenges}
@@ -264,8 +264,8 @@ Git on Windows checked the public key out with CRLF line ends, which Terraform s
 Account B, which holds the compute and storage, is not permitted to create CloudFront distributions.
 The two distributions, their certificates and their signing keys therefore live in account A, while
 every bucket stays in account B. Only the account that owns a bucket can attach its policy, so the
-\texttt{cdn} and \texttt{web} modules do not write the policy themselves: they return the policy
-statement that grants read access to their distribution, and the \texttt{storage} module of account B
+\name{cdn} and \name{web} modules do not write the policy themselves: they return the policy
+statement that grants read access to their distribution, and the \name{storage} module of account B
 attaches it. The statement names the CloudFront service with a condition on the ARN of the
 distribution, which works whichever account owns the distribution. The processed bucket accepts no
 other reader, so a segment can be fetched only through the signed distribution.
@@ -277,7 +277,7 @@ The free Atlas cluster limits concurrent requests and operations per second
 it first ran before each instance served its first request. Under a burst of uploads, however, the
 reserved concurrency of the API let dozens of instances start together, each sending its index
 commands to the cluster at the same moment; the cluster refused them as too many concurrent requests,
-start-up passed its timeout and the uploads that reached those instances received \texttt{502}.
+start-up passed its timeout and the uploads that reached those instances received 502.
 Indexes change only when the API code changes, so they are now created by a maintenance action that
 deployment invokes directly. The action cannot be reached through the Function URL: the API accepts it
 only from a direct invocation, which needs an IAM permission that only the operator holds.
@@ -306,7 +306,7 @@ End-to-end & 27 tests in 6 files & The deployed web application and API through 
 \end{tabularx}
 \end{table}
 
-Table~\ref{tab:test-coverage} groups the unit tests by workspace. The \texttt{shared} workspace holds
+Table~\ref{tab:test-coverage} groups the unit tests by workspace. The \name{shared} workspace holds
 the largest share because the decisions that affect every video are made there: which rungs a source
 receives, how a long video is cut into chunks, how playlists are written and when chunks may be
 joined.
@@ -320,11 +320,11 @@ joined.
 \toprule
 \textbf{WORKSPACE} & \textbf{TESTS} & \textbf{FOCUS} \\
 \midrule
-\texttt{shared} & 99 & The ladder bounded by the source, with portrait and very small sources, and the reduced ladder for long single jobs; frame rates, rotation and sample aspect ratio read from probe data, and the conditions that keep a video on the single path; chunk plans whose windows meet exactly, including 48 chunks for a 4-hour video at 30~fps and a 48-hour video under the array limit; playlists with the peak bandwidth rounded up and codec strings read from the stream; the stitch checks of Section~\ref{sec:chunked-design}; the label policy; progress folding; the event contracts \\
-\texttt{transcoder} & 27 & FFmpeg arguments: one decode, the same key frame rules on every rung, capped CRF with the rung's buffer, chunk seeks half a frame early and audio without repeated packets; the exit codes that Batch retries or not; the encode guard; preview sprites \\
-\texttt{functions} & 31 & One execution per upload version and none for a duplicate event; state changes of the status function, including publishing once, scheduled publishing and failure alerts; the order of playlist writes; notifications within the daily mail cap; the hourly roll-up and the draft clean-up \\
-\texttt{api} & 109 & Registration, sign-in, password rules and the Google account rule; the origin secret, client addresses and rate limits; uploads by pre-signed POST and multipart, with exact part sizes; the access rule for every visibility and moderation state; the key returned as 16 raw bytes; views after 30~seconds; comments, reactions, subscriptions and memberships with recounted counters; playlists and history; captions, chapters and schedules; search folding Vietnamese letters; reports, decisions, appeals, audit samples and roles \\
-\texttt{web} & 28 & Retries with back-off and \texttt{Retry-After}; multipart upload with part retries and cancel; the 30-second view rule on real playback only; the signed policy added to CDN addresses and never to API calls; chapters, timestamps and preview thumbnails \\
+\name{shared} & 99 & The ladder bounded by the source, with portrait and very small sources, and the reduced ladder for long single jobs; frame rates, rotation and sample aspect ratio read from probe data, and the conditions that keep a video on the single path; chunk plans whose windows meet exactly, including 48 chunks for a 4-hour video at 30~fps and a 48-hour video under the array limit; playlists with the peak bandwidth rounded up and codec strings read from the stream; the stitch checks of Section~\ref{sec:chunked-design}; the label policy; progress folding; the event contracts \\
+\name{transcoder} & 27 & FFmpeg arguments: one decode, the same key frame rules on every rung, capped CRF with the rung's buffer, chunk seeks half a frame early and audio without repeated packets; the exit codes that Batch retries or not; the encode guard; preview sprites \\
+\name{functions} & 31 & One execution per upload version and none for a duplicate event; state changes of the status function, including publishing once, scheduled publishing and failure alerts; the order of playlist writes; notifications within the daily mail cap; the hourly roll-up and the draft clean-up \\
+\name{api} & 109 & Registration, sign-in, password rules and the Google account rule; the origin secret, client addresses and rate limits; uploads by pre-signed POST and multipart, with exact part sizes; the access rule for every visibility and moderation state; the key returned as 16 raw bytes; views after 30~seconds; comments, reactions, subscriptions and memberships with recounted counters; playlists and history; captions, chapters and schedules; search folding Vietnamese letters; reports, decisions, appeals, audit samples and roles \\
+\name{web} & 28 & Retries with back-off and \texttt{Retry-After}; multipart upload with part retries and cancel; the 30-second view rule on real playback only; the signed policy added to CDN addresses and never to API calls; chapters, timestamps and preview thumbnails \\
 \bottomrule
 \end{tabularx}
 \end{table}

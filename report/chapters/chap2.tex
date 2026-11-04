@@ -75,7 +75,7 @@ Chapter~\ref{chap:conclusion}.
 A serverless container runs a container image without the developer provisioning or managing the
 virtual machines underneath, and is billed for the time it runs rather than for capacity kept
 available. AWS Fargate provides this model, and AWS Batch can schedule jobs onto it through compute
-environments of type \texttt{FARGATE} or \texttt{FARGATE\_SPOT}~\cite{awsbatchfargate}. Spot
+environments of type \status{fargate} or \status{fargate\_spot}~\cite{awsbatchfargate}. Spot
 capacity uses spare AWS capacity at a lower price and may be reclaimed; this project therefore
 places a Spot environment first and an On-Demand environment second behind the same job queue, so
 that jobs run on Spot whenever it is available and overflow to On-Demand otherwise.

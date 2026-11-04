@@ -149,7 +149,7 @@ each target against the measurements of Chapter~\ref{chap:evaluation}.
 \midrule
 NFR-01 & Playback start & Through the CDN, the first frame appears within one second at the 95th percentile once the files are cached, and playback starts within three seconds on an unthrottled connection without stalling. \\
 NFR-02 & Processing time & A video of up to ten minutes is ready within three minutes after its upload completes, and a four-hour video within one hour. \\
-NFR-03 & Burst load & One hundred simultaneous uploads lose no work: every upload the API accepts reaches \texttt{READY}, and an upload refused under overload receives a status the client can retry. \\
+NFR-03 & Burst load & One hundred simultaneous uploads lose no work: every upload the API accepts reaches \status{ready}, and an upload refused under overload receives a status the client can retry. \\
 NFR-04 & Idle cost & No compute runs and none is billed while nothing is being processed. \\
 NFR-05 & API latency & A warm API answers within 300~ms at the median and serves 80 concurrent requests without errors. \\
 NFR-06 & Content security & Segments, playlists and keys of a video are unreachable without a grant for that video, even to someone who knows their addresses. \\
@@ -517,7 +517,7 @@ Requirements & FR-03, FR-04, FR-06 \\
 Precondition & The creator is signed in with a verified address. \\
 Main flow &
   1. The creator selects a file and chooses the title, description and visibility. \newline
-  2. The client sends the name, size and type of the file; the server creates the video in state \texttt{UPLOADING} and returns a grant valid for fifteen minutes that fixes the storage key, the size and the metadata. \newline
+  2. The client sends the name, size and type of the file; the server creates the video in state \status{uploading} and returns a grant valid for fifteen minutes that fixes the storage key, the size and the metadata. \newline
   3. The browser sends the file directly to Amazon S3 and shows progress, speed and remaining time. \newline
   4. The arrival of the file in S3 starts processing (UC-15); the client's completion call only records when the upload ended. \newline
   5. The studio shows the video with the current step and progress until it is ready. \\
@@ -575,7 +575,7 @@ Requirements & FR-08 \\
 Precondition & The creator owns the video, and it is not yet public. \\
 Main flow &
   1. The creator chooses a date and time. \newline
-  2. The server creates a one-time schedule for that moment; a video already processed becomes \texttt{SCHEDULED}. \newline
+  2. The server creates a one-time schedule for that moment; a video already processed becomes \status{scheduled}. \newline
   3. At that moment the schedule fires, and the video becomes public and ready, which notifies the subscribers. \\
 Alternative flows &
   1a. The time is less than five minutes or more than a year ahead: the server answers 400. \newline
@@ -634,10 +634,10 @@ Main flow &
 Alternative flows &
   2a. The same event arrives twice: the second execution is refused by name, and nothing more happens. \newline
   4a. A job fails for a reason that may pass, such as a reclaimed Spot task: it is retried, up to three attempts. \newline
-  4b. A job fails for a reason that another attempt cannot fix, such as an unreadable source: the video becomes \texttt{ERROR} with the reason, the owner is told once, and an alert is sent. \newline
+  4b. A job fails for a reason that another attempt cannot fix, such as an unreadable source: the video becomes \status{error} with the reason, the owner is told once, and an alert is sent. \newline
   4c. The screening cannot run: the video is held for review. \newline
   5a. The screening removes the video or holds it: it is not listed, and its owner may appeal. \\
-Postcondition & The video is \texttt{READY} or \texttt{SCHEDULED} with a moderation result, or \texttt{ERROR}. \\
+Postcondition & The video is \status{ready} or \status{scheduled} with a moderation result, or \status{error}. \\
 \bottomrule
 \end{tabularx}
 \end{table}

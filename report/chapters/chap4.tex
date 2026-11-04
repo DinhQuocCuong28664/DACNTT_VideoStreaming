@@ -46,9 +46,9 @@ for each one to finish (step 11).
 The third tier is the serverless compute. AWS Batch runs every job as a container on AWS Fargate
 (step 12), which reads the source (step 13) and writes the HLS package to the processed bucket
 (step 14). The containers hold no database credentials. They report progress as events on an Amazon
-EventBridge bus (step 15), and a single function, \texttt{status}, turns workflow states and progress
+EventBridge bus (step 15), and a single function, \name{status}, turns workflow states and progress
 events into the processing fields of the video (steps 16 and 17). The fourth tier handles what
-follows publication: when a video is published, the \texttt{notifier} function writes a notification
+follows publication: when a video is published, the \name{notifier} function writes a notification
 for each subscriber (step 18), and a failed video raises an alert on Amazon SNS (step 19).
 
 Delivery closes the loop. The media distribution reads the processed bucket through Origin Access
@@ -73,17 +73,17 @@ the CDN caches segments and every viewer shares the same cached copies.
 \subsection{Ingest and Idempotency}
 \label{sec:ingest}
 
-The upload grant fixes where the source is stored and attaches three metadata fields: the video, the
-upload version and the owner. The storage key is
-\texttt{raw/\allowbreak\{videoId\}/\allowbreak\{uploadVersion\}/\allowbreak source}. A single POST
+\mbox{\texttt{raw/\{videoId\}/\{uploadVersion\}/source}} is the object key that the upload grant
+fixes for the source; the grant also attaches three metadata fields: the video, the upload version
+and the owner. A single POST
 request carries files up to 5~GiB; larger files use a multipart upload that the API opened with the
 same key and metadata, so the browser only sends parts and the API completes the upload from the part
 list that S3 itself keeps. Either way, the event that starts processing is the creation of the
 object, so a lost browser request cannot leave an uploaded file unprocessed.
 
 The starter never parses the key. It reads the metadata of the object, validates it against a schema
-shared with the API, and starts an execution named \texttt{\{videoId\}-\allowbreak\{uploadVersion\}}. Step
-Functions refuses a second execution with the same name~\cite{awsstepfunctions}, so when SQS delivers
+shared with the API, and starts an execution named after the video and its upload version. The name,
+\mbox{\texttt{\{videoId\}-\{uploadVersion\}}}, is what makes a duplicate harmless: Step Functions refuses a second execution with the same name~\cite{awsstepfunctions}, so when SQS delivers
 the same event twice, as an at-least-once queue may, the second delivery finds the execution already
 started and does nothing. This makes the whole pipeline idempotent without a table of processed
 events. A message that keeps failing moves to a dead-letter queue after three receives.
@@ -92,9 +92,9 @@ events. A message that keeps failing moves to a dead-letter queue after three re
 \label{sec:state-machine}
 
 Figure~\ref{fig:state-machine} shows the state machine with the names of its states as defined in
-the infrastructure code. \texttt{MarkProcessing} sets the video to \texttt{PROCESSING}, creates its
+the infrastructure code. \name{MarkProcessing} sets the video to \status{processing}, creates its
 encryption key and confirms that the video still exists; if the owner deleted it in the meantime,
-the execution ends in \texttt{Gone} without doing any work. \texttt{Probe} runs ffprobe in a Lambda
+the execution ends in \name{Gone} without doing any work. \name{Probe} runs ffprobe in a Lambda
 function and returns the plan: the streams, the display size after rotation, the frame rate, the
 rungs of the ladder, the path and, for a long video, the chunk plan.
 
@@ -106,13 +106,13 @@ rules}}
 \label{fig:state-machine}
 \end{figure}
 
-\texttt{Process} is a parallel state with two branches that run at the same time. The first branch
-is \texttt{Analyse}, a Batch job that samples frames for moderation and makes the thumbnail and the
+\name{Process} is a parallel state with two branches that run at the same time. The first branch
+is \name{Analyse}, a Batch job that samples frames for moderation and makes the thumbnail and the
 seek-preview images. The second branch encodes. A video shorter than five minutes, or one that cannot
-be split safely, goes to \texttt{Encode}, one job that writes every rung. A longer video goes to the
-chunked path: \texttt{Audio}, when the source has audio, then \texttt{Chunks}, an array job, then
-\texttt{Stitch}. When both branches have finished, \texttt{Publish} checks that the master playlist
-exists and sets the video to \texttt{READY}, or \texttt{SCHEDULED} when its publication time is still
+be split safely, goes to \name{Encode}, one job that writes every rung. A longer video goes to the
+chunked path: \name{Audio}, when the source has audio, then \name{Chunks}, an array job, then
+\name{Stitch}. When both branches have finished, \name{Publish} checks that the master playlist
+exists and sets the video to \status{ready}, or \status{scheduled} when its publication time is still
 ahead, together with the result of the screening.
 
 Failures are handled in two layers. First, each task retries the errors that may pass on their own:
@@ -121,7 +121,7 @@ the wait, and a Batch task retries a rejected submission up to five times. Every
 has three attempts, so a Spot task reclaimed by AWS is simply run again. An error that another
 attempt cannot fix, such as an unreadable source, makes the container exit with code 3, which Batch
 treats as final. Second, whatever is left after the retries is caught: every task state, and the parallel
-state as a whole, has a \texttt{Catch} that leads to \texttt{MarkFailed}, which sets the video to \texttt{ERROR}
+state as a whole, has a \name{Catch} that leads to \name{MarkFailed}, which sets the video to \status{error}
 with the reason, tells the owner once, sends an alert and removes the temporary files. An execution
 also has a timeout of 24 hours, queue time included, so no video can stay in processing forever.
 
@@ -130,8 +130,8 @@ also has a timeout of 24 hours, queue time included, so no video can stay in pro
 
 All jobs use one container image built from a slim Node.js base and a pinned static build of
 FFmpeg, with one job definition per role. Table~\ref{tab:compute-roles} lists the roles. Two queues
-share the Spot and On-Demand environments: \texttt{main}, with priority 10, for analysis, single
-encodes and audio, and \texttt{bulk}, with priority 1, for chunks, so that a short video uploaded
+share the Spot and On-Demand environments: \name{main}, with priority 10, for analysis, single
+encodes and audio, and \name{bulk}, with priority 1, for chunks, so that a short video uploaded
 while a long one is being processed does not wait behind dozens of chunks.
 
 \begin{table}[H]
@@ -166,7 +166,7 @@ Section~\ref{sec:chunked-design} explains.
 \label{sec:hls-output}
 
 Every upload version has its own folder in the processed bucket, so a retry never mixes the files of
-two runs and one signed policy for \texttt{videos/\{videoId\}/*} covers every version of a video.
+two runs and one signed policy for \mbox{\texttt{videos/\{videoId\}/*}} covers every version of a video.
 Figure~\ref{fig:hls-output} shows what the folder contains and which tags live in which playlist.
 
 % Xoay ngang: đặt vừa bề rộng vùng chữ thì chữ dưới 6,2pt khi in.
@@ -370,7 +370,7 @@ after it checks access. Figure~\ref{fig:playback-sequence} shows how a player pa
 \label{fig:playback-sequence}
 \end{figure}
 
-\texttt{MarkProcessing} creates a random 16-byte key and an explicit initialisation vector for each
+\name{MarkProcessing} creates a random 16-byte key and an explicit initialisation vector for each
 upload version and stores the key in a separate, private, encrypted bucket that only the transcoder
 and the API can read; the workflow passes only a reference, so the key never appears in the
 execution history or the logs. When a player asks to play a video, the API applies one access rule,
@@ -378,7 +378,7 @@ the same function that also decides what the watch page shows: the owner and sta
 strangers learn nothing about private or unready videos, removed and held videos return 403, a
 password-protected video needs an unlock token, and a members-only video needs a membership of a high
 enough tier. If the rule allows playback, the API returns the master playlist address, a CloudFront
-policy for \texttt{videos/\{videoId\}/*} valid for two hours, and a playback token, a short token
+policy for \mbox{\texttt{videos/\{videoId\}/*}} valid for two hours, and a playback token, a short token
 scoped to that video.
 
 The policy travels as query parameters that the player appends to every request for the CDN, and
@@ -413,7 +413,7 @@ and loads a lower rendition at once rather than stalling.
 \label{fig:abr-loop}
 \end{figure}
 
-Two settings of the player shape the result. \texttt{capLevelToPlayerSize} keeps the player from
+Two settings of the player shape the result. \name{capLevelToPlayerSize} keeps the player from
 choosing a rendition larger than the video element on the screen, which saves bandwidth on small
 windows; Chapter~\ref{chap:evaluation} shows its effect in the measurements. A choice in the quality
 menu fixes the rendition and turns automatic selection off until the viewer chooses Auto again. The
@@ -451,15 +451,15 @@ has one membership per channel, and every account has exactly one Watch later pl
 applies only to open items, such as one open report per person and video, the index is partial on
 the status, so closed items do not block new ones.
 
-A video moves through five states. \texttt{UPLOADING} is set by the API when the upload is created;
-\texttt{PROCESSING}, \texttt{READY}, \texttt{SCHEDULED} and \texttt{ERROR} are set only by the
-\texttt{status} function of the workflow. The API changes only the fields an owner edits, so the two
+A video moves through five states. \status{uploading} is set by the API when the upload is created;
+\status{processing}, \status{ready}, \status{scheduled} and \status{error} are set only by the
+\name{status} function of the workflow. The API changes only the fields an owner edits, so the two
 writers never touch the same field. Moderation is a separate dimension with its own states,
-\texttt{pending}, \texttt{approved}, \texttt{review} and \texttt{removed}, so a video can be ready
+\status{pending}, \status{approved}, \status{review} and \status{removed}, so a video can be ready
 and still held for review.
 
 Counters follow two rules. Counters of relationships, such as subscribers, likes, comments and
-replies, are recomputed with \texttt{countDocuments} after each change, so they can never drift
+replies, are recomputed with \name{countDocuments} after each change, so they can never drift
 from the documents they count. View and watch-time totals are sums of counted events and are
 increased in place, because recounting them would itself cost database operations.
 
@@ -481,7 +481,7 @@ by itself.
 rateLimits & One counter per caller, scope and window & End of the window \\
 viewMarks & One mark per viewer and video once a view is counted & Thirty minutes \\
 watchProgress & Resume position per user and video, which also gives the history & None \\
-heartbeats & Watch time and retention per video and hour, rolled up hourly into \texttt{analyticsDaily} & Seven days \\
+heartbeats & Watch time and retention per video and hour, rolled up hourly into \name{analyticsDaily} & Seven days \\
 notifications & Inbox of each user & Ninety days \\
 \bottomrule
 \end{tabularx}
@@ -509,9 +509,9 @@ updates them, which is what lets an auditor trust them.
 \section{API Design}
 \label{sec:api-design}
 
-The API is a REST interface under the base path \texttt{/v1}. Requests and responses are JSON, and
+The API is a REST interface under the base path \mbox{\texttt{/v1}}. Requests and responses are JSON, and
 every error has the same shape, an object with a machine-readable code such as
-\texttt{EMAIL\_NOT\_VERIFIED} and a message, so the interface can react to the code and show the
+\status{email\_not\_verified} and a message, so the interface can react to the code and show the
 message. Listings are paged with an opaque cursor rather than page numbers, so a list never repeats
 or skips an item while new videos are published. A signed-in request carries a bearer token in the
 \texttt{Authorization} header. Request bodies are limited to 64~kB, because no video data passes
@@ -526,15 +526,15 @@ through the API. Table~\ref{tab:api-routes} lists the route groups.
 \toprule
 \textbf{GROUP} & \textbf{ROUTES} & \textbf{ACCESS} \\
 \midrule
-Accounts & \texttt{/auth}: register, login, google, link-google, verify-email, resend-verification, forgot-password, reset-password, change-password, logout, me & Public or signed in; rate-limited \\
-Uploads & \texttt{/uploads}: create, parts, complete, abort & Signed in, verified address \\
-Videos & \texttt{/videos}: list, get, update, delete, unlock, playback, key, view, heartbeat, related & Public under the access rule; edits by the owner \\
-Discovery & \texttt{/search}, \texttt{/search/suggest} & Public, rate-limited \\
+Accounts & \mbox{\texttt{/auth}}: register, login, google, link-google, verify-email, resend-verification, forgot-password, reset-password, change-password, logout, me & Public or signed in; rate-limited \\
+Uploads & \mbox{\texttt{/uploads}}: create, parts, complete, abort & Signed in, verified address \\
+Videos & \mbox{\texttt{/videos}}: list, get, update, delete, unlock, playback, key, view, heartbeat, related & Public under the access rule; edits by the owner \\
+Discovery & \mbox{\texttt{/search}}, \mbox{\texttt{/search/suggest}} & Public, rate-limited \\
 Community & reactions, comments, replies, pin, delete, report a comment & Signed in \\
-Channels & \texttt{/channels/:ref}: profile, videos, subscription, membership & Public; actions signed in \\
+Channels & \mbox{\texttt{/channels/:ref}}: profile, videos, subscription, membership & Public; actions signed in \\
 Studio & thumbnail, captions, chapters, schedule, analytics, avatar, banner, tiers, members & The owner \\
-Library & \texttt{/me}: history, progress, feed, playlists, notifications, subscriptions & Signed in \\
-Moderation & report and appeal a video; \texttt{/admin}: queue, decisions, comment reports, appeals, audit, metrics, events, users, roles & Viewers; staff by permission \\
+Library & \mbox{\texttt{/me}}: history, progress, feed, playlists, notifications, subscriptions & Signed in \\
+Moderation & report and appeal a video; \mbox{\texttt{/admin}}: queue, decisions, comment reports, appeals, audit, metrics, events, users, roles & Viewers; staff by permission \\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -637,7 +637,7 @@ that every copy of the function shares them. Security headers are set on every r
 
 Least privilege governs the infrastructure. The processing containers have no database credentials:
 their role may read the raw and keys buckets, write the processed and work buckets, publish events
-and call Rekognition, and nothing more. Only the \texttt{status} function writes processing state.
+and call Rekognition, and nothing more. Only the \name{status} function writes processing state.
 Secrets, such as the database address and the signing keys, are held in AWS Secrets Manager and read
 by the functions at start-up. The protection of the content itself, private storage, signed CDN
 requests and encryption, is described in Section~\ref{sec:content-protection}.
@@ -660,7 +660,7 @@ owner's appeal}}
 \subsection{Automatic Screening}
 \label{sec:screening-design}
 
-The \texttt{analyse} job takes one frame every five seconds, at most 120 frames, so the interval
+The \name{analyse} job takes one frame every five seconds, at most 120 frames, so the interval
 widens for long videos and the cost of a video is bounded. Each frame goes to Amazon Rekognition,
 four at a time, and the labels are mapped by a shared policy to block, review or ignore, following the
 label taxonomy of the service~\cite{awsrekognitionmoderation}. A block label at 90\% confidence or
