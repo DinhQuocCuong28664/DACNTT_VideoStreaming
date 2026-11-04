@@ -67,3 +67,9 @@ variable "log_retention_days" {
   type    = number
   default = 14
 }
+
+variable "moderation_enabled" {
+  description = "Rekognition screening in the analyse job. False only for measurement runs: videos are then published as approved with source \"disabled\""
+  type        = bool
+  default     = true
+}

@@ -161,6 +161,7 @@ module "batch" {
   event_bus_arn        = module.events.bus_arn
   spot_max_vcpus       = 24
   ondemand_max_vcpus   = 24
+  moderation_enabled   = var.moderation_enabled
   environment = {
     API_BASE_URL = local.api_base_url
   }

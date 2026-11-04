@@ -14,3 +14,9 @@ variable "alert_emails" {
   type        = list(string)
   default     = []
 }
+
+variable "moderation_enabled" {
+  description = "Set to false only while a measurement runs (-var moderation_enabled=false); apply again without it afterwards"
+  type        = bool
+  default     = true
+}

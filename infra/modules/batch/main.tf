@@ -175,6 +175,8 @@ locals {
     WORK_BUCKET      = var.bucket_names.work
     KEYS_BUCKET      = var.bucket_names.keys
     EVENT_BUS_NAME   = var.event_bus_name
+    # Read by transcoder/src/roles/analyse.ts ("false" skips Rekognition).
+    MODERATION_ENABLED = tostring(var.moderation_enabled)
     }) : { name = k, value = tostring(v) }
   ]
 }
