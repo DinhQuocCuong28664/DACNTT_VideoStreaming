@@ -9,29 +9,29 @@ sequenceDiagram
     participant Rek as Rekognition
     participant St as status function
 
-    Job->>Job: 1 frame per 5 s,<br/>at most 120
-    Job->>Rek: DetectModerationLabels,<br/>4 at a time
+    Job->>Job: 1 frame per 5 s,<br/>at most 120<br/>#nbsp;
+    Job->>Rek: DetectModerationLabels,<br/>4 at a time<br/>#nbsp;
     Rek-->>Job: Labels, confidence
-    Job->>Job: Policy: approved,<br/>review or removed
-    Job-->>St: Result in the work bucket,<br/>read by Publish
+    Job->>Job: Policy: approved,<br/>review or removed<br/>#nbsp;
+    Job-->>St: Result in the work bucket,<br/>read by Publish<br/>#nbsp;
     St->>DB: READY with the verdict
     Note over DB,St: Review and removed:<br/>in no listing
 
     opt A viewer reports
         User->>API: POST /v1/videos/:id/report
-        API->>DB: Report, one open<br/>per viewer, recount
+        API->>DB: Report, one open<br/>per viewer, recount<br/>#nbsp;
     end
 
     Op->>API: GET /v1/admin/queue
     API-->>Op: Held and reported videos
-    Op->>API: POST .../decision,<br/>decision and reason code
-    API->>DB: Keep the machine verdict,<br/>apply, close reports
-    API->>DB: Append a<br/>moderation event
+    Op->>API: POST .../decision,<br/>decision and reason code<br/>#nbsp;
+    API->>DB: Keep the machine verdict,<br/>apply, close reports<br/>#nbsp;
+    API->>DB: Append a<br/>moderation event<br/>#nbsp;
 
     opt Owner appeals
         User->>API: POST /v1/videos/:id/appeal
-        API->>DB: Appeal, one open<br/>per video
-        Op->>API: POST /v1/admin/<br/>appeals/:id/decision
+        API->>DB: Appeal, one open<br/>per video<br/>#nbsp;
+        Op->>API: POST /v1/admin/<br/>appeals/:id/decision<br/>#nbsp;
         alt Upheld
             API->>DB: Approve: restored
         else Rejected

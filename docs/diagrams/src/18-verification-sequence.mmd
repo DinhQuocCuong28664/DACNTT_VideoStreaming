@@ -7,15 +7,15 @@ sequenceDiagram
     participant Mail as Mail server
 
     User->>API: POST /v1/auth/register
-    API->>API: Length, blocklist, own details,<br/>breach lookup
-    API->>DB: Unverified user,<br/>token hash valid 24 h
-    API->>Mail: Link with the raw token,<br/>at most 3 per hour and address
+    API->>API: Length, blocklist, own details,<br/>breach lookup<br/>#nbsp;
+    API->>DB: Unverified user,<br/>token hash valid 24 h<br/>#nbsp;
+    API->>Mail: Link with the raw token,<br/>at most 3 per hour and address<br/>#nbsp;
     API-->>User: 201, session token
     Note over User,API: Watch, like and comment,<br/>but no upload until verified
 
     alt Follows the link
-        User->>API: POST /v1/auth/verify-email<br/>(token in the body)
-        API->>DB: Spend the token if unused<br/>and not expired, mark verified
+        User->>API: POST /v1/auth/verify-email<br/>(token in the body)<br/>#nbsp;
+        API->>DB: Spend the token if unused<br/>and not expired, mark verified<br/>#nbsp;
         API-->>User: 200, verified
     else Google sign-in with the same address
         User->>Google: Sign in
@@ -23,9 +23,9 @@ sequenceDiagram
         User->>API: POST /v1/auth/google
         API->>Google: Verify the ID token
         alt Local account not verified
-            API->>DB: Take it over: verified,<br/>no password, sessions revoked
+            API->>DB: Take it over: verified,<br/>no password, sessions revoked<br/>#nbsp;
             API-->>User: 200, session token
         else Local account already verified
-            API-->>User: 409 ACCOUNT_EXISTS,<br/>link Google in the settings
+            API-->>User: 409 ACCOUNT_EXISTS,<br/>link Google in the settings<br/>#nbsp;
         end
     end
