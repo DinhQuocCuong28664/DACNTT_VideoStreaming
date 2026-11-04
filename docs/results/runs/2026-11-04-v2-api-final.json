@@ -1,0 +1,113 @@
+{
+  "schema": 1,
+  "title": "S5-6: API Lambda load, final config (80 instances, no index setup on cold start)",
+  "runs": [
+    {
+      "id": "2026-11-04-prod-v2-api-load",
+      "date": "2026-11-04",
+      "environment": "prod",
+      "stack": "v2",
+      "path": "api-load",
+      "function": {
+        "name": "zelos-prod-api",
+        "memory_mb": 512,
+        "reserved_concurrency": 20
+      },
+      "first_request": {
+        "status": 200,
+        "ms": 418.7
+      },
+      "warm": {
+        "status": {
+          "200": 40
+        },
+        "latency_ms": {
+          "n": 40,
+          "mean": 165.9,
+          "p50": 155.6,
+          "p95": 263.2,
+          "max": 279.3
+        }
+      },
+      "bursts": [
+        {
+          "concurrency": 10,
+          "wall_ms": 2922,
+          "status": {
+            "200": 10
+          },
+          "ok_latency_ms": {
+            "n": 10,
+            "mean": 2346.5,
+            "p50": 2730.4,
+            "p95": 2915.9,
+            "max": 2915.9
+          }
+        },
+        {
+          "concurrency": 20,
+          "wall_ms": 2686,
+          "status": {
+            "200": 20
+          },
+          "ok_latency_ms": {
+            "n": 20,
+            "mean": 1540.2,
+            "p50": 1336.2,
+            "p95": 2682.1,
+            "max": 2682.1
+          }
+        },
+        {
+          "concurrency": 40,
+          "wall_ms": 3396,
+          "status": {
+            "200": 40
+          },
+          "ok_latency_ms": {
+            "n": 40,
+            "mean": 2217.3,
+            "p50": 2547.1,
+            "p95": 3382,
+            "max": 3390.4
+          }
+        },
+        {
+          "concurrency": 80,
+          "wall_ms": 5708,
+          "status": {
+            "200": 80
+          },
+          "ok_latency_ms": {
+            "n": 80,
+            "mean": 4280.4,
+            "p50": 4394.9,
+            "p95": 5663.2,
+            "max": 5681.8
+          }
+        }
+      ],
+      "lambda": {
+        "invocations": 193,
+        "cold_starts": 79,
+        "init_ms": {
+          "n": 79,
+          "mean": 1100.5,
+          "p50": 1110.01,
+          "p95": 1160.63,
+          "max": 1248.25
+        },
+        "handler_ms": {
+          "n": 193,
+          "mean": 1752,
+          "p50": 1393.57,
+          "p95": 3938.38,
+          "max": 4077.42
+        }
+      },
+      "provenance": "measured",
+      "source": "scripts/bench/api-load.mjs",
+      "notes": "Client in Vietnam through the Cloudflare Worker; latency includes the Worker and the network."
+    }
+  ]
+}

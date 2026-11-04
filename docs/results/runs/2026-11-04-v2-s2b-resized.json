@@ -389,6 +389,296 @@
       "provenance": "measured",
       "source": "scripts/bench/transcode.mjs",
       "notes": "After 9237774: chunked path; analyse 2 vCPU."
+    },
+    {
+      "id": "2026-11-04-prod-v2-1GB-r1",
+      "date": "2026-11-04",
+      "account": "B",
+      "region": "ap-southeast-1",
+      "environment": "prod",
+      "stack": "v2",
+      "path": "chunked",
+      "capacity": {
+        "spot_max_vcpus": 24,
+        "ondemand_max_vcpus": 24
+      },
+      "chunk": {
+        "count": 18,
+        "vcpu": 4
+      },
+      "video": {
+        "label": "1GB",
+        "file": "video-1gb.mp4",
+        "size_gib": 0.997,
+        "duration_s": 1600,
+        "resolution": "1920x1080",
+        "fps": 30
+      },
+      "concurrency": 1,
+      "queue_position": 1,
+      "measured_from": "upload_complete",
+      "timings_s": {
+        "upload": 38.5,
+        "ingest": 20.4,
+        "probe": 2.4,
+        "queue_to_first_job": 45.7,
+        "startup_max": 140.2,
+        "analyse": 90.8,
+        "encode": null,
+        "audio": null,
+        "chunks": 241.1,
+        "stitch": 1.7,
+        "publish": 0.3,
+        "end_to_end": 291,
+        "end_to_end_with_upload": 329.5
+      },
+      "vcpu_seconds": 7853,
+      "vcpu_seconds_scope": "all_jobs",
+      "capacity_used": {
+        "spot": 10,
+        "ondemand": 9
+      },
+      "result": {
+        "final_status": "READY",
+        "hls_verified": true,
+        "variants": 6
+      },
+      "api_retries": 0,
+      "provenance": "measured",
+      "source": "scripts/bench/transcode.mjs",
+      "notes": "Final config: chunked path, analyse 2 vCPU, chunk 4 vCPU x 6 slots; moderation off (482811f), Rekognition cost added by formula."
+    },
+    {
+      "id": "2026-11-04-prod-v2-1GB-r2",
+      "date": "2026-11-04",
+      "account": "B",
+      "region": "ap-southeast-1",
+      "environment": "prod",
+      "stack": "v2",
+      "path": "chunked",
+      "capacity": {
+        "spot_max_vcpus": 24,
+        "ondemand_max_vcpus": 24
+      },
+      "chunk": {
+        "count": 18,
+        "vcpu": 4
+      },
+      "video": {
+        "label": "1GB",
+        "file": "video-1gb.mp4",
+        "size_gib": 0.997,
+        "duration_s": 1600,
+        "resolution": "1920x1080",
+        "fps": 30
+      },
+      "concurrency": 1,
+      "queue_position": 1,
+      "measured_from": "upload_complete",
+      "timings_s": {
+        "upload": 119.6,
+        "ingest": 11.2,
+        "probe": 2.3,
+        "queue_to_first_job": 35.2,
+        "startup_max": 144.1,
+        "analyse": 66.3,
+        "encode": null,
+        "audio": null,
+        "chunks": 245.1,
+        "stitch": 1.5,
+        "publish": 0.4,
+        "end_to_end": 286.6,
+        "end_to_end_with_upload": 406.20000000000005
+      },
+      "vcpu_seconds": 7328,
+      "vcpu_seconds_scope": "all_jobs",
+      "capacity_used": {
+        "spot": 10,
+        "ondemand": 9
+      },
+      "result": {
+        "final_status": "READY",
+        "hls_verified": true,
+        "variants": 6
+      },
+      "api_retries": 0,
+      "provenance": "measured",
+      "source": "scripts/bench/transcode.mjs",
+      "notes": "Final config: chunked path, analyse 2 vCPU, chunk 4 vCPU x 6 slots; moderation off (482811f), Rekognition cost added by formula."
+    },
+    {
+      "id": "2026-11-04-prod-v2-1GB-r3",
+      "date": "2026-11-04",
+      "account": "B",
+      "region": "ap-southeast-1",
+      "environment": "prod",
+      "stack": "v2",
+      "path": "chunked",
+      "capacity": {
+        "spot_max_vcpus": 24,
+        "ondemand_max_vcpus": 24
+      },
+      "chunk": {
+        "count": 18,
+        "vcpu": 4
+      },
+      "video": {
+        "label": "1GB",
+        "file": "video-1gb.mp4",
+        "size_gib": 0.997,
+        "duration_s": 1600,
+        "resolution": "1920x1080",
+        "fps": 30
+      },
+      "concurrency": 1,
+      "queue_position": 1,
+      "measured_from": "upload_complete",
+      "timings_s": {
+        "upload": 32.2,
+        "ingest": 6,
+        "probe": 0.6,
+        "queue_to_first_job": 29.2,
+        "startup_max": 148.5,
+        "analyse": 74.7,
+        "encode": null,
+        "audio": null,
+        "chunks": 251.6,
+        "stitch": 0.9,
+        "publish": 0.2,
+        "end_to_end": 284,
+        "end_to_end_with_upload": 316.2
+      },
+      "vcpu_seconds": 7226,
+      "vcpu_seconds_scope": "all_jobs",
+      "capacity_used": {
+        "spot": 11,
+        "ondemand": 8
+      },
+      "result": {
+        "final_status": "READY",
+        "hls_verified": true,
+        "variants": 6
+      },
+      "api_retries": 0,
+      "provenance": "measured",
+      "source": "scripts/bench/transcode.mjs",
+      "notes": "Final config: chunked path, analyse 2 vCPU, chunk 4 vCPU x 6 slots; moderation off (482811f), Rekognition cost added by formula."
+    },
+    {
+      "id": "2026-11-04-prod-v2-500MB-r1",
+      "date": "2026-11-04",
+      "account": "B",
+      "region": "ap-southeast-1",
+      "environment": "prod",
+      "stack": "v2",
+      "path": "chunked",
+      "capacity": {
+        "spot_max_vcpus": 24,
+        "ondemand_max_vcpus": 24
+      },
+      "chunk": {
+        "count": 10,
+        "vcpu": 4
+      },
+      "video": {
+        "label": "500MB",
+        "file": "video-500mb.mp4",
+        "size_gib": 0.468,
+        "duration_s": 600,
+        "resolution": "1920x1080",
+        "fps": 30
+      },
+      "concurrency": 1,
+      "queue_position": 1,
+      "measured_from": "upload_complete",
+      "timings_s": {
+        "upload": 11.8,
+        "ingest": 22.5,
+        "probe": 0.7,
+        "queue_to_first_job": 41.8,
+        "startup_max": 26.3,
+        "analyse": 76.5,
+        "encode": null,
+        "audio": null,
+        "chunks": 101.8,
+        "stitch": 0.9,
+        "publish": 0.2,
+        "end_to_end": 146.9,
+        "end_to_end_with_upload": 158.70000000000002
+      },
+      "vcpu_seconds": 3120,
+      "vcpu_seconds_scope": "all_jobs",
+      "capacity_used": {
+        "spot": 6,
+        "ondemand": 5
+      },
+      "result": {
+        "final_status": "READY",
+        "hls_verified": true,
+        "variants": 6
+      },
+      "api_retries": 0,
+      "provenance": "measured",
+      "source": "scripts/bench/transcode.mjs",
+      "notes": "Final config: chunked path, analyse 2 vCPU; moderation off (482811f), Rekognition cost added by formula."
+    },
+    {
+      "id": "2026-11-04-prod-v2-500MB-r2",
+      "date": "2026-11-04",
+      "account": "B",
+      "region": "ap-southeast-1",
+      "environment": "prod",
+      "stack": "v2",
+      "path": "chunked",
+      "capacity": {
+        "spot_max_vcpus": 24,
+        "ondemand_max_vcpus": 24
+      },
+      "chunk": {
+        "count": 10,
+        "vcpu": 4
+      },
+      "video": {
+        "label": "500MB",
+        "file": "video-500mb.mp4",
+        "size_gib": 0.468,
+        "duration_s": 600,
+        "resolution": "1920x1080",
+        "fps": 30
+      },
+      "concurrency": 1,
+      "queue_position": 1,
+      "measured_from": "upload_complete",
+      "timings_s": {
+        "upload": 38.4,
+        "ingest": 21.6,
+        "probe": 0.6,
+        "queue_to_first_job": 41.1,
+        "startup_max": 33.1,
+        "analyse": 92.2,
+        "encode": null,
+        "audio": null,
+        "chunks": 102.4,
+        "stitch": 0.7,
+        "publish": 0.2,
+        "end_to_end": 146.9,
+        "end_to_end_with_upload": 185.3
+      },
+      "vcpu_seconds": 3477,
+      "vcpu_seconds_scope": "all_jobs",
+      "capacity_used": {
+        "spot": 6,
+        "ondemand": 5
+      },
+      "result": {
+        "final_status": "READY",
+        "hls_verified": true,
+        "variants": 6
+      },
+      "api_retries": 0,
+      "provenance": "measured",
+      "source": "scripts/bench/transcode.mjs",
+      "notes": "Final config: chunked path, analyse 2 vCPU; moderation off (482811f), Rekognition cost added by formula."
     }
   ],
   "failures": []
