@@ -1,0 +1,65 @@
+{
+  "schema": 1,
+  "title": "S5-4: 4-hour video on the chunked path (prod, final config)",
+  "runs": [
+    {
+      "id": "2026-11-04-prod-v2-4h-1080p30-r1",
+      "date": "2026-11-04",
+      "account": "B",
+      "region": "ap-southeast-1",
+      "environment": "prod",
+      "stack": "v2",
+      "path": "chunked",
+      "capacity": {
+        "spot_max_vcpus": 24,
+        "ondemand_max_vcpus": 24
+      },
+      "chunk": {
+        "count": 48,
+        "vcpu": 4
+      },
+      "video": {
+        "label": "4h-1080p30",
+        "file": "4h-1080p30.mp4",
+        "size_gib": 5.259,
+        "duration_s": 14400,
+        "resolution": "1920x1080",
+        "fps": 30
+      },
+      "concurrency": 1,
+      "queue_position": 1,
+      "measured_from": "upload_complete",
+      "timings_s": {
+        "upload": 132.6,
+        "ingest": 9.7,
+        "probe": 3.1,
+        "queue_to_first_job": 33.9,
+        "startup_max": 1310.9,
+        "analyse": 107.3,
+        "encode": null,
+        "audio": 649.2,
+        "chunks": 1591.6,
+        "stitch": 2.3,
+        "publish": 0.3,
+        "end_to_end": 2298.9,
+        "end_to_end_with_upload": 2431.5
+      },
+      "vcpu_seconds": 67285,
+      "vcpu_seconds_scope": "all_jobs",
+      "capacity_used": {
+        "spot": 27,
+        "ondemand": 23
+      },
+      "result": {
+        "final_status": "READY",
+        "hls_verified": true,
+        "variants": 6
+      },
+      "api_retries": 0,
+      "provenance": "measured",
+      "source": "scripts/bench/transcode.mjs",
+      "notes": "Synthetic testsrc2 1080p30 + 440 Hz AAC, ~3.1 Mbit/s, 5.26 GiB (scripts/bench/make-samples.sh 4h). Chunk 4 vCPU, 6 slots; Spot 24 + On-Demand 24; moderation off (482811f), Rekognition cost added by formula (120 frames). The audio job (1 vCPU, AAC for 14 400 s) took 649 s and runs before the chunks, which mux its output, so it sits on the critical path. Moderation switched back on afterwards (job definition analyse revision 4)."
+    }
+  ],
+  "failures": []
+}
