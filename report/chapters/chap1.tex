@@ -4,140 +4,139 @@
 \section{Background and Rationale}
 \label{sec:background}
 
-Video has become the dominant form of content on the Internet, and platforms such as
-YouTube, Vimeo, and TikTok have made uploading and sharing video an everyday activity. Behind
-that apparent simplicity lies a demanding engineering problem. When a user uploads a source
-file, that file may use any container format, any codec, and any resolution, yet the platform
-must deliver a stream that plays smoothly on every device and adapts to whatever bandwidth the
-viewer happens to have at that moment.
+Video has become the dominant form of content on the Internet, and platforms such as YouTube and
+Vimeo have made uploading and sharing video an everyday activity. Behind that apparent simplicity
+lies a demanding engineering problem. A source file may use any container, codec, resolution or
+frame rate, yet the platform must deliver a stream that starts quickly on every device and adapts
+to whatever bandwidth the viewer has at that moment.
 
-The industry solution to this problem is HTTP Live Streaming (HLS), a protocol that splits a
-video into short segments, typically between two and ten seconds long, and produces several
-quality renditions of the same content. A playlist file written in the \texttt{.m3u8} format
-enumerates the available renditions, and the player selects among them in real time according
-to measured network throughput. This mechanism, known as Adaptive Bitrate Streaming (ABR),
-is what allows playback to degrade gracefully rather than stall when a connection weakens.
+The industry answer is HTTP Live Streaming (HLS)~\cite{rfc8216}. HLS cuts a video into short
+segments and encodes the same content at several quality levels, called renditions. A master
+playlist lists the renditions, each rendition has its own media playlist of segments, and the
+player chooses among them while it plays according to the throughput it measures. This mechanism,
+Adaptive Bitrate Streaming (ABR), lets playback lower its quality when a connection weakens instead
+of stalling.
 
-Producing those renditions is computationally expensive, and this is where the architectural
-difficulty arises. Transcoding is a bursty workload: it consumes a large amount of CPU while a
-video is being processed and nothing at all when no one is uploading. A platform that keeps a
-dedicated server cluster or a Kubernetes system running continuously simply to wait for work
-therefore pays for a substantial amount of idle capacity. The opposite failure is equally
-undesirable: a system provisioned only for the average case cannot absorb a sudden burst when many
-users upload at the same time, and uploads either queue for a long time or are dropped.
-
-This tension between idle cost and burst capacity motivates the project. Rather than keeping
-compute permanently allocated, the system starts a container only when there is a video to process
-and removes it immediately afterwards, so that cost accrues only while transcoding actually runs.
+Producing those renditions is expensive, and this is where the architectural difficulty lies.
+Transcoding is a bursty workload: it needs many processor cores while a video is being encoded and
+none while nobody uploads. A platform that keeps servers running to wait for uploads pays for idle
+capacity most of the time, while a platform sized for the average load cannot absorb a burst of
+uploads and makes them wait. This tension between idle cost and burst capacity motivates the
+project. Instead of keeping compute allocated, the system described here starts containers only
+when a video arrives and releases them as soon as the work is done, so that processing costs money
+only while it runs.
 
 \section{Project Objectives}
 \label{sec:objectives}
 
-The project aims to build a complete video sharing platform for end users, together with the
-automated transcoding subsystem that supports it, and has five objectives. The first is a web
-platform on which users register an account, upload videos, watch them at several quality levels,
-and share them as public, unlisted or private. The second is to automate the whole processing
-pipeline, from the moment a source file lands in Amazon S3, through transcoding and storage, to
-delivery through a content delivery network, until the video is ready to play in a browser. The
-third is to transcode with FFmpeg inside a Docker container on AWS Batch and AWS Fargate, created
-on demand and terminated automatically, so that idle resources cost nothing. The fourth is to
-automate deployment and infrastructure management through a CI/CD pipeline and Infrastructure as
-Code. The fifth is to evaluate the result empirically, in terms of quality of experience,
-transcoding performance, scalability under load and operating cost.
+The project builds a complete video sharing platform together with the automated transcoding
+pipeline behind it, and has five objectives. The first is a web platform on which users register,
+upload videos, watch them at several quality levels, and take part in a community through
+channels, subscriptions, comments, playlists and memberships, with the visibility of each video
+chosen by its owner. The second is a fully event-driven pipeline: the arrival of a source file in
+Amazon S3 alone starts the processing, which is coordinated by AWS Step Functions and ends with an
+encrypted HLS package served through a content delivery network. The third is to run every FFmpeg
+job in a container on AWS Batch with AWS Fargate, created on demand and released when the queue is
+empty, using Spot capacity first and On-Demand capacity only as overflow. The fourth is to describe
+the whole environment as Infrastructure as Code and to check every change automatically with a
+continuous integration pipeline that also runs security scans. The fifth is to evaluate the
+result on the deployed system: playback start time and quality, transcoding time from a two-minute
+clip to a four-hour video, behaviour under one hundred simultaneous uploads, and operating cost.
 
-The first two objectives define what the platform does for its users, and the third how the
-processing is carried out; on-demand containers are the central hypothesis of the project. The
-fourth makes the system reproducible and safe to change, and the fifth turns the claims of the
-other four into measurements. Table~\ref{tab:objective-results} returns to each objective with its
-result.
+The first objective defines what the platform offers its users, and the second and third how the
+processing is carried out; on-demand containers driven by events are the central hypothesis of the
+project. The fourth makes the system reproducible and safe to change, and the fifth turns the
+claims of the other four into measurements. Table~\ref{tab:objective-results} returns to each
+objective with its result.
 
 \section{Scope and Deliverables}
 \label{sec:scope}
 
-The scope of this project covers the full vertical slice of a video sharing service: the
-browser-based user interface, the backend API, the transcoding engine, the cloud
-infrastructure that hosts them, and the automation that deploys them.
+The project delivers the full vertical slice of a video sharing service: a single-page web
+application with its own HLS player, a REST API, the transcoding workflow and its container image,
+the cloud infrastructure that hosts them, and the scripts used to deploy and measure them. Besides
+viewers and creators, the platform serves three staff roles, operator, auditor and administrator,
+who review flagged content, audit the automatic screening and manage accounts. The production
+system runs at the domain \texttt{zelostech.site}.
 
-Several areas are deliberately placed outside the scope. The project does not implement
-digital rights management systems such as Widevine or FairPlay, which would be required to
-prevent an authorised viewer from redistributing content they can legitimately access. It does
-not implement live streaming, since the architecture is designed around video on demand. It
-also does not attempt per-title bitrate ladder optimisation, using instead a fixed ladder of
-six rungs from 144p to 1080p, of which each video receives those that its source resolution can
-fill; the trade-off involved is discussed in Chapter~\ref{chap:conclusion}.
+Several areas are deliberately left out. The project does not implement digital rights management
+such as Widevine or FairPlay: its AES-128 encryption keeps segments unreadable to anyone without
+access, but cannot stop an authorised viewer from saving what they watch. It does not implement live
+streaming, since the pipeline is designed for video on demand. It does not optimise the bitrate
+ladder per title; every video receives the rungs of a fixed six-rung ladder from 144p to 1080p that
+its source resolution can fill, and each rung uses a quality-targeted encoding with a bitrate cap.
+Payments for channel memberships run in a sandbox, and the production database runs on the free
+tier of MongoDB Atlas, whose limits are measured and discussed in Chapter~\ref{chap:evaluation}.
 
 \section{Research Methodology}
 \label{sec:methodology}
 
 The work combines a review of existing practice with an iterative build-and-measure cycle.
 
-The theoretical component established how the problem is solved at industrial scale before any
-code was written. Published engineering accounts from Netflix describe how a large platform
-decomposes video processing into microservices and optimises a bitrate ladder per title, and the
-AWS Video on Demand reference architecture describes the managed-service equivalent. The protocol
-was taken from its specification, RFC 8216, and the encoding parameters from the FFmpeg HLS muxer
-documentation, rather than from secondary sources. Peer-reviewed studies of serverless video
-processing supplied the motivation for the architecture and the vocabulary of the evaluation, and
-the multi-threaded H.264 literature supplied the bound against which the vCPU scaling results of
-Chapter~\ref{chap:evaluation} are read.
+The theoretical part established how the problem is solved at industrial scale before the design
+was fixed. Engineering accounts from Netflix describe how a large platform splits video processing
+into independent steps and tunes its encoding per title~\cite{netflix2024microservices,
+netflix2015pertitle}, and the AWS Video on Demand solution shows the managed-service equivalent,
+in which a workflow engine owns each job and every step reports its state~\cite{awsvod}. The
+protocol was taken from its specification~\cite{rfc8216} and the encoding parameters from the
+FFmpeg documentation~\cite{ffmpegdocs}, rather than from secondary sources. Studies of serverless
+video processing supplied the motivation for the architecture~\cite{grid2023serverless,
+nossdav2019video}.
 
-The practical component followed an incremental development model. The backend API, the
-transcoding container, the frontend and the cloud infrastructure were built and integrated in turn,
-with the whole environment described as Terraform code so that every change to it is reviewable and
-reproducible rather than applied by hand. An automated test suite ran on every push through a
-continuous integration pipeline, which also runs dependency, container and infrastructure security
-scans.
+The practical part followed an incremental model. The infrastructure and the transcoding workflow
+were built first and run on a staging environment, then the API, then the web application, and
+only then was the production environment created from the same Terraform code. Every push and pull
+request runs linting, type checks, unit tests, a smoke test of the transcoder image and the security
+scans, so each change is reviewed before it is merged.
 
-Evaluation was empirical. Every performance figure in Chapter~\ref{chap:evaluation} was produced by
-a measurement script committed with the source code and run against the deployed system, with the
-raw output stored as JSON under \path{docs/results/}; Table~\ref{tab:provenance} maps each table to
-the run that produced it. Where a result could be an artefact of the measuring tool, it was
-reproduced with a second, independently implemented tool before being reported.
+The evaluation was empirical. Every figure in Chapter~\ref{chap:evaluation} was produced by a
+measurement script kept in the repository and run against the production system in its final
+configuration, and the raw output of each run was stored as a JSON file;
+Table~\ref{tab:provenance} maps each table and figure to the run that produced it.
 
 \section{Practical Significance}
 \label{sec:significance}
 
-The immediate beneficiaries of this design are small teams and individual creators who need a
-video platform but cannot justify a permanently running transcoding cluster. The cost comparison
-of Section~\ref{sec:cost-analysis} estimates that processing three hundred videos a month costs
-about \$3.40 on the architecture built here against \$133.35 on an always-on instance sized for the
-same work, because compute exists only while a job runs. That difference makes video hosting
-feasible for a service whose upload volume is intermittent, which describes most platforms before
-they become large.
+The direct beneficiaries of this design are small teams and individual creators who need a video
+platform but cannot justify a transcoding cluster that runs all the time. Because compute exists
+only while a job runs, the cost of the platform follows the number of uploads rather than the
+number of hours in a month; Section~\ref{sec:cost-analysis} compares it with an always-on server
+sized for the same work. This makes video hosting affordable for a service whose uploads are
+intermittent, which describes most platforms before they grow large.
 
-The design also meets a requirement that is easy to state and easy to implement incorrectly.
-Marking a video private means nothing if the underlying storage stays publicly addressable, and
-Chapter~\ref{chap:design} shows that restricting the API alone does not achieve it. The two-layer
-scheme used here, a private bucket with authorisation enforced at the content delivery network, can
-be reused by any application that serves user-owned media from object storage.
+The design also addresses a requirement that is easy to state and easy to get wrong. Marking a video
+private means nothing if its segments remain reachable by anyone who knows their address. Here the
+processed files stay in a private bucket that only the content delivery network can read, the
+network accepts only requests signed for one video, and the segments are encrypted with a key that
+the API releases only after checking access. This scheme can be reused by any application that
+serves user-owned media from object storage.
 
 \section{Main Contributions}
 \label{sec:contributions}
 
-The principal contribution of this work is an end-to-end demonstration that serverless containers
-can serve as the transcoding backbone of a video platform, with a measured account of what that
-choice costs and what it saves. Six parts of it can be reused on their own. An upload event travels
-through Amazon S3, Amazon SQS and AWS Lambda to AWS Batch with no polling service in between.
-Conditional database writes make a duplicate delivery harmless, so that each job takes effect once
-without relying on exactly-once delivery. Origin Access Control and CloudFront Signed Cookies keep a
-private video unreachable even to a viewer who holds its manifest URL. A chunk-parallel path brings a
-four-hour source to playback in 135 minutes at the production quota. A moderation pipeline and a
-role-based console record every decision, so that the false positive and false negative rates of
-the screening can be measured. Finally, the environment is described in fourteen Terraform modules,
-and the DevSecOps pipeline blocks a merge on a fixable critical finding rather than only reporting
-it.
+The main contribution of this work is an end-to-end demonstration that serverless containers,
+coordinated by a workflow engine, can serve as the transcoding backbone of a video platform, with a
+measured account of what that choice costs and what it delivers. Several parts can be reused on
+their own. An upload event travels from Amazon S3 through a queue to a Step Functions execution
+named after the video and its upload version, so a duplicated event never starts a second run.
+The FFmpeg graph decodes the source once and produces every rendition with aligned keyframes, so the
+player can switch quality at any segment boundary. Long videos are cut into chunks on keyframe
+boundaries, encoded in parallel as one Batch array job and stitched into ordinary playlists; a
+four-hour source becomes playable in about thirty-eight minutes within the capacity of one AWS
+account. Finally, the processing containers hold no database credentials: they report progress
+through events, and a single function owns every processing state written to the database.
 
 \section{Structure of the Report}
 \label{sec:structure}
 
-The remainder of this report is organised as follows. Chapter~\ref{chap:literature} reviews
-comparable platforms and the models behind the design, and justifies the technology choices.
-Chapter~\ref{chap:requirements} identifies the stakeholders, states the functional and
-non-functional requirements, and specifies the use cases. Chapter~\ref{chap:design} describes the
-architecture, the transcoding pipeline, the database, content protection, moderation, the interface
-and the API. Chapter~\ref{chap:implementation} covers the implementation of each subsystem, the
-infrastructure code and the delivery pipeline, the problems met during deployment, and the automated
-tests. Chapter~\ref{chap:evaluation} presents the deployed system and measures playback quality,
-transcoding performance, behaviour under load and operating cost, then sets the non-functional
-requirements against this evidence. Chapter~\ref{chap:conclusion} compares the results with the
-objectives and states the strengths, limitations and future work.
+The rest of this report is organised as follows. Chapter~\ref{chap:literature} reviews comparable
+platforms, explains the models behind the design and justifies the choice of technologies.
+Chapter~\ref{chap:requirements} describes the users and stakeholders, states the functional and
+non-functional requirements, and specifies the use cases. Chapter~\ref{chap:design} presents the
+architecture, analyses the transcoding workflow and the HLS output in detail, and describes the
+database, the API, the interface, security and content moderation.
+Chapter~\ref{chap:implementation} covers the implementation of each part, the infrastructure code,
+the problems met during development and the automated tests. Chapter~\ref{chap:evaluation}
+presents the deployed system and measures playback, transcoding, behaviour under load and cost, then
+sets the requirements against this evidence. Chapter~\ref{chap:conclusion} compares the results with
+the objectives and states the strengths, limitations and future work.
