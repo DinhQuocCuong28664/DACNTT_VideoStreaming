@@ -1,6 +1,6 @@
-# Hosting of the web app (the Vite build of web/). The files sit in a private bucket in
-# account B; CloudFront in account A (account B may not create distributions) reads them
-# through OAC, like the media CDN.
+# Hosting of the web app (the Vite build of web/). The files sit in a private bucket that
+# CloudFront (provider `aws.cdn`) reads through OAC, like the media CDN. While a distribution is
+# being replaced (docs/ops/cdn-to-b.md), transition_reader_arns lets the old one read as well.
 #
 #   assets/*  hashed file names: cached for a year
 #   embed/*   the iframe player: may be framed by any site
@@ -16,7 +16,7 @@ terraform {
   required_providers {
     aws = {
       source                = "hashicorp/aws"
-      configuration_aliases = [aws.account_a, aws.us_east_1]
+      configuration_aliases = [aws.cdn, aws.us_east_1]
     }
     cloudflare = {
       source = "cloudflare/cloudflare"
@@ -103,7 +103,7 @@ data "aws_iam_policy_document" "web" {
     condition {
       test     = "StringEquals"
       variable = "AWS:SourceArn"
-      values   = [aws_cloudfront_distribution.web.arn]
+      values   = concat([aws_cloudfront_distribution.web.arn], var.transition_reader_arns)
     }
   }
   statement {
@@ -129,10 +129,10 @@ resource "aws_s3_bucket_policy" "web" {
   depends_on = [aws_s3_bucket_public_access_block.web]
 }
 
-# ── CloudFront (account A) ──────────────────────────────────────────
+# ── CloudFront ──────────────────────────────────────────────────────
 
 resource "aws_cloudfront_origin_access_control" "web" {
-  provider                          = aws.account_a
+  provider                          = aws.cdn
   name                              = "${var.name}-web"
   description                       = "Read access of ${var.name} CloudFront to the web bucket"
   origin_access_control_origin_type = "s3"
@@ -141,7 +141,7 @@ resource "aws_cloudfront_origin_access_control" "web" {
 }
 
 resource "aws_cloudfront_function" "spa" {
-  provider = aws.account_a
+  provider = aws.cdn
   name     = "${var.name}-web-spa"
   runtime  = "cloudfront-js-2.0"
   comment  = "Serves index.html for app routes"
@@ -151,7 +151,7 @@ resource "aws_cloudfront_function" "spa" {
 
 # Short cache for index.html and other unhashed files, so a deploy shows within a minute.
 resource "aws_cloudfront_cache_policy" "short" {
-  provider    = aws.account_a
+  provider    = aws.cdn
   name        = "${var.name}-web-short"
   comment     = "index.html and top-level files"
   default_ttl = 60
@@ -174,12 +174,12 @@ resource "aws_cloudfront_cache_policy" "short" {
 }
 
 data "aws_cloudfront_cache_policy" "optimized" {
-  provider = aws.account_a
+  provider = aws.cdn
   name     = "Managed-CachingOptimized"
 }
 
 resource "aws_cloudfront_response_headers_policy" "app" {
-  provider = aws.account_a
+  provider = aws.cdn
   name     = "${var.name}-web-app"
   comment  = "Security headers; no framing"
 
@@ -208,7 +208,7 @@ resource "aws_cloudfront_response_headers_policy" "app" {
 }
 
 resource "aws_cloudfront_response_headers_policy" "embed" {
-  provider = aws.account_a
+  provider = aws.cdn
   name     = "${var.name}-web-embed"
   comment  = "Security headers; any site may frame the embed player"
 
@@ -262,10 +262,10 @@ resource "aws_acm_certificate_validation" "web" {
   validation_record_fqdns = [for r in cloudflare_dns_record.validation : r.name]
 }
 
-#trivy:ignore:AVD-AWS-0010 -- access logs would need a log bucket in account A; CloudFront metrics are enough for this project
+#trivy:ignore:AVD-AWS-0010 -- access logs would need a log bucket; CloudFront metrics are enough for this project
 #trivy:ignore:AVD-AWS-0011 -- WAF costs a monthly fee; the site serves static files and the API has its own limits
 resource "aws_cloudfront_distribution" "web" {
-  provider            = aws.account_a
+  provider            = aws.cdn
   enabled             = true
   is_ipv6_enabled     = true
   http_version        = "http2and3"

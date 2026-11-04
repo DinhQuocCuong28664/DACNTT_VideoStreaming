@@ -7,7 +7,7 @@ output "bucket_name" {
 }
 
 output "distribution_id" {
-  description = "Invalidated after each deploy (account A)"
+  description = "Invalidated after each deploy"
   value       = aws_cloudfront_distribution.web.id
 }
 
