@@ -14,8 +14,12 @@
  * thích vì sao trần năng lực là cứng và vì sao lợi thế mất dần khi mức sử dụng
  * tăng; hình chỉ mang phần so sánh.
  *
- * Số liệu lấy từ Bảng 6.7, cùng giả định: 300 video mỗi tháng, trung bình năm
- * phút, tổng cộng 3,75 giờ xử lý thật.
+ * Ước tính theo cấu hình cuối (2026-11-04): 300 video mỗi tháng, mỗi video năm
+ * phút 1080p. Lượt đo video 2 phút (s2b-resized) tốn trung bình 660 vCPU-giây,
+ * tức 5,5 vCPU-giây cho mỗi giây nguồn: 300 x 300 s x 5,5 = 137,5 vCPU-giờ.
+ * Fargate On-Demand, 2 GB mỗi vCPU: 137,5 x (0,05056 + 2 x 0,00553) = 8,47 USD
+ * (trần trên, Spot rẻ hơn). Máy luôn bật c6i.2xlarge (8 vCPU, như job encode):
+ * 0,392 x 730 = 286,16 USD. Giá từ 2026-11-04-v2-prices.json.
  */
 import { card, chip, group, bar, text, document_, write, PALETTE } from './render.mjs';
 
@@ -25,8 +29,8 @@ const p = [];
 
 const M = 36;                 // lề trái
 const PANEL_W = W - M * 2;
-const HOURS_IN_MONTH = 2920; // vCPU-giờ: 4 vCPU x 730 giờ
-const USEFUL_HOURS = 105; // vCPU-giờ chuyển mã đo được cho 300 video 5 phút
+const HOURS_IN_MONTH = 5840; // vCPU-giờ: 8 vCPU x 730 giờ
+const USEFUL_HOURS = 137.5; // vCPU-giờ chuyển mã ước tính cho 300 video 5 phút
 
 /** Vẽ một bảng mô hình. */
 function panel(spec) {
@@ -59,26 +63,26 @@ panel({
   y: 36,
   label: 'Always-on cluster provisioned for peak load',
   stroke: PALETTE.secret.stroke, fill: '#fef8f7',
-  iconName: 'aws-ec2', cardTitle: 'Amazon EC2', cardSub: 'c5.xlarge, always on', cardTone: 'compute',
+  iconName: 'aws-ec2', cardTitle: 'Amazon EC2', cardSub: 'c6i.2xlarge, always on', cardTone: 'compute',
   facts: [
-    'Runs continuously: 730 hours, 2,920 vCPU-hours',
-    'Only about 105 vCPU-hours do real work',
+    'Runs continuously: 730 hours, 5,840 vCPU-hours',
+    'Only about 138 vCPU-hours do real work',
     'A burst above capacity is queued or rejected',
   ],
-  statLabel: 'Utilisation', statValue: 'about 3.6 %', cost: 'USD 124.10',
+  statLabel: 'Utilisation', statValue: 'about 2.4 %', cost: 'USD 286.16',
 });
 
 panel({
   y: 360,
   label: 'Serverless containers, the model used in this project',
   stroke: PALETTE.network.stroke, fill: '#f6fbf6',
-  iconName: 'aws-fargate', cardTitle: 'AWS Batch', cardSub: 'on Fargate Spot', cardTone: 'network',
+  iconName: 'aws-fargate', cardTitle: 'AWS Batch', cardSub: 'on Fargate', cardTone: 'network',
   facts: [
     'No compute exists between uploads',
     'A container starts per job, then terminates',
     'The queue absorbs the burst, up to max_vcpus',
   ],
-  statLabel: 'Billed for', statValue: 'vCPU-seconds', cost: 'USD 1.94',
+  statLabel: 'Billed for', statValue: 'vCPU-seconds', cost: 'USD 8.47',
 });
 
 // ── Hai thanh trên cùng một thang thời gian ─────────────────────────────────
@@ -92,7 +96,7 @@ p.push(text('Compute billed per month in vCPU-hours, both on the same scale',
 p.push(text('Always-on', M, barsY + 20, { size: 13.5, weight: 'bold', anchor: 'start' }));
 p.push(bar({
   x: BAR_X, y: barsY, w: BAR_W, h: 28, fraction: 1,
-  fillColor: PALETTE.secret.stroke, valueLabel: '2,920 vCPU-hours billed',
+  fillColor: PALETTE.secret.stroke, valueLabel: '5,840 vCPU-hours billed',
 }).svg);
 
 // Phần thực sự làm việc. Viền mảnh để dải này đọc ra là một đại lượng được đo
@@ -102,18 +106,18 @@ const usefulW = Math.max(BAR_W * (USEFUL_HOURS / HOURS_IN_MONTH), 2.5);
 const tickX = (BAR_X + usefulW / 2).toFixed(1);
 p.push(`<rect x="${BAR_X}" y="${barsY}" width="${usefulW.toFixed(2)}" height="28" fill="#ffffff" stroke="#7d2018" stroke-width="1.2"/>`);
 p.push(`<path d="M ${tickX} ${barsY + 28} L ${tickX} ${barsY + 46}" stroke="#7d2018" stroke-width="1.2"/>`);
-p.push(text('105 vCPU-hours of useful work', BAR_X + usefulW / 2 + 6, barsY + 60,
+p.push(text('138 vCPU-hours of useful work', BAR_X + usefulW / 2 + 6, barsY + 60,
   { size: 13, anchor: 'start', fill: PALETTE.muted }));
 
 p.push(text('Serverless', M, barsY + 108, { size: 13.5, weight: 'bold', anchor: 'start' }));
 p.push(bar({
   x: BAR_X, y: barsY + 88, w: BAR_W, h: 28, fraction: USEFUL_HOURS / HOURS_IN_MONTH,
-  fillColor: PALETTE.network.stroke, valueLabel: '105 vCPU-hours billed',
+  fillColor: PALETTE.network.stroke, valueLabel: '138 vCPU-hours billed',
 }).svg);
 
 p.push(text(
   ['The saving comes entirely from the empty part of the upper bar.',
-   'Figures from Table 6.18.'],
+   'Estimate from the measured runs; Fargate at the On-Demand price.'],
   M, barsY + 156, { size: 13, anchor: 'start', fill: PALETTE.muted, lineHeight: 17.5 }));
 
 const svg = document_({ width: W, height: H, body: p.join('\n') });
