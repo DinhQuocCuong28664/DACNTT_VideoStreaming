@@ -57,3 +57,17 @@ output "web_bucket" {
 output "web_distribution_id" {
   value = module.web.distribution_id
 }
+
+output "web_distribution_domain" {
+  description = "Target of a host move (docs/ops/cdn-to-b.md)"
+  value       = module.web.distribution_domain
+}
+
+output "cdn_distribution_id" {
+  value = module.cdn.distribution_id
+}
+
+output "cdn_distribution_domain" {
+  description = "Target of a host move (docs/ops/cdn-to-b.md)"
+  value       = module.cdn.distribution_domain_name
+}

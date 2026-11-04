@@ -20,3 +20,15 @@ variable "moderation_enabled" {
   type        = bool
   default     = true
 }
+
+variable "cdn_transition_reader_arns" {
+  description = "Old media distributions that may still read the processed bucket during a move (docs/ops/cdn-to-b.md)"
+  type        = list(string)
+  default     = []
+}
+
+variable "web_transition_reader_arns" {
+  description = "Old web distributions that may still read the web bucket during a move (docs/ops/cdn-to-b.md)"
+  type        = list(string)
+  default     = []
+}

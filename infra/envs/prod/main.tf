@@ -36,10 +36,6 @@ locals {
   api_base_url = "https://api.zelostech.site"
   cdn_host     = "cdn.zelostech.site"
 
-  # The old stack's certificate (us-east-1, account A) covers zelostech.site, www and cdn;
-  # issuing a second one would collide with its validation records on Cloudflare.
-  certificate_arn = "arn:aws:acm:us-east-1:911707244328:certificate/f17a029c-bf55-4acd-891d-ce00da85401d"
-
   # Cloudflare zone of zelostech.site (an identifier, not a secret).
   cloudflare_zone_id = "d2ade2da1df8b663763db24000786b3a"
 }
@@ -56,20 +52,11 @@ provider "aws" {
   }
 }
 
-# Account A holds only CloudFront (account B may not create distributions). Profile dacntt-a.
+# CloudFront lives in this account as well: distributions use the default provider, and the
+# certificates they present must be issued in us-east-1.
 provider "aws" {
-  alias   = "account_a"
-  region  = "ap-southeast-1"
-  profile = "dacntt-a"
-  default_tags {
-    tags = { Project = "DACNTT", Stack = "v2", Environment = local.environment, ManagedBy = "Terraform" }
-  }
-}
-
-provider "aws" {
-  alias   = "account_a_us_east_1"
-  region  = "us-east-1"
-  profile = "dacntt-a"
+  alias  = "us_east_1"
+  region = "us-east-1"
   default_tags {
     tags = { Project = "DACNTT", Stack = "v2", Environment = local.environment, ManagedBy = "Terraform" }
   }
@@ -98,32 +85,32 @@ module "storage" {
 module "cdn" {
   source = "../../modules/cdn"
   providers = {
-    aws.account_a = aws.account_a
-    aws.us_east_1 = aws.account_a_us_east_1
+    aws.cdn       = aws
+    aws.us_east_1 = aws.us_east_1
   }
   name                                  = local.name
   host                                  = local.cdn_host
-  certificate_arn                       = local.certificate_arn
   attach_host                           = var.attach_hosts
   web_origins                           = [local.web_origin]
   signing_public_key_pem                = file("${path.module}/cdn-signing-public.pem")
   processed_bucket_arn                  = module.storage.bucket_arns["processed"]
   processed_bucket_regional_domain_name = module.storage.processed_bucket_regional_domain_name
+  transition_reader_arns                = var.cdn_transition_reader_arns
   cloudflare_zone_id                    = local.cloudflare_zone_id
 }
 
 module "web" {
   source = "../../modules/web"
   providers = {
-    aws.account_a = aws.account_a
-    aws.us_east_1 = aws.account_a_us_east_1
+    aws.cdn       = aws
+    aws.us_east_1 = aws.us_east_1
   }
-  name               = local.name
-  host               = trimprefix(local.web_origin, "https://")
-  redirect_hosts     = ["www.zelostech.site"]
-  certificate_arn    = local.certificate_arn
-  attach_hosts       = var.attach_hosts
-  cloudflare_zone_id = local.cloudflare_zone_id
+  name                   = local.name
+  host                   = trimprefix(local.web_origin, "https://")
+  redirect_hosts         = ["www.zelostech.site"]
+  attach_hosts           = var.attach_hosts
+  cloudflare_zone_id     = local.cloudflare_zone_id
+  transition_reader_arns = var.web_transition_reader_arns
 }
 
 module "events" {
