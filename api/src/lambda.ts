@@ -1,13 +1,16 @@
 /**
  * Lambda entry point behind the Function URL. The app is built once per instance; the key
  * endpoint's application/octet-stream body is returned base64-encoded with isBase64Encoded so
- * the 16 raw bytes survive the Lambda response format.
+ * the 16 raw bytes survive the Lambda response format. A cold start only reads the secret and
+ * connects; indexes are created by the maintenance invocation of each deploy (maintenance.ts).
  */
 import { configure as serverlessExpress } from '@codegenie/serverless-express';
 import { GetSecretValueCommand, SecretsManagerClient } from '@aws-sdk/client-secrets-manager';
 import { createApp, type Log } from './app.js';
 import { loadConfig } from './config.js';
+import type { Db } from 'mongodb';
 import { connect, ensureIndexes } from './db.js';
+import { isMaintenanceEvent } from './maintenance.js';
 import { dynamoKv } from './kv.js';
 import { Tokens } from './auth/tokens.js';
 import { mongoSessionLookup } from './auth/sessions.js';
@@ -27,16 +30,31 @@ const log: Log = (entry) => console.log(JSON.stringify(entry));
 
 type Handler = (event: unknown, context: unknown) => Promise<unknown>;
 let ready: Promise<Handler> | undefined;
+let booted: Promise<{ config: ReturnType<typeof loadConfig>; db: Db }> | undefined;
+
+/** Secret and database connection, shared by the app and the maintenance action. */
+function boot(): Promise<{ config: ReturnType<typeof loadConfig>; db: Db }> {
+  booted ??= (async () => {
+    const arn = process.env['API_SECRET_ARN'];
+    if (!arn) throw new Error('API_SECRET_ARN is not set');
+    const secret = await new SecretsManagerClient({}).send(new GetSecretValueCommand({ SecretId: arn }));
+    const config = loadConfig(process.env, secret.SecretString ?? '{}');
+    const db = await connect(config.secrets.mongodbUri, config.dbName, config.mongoPoolSize);
+    return { config, db };
+  })().catch((err: unknown) => { booted = undefined; throw err; });
+  return booted;
+}
+
+async function ensureAllIndexes(): Promise<{ indexes: 'ok'; searchIndexesCreated: string[] }> {
+  const { db } = await boot();
+  await ensureIndexes(db);
+  const searchIndexesCreated = await ensureSearchIndexes(db);
+  log({ level: 'info', msg: 'indexes ensured', searchIndexesCreated });
+  return { indexes: 'ok', searchIndexesCreated };
+}
 
 async function init(): Promise<Handler> {
-  const arn = process.env['API_SECRET_ARN'];
-  if (!arn) throw new Error('API_SECRET_ARN is not set');
-  const secret = await new SecretsManagerClient({}).send(new GetSecretValueCommand({ SecretId: arn }));
-  const config = loadConfig(process.env, secret.SecretString ?? '{}');
-  const db = await connect(config.secrets.mongodbUri, config.dbName, config.mongoPoolSize);
-  await ensureIndexes(db);
-  // Search indexes exist only on Atlas; a failure must not keep the API down.
-  await ensureSearchIndexes(db).catch((err: unknown) => log({ level: 'error', msg: 'search index setup failed', error: String(err) }));
+  const { config, db } = await boot();
   const kv = dynamoKv();
   const now = () => new Date();
   const { smtpUser, smtpPassword } = config.secrets;
@@ -63,6 +81,7 @@ async function init(): Promise<Handler> {
 }
 
 export const handler: Handler = async (event, context) => {
+  if (isMaintenanceEvent(event)) return ensureAllIndexes();
   ready ??= init().catch((err: unknown) => { ready = undefined; throw err; });
   return (await ready)(event, context);
 };
