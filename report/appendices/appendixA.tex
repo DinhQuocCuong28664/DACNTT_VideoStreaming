@@ -1,181 +1,135 @@
-\chapter{Supplementary Material}
-\label{app:supplementary}
+\chapter{Complete REST API Reference}
+\label{app:api}
 
-\section{Repository Structure}
-\label{app:repo-structure}
+This appendix lists every route of the API, grouped by the feature that registers it; Table~\ref{tab:api-routes}
+in Section~\ref{sec:api-design} gives the same groups in brief. Every path below is served under the prefix
+\texttt{/v1}, reached through the Cloudflare Worker, and every request and response body is JSON. An error
+always has the shape \texttt{\{error:\{code,message\}\}}, where the code is a stable identifier such as
+\texttt{EMAIL\_NOT\_VERIFIED}, \texttt{VIDEO\_UNDER\_REVIEW} or \texttt{RATE\_LIMITED} that the interface
+reacts to, and the message is text for the viewer. Listings are paged with an opaque cursor.
 
-The source code is organised as a monorepo with the following top-level layout.
+The access column uses five levels. \textit{Public} routes answer without a session, under the access rule
+of Section~\ref{sec:content-protection} wherever a video is involved. \textit{Signed in} routes need a bearer
+token, and where a route changes a resource, the API also checks that the requester owns it.
+\textit{Playback token} routes need the short token issued with a playback grant, so that an embedded player
+can use them without a session. A permission name, such as \texttt{moderation:review}, means a staff role
+that holds it (Table~\ref{tab:permissions}). Routes marked \textit{limited} have their own rate limit on top of
+the global one of 300 requests a minute.
 
-\begin{lstlisting}
-DACNTT_VideoStreaming/
-  frontend/            React single page application (Vite, HLS.js)
-  backend/             Node.js Express API and test suite
-  transcoder/          FFmpeg worker and Docker image
-  infrastructure/
-    modules/           Thirteen reusable Terraform modules
-    environments/      dev, staging and prod definitions
-  .github/workflows/   Seven CI/CD workflows
-  scripts/             Benchmarking and load testing scripts
-  docs/                Architecture diagrams, cost analysis, measured results
-  report/              LaTeX sources of this report
-\end{lstlisting}
-
-\section{FFmpeg Transcoding Command}
-\label{app:ffmpeg}
-
-The following invocation is the one the worker builds for a 1080p source at 24~fps, which fills
-all six rungs of the ladder, and it produces every rendition from one read of the source. A
-single input is followed by one output block per rendition, each carrying its own scaling filter
-and encoder settings, so FFmpeg decodes the source once and feeds all six filter chains from it.
-The blocks after the first are abbreviated here, and the 360p, 480p and 720p blocks are left out
-of the listing; in the source every block repeats the first in full. The master playlist is not written by FFmpeg: the worker generates it afterwards, which is
-why no \texttt{-master\_pl\_name} argument appears. It does so from the encoded output rather
-than from the settings above, measuring each rendition's peak segment bit rate from the segment
-sizes and their \texttt{\#EXTINF} durations, and reading the codec string for each variant out of
-the sequence parameter set of its first segment.
-
-The keyframe interval is derived from the source rather than assumed. The worker probes the
-first video stream and reads \texttt{avg\_frame\_rate}, preferring it over
-\texttt{r\_frame\_rate} because the latter is a base rate FFmpeg infers from the timing grid and
-need not describe the frames that are actually present.
-
-A screen recording taken from the project's own test material shows how far apart the two can
-be. The file reports \texttt{r\_frame\_rate} as 60000/1001, that is 59.94~fps, while
-\texttt{avg\_frame\_rate} reports 28.725~fps; counting frames confirms the second, at 287 frames
-in ten seconds. Every interval between consecutive frames turns out to be an integer multiple of
-1/144~second --- four, five or six ticks, giving instantaneous rates of 36, 28.8 and 24~fps ---
-so the real timing grid is the 144~Hz display, and neither the 59.94 that
-\texttt{r\_frame\_rate} advertises nor the 30 the source game was capped at. The cap cannot be
-met exactly, because 144 is not divisible by 30 and a frame would have to occupy 4.8 ticks.
-
-The consequence for the group of pictures is direct. Taking
-\texttt{avg\_frame\_rate} gives 172 frames, or 5.988~seconds, which fits inside the segment.
-Taking \texttt{r\_frame\_rate} would give 359 frames, or 12.5~seconds, more than twice the
-segment length. A fixed 30~fps assumption would give 180 frames, or 6.27~seconds, which also
-overruns. This is also why \texttt{-force\_key\_frames} is retained alongside \texttt{-g}: when
-the source rate varies between 24 and 36~fps, an interval counted in frames cannot correspond to
-a fixed interval in time, and only the time-based expression can.
-
-Once the rate is known the group of pictures is \texttt{floor(fps} $\times$ \texttt{6)} frames,
-floored rather than rounded so that it never exceeds the segment length. The same count of 180
-frames illustrates why the rate has to be right before the arithmetic can be: it lasts
-6.27~seconds at the 28.725~fps just measured, and 6.006~seconds at 29.97~fps, where it arises
-instead from rounding 179.82 upward. Both overrun a six-second segment, and in both cases the
-boundary drifts past the point where a keyframe exists. The value shown below, 144, is what a
-24~fps source produces.
-
-Two further arguments keep the boundaries aligned. Scene detection is disabled, because letting
-the encoder place keyframes at scene changes would allow the renditions to cut at
-different points, and RFC~8216 requires that matching content in variant streams carry matching
-timestamps. \texttt{-force\_key\_frames} then pins a keyframe to every sixth second of
-media time; unlike \texttt{-g}, which only bounds the interval from above, it is absolute and
-independent of the detected frame rate, so a misdetected source still yields aligned segments.
-
-The H.264 profile is pinned but the level is not. Each rendition carries a different frame size,
-and the lowest conforming level therefore differs between them, so the level is left for the
-encoder to derive from the resolution rather than fixed in the command. The pixel format is
-pinned to 8-bit 4:2:0 for the same reason as the profile: a 10-bit or 4:4:4 source would otherwise
-be encoded in a form that the main profile does not allow and most browsers do not decode.
-
-\begin{lstlisting}[language=bash]
-ffmpeg -i input.mp4 -hide_banner -loglevel warning -stats -y \
-  -vf "scale=256:144,setsar=1" \
-  -c:v libx264 -crf 28 -maxrate 180k -bufsize 360k \
-  -preset fast -profile:v main -pix_fmt yuv420p \
-  -g 144 -keyint_min 144 -sc_threshold 0 \
-  -force_key_frames "expr:gte(t,n_forced*6)" \
-  -c:a aac -b:a 48k -ar 44100 -ac 2 \
-  -f hls -hls_time 6 -hls_list_size 0 \
-  -hls_segment_filename 144p/segment_%03d.ts  144p/playlist.m3u8 \
-  \
-  -vf "scale=426:240,setsar=1" -c:v libx264 -crf 26 -maxrate 350k -bufsize 700k \
-  -c:a aac -b:a 64k -f hls -hls_time 6 \
-  -hls_segment_filename 240p/segment_%03d.ts  240p/playlist.m3u8 \
-  \
-  ... 360p (CRF 25), 480p (CRF 24) and 720p (CRF 23) in the same form ... \
-  \
-  -vf "scale=1920:1080,setsar=1" -c:v libx264 -crf 22 -maxrate 4500k -bufsize 9000k \
-  -c:a aac -b:a 192k -f hls -hls_time 6 \
-  -hls_segment_filename 1080p/segment_%03d.ts 1080p/playlist.m3u8
-\end{lstlisting}
-
-\section{Signed Cookie Custom Policy}
-\label{app:signed-policy}
-
-The policy signed by the backend before issuing playback cookies. The wildcard in the resource
-path covers the manifest and every segment of one specific video, and nothing beyond it.
-
-\begin{lstlisting}[language=JavaScript]
-{
-  "Statement": [
-    {
-      "Resource": "https://cdn.zelostech.site/videos/<videoId>/*",
-      "Condition": {
-        "DateLessThan": { "AWS:EpochTime": 1786300347 }
-      }
-    }
-  ]
-}
-\end{lstlisting}
-
-\section{Reproducing the Measurements}
-\label{app:reproduce}
-
-The experimental results reported in Chapter~\ref{chap:evaluation} are produced by the
-scripts listed below. Detailed instructions, including the environment variables required and
-the order in which the measurements must be taken, are given in
-\texttt{docs/results/README.md} within the repository.
-
-Every table of measurements in Chapter~\ref{chap:evaluation} and in
-Appendix~\ref{app:measurement-tables} is listed below against the script
-that produced it and the file its figures were read from, so that any individual number can be
-traced back to its source. Paths are relative to the repository root, and the result files are
-those under \path{docs/results/}.
-
-\begin{table}[H]
-\centering
-\caption{Provenance of each measurement table}
-\label{tab:provenance}
-\footnotesize
-\begin{tabularx}{\textwidth}{l p{0.30\textwidth} X}
+\begin{footnotesize}
+\begin{longtable}{>{\raggedright\arraybackslash}p{0.35\textwidth} >{\raggedright\arraybackslash}p{0.09\textwidth} >{\raggedright\arraybackslash}p{0.17\textwidth} >{\raggedright\arraybackslash}p{0.30\textwidth}}
+\caption{Routes of the API}\label{tab:api-reference}\\
 \toprule
-\textbf{TABLE} & \textbf{SCRIPT} & \textbf{RESULT FILE} \\
+\textbf{ENDPOINT} & \textbf{METHOD} & \textbf{ACCESS} & \textbf{DESCRIPTION} \\
 \midrule
-\ref{tab:ttff-results}       & \path{scripts/benchmark-qoe.js}  & \path{qoe-ttff.json} \\
-\ref{tab:ttff-cloudfront}    & \path{scripts/benchmark-qoe.js}  & \path{qoe-ttff-cloudfront.json} \\
-\ref{tab:ttff-multiregion}   & \path{scripts/benchmark-qoe.js}, deployed as a Lambda to each region & \path{qoe-ttff-multiregion.json} \\
-\ref{tab:qoe-playback}       & \path{scripts/qoe/collect.js}    & \path{qoe-playback-<profile>.json} \\
-\ref{tab:qoe-bandwidth}      & Segment sizes and \texttt{\#EXTINF} durations read from the processed bucket & --- \\
-\ref{tab:qoe-before-after}   & \path{scripts/qoe/collect.js}, run before and after the correction & \path{qoe-playback-<profile>.json} \\
-\ref{tab:qoe-multisource}    & \path{scripts/qoe/compare.js}, driven by \path{docs/results/qoe-sources.json} & \path{qoe-playback-<source>-<profile>.json}, \path{qoe-comparison.json} \\
-\ref{tab:qoe-dpr}            & \path{scripts/qoe/collect.js} with \texttt{--dpr} & \path{qoe-playback-<source>-unthrottled.json}, \path{qoe-playback-<source>-unthrottled-dpr2.json} \\
-\ref{tab:transcode-results}  & \path{scripts/measure-transcode.js} & \path{transcode-timing.json} \\
-\ref{tab:load-crossvalidation} & \path{scripts/node-load-test.js} and \path{scripts/k6-load-test.js} & \path{node-load-test.json}, \path{k6-summary.json} \\
-\ref{tab:drain-rate}         & \path{scripts/k6-load-test.js}   & \path{drain-rate-real-payload.json} \\
-\ref{tab:backend-comparison} & \path{scripts/benchmark-backend-comparison.js} & \path{backend-comparison.json} \\
-\ref{tab:cost-comparison}    & Published AWS list prices, computed analytically & --- \\
+\endfirsthead
+\toprule
+\textbf{ENDPOINT} & \textbf{METHOD} & \textbf{ACCESS} & \textbf{DESCRIPTION} \\
+\midrule
+\endhead
 \bottomrule
-\end{tabularx}
-\end{table}
-
-The charts of Chapter~\ref{chap:evaluation} are drawn by the scripts \path{docs/diagrams/svg/11-chart-ttff-cdn.mjs}
-to \path{docs/diagrams/svg/16-chart-concurrent-four.mjs}, and each reads the result files named above for the
-table it replaces. The three that chart the transcoding measurements read
-\path{report/generated/chart-*.json}, which \path{scripts/results/build-report-tables.py} writes from the same
-runs as the generated tables, so those charts and tables cannot differ.
-
-\section{Deploying the Infrastructure}
-\label{app:deploy}
-
-The complete AWS environment is provisioned from a single directory.
-
-\begin{lstlisting}[language=bash]
-cd infrastructure/environments/dev
-terraform init
-terraform apply
-\end{lstlisting}
-
-Enabling signed cookies additionally requires generating an RSA key pair, supplying the public
-key to Terraform, and configuring the backend with the corresponding private key and the key
-pair identifier reported by \texttt{terraform output}. The full procedure is documented in
-\texttt{docs/PRIVATE\_VIDEO\_SIGNED\_COOKIES.md}.
+\endfoot
+\multicolumn{4}{l}{\textit{Health}} \\
+\texttt{/health}, \texttt{/v1/health} & GET & Public & Liveness of the function; only the second needs the gateway secret \\
+\midrule
+\multicolumn{4}{l}{\textit{Accounts}} \\
+\texttt{/auth/register} & POST & Public, limited & Create an account and send the verification link \\
+\texttt{/auth/login} & POST & Public, limited & Sign in with e-mail and password \\
+\texttt{/auth/google} & POST & Public, limited & Sign in or register with a Google identity token \\
+\texttt{/auth/link-google} & POST & Signed in & Link a Google identity to the account \\
+\texttt{/auth/verify-email} & POST & Public, limited & Spend a verification link \\
+\texttt{/auth/resend-verification} & POST & Signed in, limited & Send a new verification link \\
+\texttt{/auth/forgot-password} & POST & Public, limited & Send a password reset link \\
+\texttt{/auth/reset-password} & POST & Public, limited & Set a new password with a reset link \\
+\texttt{/auth/change-password} & POST & Signed in, limited & Change the password with the current one \\
+\texttt{/auth/logout} & POST & Signed in & Revoke every session of the account \\
+\texttt{/auth/me} & GET & Signed in & Current account and role \\
+\midrule
+\multicolumn{4}{l}{\textit{Uploads}} \\
+\texttt{/uploads} & POST & Signed in, limited & Create a draft video and a POST or multipart upload grant; needs a verified e-mail address \\
+\texttt{/uploads/:id/parts} & POST & Signed in & Sign the URLs of further parts of a multipart upload \\
+\texttt{/uploads/:id/complete} & POST & Signed in & Complete the upload from the part list S3 holds \\
+\texttt{/uploads/:id/abort} & POST & Signed in & Abort the upload and delete the draft \\
+\midrule
+\multicolumn{4}{l}{\textit{Videos and playback}} \\
+\texttt{/videos} & GET & Public & Public, ready and approved videos, newest first \\
+\texttt{/videos/:id} & GET & Public & Details of a video the requester may see \\
+\texttt{/videos/:id/unlock} & POST & Public, limited & Exchange the password of a video for an unlock token \\
+\texttt{/videos/:id/playback} & GET & Public & Master playlist address, signed query policy and playback token \\
+\texttt{/videos/:id/key} & GET & Playback token & The 16-byte AES key of the upload version \\
+\texttt{/videos/:id/view} & POST & Public, limited & Count a view after 30 seconds of playback \\
+\texttt{/videos/:id} & PATCH & Signed in & Edit title, description, tags, category, visibility, password, audience, tier and violence warning \\
+\texttt{/videos/:id} & DELETE & Signed in & Delete the video, its comments and its files \\
+\midrule
+\multicolumn{4}{l}{\textit{Community}} \\
+\texttt{/videos/:id/reaction} & GET, PUT & Signed in & Read or set the like or dislike of the requester \\
+\texttt{/videos/:id/comments} & GET & Public & Comments of a video, pinned first \\
+\texttt{/videos/:id/comments} & POST & Signed in, limited & Post a comment or a reply \\
+\texttt{/comments/:id/replies} & GET & Public & Replies to a comment \\
+\texttt{/comments/:id} & DELETE & Signed in & Delete a comment of the requester or on the requester's video \\
+\texttt{/comments/:id/pin} & PUT, DELETE & Signed in & Pin or unpin a comment on the requester's video \\
+\texttt{/comments/:id/report} & POST & Signed in, limited & Report a comment with a listed reason \\
+\midrule
+\multicolumn{4}{l}{\textit{Channels and memberships}} \\
+\texttt{/channels/:ref} & GET & Public & Channel by identifier or handle \\
+\texttt{/channels/:ref/videos} & GET & Public & Public videos of a channel \\
+\texttt{/channels/:ref/subscription} & PUT, DELETE & Signed in, limited & Subscribe or unsubscribe \\
+\texttt{/channels/:ref/membership} & PUT, DELETE & Signed in & Join a membership tier or leave it \\
+\texttt{/me/subscriptions} & GET & Signed in & Channels the requester follows \\
+\texttt{/me/tiers} & POST & Signed in & Create a membership tier \\
+\texttt{/me/tiers/:id} & PATCH, DELETE & Signed in & Edit or retire a tier \\
+\texttt{/me/members} & GET & Signed in & Members of the requester's channel \\
+\texttt{/me/profile} & PATCH & Signed in & Edit display name, handle, description and the e-mail preference \\
+\midrule
+\multicolumn{4}{l}{\textit{Library}} \\
+\texttt{/videos/:id/heartbeat} & POST & Playback token & Record watch time and the resume position \\
+\texttt{/me/progress/:videoId} & GET & Signed in & Resume position of a video \\
+\texttt{/me/history} & GET, DELETE & Signed in & Watch history, or clear it \\
+\texttt{/me/history/:videoId} & DELETE & Signed in & Remove one video from the history \\
+\texttt{/me/feed} & GET & Signed in & New videos of subscribed channels \\
+\texttt{/me/playlists} & GET, POST & Signed in, limited & List or create playlists \\
+\texttt{/playlists/:id} & GET & Public & A public playlist or one of the requester \\
+\texttt{/playlists/:id} & PATCH, DELETE & Signed in & Rename, change visibility or delete \\
+\texttt{/playlists/:id/items} & POST & Signed in & Add a video \\
+\texttt{/playlists/:id/items/:videoId} & DELETE & Signed in & Remove a video \\
+\texttt{/playlists/:id/order} & PUT & Signed in & Reorder with the full list \\
+\midrule
+\multicolumn{4}{l}{\textit{Studio}} \\
+\texttt{/me/videos} & GET & Signed in & Every video of the requester with its processing state \\
+\texttt{/images/uploads} & POST & Signed in, limited & Grant for an avatar, banner or thumbnail image \\
+\texttt{/me/avatar}, \texttt{/me/banner} & PUT & Signed in & Screen and set the avatar or banner \\
+\texttt{/videos/:id/thumbnail} & PUT, DELETE & Signed in & Set or remove a custom thumbnail \\
+\texttt{/videos/:id/captions/:lang} & PUT, DELETE & Signed in & Upload or remove a WebVTT caption track \\
+\texttt{/videos/:id/chapters} & PUT & Signed in & Save the chapter list \\
+\texttt{/videos/:id/schedule} & PUT, DELETE & Signed in & Set, move or cancel the publication time \\
+\texttt{/videos/:id/analytics} & GET & Signed in & Daily views and watch time of one video \\
+\texttt{/me/analytics} & GET & Signed in & Totals of the channel \\
+\midrule
+\multicolumn{4}{l}{\textit{Discovery and notifications}} \\
+\texttt{/search} & GET & Public, limited & Full-text search with filters \\
+\texttt{/search/suggest} & GET & Public, limited & Title suggestions after two characters \\
+\texttt{/videos/:id/related} & GET & Public & Related videos \\
+\texttt{/me/notifications} & GET & Signed in & Inbox with the unread count \\
+\texttt{/me/notifications/read} & POST & Signed in & Mark notifications as read \\
+\midrule
+\multicolumn{4}{l}{\textit{Moderation and administration}} \\
+\texttt{/videos/:id/report} & POST & Signed in, limited & Report a video with a listed reason \\
+\texttt{/videos/:id/appeal} & GET, POST & Signed in & Read or file the owner's appeal \\
+\texttt{/admin/stats} & GET & \texttt{moderation:review} or \texttt{metrics:read} & Counts shown on the console tabs \\
+\texttt{/admin/queue} & GET & \texttt{moderation:review} & Videos held or reported \\
+\texttt{/admin/videos/:id/reports} & GET & \texttt{moderation:review} & Reports of one video \\
+\texttt{/admin/videos/:id/decision} & POST & \texttt{moderation:review} & Approve or remove with a reason code \\
+\texttt{/admin/comments} & GET & \texttt{moderation:review} & Reported comments \\
+\texttt{/admin/comments/:id/decision} & POST & \texttt{moderation:review} & Remove a comment or dismiss its reports \\
+\texttt{/admin/appeals} & GET & \texttt{moderation:appeals} & Open appeals \\
+\texttt{/admin/appeals/:id/decision} & POST & \texttt{moderation:appeals} & Uphold or reject an appeal \\
+\texttt{/admin/audit/sample} & POST & \texttt{moderation:sample} & Draw an audit sample of machine-approved videos \\
+\texttt{/admin/audit} & GET & \texttt{moderation:audit} & Pending audit samples \\
+\texttt{/admin/audit/:id} & POST & \texttt{moderation:audit} & Label a sample pass or fail \\
+\texttt{/admin/metrics} & GET & \texttt{metrics:read} & Error rates with their Wilson intervals \\
+\texttt{/admin/events} & GET & \texttt{events:read} & Decision log \\
+\texttt{/admin/role-changes} & GET & \texttt{events:read} & Log of role changes \\
+\texttt{/admin/users} & GET & \texttt{users:manage} & Search accounts \\
+\texttt{/admin/users/:id/role} & PUT & \texttt{users:manage} & Change the role of an account \\
+\end{longtable}
+\end{footnotesize}
