@@ -1,152 +1,119 @@
 \chapter{Conclusion and Future Work}
 \label{chap:conclusion}
 
-This chapter compares the results with the objectives of Section~\ref{sec:objectives}, then states
-the strengths and limitations of the delivered system and the work that would extend it.
+This chapter sets the results against the objectives of Section~\ref{sec:objectives}, then states
+the strengths and the limitations of the delivered system and the work that would extend it.
 
 \section{Summary of Achievements}
 \label{sec:summary}
 
 The project set out to build a video sharing platform whose transcoding runs on serverless
-containers driven by events, and to measure whether that choice delivers the cost and scalability
-it promises. Table~\ref{tab:objective-results} sets each objective against its result and the
-section that holds the evidence.
+containers driven by events, and to measure what that choice costs and delivers.
+Table~\ref{tab:objective-results} sets each of the five objectives against its result and the part
+of the report that holds the evidence. All five were reached on the production system.
 
 \begin{table}[H]
 \centering
 \caption{Objectives of the project against their results}
 \label{tab:objective-results}
 \small
-\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{0.18\textwidth} X >{\raggedright\arraybackslash}p{0.17\textwidth}}
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{0.21\textwidth} >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}p{0.16\textwidth}}
 \toprule
 \textbf{OBJECTIVE} & \textbf{RESULT} & \textbf{EVIDENCE} \\
 \midrule
-1. Web platform & Users register with a verified e-mail address, upload directly to Amazon S3,
-watch with adaptive bitrate over up to six renditions, set each video public, unlisted or
-private, manage their channel, search the catalogue, and like and comment. A private video is
-refused at the edge even when its manifest URL is known. &
-Sections~\ref{sec:content-protection}, \ref{sec:interface-design}, \ref{sec:ui-showcase} \\
-2. Automated pipeline & An upload event passes through Amazon SQS and AWS Lambda to AWS Batch,
-which produces the renditions, the master playlist and a thumbnail without manual action.
-Conditional writes stop a duplicate delivery from overwriting a finished job, and a failed job is
-retried and then raises an alert with its reason. &
-Sections~\ref{sec:pipeline-design}, \ref{sec:challenges} \\
-3. On-demand containers & FFmpeg runs in a container on AWS Batch over Fargate that exists only
-while a job runs. Videos of five minutes or more are split into chunks encoded in parallel, so a
-four-hour video was ready 135 minutes after its upload at 8~vCPU and 85 minutes at 16~vCPU. &
-Sections~\ref{sec:chunked-design}, \ref{sec:chunked-evaluation} \\
-4. CI/CD and IaC & Fourteen Terraform modules describe three environment definitions, and seven
-GitHub Actions workflows run linting, tests, security scanning, infrastructure validation and
-deployment. The suite holds 853 automated tests in 52 suites. &
-Sections~\ref{sec:iac}, \ref{sec:cicd}, \ref{sec:testing} \\
-5. Empirical evaluation & Time to first frame, playback under constrained bandwidth, transcoding
-latency, burst load and monthly cost were measured on the deployed system. &
-Chapter~\ref{chap:evaluation} \\
+1. Web platform & Users register with a verified e-mail address or Google, upload files of up to 20~GB straight to Amazon S3 and watch every video at up to six quality levels. Each video is public, unlisted, private, protected by a password or reserved for members. Channels, subscriptions, comments, playlists, memberships, a search that ignores diacritics and a staff console complete the platform. & Sections~\ref{sec:interface-design}, \ref{sec:content-protection}, \ref{sec:ui-showcase} \\
+2. Event-driven pipeline & The creation of the source object alone starts a Step Functions execution, named after the video and its upload version so that a duplicate event never starts a second one. The execution ends with an HLS package encrypted with AES-128 and served through CloudFront with a signed policy. Every measured upload that was accepted reached \status{ready}. & Sections~\ref{sec:workflow-design}, \ref{sec:media-design}, \ref{sec:pipeline-evaluation} \\
+3. On-demand containers & Every FFmpeg job runs in a Fargate task that exists only while the job runs; with nothing to process, both compute environments hold zero vCPUs. Spot capacity is used first and On-Demand as overflow, which a burst of 100 uploads used. A four-hour video was ready in 38.3~minutes. & Sections~\ref{sec:compute-design}, \ref{sec:chunked-evaluation}, \ref{sec:burst-evaluation} \\
+4. Infrastructure as Code and CI & Eleven Terraform modules build three environments across two AWS accounts and Cloudflare. Two workflows lint, type-check, test, scan for secrets and vulnerable dependencies, and run FFmpeg in the image on every change; 294 unit tests, 13 image checks and 27 end-to-end tests pass. & Sections~\ref{sec:iac}, \ref{sec:cicd}, \ref{sec:testing} \\
+5. Empirical evaluation & Playback start, playback under limited bandwidth, declared against delivered bit rate, transcoding time from a 36-second clip to a four-hour video, 100 simultaneous uploads, API load and monthly cost were measured on production. Nine of the ten non-functional requirements are met and the tenth at its median. & Chapter~\ref{chap:evaluation}, Table~\ref{tab:nfr-evidence} \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
-One result goes beyond the five objectives. The platform screens every upload with Amazon
-Rekognition and holds doubtful videos for staff, who work in a console with separate roles:
-operators decide, auditors read the error rates, and administrators assign roles. Each decision is
-stored beside the machine's own verdict, so the error rates can be estimated with confidence
-intervals, and the owner of a removed video can appeal (Section~\ref{sec:moderation-design}).
-
 \section{Strengths of the System}
 \label{sec:strengths}
 
-The application tier never handles video bytes. The backend issues pre-signed URLs, records
-metadata and answers queries, while video flows directly between the browser, Amazon S3 and
-CloudFront. The load on the API therefore does not depend on video size or upload concurrency, and
-a failure in the processing tier leaves published videos playable.
+The processing tier costs nothing while idle and scales with the work. A transcoding container
+exists only while its job runs, so the month of Section~\ref{sec:cost-analysis} costs 31.87~USD
+against 309.56~USD for an always-on server, and a burst of uploads is absorbed by the queue instead of
+failing: in the burst of Section~\ref{sec:burst-evaluation}, no video failed once it had been
+accepted.
 
-The processing tier costs nothing while idle, because a transcoding container exists only while a
-job runs. For the part of the bill that the architecture controls, Section~\ref{sec:cost-analysis}
-estimates \$3.40 a month against \$133.35 for an always-on instance; with screening and delivery
-added to both sides, the saving is about 77\%.
+The work grows with the content, not with the path. Every measured video needed between 4.6 and
+5.8~vCPU-seconds per second of source, from a 36-second clip to a four-hour video, so both the cost
+and the capacity needed for a given catalogue can be predicted from its length alone.
 
-Additional capacity turns directly into lower latency. Chunk jobs are ordinary AWS Batch jobs on
-the same compute environment, so a larger vCPU quota encodes more chunks at once, and no chunk came
-near the two-hour limit of a job (Section~\ref{sec:chunked-evaluation}).
+The output is honest to the player. Every segment of a rung starts with a key frame at the same
+instant, and the declared bandwidth of every rung equals the measured peak of its segments
+(Section~\ref{sec:bitrate-evaluation}). The player therefore switches without a gap and chooses a rung
+it can sustain: on a link of 500~kbit/s it settled on the rung that fits and played without a stall.
 
-The performance claims are measured rather than assumed. Measuring time to first frame on the
-deployed CDN showed that its price class served Vietnam from Europe, and measuring from other
-regions showed the same gap for Brazil; the two corrections reduced the median latency by a factor
-of 6.6 from Vietnam and 32 from Brazil (Section~\ref{sec:qoe-evaluation}). The automated suite
-likewise caught a cookie signing defect before deployment (Section~\ref{sec:testing}).
+The application tier never handles video bytes. The API issues grants, records metadata and answers
+queries, while video moves directly between the browser, Amazon S3 and CloudFront. The load on the API
+does not depend on the size of the files, and the processing containers hold no database credentials,
+so one function owns every processing state and a fault in a container cannot corrupt a record.
 
 \section{Limitations}
 \label{sec:limitations}
 
-\textbf{Transcoding.} The bitrate ladder has six fixed rungs whatever the content. Optimising the
-ladder per title or per shot can save bandwidth; Netflix reported reductions of 28\% to 38\% at
-equal perceptual quality \cite{netflix2018dynamic}. Extra capacity also helps a short video little:
-a 25-minute video took 18.0 minutes at 8~vCPU and about 15 minutes at 16~vCPU, because planning,
-audio encoding and finalisation take about three minutes whatever the capacity. Production has a
-Fargate Spot quota of 8~vCPU, so four 25-minute videos submitted together finished after 73
-minutes. Below five minutes a video keeps the single-container path, where fixed overhead
-dominates: about 66 seconds per job for a three-second clip (Section~\ref{sec:drain-rate}).
+\textbf{Playback.} The player relies on Media Source Extensions, because every request for a
+playlist or segment must carry the signed policy as query parameters and the native HLS player of a
+browser cannot add them. A browser without Media Source Extensions, such as Safari on older iPhones,
+therefore cannot play. Signed Cookies would avoid this, but browsers block third-party cookies inside
+an embedded player, which the platform supports. AES-128 keeps the files useless without a grant, but
+it is not digital rights management: a viewer who may play a video can also save it.
 
-\textbf{Moderation.} Screening samples one frame every five seconds, so content shown for less
-than that can pass. Its thresholds of 60 and 90 per cent follow the provider's guidance and were
-not calibrated on this platform's content. The 147 backend tests of moderation cover the
-implementation, but the error rates have not been measured on real traffic, so this report makes
-no claim about the accuracy of the screening. Screening is also the largest line of the monthly
-bill, 22.50~USD under the stated workload.
+\textbf{Transcoding.} The ladder has six fixed rungs whatever the content. On a long video the audio
+job sits on the critical path, 10.8~of the 38.3~minutes of the four-hour run, and the chunks are
+bounded by the six slots that the capacity of one compute environment allows. Every video also waits
+35 to 45~seconds for Fargate tasks to start, which dominates the time of a short clip
+(Section~\ref{sec:size-evaluation}).
 
-\textbf{Accounts and access.} A new password is checked against common passwords, the user's own
-details and a breach service \cite{nist80063b}, but existing passwords were not rechecked and the
-breach lookup is skipped when the service does not answer within two seconds. Mail to one address
-is capped at five per hour, but the count lives in process memory and registration has no
-CAPTCHA. Signed Cookies stay valid for two hours, so making a video private does not revoke
-cookies already issued, and the system has no digital rights management.
+\textbf{Load.} The free MongoDB cluster slows down above 100 operations per second. During the burst
+of 100 uploads, the first requests of new API instances waited up to 8.8~seconds on it, longer than
+the three retries of the client, so 11 uploads were refused although the pipeline had capacity to queue
+them. Start-up on an unthrottled connection met its target of three seconds at the median but not in
+the slowest of five runs.
 
-\textbf{Operation.} In the initial prototype baseline, the backend operated on a single EC2
-instance in one region as the sole single point of failure of the system. This architectural risk was
-successfully resolved by transitioning the API to AWS Lambda across multiple Availability Zones with
-Function URLs, achieving complete end-to-end serverless resilience and zero idle costs. Rate limits and
-view deduplication currently rely on in-memory state; future enterprise scaling will offload these counters
-to an Amazon ElastiCache Redis cluster. The CloudFront distributions live in a second AWS account, because
-the primary account was not permitted to create them, which splits the infrastructure across two sets of
-credentials.
+\textbf{Moderation.} Screening samples one frame every five seconds, so content shown for less than
+that can pass, and its thresholds of 60 and 90~per cent follow the provider's guidance rather than a
+calibration on this platform's content. The console measures the error rates from human decisions,
+but too few decisions exist yet for a rate to mean anything, so this report makes no claim about the
+accuracy of the screening.
 
-\textbf{Interface.} Tags can be set only at upload, and a thumbnail cannot be replaced. The
-account stores no language preference, so the e-mails sent by a transcoding job, which has no
-request to read a language from, are written in both languages.
-
-The limits of each measurement, such as single runs, a synthetic four-hour source and probes
-inside AWS regions, are stated beside the result in Chapter~\ref{chap:evaluation} and are not
-repeated here.
+\textbf{Operation.} The CDN distributions live in a second AWS account, because the main account may
+not create them, which splits the infrastructure across two sets of credentials. Deployment is run by
+the operator rather than by the pipeline, so a change reaches production only as often as someone
+runs the steps.
 
 \section{Future Work}
 \label{sec:future-work}
 
-The first extension is a per-title bitrate ladder chosen with a perceptual quality metric such as
-VMAF. Encoding a short probe of the source at several operating points and keeping those on the
-convex hull of quality against bitrate would lower delivery bandwidth, and with it the delivery
-cost, at the same perceived quality.
+The first extension is a bitrate ladder chosen per video. Encoding short probes of the source at
+several operating points and keeping those that give the best quality for their bit rate, measured
+with a perceptual metric such as VMAF, lowers delivery bandwidth at the same perceived quality;
+streaming services report savings of this kind from per-title and per-shot
+encoding~\cite{netflix2015pertitle,netflix2018dynamic}.
 
-The second is less fixed overhead on the chunked path. Each chunk pays a container start-up of tens
-of seconds. Encoding several chunks in one longer-lived worker, or raising the minimum chunk
-length, trades parallelism for less overhead; the measurements of
-Section~\ref{sec:chunked-evaluation} suggest that the best choice depends on the video length and
-the quota. A faster x264 preset, checked with VMAF on difficult clips, could shorten every chunk.
+The second is a shorter critical path for long videos. Encoding the audio in windows that overlap the
+chunks, with the same packet handling at the boundaries that the chunks already use, would remove the
+wait for the audio job, and a larger capacity grant would raise the number of chunk slots without any
+change to the design.
 
-The third is removing the single point of failure. A second backend instance behind a
-health-checked address needs a load balancer and a shared store, such as Redis, for the rate
-limits, view deduplication and mail count; the persistent state is already in MongoDB Atlas and
-Amazon S3. A CAPTCHA on registration and password reset, and distributed tracing across the S3,
-SQS, Lambda and Batch boundaries, belong to the same step.
+The third is a fallback for browsers without Media Source Extensions. The API could return playlists
+in which every address carries its own signature, which the native player of the browser can follow
+without adding parameters, while other browsers keep the current path.
 
-The fourth is tuning the screening from evidence. The console already records the reason codes of
-reversed removals and an unbiased audit sample; after a few hundred decisions, the thresholds and
-the label policy can be adjusted and the effect measured again.
+The fourth concerns load. A longer back-off with jitter on the client, or a client-side queue for
+uploads, would let a refused upload wait instead of failing, and a paid database tier would remove
+the limit of 100 operations per second.
 
-Two measurements should also be repeated: the 1~vCPU baseline, with more runs and with memory held
-constant (Section~\ref{sec:pipeline-evaluation}), and time to first frame from residential
-connections rather than from AWS regions (Section~\ref{sec:multiregion-measurement}). Further
-ahead, GPU-enabled serverless encoding \cite{gpuserverless2024} and a more efficient codec such as
-HEVC or AV1 next to H.264 would raise throughput and reduce bandwidth.
+The fifth is calibrating the screening from evidence. The console already records the reason codes of
+reversed decisions and an unbiased audit sample; after a few hundred decisions, the thresholds and the
+label policy can be adjusted and the effect measured again. Further ahead, a deployment workflow that
+assumes a role in each account would make releases routine, and GPU-backed serverless
+encoding~\cite{gpuserverless2024} and a codec such as HEVC or AV1 next to H.264 would raise throughput
+and reduce bandwidth.
 
 \section{Task Distribution}
 \label{sec:task-distribution}
@@ -164,8 +131,8 @@ describe them.
 \toprule
 \textbf{MEMBER} & \textbf{STUDENT ID} & \textbf{RESPONSIBILITIES} \\
 \midrule
-Dinh Quoc Cuong (team leader) & 523H0008 & Overall architecture; the transcoder and the chunk-parallel path; the AWS infrastructure in Terraform (S3, SQS, Lambda, Batch, CloudFront); the CI/CD and DevSecOps pipeline; the measurements and the evaluation; Chapters~\ref{chap:design} to \ref{chap:evaluation} of the report \\
-Vo Huynh Minh Duc & 523H0014 & The React frontend (catalogue, watch page and player, upload, channel management, moderation console, two languages); the account, comment and interaction APIs; testing and diagrams; Chapters~\ref{chap:introduction} to \ref{chap:requirements} and \ref{chap:conclusion} of the report \\
+Dinh Quoc Cuong (team leader) & 523H0008 & Overall architecture; the transcoding workflow, the container image and the chunked path; the infrastructure in Terraform across both AWS accounts and Cloudflare; the CI pipeline and the security scans; the measurements and the evaluation; Chapters~\ref{chap:design} to \ref{chap:evaluation} of the report \\
+Vo Huynh Minh Duc & 523H0014 & The web application (catalogue, watch page and player, upload, studio, channels, staff console, two languages); the account, community and library parts of the API; testing and the diagrams; Chapters~\ref{chap:introduction} to \ref{chap:requirements} and \ref{chap:conclusion} of the report \\
 \bottomrule
 \end{tabularx}
 \end{table}
