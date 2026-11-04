@@ -1,3 +1,6 @@
+% Main cover and inner cover share one layout; the inner cover adds the supervisor line, as the
+% Faculty's school rules ask for a main and an inner cover page.
+\newcommand{\coverpage}[1]{%
 \begin{titlepage}
     \centering
     \Large {Vietnam General Confederation of Labor}\\[0.1cm]
@@ -6,23 +9,27 @@
 
     \includegraphics[width=0.26\textwidth]{images/logo.png}\\[0.9cm]
 
-    % ---- Student Information (after logo, before title) ----
+    % ---- Students ----
     \textbf{Dinh Quoc Cuong -- 523H0008}\\
     \textbf{Vo Huynh Minh Duc -- 523H0014}\\[1cm]
 
-    % ---- Thesis Title ----
+    % ---- Title ----
     {\LARGE \textbf{Building a Video Sharing Platform with an Automated HLS Transcoding Pipeline on a Serverless Container and Event-Driven Architecture}}\\[0.9cm]
 
-    % ---- Thesis Type & Major ----
+    % ---- Report type and major ----
     \Large {INFORMATION TECHNOLOGY PROJECT}\\
-    {\Large \textbf{DEVOPS, CONTAINERIZATION \& CLOUD SYSTEMS}}\\[0.8cm]
+    {\Large \textbf{SOFTWARE ENGINEERING}}\\[0.8cm]
 
-    % ---- Supervisor ----
-    {Supervisor}\\
-    \textbf{MSc. Mai Van Manh}\\[1cm]
+    #1
 
     \vfill
 
-    % ---- Location & Year ----
+    % ---- Location and year ----
     \textbf{Ho Chi Minh City, 2026}
-\end{titlepage}
+\end{titlepage}}
+
+% Main cover
+\coverpage{}
+
+% Inner cover
+\coverpage{{Advised by}\\ \textbf{MSc. Mai Van Manh}\\[1cm]}
