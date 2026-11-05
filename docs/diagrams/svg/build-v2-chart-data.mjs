@@ -55,7 +55,8 @@ const median = (a) => { const s = [...a].sort((x, y) => x - y); return s[Math.fl
       chunks: r.chunk?.count ?? null,
       runs: rs.length,
       end_to_end_s: { median: t.end_to_end, min: Math.min(...rs.map((x) => x.timings_s.end_to_end)), max: Math.max(...rs.map((x) => x.timings_s.end_to_end)) },
-      parts_s: { intake: round(intake), wait: t.queue_to_first_job, work: round(t.end_to_end - intake - t.queue_to_first_job) },
+      // queue_to_first_job is measured from the end of the upload, so it already contains the intake.
+      parts_s: { intake: round(intake), wait: round(t.queue_to_first_job - intake), work: round(t.end_to_end - t.queue_to_first_job) },
       vcpu_s_per_source_s: round(median(rs.map((x) => x.vcpu_seconds / x.video.duration_s)), 2),
       id: r.id,
     };
@@ -67,7 +68,7 @@ const median = (a) => { const s = [...a].sort((x, y) => x - y); return s[Math.fl
 {
   const r = read('2026-11-04-v2-s4-long.json').runs[0];
   const t = r.timings_s;
-  const start = t.ingest + t.probe + t.queue_to_first_job;
+  const start = t.queue_to_first_job; // measured from the end of the upload, intake included
   const chunksStart = start + t.audio;
   const chunksEnd = chunksStart + t.chunks;
   write('chart-v2-four-hour.json', {
@@ -81,7 +82,7 @@ const median = (a) => { const s = [...a].sort((x, y) => x - y); return s[Math.fl
       { label: 'Analyse', from: round(start), to: round(start + t.analyse) },
       { label: 'Audio', from: round(start), to: round(chunksStart) },
       { label: `Chunks (${r.chunk.count})`, from: round(chunksStart), to: round(chunksEnd) },
-      { label: 'Stitch, publish', from: round(chunksEnd), to: t.end_to_end },
+      { label: 'Stitch to READY', from: round(chunksEnd), to: t.end_to_end },
     ],
   });
 }

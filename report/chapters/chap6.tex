@@ -241,8 +241,8 @@ three and the line below it the range}}
 \end{tabularx}
 \end{table}
 
-Three observations follow. First, 50 to 70~seconds of every run pass before any encoding starts:
-15 to 25~seconds from the upload to the start of the workflow and the probe, then 35 to 45~seconds
+Three observations follow. First, 29 to 57~seconds of every run pass before any encoding starts:
+7 to 25~seconds from the upload to the end of the probe, then 19 to 35~seconds
 while Batch starts Fargate tasks. This is the price of having no compute running while idle, and it
 is the same for a clip and for a long video. Second, the chunked path makes time grow far more slowly
 than the source: the 10-minute file is ready 25~seconds after the 2-minute one, and the 26.7-minute
@@ -257,8 +257,8 @@ A four-hour 1080p video of 5.26~GiB, with moving content and sound, was ready 38
 upload completed. Figure~\ref{fig:four-hour} shows where the time went. The probe split it into 48
 chunks of five minutes. The audio job encoded the sound of the whole video in 10.8~minutes, and the
 chunks started only when it finished, because each chunk copies its window of that audio. The 48
-chunks then ran six at a time, in eight waves, for 26.5~minutes, and stitching and publishing took
-11~seconds. The run used 18.7~vCPU-hours, 4.67~vCPU-seconds per second of source, the same ratio as
+chunks then ran six at a time, in eight waves, for 26.5~minutes. The video reached \status{ready}
+24~seconds after the last chunk, of which stitching and publishing took under 3~seconds. The run used 18.7~vCPU-hours, 4.67~vCPU-seconds per second of source, the same ratio as
 the shorter files. For the 1~GB file and this run, screening was switched off so that test content
 was not sent to Rekognition; its cost is added by calculation in Section~\ref{sec:cost-analysis}.
 

@@ -66,7 +66,7 @@ it is not digital rights management: a viewer who may play a video can also save
 \textbf{Transcoding.} The ladder has six fixed rungs whatever the content. On a long video the audio
 job sits on the critical path, 10.8~of the 38.3~minutes of the four-hour run, and the chunks are
 bounded by the six slots that the capacity of one compute environment allows. Every video also waits
-35 to 45~seconds for Fargate tasks to start, which dominates the time of a short clip
+19 to 35~seconds for Fargate tasks to start, about a quarter of the time of a short clip
 (Section~\ref{sec:size-evaluation}).
 
 \textbf{Load.} The free MongoDB cluster slows down above 100 operations per second. During the burst

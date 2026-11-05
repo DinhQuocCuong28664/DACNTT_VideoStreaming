@@ -8,26 +8,26 @@
     {
       "label": "Intake and wait",
       "from": 0,
-      "to": 46.7
+      "to": 33.9
     },
     {
       "label": "Analyse",
-      "from": 46.7,
-      "to": 154
+      "from": 33.9,
+      "to": 141.2
     },
     {
       "label": "Audio",
-      "from": 46.7,
-      "to": 695.9
+      "from": 33.9,
+      "to": 683.1
     },
     {
       "label": "Chunks (48)",
-      "from": 695.9,
-      "to": 2287.5
+      "from": 683.1,
+      "to": 2274.7
     },
     {
-      "label": "Stitch, publish",
-      "from": 2287.5,
+      "label": "Stitch to READY",
+      "from": 2274.7,
       "to": 2298.9
     }
   ]

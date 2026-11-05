@@ -15,8 +15,8 @@
       },
       "parts_s": {
         "intake": 22.2,
-        "wait": 45.3,
-        "work": 43.1
+        "wait": 23.1,
+        "work": 65.3
       },
       "vcpu_s_per_source_s": 4.67,
       "id": "2026-11-04-prod-v2-clip36-r3"
@@ -35,8 +35,8 @@
       },
       "parts_s": {
         "intake": 22.4,
-        "wait": 42.8,
-        "work": 57
+        "wait": 20.4,
+        "work": 79.4
       },
       "vcpu_s_per_source_s": 5.09,
       "id": "2026-11-04-prod-v2-100MB-r1"
@@ -55,8 +55,8 @@
       },
       "parts_s": {
         "intake": 23.2,
-        "wait": 41.8,
-        "work": 81.9
+        "wait": 18.6,
+        "work": 105.1
       },
       "vcpu_s_per_source_s": 5.8,
       "id": "2026-11-04-prod-v2-500MB-r1"
@@ -75,8 +75,8 @@
       },
       "parts_s": {
         "intake": 13.5,
-        "wait": 35.2,
-        "work": 237.9
+        "wait": 21.7,
+        "work": 251.4
       },
       "vcpu_s_per_source_s": 4.58,
       "id": "2026-11-04-prod-v2-1GB-r2"
