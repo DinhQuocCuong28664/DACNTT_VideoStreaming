@@ -21,7 +21,11 @@
 
 \cleardoublepage
 \tableofcontents
+\cleardoublepage\phantomsection
+\addcontentsline{toc}{chapter}{\listfigurename}
 \listoffigures
+\cleardoublepage\phantomsection
+\addcontentsline{toc}{chapter}{\listtablename}
 \listoftables
 \input{frontmatter/abbreviations}
 
@@ -39,6 +43,9 @@
 \include{chapters/chap7}
 
 % % -------------------Bibliography-----------------------
+\renewcommand{\bibname}{References}
+\cleardoublepage\phantomsection
+\addcontentsline{toc}{chapter}{\bibname}
 \bibliographystyle{ieeetr}
 \bibliography{references}
 
@@ -47,5 +54,6 @@
 \include{appendices/appendixA}
 \include{appendices/appendixB}
 \include{appendices/appendixC}
+\include{appendices/appendixD}
 
 \end{document}
