@@ -38,9 +38,9 @@ autoplay/up-next queue.
 |---|---|---|
 | AWS account B (`749680934725`, `ap-southeast-1`) | All compute and storage | Credits; Fargate only, no always-on instances |
 | AWS account A (`911707244328`) | CloudFront + ACM only (B may not create CloudFront) | Cross-account OAC/bucket policy; new paid resources need the owner's OK |
-| Fargate quota | 8 vCPU Spot + 8 vCPU On-Demand (Spot 12 requested) | Transcoding ceiling 16 vCPU |
+| Fargate quota | 30 vCPU Spot + 30 vCPU On-Demand (raised 2026-10-30; 8 + 8 before) | Ceilings: prod 24 + 24, staging 8 + 8 |
 | VPCs | 5 per region, 4 in use (old dev, old staging, bench, default) | One VPC (`zelos`, 10.20.0.0/16) shared by every v2 environment; each environment has its own security group |
-| Fargate quota is per account | Old stack (dev + staging) and new stack share the same 8 + 8 vCPU | Measurements run only while the other stack's queues are idle |
+| Fargate quota is per account | Old stack, staging and prod share the same 30 + 30 vCPU | Measurements run only while the other stacks' queues are idle |
 | Lambda concurrency | 400 per account (1000 requested); at least 100 must stay unreserved | Reserved concurrency per function (§5.8) |
 | Batch `SubmitJob` | 50 TPS | Chunk fan-out uses one array job, not one call per chunk |
 | MongoDB Atlas | Free tier, MongoDB 8.0: **500 connections**, **100 operations/s** (throttled above), **10 GB in + 10 GB out per 7 days**, 0.5 GB storage, **3 search indexes**, no private networking | Connection budget (§5.8); hot write paths kept off MongoDB (ADR-17); three search indexes (§5.9); access list open to Lambda egress with strong credentials |
@@ -160,15 +160,19 @@ stateDiagram-v2
 |---|---|---|
 | MarkProcessing | Lambda `status` | Video → `PROCESSING`, step `probe`; creates the AES key and IV (§5.5) |
 | Probe | Lambda `probe` (static ffprobe in a layer published from S3, reads the source over a presigned HTTPS URL) | Streams, display size (rotation, SAR), fps from `avg_frame_rate`, VFR flag, A/V start offset, duration, rendition plan, chunk plan |
-| Analyse | Batch job `analyse` (1 vCPU) | One pass of sampled frames: Rekognition `DetectModerationLabels` → decision and violence labels; seek-preview sprite sheets + `thumbnails.vtt`; default thumbnail |
-| EncodeSingle | Batch job `encode` (1–4 vCPU by duration) | All renditions, HLS, AES-128, CODECS, measured BANDWIDTH; uploads `master.m3u8` after everything else |
+| Analyse | Batch job `analyse` (2 vCPU) | One pass of sampled frames: Rekognition `DetectModerationLabels` → decision and violence labels; seek-preview sprite sheets + `thumbnails.vtt`; default thumbnail |
+| EncodeSingle | Batch job `encode` (4 vCPU up to 1 minute, 8 vCPU above) | All renditions, HLS, AES-128, CODECS, measured BANDWIDTH; uploads `master.m3u8` after everything else |
 | EncodeChunked | Batch job `audio` + array job `chunk` (4 vCPU, bulk queue) + Lambda `stitch` | Same outputs assembled from chunks; `stitch` uploads `master.m3u8` last |
 | Publish | Lambda `status` | Checks the master exists; video → `READY` (or `SCHEDULED`, §4.4) with the moderation result; event `VideoPublished` |
 | MarkFailed | Lambda `status` | Video → `ERROR` with reason, owner notified once, SNS alert, temporary files removed |
 
 The chunk threshold is 5 minutes (measured on v1 on 2026-10-11: a 5-minute video took
-26.7 minutes as one 1-vCPU job and 11.9 minutes on the chunked path). The single-job path above 20 minutes, which only happens on a
-fallback, keeps the 360p/720p/1080p subset (§5.3).
+26.7 minutes as one 1-vCPU job and 11.9 minutes on the chunked path). Task sizes were set when
+the quota was 8 + 8 vCPU; with 30 + 30 the single path got 4-8 vCPU and `analyse` 2 vCPU after
+S5 showed a 2-minute video at 1 vCPU waiting 6-9 minutes, longer than a 27-minute video on the
+chunked path (2026-11-04). The threshold stays at 5 minutes: below it one 8-vCPU job avoids the
+start-up of the audio, chunk and stitch tasks. The single-job path above 20 minutes, which only
+happens on a fallback, keeps the 360p/720p/1080p subset (§5.3).
 
 Retries: every Batch job has `attempts = 3`. A Fargate Spot reclaim, a network or an AWS error
 is retried, because it must not fail the video (as measured on v1). An error that another
@@ -213,7 +217,8 @@ The API creates, moves or deletes one EventBridge Scheduler one-time schedule wh
 
 - One container image, one job definition per role (`analyse`, `encode`, `audio`, `chunk`),
   `node:22-slim` plus a pinned static FFmpeg, built for `linux/amd64`.
-- Compute environments: Fargate Spot (max 8 vCPU) first, Fargate On-Demand (max 8 vCPU) second,
+- Compute environments: Fargate Spot first, Fargate On-Demand second (max 24 + 24 vCPU in prod,
+  8 + 8 in staging),
   shared by two queues: `main` (priority 10: `analyse`, `encode`, `audio`) and `bulk`
   (priority 1: chunk arrays), so short videos overtake long ones.
 - Network: tasks run in public subnets with a public IP, so there is no NAT gateway to pay for

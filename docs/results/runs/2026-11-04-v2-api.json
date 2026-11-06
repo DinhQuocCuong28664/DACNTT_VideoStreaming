@@ -1,0 +1,120 @@
+{
+  "schema": 1,
+  "title": "S5-6: API Lambda load (prod, v2)",
+  "runs": [
+    {
+      "id": "2026-11-04-prod-v2-api-load",
+      "date": "2026-11-04",
+      "environment": "prod",
+      "stack": "v2",
+      "path": "api-load",
+      "function": {
+        "name": "zelos-prod-api",
+        "memory_mb": 512,
+        "reserved_concurrency": 20
+      },
+      "first_request": {
+        "status": 200,
+        "ms": 475.6
+      },
+      "warm": {
+        "status": {
+          "200": 40
+        },
+        "latency_ms": {
+          "n": 40,
+          "mean": 140.6,
+          "p50": 137,
+          "p95": 215.5,
+          "max": 232.4
+        }
+      },
+      "bursts": [
+        {
+          "concurrency": 10,
+          "wall_ms": 5015,
+          "status": {
+            "200": 10
+          },
+          "ok_latency_ms": {
+            "n": 10,
+            "mean": 4072.2,
+            "p50": 4980.5,
+            "p95": 5006.8,
+            "max": 5006.8
+          }
+        },
+        {
+          "concurrency": 20,
+          "wall_ms": 6614,
+          "status": {
+            "200": 20
+          },
+          "ok_latency_ms": {
+            "n": 20,
+            "mean": 3244.6,
+            "p50": 4324.2,
+            "p95": 6603.2,
+            "max": 6603.2
+          }
+        },
+        {
+          "concurrency": 40,
+          "wall_ms": 4569,
+          "status": {
+            "200": 20,
+            "429": 20
+          },
+          "ok_latency_ms": {
+            "n": 20,
+            "mean": 1397.5,
+            "p50": 1289.8,
+            "p95": 4553.9,
+            "max": 4553.9
+          }
+        },
+        {
+          "concurrency": 80,
+          "wall_ms": 1599,
+          "status": {
+            "200": 20,
+            "429": 60
+          },
+          "ok_latency_ms": {
+            "n": 20,
+            "mean": 1183.1,
+            "p50": 1316.8,
+            "p95": 1583.3,
+            "max": 1583.3
+          }
+        }
+      ],
+      "lambda": {
+        "invocations": 111,
+        "cold_starts": 19,
+        "init_ms": {
+          "n": 19,
+          "mean": 1098.9,
+          "p50": 1110.59,
+          "p95": 1252.86,
+          "max": 1252.86
+        },
+        "handler_ms": {
+          "n": 111,
+          "mean": 1022.3,
+          "p50": 508.17,
+          "p95": 4298.65,
+          "max": 5048.66
+        }
+      },
+      "provenance": "measured",
+      "source": "scripts/bench/api-load.mjs",
+      "notes": "Client in Vietnam through the Cloudflare Worker; latency includes the Worker and the network. The 429 answers of the 40 and 80 bursts are Lambda throttles at the 20 reserved instances (CloudWatch), not the API rate limit. A cold invocation is about 1.1 s of init plus 3.4-4.7 s for the first request, which connects to Atlas and runs ensureIndexes and ensureSearchIndexes.",
+      "cloudwatch": {
+        "throttles_sum": 59,
+        "concurrent_executions_max": 20,
+        "source": "AWS/Lambda Throttles and ConcurrentExecutions, 1-minute periods during the run"
+      }
+    }
+  ]
+}

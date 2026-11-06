@@ -34,8 +34,10 @@ already attached, which `associate-alias` needs later.
 - Atlas network access must allow `0.0.0.0/0`: the functions run outside a VPC.
 - The Google OAuth client must list `https://zelostech.site` as an authorised JavaScript origin.
 
-Check before going on: the function URL answers `/health` with 200 (the API connects to the
-database and builds its indexes during start-up) and `/v1/health` with 403 (no origin secret).
+Create the indexes once with `scripts/ensure-indexes.sh prod` (cold starts do not create them;
+run it again after every apply that ships API code). Then check: the function URL answers
+`/health` with 200 (the API connects to the database during start-up) and `/v1/health` with 403
+(no origin secret).
 
 ## 3. Web files
 

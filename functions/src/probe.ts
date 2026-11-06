@@ -31,11 +31,15 @@ export interface ProbeDeps {
   parallelSlots: number;
 }
 
-/** Long fallbacks (VFR, unknown duration) get a bigger task; short clips stay cheap. */
+/**
+ * Task size of the single-path encode. One ffmpeg run decodes once and feeds up to six libx264
+ * outputs, so it uses eight threads well. With 1 vCPU a 2-minute 1080p video took 6-9 minutes
+ * (S5, 2026-11-04), longer than a 27-minute video on the chunked path. Clips up to a minute stay
+ * at 4 vCPU so a burst of short uploads still fits many tasks under the Fargate ceiling.
+ */
 export function encodeSize(durationSec: number | null): { vcpu: string; memory: string } {
-  if (durationSec !== null && durationSec <= 120) return { vcpu: '1', memory: '2048' };
-  if (durationSec !== null && durationSec <= 600) return { vcpu: '2', memory: '4096' };
-  return { vcpu: '4', memory: '8192' };
+  if (durationSec !== null && durationSec <= 60) return { vcpu: '4', memory: '8192' };
+  return { vcpu: '8', memory: '16384' };
 }
 
 export async function probe(input: unknown, deps: ProbeDeps): Promise<ProbeOutput> {

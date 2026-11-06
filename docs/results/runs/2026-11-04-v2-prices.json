@@ -1,0 +1,48 @@
+{
+  "schema": 1,
+  "title": "AWS list prices used by the cost comparison",
+  "runs": [
+    {
+      "id": "2026-11-04-aws-prices-singapore",
+      "date": "2026-11-04",
+      "path": "prices",
+      "region": "ap-southeast-1",
+      "currency": "USD",
+      "fargate": {
+        "gb_hour": 0.00553,
+        "vcpu_hour": 0.05056
+      },
+      "ec2": {
+        "t3.medium": {
+          "usd_hour": 0.0528,
+          "vcpu": 2,
+          "memory": "4 GiB"
+        },
+        "t3.xlarge": {
+          "usd_hour": 0.2112,
+          "vcpu": 4,
+          "memory": "16 GiB"
+        },
+        "c6i.xlarge": {
+          "usd_hour": 0.196,
+          "vcpu": 4,
+          "memory": "8 GiB"
+        },
+        "c6i.2xlarge": {
+          "usd_hour": 0.392,
+          "vcpu": 8,
+          "memory": "16 GiB"
+        }
+      },
+      "lambda": {
+        "request": 2e-7,
+        "gb_second": 0.0000166667
+      },
+      "s3": {
+        "standard_gb_month": 0.024
+      },
+      "provenance": "aws-price-list-api",
+      "source": "scripts/bench/cost.mjs"
+    }
+  ]
+}

@@ -167,7 +167,8 @@ const RECORDER = `
 })();
 `;
 
-const RENDITION_PATTERN = /\/(\d+p)\/(segment_\d+\.ts)/;
+// v1 names segments segment_NNNNN.ts, v2 seg_NNNNN.ts.
+const RENDITION_PATTERN = /\/(\d+p)\/((?:segment|seg)_\d+\.ts)/;
 
 /**
  * Đọc bảng "độ phân giải → bitrate" từ master playlist.
@@ -180,19 +181,19 @@ const RENDITION_PATTERN = /\/(\d+p)\/(segment_\d+\.ts)/;
  */
 const parseMasterPlaylist = (text) => {
   const map = new Map();
-  const pattern = /#EXT-X-STREAM-INF:[^\n]*BANDWIDTH=(\d+)[^\n]*RESOLUTION=(\d+)x(\d+)/g;
-  let match = pattern.exec(text);
-
-  while (match !== null) {
-    map.set(Number(match[3]), Number(match[1])); // chiều cao → bitrate
-    match = pattern.exec(text);
+  // BANDWIDTH must not match the tail of AVERAGE-BANDWIDTH, which v2 writes first.
+  const lines = text.split('\n').filter((l) => l.startsWith('#EXT-X-STREAM-INF:'));
+  for (const line of lines) {
+    const bandwidth = /[:,]BANDWIDTH=(\d+)/.exec(line);
+    const resolution = /RESOLUTION=(\d+)x(\d+)/.exec(line);
+    if (bandwidth && resolution) map.set(Number(resolution[2]), Number(bandwidth[1])); // height → bitrate
   }
 
   return map;
 };
 
-/** Đường dẫn playlist của một rendition, ví dụ `.../1080p/playlist.m3u8`. */
-const RENDITION_PLAYLIST_PATTERN = /\/(\d+p)\/playlist\.m3u8/;
+/** Playlist of one rendition: `.../1080p/playlist.m3u8` in v1, `.../1080p/index.m3u8` in v2. */
+const RENDITION_PLAYLIST_PATTERN = /\/(\d+p)\/(?:playlist|index)\.m3u8/;
 
 /**
  * Đọc thời lượng thật của từng segment từ playlist của một rendition.
