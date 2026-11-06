@@ -1,32 +1,34 @@
 sequenceDiagram
     autonumber
-    actor Viewer as Browser
-    participant API as Backend API
-    participant DB as MongoDB
-    participant CF as CloudFront
-    participant S3 as S3 Processed
+    actor Viewer as Player (hls.js)
+    participant API as API function
+    participant KEYS as S3 keys
+    participant CF as CloudFront media
+    participant S3 as S3 processed
 
-    Viewer->>API: GET /videos/:id/<br/>playback-auth
-    API->>DB: Read video
-    API->>API: Access rule:<br/>visibility, moderation
+    Viewer->>API: GET /v1/videos/:id/playback<br/>(session and unlock token optional)<br/>#nbsp;
+    API->>API: One access rule: owner, visibility,<br/>password, membership, moderation<br/>#nbsp;
     alt Not allowed
-        API-->>Viewer: 404 private,<br/>403 removed
+        API-->>Viewer: 404 hidden, 403 removed,<br/>locked or under review<br/>#nbsp;
     else Allowed
-        API->>API: Sign policy<br/>videos/{id}/*, 2 h
-        API-->>Viewer: 3 CloudFront cookies,<br/>Path=/videos/{id}/
+        API-->>Viewer: master URL, signed query policy<br/>for videos/{id}/*, playback token (2 h)<br/>#nbsp;
     end
 
-    Viewer->>CF: GET master.m3u8<br/>with cookies
-    CF->>CF: Verify signature,<br/>trusted key group
-    alt Valid cookie
-        CF->>S3: Cache miss:<br/>GET via OAC
-        S3-->>CF: Playlist
-        CF-->>Viewer: 200 playlist
-        loop Every segment
-            Viewer->>CF: GET segment
-            CF-->>Viewer: 200 segment
-        end
-    else Missing or expired
-        CF-->>Viewer: 403 at the edge
-        Note over Viewer,API: Player asks for new<br/>cookies, reloads source
+    Viewer->>CF: GET master.m3u8?Policy&Signature&Key-Pair-Id
+    CF->>CF: Verify the signature,<br/>cache key ignores the query<br/>#nbsp;
+    CF->>S3: On a cache miss: GET through OAC
+    S3-->>CF: Playlist
+    CF-->>Viewer: Master, then the chosen media playlist
+
+    Viewer->>API: GET /v1/videos/:id/key?v=1<br/>with the playback token<br/>#nbsp;
+    API->>API: Check the token and<br/>the access rule again<br/>#nbsp;
+    API->>KEYS: Read keys/{id}/v1.json
+    KEYS-->>API: Key material
+    API-->>Viewer: 16 raw bytes, no-store
+
+    loop Every segment
+        Viewer->>CF: GET seg_N.ts?Policy...
+        CF-->>Viewer: Encrypted segment
+        Viewer->>Viewer: Decrypt AES-128-CBC with the<br/>key and the IV of the playlist<br/>#nbsp;
     end
+    Note over Viewer,API: After 30 s of playback the player reports a view.<br/>When the grant expires it asks /playback again.

@@ -1,44 +1,19 @@
 /**
- * Hình 4.1 — Kiến trúc tổng thể và ranh giới triển khai.
+ * Hình 4.1 — Kiến trúc tổng thể v2 và ranh giới triển khai.
  *
- * Nhãn viết tiếng Anh cho khớp phần chữ của báo cáo.
+ * Hai vùng thật: dịch vụ ngoài AWS (trình duyệt, Cloudflare, MongoDB Atlas) và một tài khoản AWS
+ * giữ mọi thứ (CloudFront dời về đây ngày 2026-11-05, docs/ops/cdn-to-b.md). Tài khoản chia
+ * bốn tầng theo đường đi của một video: API và dữ liệu, nhận và điều phối, tính toán serverless,
+ * sự kiện; cột bên phải là tầng phân phối.
  *
- * Sơ đồ cố ý vẽ đúng ranh giới thật chứ không vẽ một khối AWS chung chung:
- * phân phối video nằm ở một tài khoản AWS thứ hai (mục 5.5 giải thích vì sao),
- * còn MongoDB Atlas và Cloudflare là dịch vụ bên thứ ba nằm ngoài mọi tài khoản
- * AWS của dự án. Gộp tất cả vào một hộp sẽ che mất đúng những điều mà chương 5
- * và chương 7 phải giải thích dài dòng bằng lời.
- *
- * Các cạnh phải đi từ cột bên thứ ba sang tài khoản AWS đều chạy trong khoảng
- * trống giữa hai khối, và mỗi cạnh được cấp một "làn" dọc riêng trong hằng số
- * LANE. Không có làn riêng thì các đường chồng lên nhau và nhãn của chúng đè cả
- * lên tiêu đề của khối bên dưới, đó là lỗi của bản dựng đầu tiên.
- *
- * Mười bốn bước của luồng dữ liệu là HUY HIỆU SỐ trên cạnh, không phải nhãn chữ, và nghĩa của
- * từng bước nằm trong bảng "Numbered steps" dưới cột bên trái. Bản dùng nhãn chữ có 15 trong
- * 18 nhãn đè lên viền thẻ hoặc khung, vì nhãn rộng 66 đến 314px mà khe giữa hai thẻ chỉ 36 đến
- * 46px, và hành lang giữa cột bên thứ ba với tài khoản AWS chỉ rộng 136px mà chứa bốn làn dọc
- * cùng năm nhãn. Huy hiệu tròn 26px đặt vừa mọi khe; chỗ đặt do placeBadges() trong render.mjs
- * tự chọn, và enableLayoutCheck() làm bước dựng hỏng nếu có gì đè lên nhau.
+ * Bước của luồng là HUY HIỆU SỐ, nghĩa nằm ở bảng "Numbered steps" dưới cột trái; nhãn chữ
+ * không vừa các khe giữa thẻ. Mỗi cạnh phải đi qua hành lang giữa cột trái và tài khoản B có
+ * một làn dọc riêng (LANE). enableLayoutCheck() làm bước dựng hỏng nếu có gì đè lên nhau.
  */
 import { card, group, edge, legend, text, document_, write, enableLayoutCheck, PALETTE, TYPE } from './render.mjs';
 
-// Dựng hình mà có nhãn hoặc cạnh đè lên thẻ, viền khung hay tiêu đề khung thì báo lỗi.
 enableLayoutCheck();
 
-// Canvas rong 1740px, in ra 247mm (xoay ngang, an het chieu cao trang), nen mot
-// px canvas chi con 0,142mm tren giay. O co chu cu, nhan cua cac cang nho nhat
-// la 13px chi in ra 5,2pt, nho hon ca chu chan trang. Muon dat 6,2pt (2,19mm)
-// thi can 15,4px, lam tron thanh 15,5.
-// Trần của hình này là 15,5px, không phải do chữ mà do khe giữa các thẻ trong
-// tầng xử lý chỉ rộng 36px. Nhãn cạnh có nền trắng rộng bằng
-// `số_ký_tự × font × 0,554 + 14`, nên ở 15,5px thì "8  trigger" rộng 92px, vừa
-// đủ tràn sang phần đệm hai bên mà chưa chạm tiêu đề thẻ. Lên 17,5px thì nó rộng
-// 101px và cắt mất chữ "S" của Amazon SQS lẫn chữ "A" của AWS Lambda.
-//
-// Muốn nâng tiếp thì phải giãn lại khoảng cách các thẻ trong tầng xử lý, mà giãn
-// thì khung bao rộng ra và cỡ chữ in ra lại tụt xuống, nên phải thu hẹp bề ngang
-// từng thẻ để bù. Đó là việc sửa bố cục, không phải đổi một con số.
 Object.assign(TYPE, {
   cardTitle: 18,
   cardSub: 15.5,
@@ -49,177 +24,103 @@ Object.assign(TYPE, {
 });
 
 const W = 1740;
-const H = 1012;
+const H = 1200;
 const p = [];
 
-/** Bốn làn dọc trong khoảng trống giữa cột bên thứ ba và tài khoản AWS. */
-const LANE = { upload: 300, presign: 324, metadata: 348, ready: 276 };
+/** Làn dọc trong hành lang giữa cột ngoài AWS và tài khoản B. */
+const LANE = { api: 290, atlas: 316, status: 342, upload: 362 };
+/** Làn dọc giữa tài khoản B và tài khoản A. */
+const LANE_AB = 1400;
 
-// ── Cột 1: người xem và hạ tầng bên thứ ba ──────────────────────────────────
-const third = group({
-  x: 40, y: 96, w: 216, h: 514, label: 'Outside AWS',
-  stroke: '#98a2b3', fill: '#fafbfc', dash: '5 4',
-});
-p.push(third.svg);
-
-const browser = card({
-  x: 62, y: 138, w: 172, h: 120, iconName: 'react', iconSize: 34,
-  title: "Viewer's browser", sub: ['React SPA + HLS.js'], tone: 'network',
-});
-const cloudflare = card({
-  x: 62, y: 300, w: 172, h: 116, iconName: 'cloudflare', iconSize: 34,
-  title: 'Cloudflare', sub: ['DNS and edge TLS'], tone: 'plain',
-});
-const atlas = card({
-  x: 62, y: 458, w: 172, h: 128, iconName: 'mongodb', iconSize: 34,
-  title: 'MongoDB Atlas', sub: ['Users, videos,', 'comments'], tone: 'storage',
-});
+// ── Ngoài AWS ───────────────────────────────────────────────────────────────
+const outside = group({ x: 40, y: 96, w: 216, h: 560, label: 'Outside AWS', stroke: '#98a2b3', fill: '#fafbfc', dash: '5 4' });
+p.push(outside.svg);
+const browser = card({ x: 62, y: 136, w: 172, h: 120, iconName: 'react', iconSize: 34, title: 'Browser', sub: ['React SPA + hls.js'], tone: 'network' });
+const cloudflare = card({ x: 62, y: 300, w: 172, h: 140, iconName: 'cloudflare', iconSize: 34, title: 'Cloudflare', sub: ['DNS, TLS and', 'the API Worker'], tone: 'plain' });
+const atlas = card({ x: 62, y: 484, w: 172, h: 150, iconName: 'mongodb', iconSize: 34, title: 'MongoDB Atlas', sub: ['documents and', 'Atlas Search'], tone: 'storage' });
 p.push(browser.svg, cloudflare.svg, atlas.svg);
 
-// ── Tài khoản AWS chính ─────────────────────────────────────────────────────
-const main = group({
-  x: 392, y: 72, w: 900, h: 828, label: 'Primary AWS account', iconName: 'aws',
-});
-p.push(main.svg);
+// ── Tài khoản B ─────────────────────────────────────────────────────────────
+const acctB = group({ x: 380, y: 64, w: 1328, h: 1014, label: 'AWS account (ap-southeast-1): compute, storage and delivery', iconName: 'aws' });
+p.push(acctB.svg);
 
-const delivery = group({
-  x: 418, y: 112, w: 848, h: 156, label: 'Delivery tier',
-  stroke: PALETTE.network.stroke, fill: '#f6fbf6',
-});
-p.push(delivery.svg);
+const t1 = group({ x: 404, y: 104, w: 952, h: 172, label: 'API and data', stroke: PALETTE.compute.stroke, fill: '#fffaf3' });
+const t2 = group({ x: 404, y: 320, w: 952, h: 190, label: 'Ingest and orchestration', stroke: PALETTE.network.stroke, fill: '#f6fbf6' });
+const t3 = group({ x: 404, y: 540, w: 952, h: 214, label: 'Serverless compute', stroke: PALETTE.storage.stroke, fill: '#f5fafc' });
+const t4 = group({ x: 404, y: 804, w: 952, h: 184, label: 'Events and notifications', stroke: '#8e6bb3', fill: '#faf7fd' });
+p.push(t1.svg, t2.svg, t3.svg, t4.svg);
 
-const cfWeb = card({
-  x: 458, y: 146, w: 196, h: 114, iconName: 'aws-cloudfront', iconSize: 32,
-  title: 'CloudFront', sub: ['zelostech.site'], tone: 'network',
-});
-const s3Web = card({
-  x: 752, y: 146, w: 196, h: 114, iconName: 'aws-s3', iconSize: 32,
-  title: 'Amazon S3', sub: ['Static site hosting'], tone: 'storage',
-});
-p.push(cfWeb.svg, s3Web.svg);
+const api = card({ x: 430, y: 140, w: 200, h: 124, iconName: 'aws-lambda', iconSize: 30, title: 'API function', sub: ['Express 5,', 'reserved 80'], tone: 'compute' });
+const ddb = card({ x: 690, y: 140, w: 190, h: 124, iconName: 'aws-dynamodb', iconSize: 30, title: 'DynamoDB', sub: ['limits, views,', 'progress, inbox'], tone: 'storage' });
+const keys = card({ x: 940, y: 140, w: 180, h: 124, iconName: 'aws-s3', iconSize: 30, title: 'S3 keys', sub: ['AES-128 keys'], tone: 'secret' });
+const webS3 = card({ x: 1160, y: 140, w: 170, h: 124, iconName: 'aws-s3', iconSize: 30, title: 'S3 web', sub: ['SPA bundle'], tone: 'storage' });
+p.push(api.svg, ddb.svg, keys.svg, webS3.svg);
 
-const app = group({
-  x: 418, y: 306, w: 848, h: 190, label: 'Application tier',
-  stroke: PALETTE.compute.stroke, fill: '#fffaf3',
-});
-p.push(app.svg);
+const raw = card({ x: 430, y: 360, w: 180, h: 132, iconName: 'aws-s3', iconSize: 30, title: 'S3 raw', sub: ['source files'], tone: 'storage' });
+const sqs = card({ x: 660, y: 360, w: 180, h: 132, iconName: 'aws-sqs', iconSize: 30, title: 'SQS ingest', sub: ['with a', 'dead-letter queue'], tone: 'network' });
+const starter = card({ x: 890, y: 360, w: 180, h: 132, iconName: 'aws-lambda', iconSize: 30, title: 'starter', sub: ['one execution', 'per upload'], tone: 'compute' });
+const sfn = card({ x: 1120, y: 360, w: 210, h: 132, iconName: 'aws-step-functions', iconSize: 30, title: 'Step Functions', sub: ['transcode', 'workflow'], tone: 'network' });
+p.push(raw.svg, sqs.svg, starter.svg, sfn.svg);
 
-const api = card({
-  x: 458, y: 342, w: 208, h: 136, iconName: 'aws-ec2', iconSize: 32,
-  title: 'Amazon EC2', sub: ['Node.js + Express', 'behind nginx'], tone: 'compute',
-});
-const secrets = card({
-  x: 752, y: 342, w: 196, h: 136, iconName: 'aws-secrets-manager', iconSize: 32,
-  title: 'Secrets Manager', sub: ['DB URI, JWT key,', 'cookie signing key'], tone: 'secret',
-});
-const canary = card({
-  x: 982, y: 342, w: 196, h: 136, iconName: 'aws-cloudwatch', iconSize: 32,
-  title: 'CloudWatch', sub: ['Canary probes the site', 'every 5 minutes'], tone: 'plain',
-});
-p.push(api.svg, secrets.svg, canary.svg);
+const proc = card({ x: 430, y: 580, w: 180, h: 150, iconName: 'aws-s3', iconSize: 30, title: 'S3 processed', sub: ['HLS package,', 'previews'], tone: 'storage' });
+const fargate = card({ x: 660, y: 580, w: 180, h: 150, iconName: 'aws-fargate', iconSize: 30, title: 'Fargate', sub: ['Spot 24 vCPU,', 'On-Demand 24'], tone: 'compute' });
+const batch = card({ x: 890, y: 580, w: 180, h: 150, iconName: 'aws-batch', iconSize: 30, title: 'AWS Batch', sub: ['main and', 'bulk queues'], tone: 'compute' });
+const steps = card({ x: 1120, y: 580, w: 210, h: 150, iconName: 'aws-lambda', iconSize: 30, title: 'Lambda steps', sub: ['status, probe,', 'stitch'], tone: 'compute' });
+p.push(proc.svg, fargate.svg, batch.svg, steps.svg);
 
-const proc = group({
-  x: 418, y: 522, w: 848, h: 350, label: 'Processing tier (event-driven)',
-  stroke: PALETTE.storage.stroke, fill: '#f5fafc',
-});
-p.push(proc.svg);
+const notifier = card({ x: 430, y: 840, w: 180, h: 132, iconName: 'aws-lambda', iconSize: 30, title: 'notifier', sub: ['subscriber inbox'], tone: 'compute' });
+const eb = card({ x: 660, y: 840, w: 180, h: 132, iconName: 'aws-eventbridge', iconSize: 30, title: 'EventBridge', sub: ['progress,', 'VideoPublished'], tone: 'network' });
+const sns = card({ x: 1120, y: 840, w: 210, h: 132, iconName: 'aws-sns', iconSize: 30, title: 'SNS alerts', sub: ['failed videos'], tone: 'secret' });
+p.push(notifier.svg, eb.svg, sns.svg);
 
-const s3Raw = card({
-  x: 450, y: 562, w: 178, h: 116, iconName: 'aws-s3', iconSize: 30,
-  title: 'S3 Raw Bucket', sub: ['uploaded source file'], tone: 'storage',
-});
-const sqs = card({
-  x: 664, y: 562, w: 178, h: 116, iconName: 'aws-sqs', iconSize: 30,
-  title: 'Amazon SQS', sub: ['Transcode queue', 'plus dead letter queue'], tone: 'network',
-});
-const lambda = card({
-  x: 878, y: 562, w: 178, h: 116, iconName: 'aws-lambda', iconSize: 30,
-  title: 'AWS Lambda', sub: ['Job Submitter'], tone: 'compute',
-});
-const ecr = card({
-  x: 1072, y: 562, w: 172, h: 116, iconName: 'docker', iconSize: 30,
-  title: 'Amazon ECR', sub: ['transcoder image'], tone: 'plain',
-});
-const batch = card({
-  x: 878, y: 720, w: 178, h: 140, iconName: 'aws-batch', iconSize: 30,
-  title: ['AWS Batch', 'on Fargate'], sub: ['FFmpeg, chunked for', 'long videos'], tone: 'compute',
-});
-const s3Proc = card({
-  x: 572, y: 726, w: 190, h: 124, iconName: 'aws-s3', iconSize: 30,
-  title: 'S3 Processed', sub: ['HLS segments', 'and thumbnails'], tone: 'storage',
-});
-p.push(s3Raw.svg, sqs.svg, lambda.svg, ecr.svg, batch.svg, s3Proc.svg);
+// ── Tầng phân phối ──────────────────────────────────────────────────────────
+const acctA = group({ x: 1424, y: 250, w: 268, h: 470, label: 'Delivery (global)', stroke: '#8e6bb3', fill: '#faf7fd' });
+p.push(acctA.svg);
+const cfWeb = card({ x: 1452, y: 320, w: 232, h: 130, iconName: 'aws-cloudfront', iconSize: 32, title: 'CloudFront web', sub: ['zelostech.site'], tone: 'network' });
+const cfMedia = card({ x: 1452, y: 500, w: 232, h: 190, iconName: 'aws-cloudfront', iconSize: 32, title: 'CloudFront media', sub: ['Origin Access Control,', 'signed query policy'], tone: 'network' });
+p.push(cfWeb.svg, cfMedia.svg);
 
-// ── Tài khoản AWS thứ hai ───────────────────────────────────────────────────
-const second = group({
-  x: 1332, y: 300, w: 366, h: 300,
-  label: 'Second AWS account', iconName: 'aws', stroke: '#8e6bb3', fill: '#faf7fd',
-});
-p.push(second.svg);
+// ── Cạnh ────────────────────────────────────────────────────────────────────
+// Người dùng tới API
+p.push(edge([[browser.box.cx, browser.box.b], [browser.box.cx, cloudflare.box.y]], { badge: 1 }));
+p.push(edge([[cloudflare.box.r, 344], [LANE.api, 344], [LANE.api, 182], [api.box.x, 182]], { badge: 2, badgeAt: 0.78 }));
+p.push(edge([[api.box.x, 236], [LANE.atlas, 236], [LANE.atlas, 554], [atlas.box.r, 554]], { badge: 3, badgeAt: 0.6 }));
+p.push(edge([[api.box.r, 182], [ddb.box.x, 182]], { badge: 4 }));
+p.push(edge([[api.box.cx + 50, api.box.b], [api.box.cx + 50, 297], [keys.box.cx, 297], [keys.box.cx, keys.box.b]], { badge: 5, badgeAt: 0.5 }));
 
-const cfVideo = card({
-  x: 1364, y: 348, w: 302, h: 216, iconName: 'aws-cloudfront', iconSize: 38,
-  title: ['CloudFront', 'cdn.zelostech.site'],
-  sub: ['Origin Access Control', 'Signed Cookies', 'PriceClass_All'], tone: 'network',
-});
-p.push(cfVideo.svg);
+// Tải lên rồi chuỗi sự kiện
+p.push(edge([[browser.box.r, 166], [LANE.upload, 166], [LANE.upload, 426], [raw.box.x, 426]], { badge: 6, badgeAt: 0.62 }));
+p.push(edge([[raw.box.r, 426], [sqs.box.x, 426]], { badge: 7 }));
+p.push(edge([[sqs.box.r, 426], [starter.box.x, 426]], { badge: 8 }));
+p.push(edge([[starter.box.r, 426], [sfn.box.x, 426]], { badge: 9 }));
+p.push(edge([[sfn.box.cx, sfn.box.b], [sfn.box.cx, steps.box.y]], { badge: 10 }));
+p.push(edge([[sfn.box.x, 470], [1095, 470], [1095, 620], [batch.box.r, 620]], { badge: 11, badgeAt: 0.5 }));
+p.push(edge([[batch.box.x, 655], [fargate.box.r, 655]], { badge: 12 }));
+p.push(edge([[raw.box.cx, raw.box.b], [raw.box.cx, 524], [fargate.box.x + 40, 524], [fargate.box.x + 40, fargate.box.y]], { dashed: true, badge: 13, badgeAt: 0.5 }));
+p.push(edge([[fargate.box.x, 655], [proc.box.r, 655]], { badge: 14 }));
+p.push(edge([[fargate.box.cx, fargate.box.b], [fargate.box.cx, eb.box.y]], { badge: 15 }));
+p.push(edge([[eb.box.r, 884], [1095, 884], [1095, 704], [steps.box.x, 704]], { badge: 16, badgeAt: 0.5 }));
+p.push(edge([[steps.box.cx, steps.box.b], [steps.box.cx, 778], [LANE.status, 778], [LANE.status, 614], [atlas.box.r, 614]], { badge: 17, badgeAt: 0.35 }));
+p.push(edge([[eb.box.x, 906], [notifier.box.r, 906]], { badge: 18 }));
+p.push(edge([[steps.box.cx + 70, steps.box.b], [steps.box.cx + 70, sns.box.y]], { badge: 19 }));
 
-// ── Cạnh nối ────────────────────────────────────────────────────────────────
-// 1-2: người xem tới giao diện. Nhãn đặt trên đoạn dọc trong làn trống.
-p.push(edge([[browser.box.cx, browser.box.b], [browser.box.cx, cloudflare.box.y]],
-  { badge: 1 }));
-p.push(edge([[cloudflare.box.r, 322], [LANE.upload, 322], [LANE.upload, 203], [cfWeb.box.x, 203]],
-  { badge: 2 }));
-p.push(edge([[cfWeb.box.r, cfWeb.box.cy], [s3Web.box.x, s3Web.box.cy]], { label: 'origin' }));
+// Phân phối
+p.push(edge([[proc.box.x, 710], [392, 710], [392, 1024], [LANE_AB, 1024], [LANE_AB, 654], [cfMedia.box.x, 654]], { badge: 20, badgeAt: 0.55 }));
+p.push(edge([[cfMedia.box.r, 574], [1726, 574], [1726, 40], [192, 40], [192, browser.box.y]], { badge: 21, badgeAt: 0.45 }));
+p.push(edge([[218, browser.box.y], [218, 52], [cfWeb.box.r - 34, 52], [cfWeb.box.r - 34, cfWeb.box.y]], { badge: 22, badgeAt: 0.8 }));
+p.push(edge([[cfWeb.box.x, 385], [LANE_AB, 385], [LANE_AB, 202], [webS3.box.r, 202]], { dashed: true, badge: 23, badgeAt: 0.5 }));
 
-// 3-4: người xem tới API, API tới cơ sở dữ liệu
-p.push(edge([[cloudflare.box.r, 380], [api.box.x, 380]], { badge: 3 }));
-p.push(edge([[api.box.x, 440], [LANE.metadata, 440], [LANE.metadata, 492], [atlas.box.r, 492]],
-  { badge: 4 }));
-p.push(edge([[secrets.box.x, secrets.box.cy + 42], [api.box.r, api.box.cy + 42]],
-  { dashed: true, label: 'secrets' }));
-
-// 5-6: cấp URL rồi tải thẳng lên S3
-p.push(edge([[api.box.cx, api.box.b], [api.box.cx, 508], [LANE.presign, 508], [LANE.presign, 214], [browser.box.r, 214]],
-  { badge: 5, badgeAt: 0.72 }));
-p.push(edge([[browser.box.r, 168], [LANE.upload, 168], [LANE.upload, 604], [s3Raw.box.x, 604]],
-  { badge: 6, badgeAt: 0.69 }));
-
-// 7-11: chuỗi chuyển mã
-p.push(edge([[s3Raw.box.r, s3Raw.box.cy], [sqs.box.x, sqs.box.cy]], { badge: 7 }));
-p.push(edge([[sqs.box.r, sqs.box.cy], [lambda.box.x, lambda.box.cy]], { badge: 8 }));
-p.push(edge([[lambda.box.cx, lambda.box.b], [lambda.box.cx, batch.box.y]],
-  { badge: 9 }));
-p.push(edge([[ecr.box.cx, ecr.box.b], [ecr.box.cx, 788], [batch.box.r, 788]],
-  { dashed: true, label: 'pull image', labelDy: -8 }));
-p.push(edge([[s3Raw.box.cx, s3Raw.box.b], [s3Raw.box.cx, 700], [batch.box.x - 22, 700], [batch.box.x - 22, batch.box.cy], [batch.box.x, batch.box.cy]],
-  { badge: 10, badgeAt: 0.42 }));
-p.push(edge([[batch.box.x, batch.box.cy + 38], [s3Proc.box.r, s3Proc.box.cy + 38]], { badge: 11 }));
-
-// 12: đánh dấu READY, chạy men theo đáy rồi lên MongoDB
-p.push(edge([[batch.box.cx, batch.box.b], [batch.box.cx, 914], [LANE.ready, 914], [LANE.ready, atlas.box.cy], [atlas.box.r, atlas.box.cy]],
-  { badge: 12, badgeAt: 0.8 }));
-
-// Phân phối video
-p.push(edge([[s3Proc.box.cx, s3Proc.box.b], [s3Proc.box.cx, 952], [1515, 952], [1515, second.box.b]],
-  { label: 'origin, readable only by CloudFront', labelDy: -8, labelAt: 0.55 }));
-p.push(edge([[api.box.cx + 60, api.box.y], [api.box.cx + 60, 287], [1306, 287], [1306, 404], [second.box.x, 404]],
-  { badge: 13, badgeAt: 0.46 }));
-p.push(edge([[cfVideo.box.x, cfVideo.box.y + 96], [1320, cfVideo.box.y + 96], [1320, 44], [206, 44], [206, browser.box.y]],
-  { badge: 14 }));
-
-// Bảng chú giải, đặt vào chỗ trống dưới cột bên thứ ba. Chữ ngắn để vừa khung rộng 216px ở 15,5px.
+// ── Bảng bước ───────────────────────────────────────────────────────────────
 const STEPS = [
-  'DNS lookup', 'load the interface', 'REST API call', 'metadata read/write', 'pre-signed URL',
-  'upload to S3', 'S3 event', 'SQS to Lambda', 'SubmitJob', 'download source',
-  'write HLS output', 'set status READY', 'signed cookies', 'serve signed HLS',
+  'DNS and API calls', 'Worker to API', 'documents, search', 'hot key-value data', 'read the AES key',
+  'presigned upload', 'ObjectCreated event', 'message batch', 'StartExecution', 'probe, status, stitch',
+  'submitJob.sync', 'run on Fargate', 'read the source', 'write the HLS', 'progress events',
+  'to the status step', 'write video state', 'VideoPublished', 'failure alert', 'origin through OAC',
+  'signed HLS requests', 'load the web app', 'web origin',
 ];
-const KEY_Y = 632;
+const KEY_Y = 680;
 const KEY_ROW = 19;
-const key = group({
-  x: 40, y: KEY_Y, w: 216, h: 62 + (STEPS.length - 1) * KEY_ROW + 4, label: 'Numbered steps',
-  stroke: '#98a2b3', fill: '#fafbfc', dash: '5 4',
-});
+const key = group({ x: 40, y: KEY_Y, w: 216, h: 62 + (STEPS.length - 1) * KEY_ROW + 4, label: 'Numbered steps', stroke: '#98a2b3', fill: '#fafbfc', dash: '5 4' });
 p.push(key.svg);
 STEPS.forEach((label, i) => {
   const y = KEY_Y + 58 + i * KEY_ROW;
@@ -227,9 +128,9 @@ STEPS.forEach((label, i) => {
   p.push(text(label, 88, y, { size: TYPE.cardSub, anchor: 'start', fill: PALETTE.ink }));
 });
 
-p.push(legend(44, 980, [
-  { label: 'Request flow' },
-  { label: 'Configuration / image pull', dashed: true },
+p.push(legend(420, 1110, [
+  { label: 'Request or event flow' },
+  { label: 'Read access or origin', dashed: true },
 ]));
 
 const svg = document_({ width: W, height: H, body: p.join('\n') });

@@ -1,0 +1,12 @@
+{
+  "source": "shared/src/ladder.ts (caps); master.m3u8 AVERAGE-BANDWIDTH of two prod videos read on 2026-11-04: videos/6aea3d0094989c6980c6c03c/v1 (real camera or screen recording with audio, 1912x1080, 28.7 fps, AAC) and videos/6aea3d2294989c6980c6c03e/v1 (synthetic testsrc pattern, 1920x1080, no audio)",
+  "unit": "kbit/s",
+  "rows": [
+    { "rung": "1080p", "cap_video": 4500, "audio": 128, "recording_avg": 3562, "pattern_avg": 274 },
+    { "rung": "720p", "cap_video": 2200, "audio": 128, "recording_avg": 1578, "pattern_avg": 188 },
+    { "rung": "480p", "cap_video": 1100, "audio": 64, "recording_avg": 716, "pattern_avg": 122 },
+    { "rung": "360p", "cap_video": 600, "audio": 64, "recording_avg": 420, "pattern_avg": 88 },
+    { "rung": "240p", "cap_video": 350, "audio": 64, "recording_avg": 249, "pattern_avg": 73 },
+    { "rung": "144p", "cap_video": 180, "audio": 64, "recording_avg": 154, "pattern_avg": 59 }
+  ]
+}

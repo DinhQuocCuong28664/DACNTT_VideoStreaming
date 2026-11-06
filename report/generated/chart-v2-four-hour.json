@@ -1,0 +1,34 @@
+{
+  "source": "2026-11-04-v2-s4-long.json",
+  "end_to_end_s": 2298.9,
+  "upload_s": 132.6,
+  "chunks": 48,
+  "vcpu_hours": 18.7,
+  "bars": [
+    {
+      "label": "Intake and wait",
+      "from": 0,
+      "to": 33.9
+    },
+    {
+      "label": "Analyse",
+      "from": 33.9,
+      "to": 141.2
+    },
+    {
+      "label": "Audio",
+      "from": 33.9,
+      "to": 683.1
+    },
+    {
+      "label": "Chunks (48)",
+      "from": 683.1,
+      "to": 2274.7
+    },
+    {
+      "label": "Stitch to READY",
+      "from": 2274.7,
+      "to": 2298.9
+    }
+  ]
+}

@@ -1,0 +1,83 @@
+\chapter{Measurement Data}
+\label{app:measurement-tables}
+
+This appendix gives the raw values behind the results of Chapter~\ref{chap:evaluation}. Each
+measurement script writes a result file to \mbox{\texttt{docs/results/runs}}, and two scripts in
+\mbox{\texttt{docs/diagrams/svg}} read those files: one builds the data of the charts and the other
+the tables below, so a number in a chart and the same number here come from one record.
+Table~\ref{tab:provenance} maps each table and figure of Chapter~\ref{chap:evaluation} to its result
+file, its script and its table in this appendix.
+
+\begin{table}[H]
+\centering
+\caption{Sources of the tables and figures of Chapter~\ref{chap:evaluation}}
+\label{tab:provenance}
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}p{0.41\textwidth} >{\raggedright\arraybackslash}p{0.22\textwidth} >{\raggedright\arraybackslash}p{0.11\textwidth}}
+\toprule
+\textbf{IN CHAPTER 6} & \textbf{RESULT FILE} & \textbf{SCRIPT} & \textbf{RAW DATA} \\
+\midrule
+Figure~\ref{fig:ttff-steps} & \texttt{2026-11-04-v2-ttff.json} & \texttt{bench/ttff.mjs} & Table~\ref{tab:raw-ttff} \\
+Table~\ref{tab:qoe-playback} & \texttt{2026-11-04-v2-qoe-unthrottled.json}, \texttt{2026-11-04-v2-qoe-fast3g.json}, \texttt{2026-11-04-v2-qoe-slow3g.json} & \texttt{qoe/collect.js} & Table~\ref{tab:raw-qoe} \\
+Table~\ref{tab:bitrate-check} & \texttt{2026-11-04-v2-bitrate.json} & \texttt{bench/bitrate.mjs} & Table~\ref{tab:raw-bitrate} \\
+Figure~\ref{fig:transcode-size}, Table~\ref{tab:transcode-results} & \texttt{2026-11-04-v2-s2b-resized.json} & \texttt{bench/transcode.mjs} & Table~\ref{tab:raw-transcode} \\
+Figure~\ref{fig:four-hour} & \texttt{2026-11-04-v2-s4-long.json} & \texttt{bench/transcode.mjs} & Table~\ref{tab:raw-four-hour} \\
+Figure~\ref{fig:burst} & \texttt{2026-11-04-v2-s3c-burst.json} & \texttt{bench/transcode.mjs} & Tables~\ref{tab:raw-burst} and~\ref{tab:raw-lambda} \\
+Table~\ref{tab:api-load} & \texttt{2026-11-04-v2-api-final.json} & \texttt{bench/api-load.mjs} & Tables~\ref{tab:raw-api} and~\ref{tab:raw-lambda} \\
+Table~\ref{tab:cost-comparison} & \texttt{2026-11-04-v2-prices.json}, \texttt{2026-11-05-v2-rekognition-price.json} & \texttt{bench/cost.mjs}, AWS Price List Query API & Table~\ref{tab:raw-prices} \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+The scripts are under \mbox{\texttt{scripts}}. Every run was made on the production environment,
+with the configuration of Chapter~\ref{chap:implementation}.
+
+\section{Playback}
+
+Table~\ref{tab:raw-ttff} breaks the requests of Figure~\ref{fig:ttff-steps} into their steps. The
+first request found every cache cold; the other 19 followed it one after another.
+
+\input{generated/tab-v2-ttff}
+
+Table~\ref{tab:raw-qoe} gives every playback run behind Table~\ref{tab:qoe-playback}. The bit rate is
+the mean of the rung shown during the run, and the rung is read from the size of the video element's
+picture, so it is the rung on screen rather than the one being downloaded.
+
+\input{generated/tab-v2-qoe}
+
+Table~\ref{tab:raw-bitrate} compares the playlists of the three measured videos with their segments.
+The first video is the recording of Table~\ref{tab:bitrate-check}; the other two are synthetic test
+patterns.
+
+\input{generated/tab-v2-bitrate}
+
+\section{Transcoding}
+
+Table~\ref{tab:raw-transcode} lists the twelve runs behind Figure~\ref{fig:transcode-size}. Intake is
+the time from the end of the upload to the end of the probe, and the start column is the time
+from the end of the upload until the first Fargate task starts, so it includes the intake. Analysis
+runs in parallel with encoding, so the columns do not add up to the total.
+
+\input{generated/tab-v2-transcode}
+
+\input{generated/tab-v2-four-hour}
+
+\section{Load}
+
+Table~\ref{tab:raw-burst} summarises the 89 videos of Figure~\ref{fig:burst} that reached
+\status{ready}, and Table~\ref{tab:raw-lambda} gives the log of the API function during that run and
+during the API run of Table~\ref{tab:raw-api}.
+
+\input{generated/tab-v2-burst}
+
+\input{generated/tab-v2-api}
+
+\input{generated/tab-v2-lambda}
+
+\section{Prices}
+
+Table~\ref{tab:raw-prices} gives the list prices read for the cost comparison of
+Table~\ref{tab:cost-comparison}.
+
+\input{generated/tab-v2-prices}

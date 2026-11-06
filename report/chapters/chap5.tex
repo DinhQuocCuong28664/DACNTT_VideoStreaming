@@ -1,362 +1,345 @@
 \chapter{Development and Testing}
 \label{chap:implementation}
 
-This chapter describes how the design of Chapter~\ref{chap:design} was implemented: the backend,
-the transcoder, the infrastructure code and the delivery pipeline. It then records the problems met
-while deploying the system and how each was solved, and ends with the automated tests.
+This chapter describes how the design of Chapter~\ref{chap:design} was built. It presents the
+structure of the code, the implementation of the processing pipeline, the API and the web
+application, the infrastructure code and the delivery pipeline. It then records the problems met
+while building the system and how each was solved, and ends with the automated tests.
 
-\section{Backend Implementation}
-\label{sec:backend-impl}
+\section{Repository Structure}
+\label{sec:repo-structure}
 
-\subsection{Layered Services and Access Controls}
-\label{sec:backend-layers}
+The whole system lives in one repository organised as npm workspaces, so that a change to a
+contract shared by two parts is made, type-checked and tested in one commit.
+Table~\ref{tab:workspaces} lists the workspaces and where each one runs. Every workspace except
+\name{infra} is written in TypeScript and runs on Node.js~22; each deployable part is bundled into
+a single file with esbuild, so a Lambda package or the container image carries no
+\name{node\_modules} folder.
 
-The backend follows a layered structure: routes delegate to controllers, controllers to services,
-and only services touch the data models. Keeping business logic out of route handlers lets it be
-unit tested without an HTTP server.
+\begin{table}[H]
+\centering
+\caption{Workspaces of the repository and where each one runs}
+\label{tab:workspaces}
+\small
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{0.17\textwidth} >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}p{0.25\textwidth}}
+\toprule
+\textbf{WORKSPACE} & \textbf{CONTENT} & \textbf{RUNS ON} \\
+\midrule
+\name{shared} & Contracts between producer and consumer (zod schemas of events, job inputs and object metadata), video states and their allowed transitions, the bitrate ladder, the chunk planner, playlist writing and stitching, the moderation label policy & Imported by every other part; never deployed alone \\
+\name{transcoder} & The four container roles \name{analyse}, \name{encode}, \name{audio} and \name{chunk}, the FFmpeg argument builder, the process runner and the encode guard & AWS Batch on Fargate \\
+\name{functions} & \name{starter}, \name{probe}, \name{status}, \name{stitch}, \name{notifier}, \name{rollup} and \name{reconciler} & AWS Lambda \\
+\name{api} & The REST API: Express~5 application, features, services and models & AWS Lambda behind a Function URL \\
+\name{web} & React~19 single-page application built with Vite, the hls.js player, vanilla CSS & S3 and CloudFront \\
+\name{e2e} & Playwright tests of the web application against a running environment & The developer's machine \\
+\name{infra} & Terraform modules and environments, the Cloudflare Worker & AWS and Cloudflare \\
+\bottomrule
+\end{tabularx}
+\end{table}
 
-Authorisation for video access lives in a single service function. Every path that exposes a
-video, whether the detail endpoint, the like and comment endpoints or the playback-authorisation
-endpoint, calls that function. Duplicating the check across endpoints is the most common way for an
-access control gap to appear, because a later change updates one copy and not the others.
+The \name{shared} package is what keeps the event-driven parts consistent. The starter function
+validates an S3 event against the same schema that the API used when it wrote the object metadata,
+and the status function accepts a progress event only if it matches the schema that the container
+used to emit it. A field renamed on one side therefore fails the type check of the other side before
+it can fail in production.
 
-Operational authority follows the same principle. The four roles, user, operator, auditor and
-administrator, are mapped to permissions in one table, and each route asks whether the requester
-holds a named permission, such as \texttt{moderation:review} or \texttt{metrics:read}, instead of
-comparing role names. The requester's role is read from the database on every request and is not
-copied into the token, so demoting a person takes effect at once rather than when a token expires.
-
-A moderation decision is applied by one service function. It checks the reason code against the
-closed list for that decision, refuses to let an operator change a decision that an administrator
-made, copies the machine's verdict into \texttt{autoStatus} only if no earlier decision has done so,
-resolves the open reports on the video, and then appends the event. If writing the event fails, the
-decision stands and the failure is logged: withdrawing a removal because of a faulty log would be
-worse, and the error rates are computed from the video documents, so a missing event does not skew
-them.
-
-The server validates upload metadata before issuing a pre-signed URL, because a user can call the
-API directly and would otherwise obtain a URL for any file, turning the storage bucket into free
-hosting. It checks the declared MIME type against an allow-list of video formats and refuses files
-above the configured ceiling; the single and multipart paths are those of
-Section~\ref{sec:upload-design}. Upload also requires a verified e-mail address. The upload guard,
-the profile the interface reads and the takeover of an account by a Google sign-in all read
-verification through one method of the user model, which treats an account with a Google identity
-as verified. The guard runs ahead of the upload rate limiter, so a refused request does not use up
-the hourly quota.
-
-Several protections were added at the HTTP layer. Helmet sets the security headers. Cross-origin
-requests are limited to an explicit allow-list, which Signed Cookies also require, because the CORS
-specification forbids credentials together with a wildcard origin. Authentication endpoints allow
-ten attempts per fifteen minutes per address, which makes password guessing impractical without
-affecting legitimate users. The process refuses to start if the token signing secret is missing,
-turning a dangerous runtime failure into an obvious one.
-
-A new password is checked in two stages, at registration, reset and change alike. The first is
-local: a list of the 131 passwords tried first, including common Vietnamese ones; obvious patterns
-such as \texttt{12345678} or a repeated character; a common word with a few digits added or letters
-swapped for digits; and the user's own name, e-mail prefix and the name of the service. The second
-asks the Pwned Passwords service whether the password appears in a known breach, by the k-anonymity
-protocol \cite{cloudflarekanon}: only the first five hexadecimal characters of its SHA-1 hash leave
-the server. A reply slower than two seconds, or a failed lookup, counts as no answer and lets the
-password through, so
-registration does not depend on an outside service. Both stages apply from eight characters, the
-length the user model already requires. This follows the guidance that a verifier compare a new
-secret with common, expected or compromised values instead of imposing composition rules
-\cite{nist80063b}.
-
-The per-address limit on authentication does not stop one mailbox from being flooded, since an
-attacker who changes address is counted afresh. A second limit therefore counts the mails sent to one
-recipient, five per hour, shared by verification and reset mail. Beyond it, registration still
-creates the account but skips the mail, a request to resend the link is refused with a 429 response,
-and a reset request returns the same generic reply as every other outcome, so it still does not
-reveal which addresses have an account.
-
-\subsection{Serverless Execution Adapter and State Management}
-\label{sec:serverless-adapter}
-
-To bridge the Express application into AWS Lambda without altering established route controllers, the backend leverages the \texttt{@codegenie/serverless-express} adapter. Incoming HTTP requests via Lambda Function URLs are translated into standard Node.js request and response streams, processed through existing Express middleware, and converted back into API Gateway v2 payloads.
-
-A critical challenge in running Mongoose on serverless microVMs is connection churn: creating a new MongoDB Atlas TLS handshake on every invocation adds hundreds of milliseconds of latency and rapidly exhausts database connection pools. The backend addresses this by persisting connections across execution cycles: before invoking \texttt{connectDB()}, the adapter checks \texttt{mongoose.connection.readyState}. If an active connection exists (\texttt{readyState == 1}), the initialization step is bypassed entirely. Furthermore, background tasks such as orphaned upload cleanup and stuck video reconciliation, which previously ran via in-process \texttt{setInterval} timers on EC2, are decoupled into a dedicated event handler triggered hourly by an Amazon EventBridge schedule rule.
-
-\section{Transcoder Implementation}
+\section{Processing Pipeline}
 \label{sec:transcoder-impl}
 
-The transcoder is a Node.js worker packaged with FFmpeg in a Docker image built in several stages.
-Node 18 was abandoned because Mongoose 9 needs the Web Crypto API, which that version lacks, and
-Node 20 was later replaced with \texttt{node:24-slim} when Node 20 reached end of life on 30 April
-2026. Node 24 was preferred over Node 26 because it is the Active LTS release, supported until April
-2028. The Alpine variant was avoided because FFmpeg requires glibc.
+\subsection{Workflow Functions}
+\label{sec:functions-impl}
 
-A duplicate job must not overwrite a finished result. The heartbeat of Section~\ref{sec:pipeline-design}
-is in effect a lease in the sense of Burrows \cite{burrows2006chubby}, and Burrows identified its
-classical failure: a lease can expire while its holder is merely stalled, so a second holder is
-granted the same resource while the first is still alive. A review of the pipeline against this
-failure found that neither \texttt{updateVideoReady} nor \texttt{updateVideoError} checked the
-current status before writing, so a duplicate job could overwrite a successful result or even turn a
-\texttt{READY} video back into \texttt{ERROR}. Both are now a conditional \texttt{findOneAndUpdate}
-that writes only when the status is not already \texttt{READY}, and \texttt{processVideo} checks the
-status before downloading anything, so a late duplicate stops at once.
+The seven functions are small and each has its own role with only the permissions it needs. The
+starter turns each record of an SQS batch into one Step Functions execution named after the video and
+its upload version, and reports only the failed records back to SQS, so one bad message does not make
+the whole batch return to the queue. The probe function runs \name{ffprobe} from a Lambda layer
+that holds a static build of the tool, plans the job with the functions of \name{shared} and stores
+the plan in the work bucket; the state machine receives only a summary, which keeps the execution
+history small. The status function is the only writer of processing state: it moves a video through
+\status{processing}, \status{ready} or \status{error}, folds progress events from the two parallel
+branches into one percentage that never goes backwards, and announces a published video exactly once.
+The stitch function joins the chunk playlists and writes every media playlist before the master
+playlist, as Section~\ref{sec:hls-output} requires. The last three functions serve the API: the
+notifier writes a notification for each subscriber and mails those who opted in, the roll-up adds the
+viewing heartbeats of the previous hours into daily analytics, and the reconciler removes drafts whose
+upload never finished.
 
-A single FFmpeg invocation produces every rendition that the source can fill, which decodes the
-source only once. The ladder follows the Per-Resolution Capped-CRF specification of
-Table~\ref{tab:capped-crf-ladder}, spanning six rungs from 144p (CRF 28, maxrate 180~kbit/s) to 1080p
-(CRF 22, maxrate 4.5~Mbit/s). Each tier bounds encoder complexity via constrained VBV buffers
-(\texttt{-maxrate} and \texttt{-bufsize 2*maxrate}), and each rung fits the source inside its frame
-without enlarging it: a 480p source yields a 360p rung and one at 854$\times$480, not a 1080p
-rendition enlarged 2.25 times. Only the single-container path for a video longer than twenty minutes
-reduces to the three core rungs of 360p, 720p and 1080p, to stay within the time limit of a job. The command writes six-second segments and the rendition playlists; the worker
-then writes the master playlist. Its bandwidth values are the peak segment bit rates measured from
-the segments (Section~\ref{sec:qoe-playback}), and its codec strings are read from each stream's
-sequence parameter set, since the constraint-set byte that RFC~6381 requires appears in neither the
-profile name nor the level reported by a probe. A thumbnail is extracted in a separate pass.
+\subsection{Transcoder Image}
+\label{sec:image-impl}
 
-The chunked path of Section~\ref{sec:chunked-design} runs the same image under four commands. The
-planner computes chunk boundaries with functions that do no input or output, so the arithmetic is
-tested directly: a boundary is a whole number of groups of pictures counted in frames, and every
-chunk writes its timestamps from the same base offset, so independently encoded chunks join without
-a gap or a repeated segment. A chunk job reads only its own range of the source over HTTP and
-encodes every rendition for it, and the finalizer joins the playlists and measures each rendition's
-bandwidth from the segments. Chunk jobs use their own task size of 4~vCPU and 8~GiB, which measured
-14\% faster and used 7\% fewer vCPU-seconds than one vCPU; the size is checked against the valid
-Fargate combinations when the configuration loads, because Batch would otherwise reject the
-submission only after the video had been marked as processing.
+The four roles share one container image built in stages. The build stage bundles the entry points;
+the runtime stage holds only Node.js, a static FFmpeg build and the bundle, runs as a non-root user and
+measures 136~MB compressed. Both base images are pinned by digest, so two builds of the same commit
+produce the same image. \name{ffprobe} is left out of the runtime image because probing runs in
+Lambda. Every Fargate task pulls the image before it starts, and pulling dominates the start-up time
+of a container~\cite{coldstart2023}, so its size bears directly on how quickly a job begins. A separate
+\name{smoke} stage adds \name{ffprobe} and a test program on top of the runtime stage; it is used
+only by the delivery pipeline of Section~\ref{sec:cicd}, and because the runtime stage is the last one
+in the file, a build without an explicit target can never ship the test tools.
 
-Content screening is one function, called by the single-container job and by the finalizer with the
-same policy and thresholds. It extracts the sampled frames with FFmpeg, sends them to Rekognition
-three at a time with retries and client-side rate limiting, applies the label policy of
-Section~\ref{sec:screening-design}, and returns the verdict with its evidence labels and the share of
-frames analysed. An error inside the step becomes a flagged verdict carrying the error, so the video
-waits for a person and is neither lost nor published. Screening is on unless
-\texttt{MODERATION\_ENABLED} is explicitly false, so a missing setting cannot publish every video
-unchecked.
+The encode and audio roles download the source to the task's disk before they start FFmpeg. Reading
+it through a pre-signed URL would avoid the copy, but such a URL is signed with the task's temporary
+credentials and stops working when they expire, which can happen during an encode of several hours.
+The chunk role reads only its own time range, which is short, so it does read through a pre-signed
+URL.
 
-When FFmpeg fails, the top-level handler records \texttt{ERROR} in the database. In \texttt{worker}
-mode it also leaves the SQS message in flight, so the message is redelivered and, after the
-configured attempts, moved to the dead letter queue. The deployed system runs \texttt{batch} mode
-(Section~\ref{sec:pipeline-design}), where the container holds no message, so only the
-\texttt{ERROR} record applies there; retry and alerting for that path are described in
-Section~\ref{sec:challenges}.
+\subsection{Failure Handling Inside a Job}
+\label{sec:job-failure-impl}
+
+A failed job ends with one of two exit codes, because the retry rule of
+Section~\ref{sec:compute-design} depends on it. A failure that would repeat with the same input, such
+as a file FFmpeg cannot decode or a plan that fails validation, ends with exit code 3, which Batch
+does not retry; every other failure, including a Spot reclaim or a network error, ends with a code
+that Batch retries. The FFmpeg runner keeps the last lines of the error output in the failure reason
+and reports a process killed by a signal as such, so an operator can tell a reclaimed Spot task from
+a broken file.
+
+The encode guard stops a run that cannot finish in time as soon as that is clear, instead of letting it
+use the Fargate task until the timeout. During the run it projects the total time as the video
+duration multiplied by the ratio of elapsed time to encoded position. It gives no verdict during the
+first 120~seconds or before 30~seconds of video are encoded, and it stops the run only when the
+projection has stayed above 90\% of the job budget for 180~seconds, so one slow scene never ends a
+healthy job.
+
+\section{API and Web Application}
+\label{sec:backend-impl}
+
+The API is one Express~5 application adapted to Lambda with \name{serverless-express}. It is
+organised by feature: authentication, uploads, videos, community, channels, library, studio,
+discovery and moderation each register their own routes, and reach storage, the CDN signer, mail, the
+scheduler, image screening and search through service interfaces. In production these interfaces are
+backed by AWS and Atlas; in the tests they are backed by in-memory implementations, which lets a test
+run a whole route without the network. Every request body is validated with a zod schema, and every
+error leaves the API in the shape \mbox{\texttt{\{error:\{code,message\}\}}} of Section~\ref{sec:api-design}.
+The rule that decides whether a user may see or play a video is one function, called by every route
+that exposes a video, its comments, its playlist or its key.
+
+A new instance does as little as possible before its first request: it reads its secret from Secrets
+Manager and opens the database connection, and both are kept for the life of the instance. Indexes
+are created by a separate maintenance action, run once after each deployment
+(Section~\ref{sec:challenges}). The Cloudflare Worker in front of the Function URL replaces the host
+header with that of the function, removes any \texttt{X-Origin-Verify} header sent by a client and
+adds the secret one, so the API refuses every request that did not pass through Cloudflare, and
+trusts the client address in \texttt{CF-Connecting-IP} only on such requests.
+
+The web application is written in React~19 with React Router and i18next for its two languages.
+Styling uses vanilla CSS with custom properties for the light and dark themes, without a utility
+framework. Two parts of its client code carry most of the robustness. The HTTP client retries a
+request that receives 429 or 503 up to three times, after about 0.5, 1 and 2~seconds
+with random jitter, and follows a \texttt{Retry-After} header capped at ten seconds; a retry is safe
+even for a POST, because both answers are given before any handler runs. The upload client
+sends the parts of a multipart upload, retries a failed part with a newly signed URL, and stops at once
+when the viewer cancels.
 
 \section{Infrastructure as Code}
 \label{sec:iac}
 
-The AWS environment is described by the fourteen Terraform modules of
-Table~\ref{tab:terraform-modules} and by three environment definitions: \texttt{dev}, which hosts
-the deployed system; \texttt{staging}, a reduced copy used to test a branch before it is merged; and
-\texttt{prod}, a variant with On-Demand Fargate capacity, thirty days of logs and buckets that cannot
-be force-destroyed. Only the first two have been applied; \texttt{prod} was checked with
-\texttt{terraform validate} and never deployed. Because \texttt{dev} serves real users, it carries the
-same protection against a mistaken \texttt{terraform destroy}: its buckets and registry cannot be
-force-deleted while they hold objects or images, and a deleted secret stays recoverable for seven days.
+All cloud resources are described with Terraform in eleven modules, listed in
+Table~\ref{tab:terraform-modules}, and three environments. The \name{shared} environment holds what
+every environment uses once: the virtual private cloud (VPC) and the image registry. The \name{staging} and \name{prod}
+environments compose the modules with their own names (prefix \name{zelos-staging} or
+\name{zelos-prod}), capacity ceilings and hosts. Each environment keeps its state in its own key of
+an S3 bucket, with a DynamoDB table as lock, so two applies can never write the same state at once.
+Every resource carries the tags \name{Project}, \name{Stack}, \name{Environment} and
+\name{ManagedBy}.
 
 \begin{table}[H]
 \centering
 \caption{Terraform modules and their responsibilities}
 \label{tab:terraform-modules}
 \small
-\begin{tabularx}{\textwidth}{p{0.25\textwidth} X}
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{0.15\textwidth} >{\raggedright\arraybackslash}X}
 \toprule
 \textbf{MODULE} & \textbf{RESPONSIBILITY} \\
 \midrule
-\texttt{s3}         & Raw and processed buckets, CORS configuration, Glacier lifecycle transition, event notification \\
-\texttt{sqs}        & Transcode queue, dead letter queue with a redrive policy, queue access policy \\
-\texttt{ecr}        & Container registry with image scanning on push and a lifecycle policy retaining recent images \\
-\texttt{iam}        & Execution roles for AWS Batch, the ECS task, the transcoder task, and the Lambda submitter \\
-\texttt{vpc}        & Virtual network, public subnets, internet gateway, security groups, S3 gateway endpoint \\
-\texttt{secrets}    & AWS Secrets Manager entries for the database connection string and the token signing secret \\
-\texttt{sns}        & Notification topics for transcode completion and dead letter queue alerts \\
-\texttt{monitoring} & CloudWatch log groups, alarms and dashboard, a scheduled health check of the public API, and a rule that alerts on failed Batch jobs \\
-\texttt{batch}      & Fargate Spot compute environment and an optional On-Demand one for overflow, the main and the lower-priority job queue, and the job definition \\
-\texttt{lambda}     & Job submitter function and its SQS event source mapping \\
-\texttt{lambda-backend} & Serverless Express API running on AWS Lambda with Function URLs, Multi-AZ high availability, and EventBridge background reconciler \\
-\texttt{cloudfront} & Distribution, Origin Access Control, cache policy, and the trusted key group used for signed cookies \\
-\texttt{backend-userdata} & Builds the start-up script of the backend instance from a single template, so that every environment runs the same script; creates no resources \\
-\texttt{cloudflare-ips} & The IPv4 ranges from which Cloudflare reaches the origin, used to restrict the backend's security group; creates no resources \\
+\name{network}  & One VPC with public subnets and a free S3 gateway endpoint, so no network address translation (NAT) gateway is billed while idle \\
+\name{ecr}      & Registry of the transcoder image, with scanning on push \\
+\name{storage}  & The raw, processed, work and keys buckets of one environment, their encryption, lifecycle rules and access blocks \\
+\name{ingest}   & The S3 event notification, the ingest queue and its dead letter queue with an alarm on the first message \\
+\name{events}   & The EventBridge bus for pipeline events and the SNS topic for operator alerts \\
+\name{kv}       & The five DynamoDB on-demand tables of Table~\ref{tab:kv-tables}, with time-to-live \\
+\name{batch}    & The Fargate Spot and On-Demand compute environments, the \name{main} and \name{bulk} queues and the four job definitions \\
+\name{workflow} & The state machine, the starter, probe, status and stitch functions, the ffprobe layer and one role per function \\
+\name{app}      & The API function and its Function URL, the notifier, roll-up and reconciler, and the scheduler group for scheduled publishing \\
+\name{cdn}      & The media distribution, its Origin Access Control, signing key group, cache and header policies, certificate and DNS record \\
+\name{web}      & The private bucket and distribution that host the web application, with the rewrite that serves the single-page routes \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
-Two settings deserve mention. The S3 lifecycle policy moves raw source files to Glacier after thirty
-days, since they are not read again once transcoding has succeeded but must be kept in case a
-re-encode is needed. The cache policy gives segments, which never change, a long time-to-live and
-manifests, which change when the set of renditions changes, a short one.
+An environment declares three providers: AWS in the Singapore region, which also manages
+CloudFront because CloudFront is a global service, AWS in \name{us-east-1}, the only region where
+CloudFront accepts certificates, and Cloudflare for DNS. The \name{cdn} and \name{web} modules
+receive the first two through aliases, so the account and the regions they use are chosen by the
+environment and not written into the modules. The transcoder image is selected with a variable that holds the commit of the image
+and has no default value, so a production apply cannot fall back to an untested image.
 
-\section{CI/CD Pipeline and DevSecOps}
+\section{Continuous Integration and Deployment}
 \label{sec:cicd}
 
-Seven GitHub Actions workflows automate verification and deployment, as shown in
-Figure~\ref{fig:cicd}.
+Two GitHub Actions workflows check every push and pull request, as shown in the upper part of
+Figure~\ref{fig:cicd}. The first lints all workspaces, type-checks them, runs the unit tests and builds
+every deployable part; it then builds the \name{smoke} stage of the image and runs real FFmpeg in it,
+and checks the formatting and validity of the Terraform code without access to any account. The second
+is the security gate: Gitleaks scans the whole history for secrets, Trivy scans the dependencies and
+\name{eslint-plugin-security} analyses the code statically. The security jobs are required checks of
+the rule that protects the main branch, so a pull request cannot be merged while one of them fails.
 
-% Xoay ngang: bảy hàng workflow, hàng dài nhất có năm bước nối tiếp. Đặt vừa
-% bề rộng vùng chữ thì nhãn trong hình rơi xuống khoảng 4pt.
-\begin{sidewaysfigure}
+\begin{figure}[htbp]
 \centering
-\includegraphics[width=\textheight]{images/03-cicd-pipeline.png}
-\caption{\textit{The seven GitHub Actions workflows, the file paths that trigger each of them,
-and the two-tier DevSecOps quality gate}}
+\includegraphics[width=\textwidth]{images/03-cicd-pipeline.png}
+\caption{\textit{The checks run by GitHub Actions on every push and pull request, and the deployment
+steps run after a merge}}
 \label{fig:cicd}
-\end{sidewaysfigure}
+\end{figure}
 
-The security gate has two tiers. Most high-severity findings come from transitive dependencies that
-have no patch yet, so a gate that failed on every critical or high finding would fail constantly for
-reasons the team cannot act on, and developers would learn to ignore it. The pipeline therefore
-reports critical and high findings without blocking, and blocks a merge only on a critical finding
-that has a fix. Every failure of the gate is thus something the team can act on.
+The dependency scan has two tiers. It reports every critical and high finding without failing, and
+fails only on a critical finding that already has a fix. Most high findings come from transitive
+dependencies with no patch yet, so a gate that failed on all of them would fail for reasons the team
+cannot act on and would soon be ignored. The scan of the Terraform code is stricter and fails on any
+high or critical misconfiguration, because every such finding can be fixed in the project's own code.
+Each action that runs Trivy is pinned to a release commit rather than a branch, so
+a change in another repository cannot alter what runs in the pipeline.
 
-Static analysis uses \texttt{eslint-plugin-security} rather than SonarQube, which avoids running a
-separate analysis server. Its rules detect, for example, commands built from user input, regular
-expressions open to catastrophic backtracking and unsafe random number generation. A false positive
-is suppressed only with an inline comment stating why. Infrastructure code has its own workflow,
-which checks formatting, initialises without a remote backend so that no credentials are needed,
-validates both environments and scans the configuration for insecure settings.
+The smoke test runs the encoding commands of the deployed image on generated sources and checks the
+result as a player would. It encodes a 40-second source on the single path and a 75-second source on
+the chunked path, decrypts and decodes every rung, and checks the codec strings, the segment
+durations, the rising bandwidth values and the absence of repeated audio packets at chunk boundaries;
+a third case checks the preview sprites. In thirteen checks it exercises what the unit tests cannot,
+namely the behaviour of FFmpeg itself.
 
-A later audit of the pipeline tightened two points. All five workflows that ran the vulnerability
-scanner referenced \texttt{aquasecurity/trivy-action@master}, a branch whose content can change at any
-time, so a compromise of that repository would have run inside a pipeline holding AWS credentials.
-The references are now pinned to a release commit, with the version kept in a comment. The audit also
-found that the Lambda submitter held \texttt{batch:SubmitJob} on every resource; it is now limited
-to the project's job queue and job definition. \texttt{batch:DescribeJobs} keeps its wildcard because
-AWS offers no resource-level control for it, and the module says so in a comment.
+Deployment is deliberately not automated. No workflow holds AWS credentials; the steps in the lower
+part of Figure~\ref{fig:cicd} run from the operator's machine, and each is approved before it runs.
+The API and the functions are bundled; the image is built and pushed to the registry with the commit
+as its tag; Terraform applies the environment with that tag; the maintenance action creates the
+indexes; and the web files are uploaded, hashed assets first and the entry page last, so the new
+entry page never refers to a file that is not there yet, after which the distribution is invalidated.
+The end-to-end tests of Section~\ref{sec:testing} then run against the deployed environment. A change
+is applied to \name{staging} and checked there before it is applied to \name{prod}.
 
 \section{Challenges During Development}
 \label{sec:challenges}
 
 Several problems appeared between a design that was correct on paper and a system that behaved
-correctly once deployed. Table~\ref{tab:challenges} summarises them with their causes and
-resolutions; the two that changed the architecture are described after it.
+correctly once deployed. Table~\ref{tab:challenges} lists them with their causes and resolutions; the
+two with the widest effect are described after it.
 
 \begin{table}[H]
 \centering
-\caption{Problems met during deployment, their causes and resolutions}
+\caption{Problems met during development, their causes and resolutions}
 \label{tab:challenges}
 \footnotesize
 \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{0.20\textwidth} >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}X}
 \toprule
 \textbf{PROBLEM} & \textbf{CAUSE} & \textbf{RESOLUTION} \\
 \midrule
-Every playback request refused with \texttt{403} &
-The cookie authorised \texttt{videos/*/\{videoId\}/*}, but the transcoder writes under
-\texttt{videos/\{videoId\}/}; the unit test compared the function with a copy of its own output &
-Pattern corrected to \texttt{videos/\{videoId\}/*}; the test now asserts the transcoder's layout;
-verified end to end on the deployed distribution \\
-Thumbnails blocked in the catalogue &
-A cookie authorises one video, but a listing shows many thumbnails &
-An unsigned cache behaviour for the thumbnail path only \\
-Fixes served late by the frontend &
-The deployment workflow did not invalidate the frontend's CloudFront cache &
-The workflow invalidates it after every deployment \\
-Playback stopped after two hours behind an endless ``reconnecting'' message &
-Cookies expired; the handler called \texttt{startLoad()} without limit, while hls.js reports the first
-\texttt{403} as non-fatal and an expired cookie fails at the manifest &
-On a \texttt{403} the player refreshes the cookies and calls \texttt{loadSource()}, a bounded number
-of times, then shows a message the viewer can act on \\
-Every transcoding task failed with \texttt{Resource\allowbreak Initialization\allowbreak Error} &
-With e-mail unconfigured, the mail password secret existed without a value, and the job definition
-declared it because its ARN was not empty &
-The secret itself is now conditional; failure alerts carry \texttt{statusReason}, which would have
-shown the cause at once \\
-API outage (\texttt{522}) unseen by every alarm &
-Alarms watched only the pipeline; giving the backend a static address moved its IP while DNS still
-pointed at the old one &
-A scheduled check of the public domain every five minutes and an instance status-check alarm,
-self-hosted to avoid about 1.75~USD a month for a managed check \\
-The next \texttt{terraform apply} would rebuild the server &
-The image was resolved with \texttt{most\_recent = true}, so each Ubuntu release forced replacement
-and the loss of unmanaged state: environment file, nginx, TLS certificates and address &
-Changes to the image are ignored, so upgrades are deliberate, and an Elastic IP keeps the address \\
+Player cannot decrypt any segment &
+The Lambda response format carries text, so the 16-byte key was altered on its way out &
+The key endpoint's body is returned base64-encoded with the flag that tells Lambda to decode it; a
+test sends the key through the adapter and compares the raw bytes \\
+502 responses during a burst of uploads &
+Each new API instance created the indexes before its first request; dozens starting at once overloaded
+the free cluster and passed the start-up timeout &
+Indexes are created by a maintenance action invoked once per deployment; a start-up only reads the
+secret and connects \\
+Function URL refused calls from the Worker &
+The permission must carry a condition that the Terraform provider in use cannot express &
+A Terraform resource adds the statement with the AWS command-line interface (CLI), and skips it when it already exists \\
+ffprobe layer rejected by Lambda &
+The archive exceeds the size that can be uploaded directly &
+The layer is published from an object in an artifacts bucket, named by its checksum so each version
+can be traced to its build \\
+Repeated audio at chunk joins &
+Each chunk kept audio packets from before its seek point, so the packet at each boundary appeared twice &
+FFmpeg drops packets before the seek point (\texttt{-copypriorss 0}); the smoke test counts repeated
+packets \\
+Plan replaced the CloudFront signing key &
+Git on Windows checked the public key out with CRLF line ends, which Terraform saw as a new key &
+\path{.gitattributes} keeps LF for key files, shell scripts and the CloudFront function \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
-\subsection{CloudFront in a Second Account}
+\subsection{One Policy for the Processed Bucket}
 
-The content protection of Section~\ref{sec:content-protection} was implemented and tested before it
-could be provisioned. AWS requires a manual verification before a new account may create CloudFront
-distributions, and the request to lift that restriction stayed pending with no date. Until then the
-processed-content bucket was reachable directly, so the private setting had no effect at the storage
-layer.
+A bucket has exactly one policy, but two modules need a statement in the policy of the processed
+bucket: \name{storage}, which refuses every request without TLS, and \name{cdn}, which lets its
+distribution read the segments. If both wrote the policy, each apply of one would remove the
+statement of the other, and the bucket would alternate between refusing CloudFront and accepting
+plain HTTP. The \name{cdn} module therefore does not write the policy: it returns the statement that
+grants read access to its distribution, and the \name{storage} module merges it with its own and
+attaches the result. The statement names the CloudFront service with a condition on the Amazon Resource
+Name (ARN) of the distribution, so the processed bucket accepts no other reader and a segment can be fetched only
+through the signed distribution.
 
-The distribution was therefore provisioned in a second AWS account. Terraform needed no duplicated
-module: the distribution, its Origin Access Control, its cache and response-header policies and its
-trusted key group take an explicit \texttt{provider} argument pointing at the second account, while
-the buckets, Batch, Lambda and the database stay in the first. Only the bucket policy cannot move,
-since only the account owning a bucket can attach its policy. This needed no special handling,
-because an Origin Access Control policy names a service principal with an \texttt{AWS:SourceArn}
-condition on the distribution, whichever account owns it. With the distribution in place, the
-temporary public bucket policy was removed.
+\subsection{Index Creation at Start-up}
 
-\subsection{Retry and Alerting on the Deployed Path}
-
-On the deployed path the Lambda submitter deletes the SQS message once the job is submitted, so the
-queue has nothing to redeliver, and the job definition originally declared no retry strategy.
-Nothing retried a failed job at any layer, and a transient fault, such as a network error while
-downloading the source, lost the video with nothing but an \texttt{ERROR} record. Detection was no
-better: the alarm described as ``video transcoding failures detected'' watched the dead letter queue,
-which receives a message only when the Lambda fails to submit, so a job failing after submission was
-invisible to it.
-
-The job definition now declares three attempts. It retries infrastructure faults, exits at once when
-the exit status shows that FFmpeg rejected the content, and has a two-hour timeout that bounds a
-process stalled on malformed input. Because AWS Batch publishes no CloudWatch metric for failed jobs,
-an EventBridge rule matches transitions to \texttt{FAILED} and publishes to the alert topic with the
-\texttt{statusReason} of the job, and the old alarm's description now states what it really covers.
+The free Atlas cluster limits concurrent requests and operations per second
+(Section~\ref{sec:performance-design}). Creating indexes is idempotent and cheap for one instance, so
+it first ran before each instance served its first request. Under a burst of uploads, however, the
+reserved concurrency of the API let dozens of instances start together, each sending its index
+commands to the cluster at the same moment; the cluster refused them as too many concurrent requests,
+start-up passed its timeout and the uploads that reached those instances received 502.
+Indexes change only when the API code changes, so they are now created by a maintenance action that
+deployment invokes directly. The action cannot be reached through the Function URL: the API accepts it
+only from a direct invocation, which needs an AWS Identity and Access Management (IAM) permission that only the operator holds.
 
 \section{Testing}
 \label{sec:testing}
 
-The automated suite holds 853 tests in 52 suites, 492 in 35 suites for the backend and 361 in 17 for
-the transcoder. Tables~\ref{tab:test-coverage-backend} and \ref{tab:test-coverage-transcoder} group
-them by area.
+The tests are organised in three levels, summarised in Table~\ref{tab:test-levels}. Unit tests check
+the logic of each workspace without the cloud; the smoke test checks FFmpeg inside the image; the
+end-to-end tests check the deployed system through a browser. The acceptance checklist of the design
+lists the edge cases each part must handle, and each line of it is covered by at least one test.
 
 \begin{table}[H]
 \centering
-\caption{Automated backend tests by area, 492 tests in 35 suites}
-\label{tab:test-coverage-backend}
+\caption{Test levels, their size and where they run}
+\label{tab:test-levels}
 \small
-\begin{tabularx}{\textwidth}{p{0.27\textwidth} p{0.09\textwidth} X}
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{0.18\textwidth} >{\raggedright\arraybackslash}p{0.14\textwidth} >{\raggedright\arraybackslash}X}
 \toprule
-\textbf{AREA} & \textbf{TESTS} & \textbf{FOCUS} \\
+\textbf{LEVEL} & \textbf{SIZE} & \textbf{WHAT IT CHECKS AND WHERE} \\
 \midrule
-Authentication and account verification & 102 & Registration conflicts, login failures and token claims; the issue, expiry and single use of the verification link, which is stored only as a hash; the Google sign-in that takes over an unverified account; missing, malformed, forged and expired tokens, and tokens issued before the account's last password change; the password policy, which refuses common, personal and breached passwords and lets a password through when the breach lookup fails; and a reset response that is identical whether or not the address has an account, including when e-mail delivery fails \\
-Visibility and authorisation & 34 & Privacy enforcement across every query path; that the recommendation endpoint reuses the rule of the detail endpoint and never surfaces a private or unlisted video; and that a video exposes how many likes and dislikes it has but not who gave them \\
-Upload & 98 & Metadata and ownership checks, the refusal of an unverified account, the deletion cascade, pre-signed URL creation, file type and size validation, the ceiling and its hard limit, the choice between a single and a multipart upload, part URLs signed for exact sizes, completion by listing the stored parts, and the clean-up of abandoned uploads \\
-Content delivery & 30 & Cookie signing, policy scope and cookie attributes, and that revocation repeats the attributes used when issuing \\
-Listing, reactions and views & 31 & Pagination bounds, a stable sort order for channel pages, likes and dislikes as conditional updates, view deduplication, and the order of routes \\
-Operation and reconciliation & 50 & Reconciliation of videos stuck in processing or abandoned in uploading, the client address behind Cloudflare and nginx, rate-limit keys, the cap on mail to one recipient with its sliding window and bounded memory, e-mail configuration, and the health endpoint \\
-Moderation and operations console & 147 & Classification of each decision as a false positive, a false negative or neither; the snapshot of the machine's conclusion written once; the confirmation of a removal the machine made, logged as its own action and counted as a true positive; the permission table for the four roles; one appeal per decision; audit sampling and labelling; the Wilson interval and the rates; and that the last administrator cannot be demoted \\
+Unit & 294 tests in 30 files & Logic of every workspace with Vitest, on every push; the API runs against a real MongoDB server started in memory, with AWS services replaced by in-memory implementations \\
+Image smoke & 13 checks & Real FFmpeg inside the built image: both encoding paths encrypted, packaged, decrypted and decoded, on every push \\
+End-to-end & 27 tests in 6 files & The deployed web application and API through Chromium with Playwright, against staging and then production after each deployment \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
+Table~\ref{tab:test-coverage} groups the unit tests by workspace. The \name{shared} workspace holds
+the largest share because the decisions that affect every video are made there: which rungs a source
+receives, how a long video is cut into chunks, how playlists are written and when chunks may be
+joined.
+
 \begin{table}[H]
 \centering
-\caption{Automated transcoder tests by area, 363 tests in 17 suites}
-\label{tab:test-coverage-transcoder}
-\small
-\begin{tabularx}{\textwidth}{p{0.27\textwidth} p{0.09\textwidth} X}
+\caption{Unit tests by workspace, 294 tests in 30 files}
+\label{tab:test-coverage}
+\footnotesize
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{0.16\textwidth} >{\raggedright\arraybackslash}p{0.08\textwidth} >{\raggedright\arraybackslash}X}
 \toprule
-\textbf{AREA} & \textbf{TESTS} & \textbf{FOCUS} \\
+\textbf{WORKSPACE} & \textbf{TESTS} & \textbf{FOCUS} \\
 \midrule
-Chunked pipeline & 184 & Chunk boundaries as multiples of the group of pictures counted in frames, the conditions that fall back to one container, command construction, playlist joining, submission to the lower-priority queue, task-size validation, and the planner, audio, chunk and finalizer jobs end to end \\
-Ladder, frame rate and encode guard & 80 & Rung selection from the source resolution and the reduced ladder for long videos; that the group of pictures follows the real frame rate, that a variable-frame-rate file cannot poison it, and that every rendition cuts at the same instant; giving up early when a video cannot be encoded within the budget of a job; the thumbnail \\
-Playlist metadata & 51 & That the declared bandwidth of each variant is the peak measured from the segments rather than a configured target, rounded upward as RFC 8216 requires, and that the codec string is read from the encoded stream and omitted rather than guessed \\
-Persistence and delivery & 30 & Conditional writes that prevent a duplicate job from overwriting a result, object storage access, and the content of the READY and ERROR notifications, which never expose raw failure detail to the viewer \\
-Content screening & 18 & The label policy including parent labels and the downgrade of animated content, the frame sampling plan, and holding back a video that could not be analysed fully \\
+\name{shared} & 99 & The ladder bounded by the source, with portrait and very small sources, and the reduced ladder for long single jobs; frame rates, rotation and sample aspect ratio read from probe data, and the conditions that keep a video on the single path; chunk plans whose windows meet exactly, including 48 chunks for a 4-hour video at 30~fps and a 48-hour video under the array limit; playlists with the peak bandwidth rounded up and codec strings read from the stream; the stitch checks of Section~\ref{sec:chunked-design}; the label policy; progress folding; the event contracts \\
+\name{transcoder} & 27 & FFmpeg arguments: one decode, the same key frame rules on every rung, capped CRF with the rung's buffer, chunk seeks half a frame early and audio without repeated packets; the exit codes that Batch retries or not; the encode guard; preview sprites \\
+\name{functions} & 31 & One execution per upload version and none for a duplicate event; state changes of the status function, including publishing once, scheduled publishing and failure alerts; the order of playlist writes; notifications within the daily mail cap; the hourly roll-up and the draft clean-up \\
+\name{api} & 109 & Registration, sign-in, password rules and the Google account rule; the origin secret, client addresses and rate limits; uploads by pre-signed POST and multipart, with exact part sizes; the access rule for every visibility and moderation state; the key returned as 16 raw bytes; views after 30~seconds; comments, reactions, subscriptions and memberships with recounted counters; playlists and history; captions, chapters and schedules; search folding Vietnamese letters; reports, decisions, appeals, audit samples and roles \\
+\name{web} & 28 & Retries with back-off and \texttt{Retry-After}; multipart upload with part retries and cancel; the 30-second view rule on real playback only; the signed policy added to CDN addresses and never to API calls; chapters, timestamps and preview thumbnails \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
-The visibility suite matters most for security. It asserts that a private video is absent from the
-public listing, remains accessible to its owner, and returns not-found rather than forbidden to anyone
-else, since a forbidden response would confirm that a video with that identifier exists.
+The tests of the access rule matter most for security. They assert that a private, unready or
+scheduled video is answered with not-found rather than forbidden to anyone but its owner, because a
+forbidden answer would confirm that a video with that identifier exists; that a members-only video
+returns no playlist address to a non-member; and that the key endpoint refuses another origin,
+another video, another upload version or a missing token, and stops serving the key once the video is
+removed.
 
-The suite caught two defects before they reached users. An early version of the signing service
-produced a canned policy, which the tests flagged because the cookie set held an expiry field
-instead of a policy field; canned policies do not allow wildcard resources, so every video would
-have failed to play once deployed. The second was the unconditional write of
-Section~\ref{sec:transcoder-impl}. Six tests now pin its contract: a normal write succeeds while the
-video is not yet \texttt{READY}, a write that loses the race returns the winning record instead of
-throwing, and a late failure can never turn a \texttt{READY} video into \texttt{ERROR}. Run against
-the original implementation, four of the six failed; the two that passed were the not-found cases,
-which neither version distinguishes. The tests therefore exercise the fixed code path rather than
-passing by accident of their data.
+The end-to-end tests sign in through the API in a set-up step, so no password appears in a test. The
+pipeline test is the longest: it uploads a 36-second clip through the interface, waits until the
+video is ready, plays it through the CDN with its key, edits it in the studio and deletes it. The
+other files cover the pages of a guest, a viewer, a creator and an administrator, and the embedded
+player inside a page of another origin. All 27 tests pass against production; the measured behaviour of the deployed system is presented in
+Chapter~\ref{chap:evaluation}.

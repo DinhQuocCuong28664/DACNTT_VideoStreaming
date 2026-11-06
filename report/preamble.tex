@@ -58,9 +58,24 @@
 % của amssymb, chỉ có \times là lệnh LaTeX cơ bản.
 \usepackage{amsmath}
 \usepackage{newtxtext,newtxmath}
+% Font chữ máy của newtx đậm và rộng, lạc giữa thân bài Times. Inconsolata thu nhỏ còn
+% 0,92 thì cao chữ khớp Times; chỉ dùng cho đường dẫn, header, thẻ HLS và listing.
+\usepackage[scaled=0.92]{zi4}
+% Tên trong mã (state, hàm, module, workspace, cấu hình) in nghiêng; trạng thái của video
+% và mã lỗi in small caps, viết thường trong nguồn: \status{processing}.
+\newcommand{\name}[1]{\textit{#1}}
+\newcommand{\status}[1]{\textsc{#1}}
 
 % ----- Hyperlinks -----
 \usepackage[hidelinks]{hyperref}
+\hypersetup{
+  pdftitle={Building a Video Sharing Platform with an Automated HLS Transcoding Pipeline on a Serverless Container and Event-Driven Architecture},
+  pdfauthor={Dinh Quoc Cuong, Vo Huynh Minh Duc},
+  pdfsubject={Information Technology Project},
+  pdfkeywords={HLS, FFmpeg, AWS Fargate, AWS Step Functions, serverless, video streaming},
+  pdfcreator={LaTeX with hyperref},
+  bookmarksnumbered=true,
+}
 
 % ----- Code -----
 \usepackage{listings}

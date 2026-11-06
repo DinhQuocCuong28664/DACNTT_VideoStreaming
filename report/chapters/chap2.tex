@@ -1,155 +1,159 @@
 \chapter{Literature Review and Technologies}
 \label{chap:literature}
 
+This chapter first looks at how comparable platforms and reference architectures handle uploaded
+video, then explains the models on which the design rests, and finally justifies the technologies
+chosen for each part of the system.
+
 \section{Related Platforms and Comparison}
 \label{sec:related-platforms}
 
-Understanding how established platforms solve the transcoding problem provides the necessary
-context for the design decisions taken in this project.
+YouTube, developed by Google, is the largest video sharing platform and the functional model for
+this project: channels, subscriptions, comments, playlists, paid memberships and a creator studio
+with analytics are all features its users expect. Its documentation asks creators to upload an MP4
+file with H.264 video and Advanced Audio Coding (AAC) audio, about 8~Mbit/s for 1080p at 30 frames per
+second~\cite{youtubeencoding}, which shows that the platform treats the upload as a high-quality
+master and produces its own delivery formats from it. Vimeo, developed by Vimeo, Inc., targets
+creators and businesses rather than a mass audience. It accepts H.264, H.265 or ProRes and
+recommends encoding the upload at a constant rate factor (CRF) of 18 or below~\cite{vimeocompression},
+again a quality-targeted master from which the platform builds its own renditions. Neither
+platform documents its internal pipeline, and neither can be self-hosted, so they serve here as the
+reference for features and user expectations rather than for architecture.
 
-Netflix offers the most thoroughly documented case. Its original video processing system,
-internally known as Reloaded, was a monolithic pipeline that proved difficult to evolve as
-requirements changed. Netflix subsequently rebuilt it as a set of independent microservices
-running on a platform called Cosmos, decomposing the workload into a Video Inspection Service,
-a Video Encoding Service, and a Video Quality Service \cite{netflix2024microservices}. Cosmos
-itself is layered: an API tier receives requests, a workflow tier orchestrates the processing
-steps, and a serverless compute tier performs the actual media work, with the three tiers
-communicating asynchronously through a priority-based messaging system
-\cite{netflix2021ves}. Two aspects of this design are directly relevant here. First,
-Netflix also relies on asynchronous messaging rather than synchronous calls to decouple job
-submission from job execution, which is precisely the role played by Amazon SQS in this
-project. Second, Netflix moved from linear encoding to distributed chunk-based encoding,
-allowing hundreds of machines to encode segments of the same title in parallel and reducing
-processing latency from days to hours. This project applies the same principle at a far smaller
-scale: for videos of five minutes or longer, a planner job divides the source into chunks that an
-array of AWS Batch jobs encodes concurrently and a finalizer job merges, with the degree of
-parallelism bounded by the Fargate vCPU quota rather than by a fleet of dedicated machines
-(Section~\ref{sec:chunked-evaluation}).
+Netflix offers the most thoroughly documented pipeline. Its video processing was rebuilt as
+independent services, for inspection, encoding and quality measurement, on a platform called
+Cosmos~\cite{netflix2024microservices}. Cosmos is layered: an API tier receives requests, a workflow
+tier orchestrates the steps, and a serverless compute tier performs the media work, the tiers being
+connected asynchronously~\cite{netflix2021ves}. Two ideas from this design are applied here at a
+much smaller scale. The first is the separation between a workflow that owns the job and the compute
+that performs each step. The second is chunk-based encoding, in which many workers encode parts of
+the same title in parallel instead of one worker encoding it from start to end.
 
-Amazon Web Services publishes a reference architecture for video on demand that provides a
-useful point of comparison at the level of managed services \cite{awsvod}. That architecture
-routes an upload from Amazon S3 through an AWS Lambda job submitter into AWS Elemental
-MediaConvert, stores the output in a second S3 bucket, and delivers it through Amazon
-CloudFront, with AWS Step Functions orchestrating the workflow. The architecture presented in
-this report follows the same overall shape but substitutes a self-packaged FFmpeg container on
-AWS Batch for MediaConvert. This substitution is the central engineering trade-off of the
-project: MediaConvert is a fully managed service billed per minute of output and requires
-almost no operational effort, whereas a self-managed container is considerably cheaper per
-unit of work but transfers the responsibility for image maintenance, dependency updates, and
-failure handling onto the development team. AWS documentation also confirms that Origin Access
-Control is the currently recommended pattern for securing an S3 origin, superseding the legacy
-Origin Access Identity mechanism, which validates the approach adopted in
-Section~\ref{sec:content-protection}.
-
-Table~\ref{tab:platform-comparison} summarises the comparison across the dimensions most
-relevant to this work.
+Amazon Web Services publishes the Video on Demand (VOD) on AWS solution, a reference architecture built
+entirely from managed services~\cite{awsvod}. An upload to Amazon S3 starts an AWS Step Functions
+workflow, AWS Elemental MediaConvert produces the renditions, and Amazon CloudFront delivers them.
+The architecture of this project follows the same overall shape, a workflow engine that owns each
+video, but replaces MediaConvert with FFmpeg in containers on AWS Batch and Fargate. This
+substitution is the central trade-off of the project. MediaConvert needs almost no operational
+effort but is billed per minute of output and fixes what the encoder can do, whereas a
+self-packaged container is cheaper per unit of work and fully controllable, at the price of
+maintaining the image and handling failures in the team's own code.
+Table~\ref{tab:platform-comparison} summarises the comparison.
 
 \begin{table}[H]
 \centering
-\caption{Comparison of transcoding approaches across platforms}
+\caption{Comparison of the platform with related products and reference architectures}
 \label{tab:platform-comparison}
 \small
-\begin{tabularx}{\textwidth}{p{0.17\textwidth} X X X}
+\begin{tabularx}{\textwidth}{p{0.15\textwidth} X X X X}
 \toprule
-\textbf{ASPECT} & \textbf{NETFLIX (COSMOS)} & \textbf{AWS VOD REFERENCE} & \textbf{THIS PROJECT} \\
+\textbf{ASPECT} & \textbf{YOUTUBE / VIMEO} & \textbf{NETFLIX (COSMOS)} & \textbf{AWS VOD SOLUTION} & \textbf{THIS PROJECT} \\
 \midrule
-Compute model & Dedicated microservice platform with serverless compute tier & Managed service (MediaConvert) & Serverless container on AWS Batch / Fargate \\
-Parallelism & Chunk-based, distributed across many nodes & Managed internally by the service & Chunk-based on AWS Batch array jobs from five minutes of video, one container below that \\
-Bitrate ladder & Per-shot optimisation driven by VMAF & Configurable job template & Per-Resolution Capped-CRF ladder: six rungs (144p--1080p), limited by source \\
-Queueing & Priority-based messaging system & AWS Step Functions & Amazon SQS with dead letter queue \\
-Content protection & DRM & Signed URLs or signed cookies & OAC plus CloudFront Signed Cookies \\
-Operational effort & Very high & Very low & Moderate \\
+Kind & Public products, closed source & In-house platform & Reference architecture & Platform and pipeline, open repository \\
+Users & Viewers and creators & Subscribers; titles from studios & Not a product & Viewers, creators and staff \\
+Orchestration & Not documented & Workflow tier & AWS Step Functions & AWS Step Functions \\
+Encoding & Not documented & Distributed, chunk-based & AWS Elemental MediaConvert & FFmpeg on Batch with Fargate; chunks for long videos \\
+Bitrate ladder & Not documented & Per title and per shot & Job template & Fixed six-rung Capped-CRF ladder bounded by the source \\
+Protection & Not documented & DRM & Signed URLs or cookies & AES-128 with signed CDN requests \\
+Cost model & Free to creators & Private & Per output minute & Per virtual CPU (vCPU) second of real work \\
 \bottomrule
 \end{tabularx}
 \end{table}
+
+The comparison shows where the project stands. It offers the community features of YouTube and
+Vimeo, which neither the Netflix platform nor the AWS solution addresses, and it takes its processing
+architecture from the latter two. Its limits are equally visible: a fixed ladder instead of
+per-title optimisation, and AES-128 encryption instead of DRM, both discussed again in
+Chapter~\ref{chap:conclusion}.
 
 \section{Core Models and Principles}
 \label{sec:core-models}
 
 \subsection{Serverless Containers}
+\label{sec:serverless-containers}
 
-The term serverless container describes a model in which a container image is executed without
-the developer provisioning or managing the underlying virtual machines, and in which billing is
-based on execution time rather than allocated capacity. AWS Fargate is the implementation used
-in this project.
+A serverless container runs a container image without the developer provisioning or managing the
+virtual machines underneath, and is billed for the time it runs rather than for capacity kept
+available. AWS Fargate provides this model, and AWS Batch can schedule jobs onto it through compute
+environments of type \status{fargate} or \status{fargate\_spot}~\cite{awsbatchfargate}. Spot
+capacity uses spare AWS capacity at a lower price and may be reclaimed; this project therefore
+places a Spot environment first and an On-Demand environment second behind the same job queue, so
+that jobs run on Spot whenever it is available and overflow to On-Demand otherwise.
 
-Figure~\ref{fig:compute-models} contrasts this model with the conventional alternative for a
-transcoding workload of the size assumed in Section~\ref{sec:cost-analysis}. In the always-on
-arrangement on one side of the figure, a cluster is sized for the busiest moment the service
-expects and then runs continuously, so it is billed for all 730 hours in a month while performing
-roughly 105 vCPU-hours of actual encoding out of the 2,920 that a four-vCPU instance
-offers, a utilisation of under four percent. Its capacity is also
-a hard ceiling: an upload burst larger than the cluster was provisioned for must either wait or be
-rejected, and the only remedy is to provision for a still larger peak and waste correspondingly
-more. In the serverless arrangement on the other side, no compute exists between uploads. An
-upload event enters a queue, a container is started to serve it, and that container terminates
-when the job finishes, so charges accrue per vCPU-second of real work. The burst is absorbed by
-the queue rather than by spare capacity, and the degree of parallelism is a configured number
-rather than a fixed fleet size. The two figures shown, \$124.10 against \$0.05 of monthly compute,
-are the same workload priced under the two models.
+Figure~\ref{fig:compute-models} contrasts this model with an always-on server for a workload of
+three hundred five-minute videos per month. Measured on the final configuration, a 1080p video costs
+about 5.5 vCPU-seconds of encoding work per second of source, so the month needs about 138
+vCPU-hours of real work. An always-on instance with eight vCPUs, the size of one encoding job, is
+billed for all 5,840 vCPU-hours of the month and is busy for about 2.4~percent of them. Its capacity
+is also a hard ceiling: a burst larger than one instance can handle must wait. With serverless
+containers, no compute exists between uploads, a container starts for each job and stops when the
+job ends, and a burst is absorbed by the queue up to the configured maximum number of vCPUs. Priced
+at the On-Demand rate, the same month costs about 8.47~USD instead of 286.16~USD;
+Section~\ref{sec:cost-analysis} gives the full calculation.
 
-% Kéo hết bề rộng vùng chữ. Ở 0,82 lần thì chữ nhỏ nhất chỉ in ra 6,21pt, sát
-% sàn tới mức thêm một chữ vào nhãn dài nhất là rơi xuống dưới. Ở mức đầy thì
-% hình cao 20,7 cm, vẫn vừa một trang cùng chú thích, mà chữ lên 7,58pt.
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=\textwidth]{images/07-compute-models.png}
-\caption{\textit{Compute models for a bursty transcoding workload: an always-on cluster
-compared with on-demand serverless containers}}
+\caption{\textit{Compute models for a bursty transcoding workload: an always-on instance compared
+with on-demand serverless containers}}
 \label{fig:compute-models}
 \end{figure}
 
-The choice of Fargate over a function-as-a-service platform such as AWS Lambda deserves
-justification, because Lambda is the more common answer to serverless workloads. Video
-transcoding is unsuitable for Lambda in this context for two reasons. The first is duration:
-transcoding a large file routinely exceeds the maximum execution time of a Lambda invocation.
-The second concerns resource configuration. A measurement study of serverless video processing
-found that selecting a cost-efficient memory configuration for transcoding is far from trivial,
-because the optimal setting depends not only on the type of task but even on the content of the
-video itself, and the cost difference between the least and most generous memory configuration
-reached 498\% for sequential workloads \cite{nossdav2019video}. Fargate avoids this
-difficulty by allowing vCPU and memory to be specified explicitly and independently.
+A function platform such as AWS Lambda is the more common serverless choice, so its rejection for
+encoding needs a reason. A Lambda invocation can run for at most fifteen
+minutes~\cite{awslambdaquotas}, while encoding a long video takes far longer, and a measurement
+study of serverless video processing found that the cost-efficient memory setting depends on the
+task and even on the content, with differences of up to 498~percent between
+settings~\cite{nossdav2019video}. Fargate lets vCPU and memory be chosen explicitly for each job.
+Lambda remains the right tool for the short steps of the pipeline, such as reading the source
+metadata, starting the workflow or writing the final playlists, and the project uses it there. The
+known weakness of containers is start-up latency; a systematic review reports that pulling the image
+dominates the cold start of container-based functions~\cite{coldstart2023}, which motivates the small
+multi-stage image described in Chapter~\ref{chap:implementation}.
 
-A known weakness of the container model is cold start latency. A systematic review of the
-subject reports that more than half of function invocations spend at least 80\% of their
-startup time pulling the container image \cite{coldstart2023}. This finding directly motivates
-the use of a multi-stage Docker build in this project, described in
-Section~\ref{sec:transcoder-impl}, whose purpose is to minimise the size of the image that must
-be transferred before work can begin.
+\subsection{Event-Driven Architecture and Workflow Orchestration}
+\label{sec:event-driven}
 
-\subsection{Event-Driven Architecture}
+In an event-driven architecture, work moves through the emission and consumption of events rather
+than through direct calls. The AWS Serverless Applications Lens describes such systems as event
+sources, routers and destinations connected by durable queues and explicit data
+contracts~\cite{awsserverlesslens}. In this project, the event source is Amazon S3: when an upload
+completes, S3 emits a notification that is placed on an Amazon Simple Queue Service (SQS) queue. The queue absorbs bursts,
+because a hundred simultaneous uploads become a hundred messages that are consumed as fast as the
+downstream steps allow, and a dead-letter queue isolates a message that keeps failing instead of
+retrying it forever. Because a queue delivers each message at least once, never exactly once, every
+consumer must make a repeated delivery harmless.
 
-An event-driven architecture propagates work through the emission and consumption of events
-rather than through direct synchronous invocation. In this project, the completion of an upload
-to Amazon S3 emits an event notification that is placed on an Amazon SQS queue, from which an
-AWS Lambda function submits a job to AWS Batch.
+A queue alone does not say what happens to a video after the first step. AWS Step Functions fills
+this gap: it runs state machines whose states are tasks, choices, parallel branches and maps, and a
+Standard workflow can run for up to one year while keeping the history of every
+step~\cite{awsstepfunctions}. Its integration with AWS Batch can submit a job and wait until the job
+finishes~\cite{awssfnbatch}, so the workflow, not the container, decides what runs next, how often a
+failed step is retried and what happens when retries are exhausted. AWS Batch array jobs complete the
+picture for long videos: one submission creates between 2 and 10,000 child jobs that share a
+definition and differ only by their index~\cite{awsbatcharray}, which is how one video is split into
+many chunks without one call per chunk. Chapter~\ref{chap:design} draws the resulting state machine.
 
-The queue is not merely a routing mechanism; it is the component that makes burst absorption
-possible. If a hundred users upload simultaneously, the queue retains all hundred messages
-while AWS Batch works through them at whatever rate the compute environment allows. Without
-this buffer, the system would have to either reject work or provision for peak load
-permanently. The queue is paired with a dead letter queue so that messages which repeatedly
-fail processing are isolated for inspection rather than being retried indefinitely.
+\subsection{HTTP Live Streaming and Adaptive Bitrate}
+\label{sec:hls-abr}
 
-\subsection{Adaptive Bitrate Streaming and the Bitrate Ladder}
+HLS delivers a video as a master playlist that refers to several media playlists, each listing the
+segments of one rendition~\cite{rfc8216}. For each rendition the master playlist declares a
+\texttt{BANDWIDTH}, the peak bit rate the client must sustain, and optionally an
+\texttt{AVERAGE-BANDWIDTH}. Apple's authoring specification, which most deployments follow, asks for
+segments of nominally six seconds, for every video segment to start with an IDR frame, and for
+\texttt{BANDWIDTH} to be the largest peak segment bit rate~\cite{applehlsauthoring}.
 
-HLS delivers a video as a master playlist referencing several rendition playlists, each of
-which lists the media segments for one quality level. The player measures throughput and
-switches between renditions at segment boundaries.
-
-Figure~\ref{fig:hls-abr} shows the artefacts this produces and the order in which a player
-retrieves them. A single source file of arbitrary container, codec and resolution is encoded once
-per rung of the ladder, and each rung yields both a rendition playlist and the sequence of
-transport stream segments it indexes. The master playlist sits above them and carries, for each
-rung, the bandwidth the client should expect to need in order to play it. A player therefore
-begins by fetching only the master playlist, which is a few hundred bytes, chooses a rung from the
-declared bandwidths and its own throughput estimate, and only then requests that rung's playlist
-and its segments. Because every rung is segmented on the same boundaries, the player may change
-its choice at any segment boundary without interrupting playback, which is the mechanism that lets
-quality fall rather than the video stall when a connection weakens. The consequence for the
-transcoding subsystem is that the cost of preparing a video scales with the number of rungs, since
-each rung is encoded separately even though the source itself is decoded only once. The
-implementation exploits exactly that distinction, as Section~\ref{sec:transcoder-impl} describes.
+Figure~\ref{fig:hls-abr} shows the artefacts produced from one source and the order in which a
+player retrieves them. The player first fetches the master playlist, a few hundred bytes, chooses a
+rendition from the declared bandwidths and its own throughput estimate, and only then requests that
+rendition's playlist and segments. Because every rendition is cut on the same boundaries and each
+segment starts with a key frame, the player can change rendition at any segment boundary without
+interrupting playback. The player used here, hls.js, estimates throughput as an exponentially
+weighted moving average of segment downloads and scales the estimate down by a safety factor
+before choosing~\cite{hlsjs}. For the transcoding side, the consequence is that the work grows with
+the number of renditions, since each one is encoded separately even though the source is decoded
+only once.
 
 \begin{figure}[H]
 \centering
@@ -159,35 +163,75 @@ retrieves them}}
 \label{fig:hls-abr}
 \end{figure}
 
-The set of resolution and bitrate pairs offered is called the bitrate ladder, and its
-construction is an active research area. Netflix demonstrated that the optimal ladder is not
-fixed but content-dependent, and that the ideal operating points lie on the convex hull of the
-quality-versus-bitrate curve \cite{netflix2015pertitle}. By encoding each shot separately under
-the control of the VMAF perceptual quality metric, Netflix reported bitrate reductions of
-between 28\% and 38\% at equivalent visual quality \cite{netflix2018dynamic}. The present
-project uses a fixed ladder of six rungs, which is simpler to implement and reason about; the
-implications of this simplification are revisited in Section~\ref{sec:future-work}.
+\subsection{The Bitrate Ladder and Capped CRF}
+\label{sec:bitrate-ladder}
+
+The set of resolution and bit rate pairs offered is called the bitrate ladder. Netflix showed that
+the best ladder depends on the content and that the ideal operating points lie on the convex hull
+of the quality against bit rate curve~\cite{netflix2015pertitle}; encoding each shot separately
+under a perceptual quality metric reduced bit rates by 28 to 38~percent at the same quality in its
+measurements~\cite{netflix2018dynamic}. Such optimisation requires many trial encodes per title,
+which is beyond the budget of this project.
+
+This project instead combines a fixed ladder with quality-targeted encoding. The x264 encoder
+used through FFmpeg~\cite{ffmpegdocs} can work at a constant rate factor (CRF), which keeps
+perceptual quality roughly constant and lets the bit rate rise and fall with the complexity of each
+scene; Vimeo's recommendation to upload at CRF 18 or below rests on the same
+idea~\cite{vimeocompression}. Pure CRF has no upper bound, however, which would make the
+\texttt{BANDWIDTH} of a rendition unpredictable. Adding a maximum rate and a decoder buffer size,
+the video buffering verifier (VBV), caps the peak while CRF still controls quality below the cap.
+This combination, called Capped CRF, gives static scenes fewer bits and complex scenes more, up to a
+known limit per rung. Each video receives only the rungs its source resolution can fill, from 144p
+to 1080p, so nothing is upscaled. Chapter~\ref{chap:design} lists the rungs and their parameters.
 
 \section{Technology Stack Justification}
 \label{sec:tech-stack}
 
-The frontend is implemented as a React single page application built with Vite, using HLS.js
-for playback. HLS.js is necessary because most desktop browsers do not support HLS natively;
-it parses the manifest in JavaScript and feeds segments to the browser through the Media Source
-Extensions API. Safari, which does support HLS natively, is handled through a fallback path.
+Table~\ref{tab:tech-stack} lists the technology chosen for each part of the system, the main
+alternative considered and the reason for the choice; the paragraphs after it explain the less
+obvious decisions.
 
-The backend is built on Node.js with Express. The decisive factor is that the backend's
-workload is almost entirely input/output bound rather than CPU bound: it issues pre-signed
-URLs, queries MongoDB, and returns JSON, while the heavy computation is deliberately delegated
-to the transcoder containers. Node.js's event loop is well suited to this profile.
+\begin{table}[H]
+\centering
+\caption{Technology choices, alternatives and reasons}
+\label{tab:tech-stack}
+\small
+\begin{tabularx}{\textwidth}{p{0.15\textwidth} p{0.18\textwidth} p{0.21\textwidth} X}
+\toprule
+\textbf{PART} & \textbf{CHOICE} & \textbf{ALTERNATIVE} & \textbf{REASON} \\
+\midrule
+Web client & React 19, Vite, TypeScript & Server-rendered pages & Rich interactive pages (player, studio, admin) as one static bundle on the CDN \\
+Player & hls.js & Native HLS & Works in every browser with Media Source Extensions and can add signed parameters to each request \\
+API & Express 5 on one AWS Lambda function & API Gateway with one function per route & One cold-start profile, no API Gateway cost; scales per request \\
+API edge & Cloudflare Worker & Amazon API Gateway & The domain's Domain Name System (DNS) and Transport Layer Security (TLS) are already on Cloudflare; the Worker rewrites the host and adds an origin secret \\
+Orchestration & AWS Step Functions & Containers that chain jobs themselves & One place for state, retries and failure handling, with a visible history \\
+Encoding & FFmpeg on AWS Batch with Fargate & AWS Elemental MediaConvert & Full control of the encoder, billed per vCPU-second \\
+Documents & MongoDB Atlas & Relational database & Document-shaped data whose schema grows with features; managed service \\
+Search & Atlas Search & OpenSearch cluster & Full-text search inside the same database, no cluster to run \\
+Hot counters & Amazon DynamoDB & MongoDB & Pay per request, built-in expiry; keeps frequent writes off the free database tier \\
+Delivery & Amazon CloudFront & Serving from S3 & Edge caching and signed access to a private bucket \\
+Infrastructure & Terraform & AWS CloudFormation & Modules with explicit inputs and a plan step that shows each change; covers both AWS and Cloudflare \\
+Checks & GitHub Actions & Separate CI server & Source already on GitHub \\
+\bottomrule
+\end{tabularx}
+\end{table}
 
-MongoDB Atlas provides the persistence layer. Video metadata is naturally document-shaped and
-its schema evolves as features are added, which suits a document store better than a rigid
-relational schema. Using the managed Atlas service also removes the need to operate a database
-cluster inside the project's own infrastructure.
+The API is written in TypeScript on Node.js~22. Its work is almost entirely input and output:
+checking a token, reading a document, signing a uniform resource locator (URL). The heavy computation is delegated to the
+containers, so the event loop of Node.js suits it, and one language across the API, the Lambda
+steps, the transcoder and the web client lets them share a single package of schemas that both the
+producer and the consumer of each event validate. Running the API as one Express application inside
+one Lambda function keeps the code of an ordinary web server while removing the server: AWS starts
+as many copies as there are concurrent requests and none when there are none.
 
-Terraform was selected for Infrastructure as Code over alternatives such as AWS CloudFormation
-because its module system allows the infrastructure to be decomposed into reusable units with
-explicit inputs and outputs, and because its plan step makes the consequences of a change
-visible before it is applied. GitHub Actions was selected for CI/CD because the source code is
-already hosted on GitHub, which removes the need for a separate automation server.
+MongoDB Atlas holds the documents: users, channels, videos, comments, playlists and moderation
+records. Its search feature provides full-text search embedded in the same database~\cite{mongodbsearch},
+which avoids running a separate search cluster. The project uses the free tier of Atlas, whose limit
+of one hundred operations per second would be reached by data written on every few seconds of
+playback, such as watch progress, view marks and rate-limit counters. These are therefore kept in
+Amazon DynamoDB, billed per request and able to expire entries on its own.
+
+Playback uses hls.js rather than the browser's native HLS support even in browsers that have it.
+Access to the processed files is granted by a signed policy that must be appended to every playlist
+and segment request, and only hls.js lets the application change each request before it is sent.
+Chapter~\ref{chap:design} explains this access scheme in detail.

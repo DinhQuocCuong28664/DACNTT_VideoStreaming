@@ -1,0 +1,55 @@
+\chapter{Installation and Execution Guide}
+\label{app:install}
+
+\section{Prerequisites}
+
+Running the platform needs an AWS account, a domain whose DNS is hosted on Cloudflare and a MongoDB
+Atlas cluster. Building it needs Node.js~22, Docker, Terraform~1.14 and the AWS command-line tools,
+with credentials of the AWS account in the default profile and a Cloudflare token exported as
+\texttt{CLOUDFLARE\_API\_TOKEN}. The installation of these tools is not described here.
+
+\section{Installation Steps}
+
+The repository is one set of npm workspaces, so one command installs every part, and the build
+bundles the API, the functions, the transcoder and the web application.
+
+\begin{lstlisting}[language=bash]
+npm ci
+npm run build
+npm run layer:ffprobe -w @zelos/functions   # ffprobe for the probe layer, needs Docker
+docker build -f transcoder/Dockerfile -t zelos-transcoder .
+\end{lstlisting}
+
+\section{Running Tests}
+
+\texttt{npm run check} runs the linter with the security rules, the type checks and the 294 unit tests.
+The smoke test of the image builds its \name{smoke} stage and runs FFmpeg on generated sources. The
+end-to-end suite runs against a deployed environment and signs in with test accounts read from a local
+file named by \texttt{E2E\_ACCOUNTS}.
+
+\begin{lstlisting}[language=bash]
+npm run check
+docker build -f transcoder/Dockerfile --target smoke -t zelos-smoke . && docker run --rm zelos-smoke
+E2E_BASE_URL=<web origin> E2E_API_URL=<api origin> E2E_ACCOUNTS=<file> \
+  npx playwright test -c e2e/playwright.config.ts
+\end{lstlisting}
+
+\section{Production Deployment}
+
+The shared environment, which holds the network and the image registry, is applied once. The image is
+then pushed with its commit as tag, and the environment is applied with that tag.
+
+\begin{lstlisting}[language=bash]
+terraform -chdir=infra/envs/shared init && terraform -chdir=infra/envs/shared apply
+docker tag zelos-transcoder <registry>/zelos-transcoder:<commit> && docker push <registry>/zelos-transcoder:<commit>
+terraform -chdir=infra/envs/prod init
+terraform -chdir=infra/envs/prod apply -var transcoder_image_tag=<commit>
+\end{lstlisting}
+
+After the first apply, the fields of Table~\ref{tab:env-secret} are written into the secret of the API
+and the connection string into the secret of the workflow. \texttt{scripts/ensure-indexes.sh prod}
+creates the database and search indexes, and runs again after every apply that changes the API code.
+The Cloudflare Worker is deployed with \texttt{npx wrangler deploy --env prod} after its target host
+and origin secret are set, and \texttt{scripts/deploy-web.sh prod} uploads the web application and
+refreshes its distribution. The deployment is checked by playing a video through the CDN host and by
+running the end-to-end suite against the production origins.

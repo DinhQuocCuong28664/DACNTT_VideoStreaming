@@ -31,7 +31,7 @@ Object.assign(TYPE, {
 });
 
 const W = 1180;
-const H = 1010;
+const H = 1102;
 const p = [];
 
 const LX = 330;            // tâm cột trái
@@ -46,7 +46,7 @@ const LANE_L = 150;        // làn dọc của tác nhân bên trái, ngoài ran
 const LANE_R = 990;        // làn dọc của tác nhân bên phải, ngoài ranh giới
 
 p.push(group({
-  x: BOUND_X, y: 40, w: BOUND_W, h: 860,
+  x: BOUND_X, y: 40, w: BOUND_W, h: 952,
   label: 'Moderation and operation', stroke: '#8a94a6', fill: '#fcfdfe', dash: '7 5',
 }).svg);
 
@@ -66,12 +66,13 @@ placeR('decide', 0, ['Approve or remove a video,', 'with a reason']);
 placeR('confirm', 1, ['Confirm a removal', 'the machine made']);
 placeR('appeal', 2, ['Resolve an appeal', 'with a note']);
 placeR('label', 3, ['Label a video of', 'an audit sample']);
+placeR('comment', 4, ['Dismiss or remove', 'a reported comment']);
 // Auditor
-placeR('rates', 4, ['Read the error rates', 'with their intervals']);
-placeR('log', 5, 'Read the decision log');
+placeR('rates', 5, ['Read the error rates', 'with their intervals']);
+placeR('log', 6, 'Read the decision log');
 // Administrator
-placeR('sample', 6, ['Draw a random', 'audit sample']);
-placeR('roles', 7, ['Assign or change', "a user's role"]);
+placeR('sample', 7, ['Draw a random', 'audit sample']);
+placeR('roles', 8, ['Assign or change', "a user's role"]);
 
 // ── Cột trái: việc do người dùng hoặc hệ thống khởi động ────────────────────────
 const left = {};
@@ -82,13 +83,14 @@ const placeL = (key, cy, label, tone = 'network') => {
 placeL('screen', 108, ['Screen frames of', 'an uploaded video'], 'compute');
 placeL('report', ry(0), 'Report a video');
 placeL('appealOwn', ry(2), ['Appeal the removal of', "one's own video"]);
+placeL('reportComment', ry(4), 'Report a comment');
 
 // ── Tác nhân ────────────────────────────────────────────────────────────────────
-const sys = actor({ cx: 78, cy: 108, label: ['Transcoding', 'system'] });
-const user = actor({ cx: 78, cy: Math.round((ry(0) + ry(2)) / 2) + 18, label: ['Registered', 'user'] });
-const operator = actor({ cx: 1090, cy: Math.round((ry(0) + ry(3)) / 2), label: 'Operator' });
-const auditor = actor({ cx: 1090, cy: Math.round((ry(4) + ry(5)) / 2), label: 'Auditor' });
-const admin = actor({ cx: 1090, cy: Math.round((ry(6) + ry(7)) / 2), label: ['Administrator'] });
+const sys = actor({ cx: 78, cy: 108, label: ['Processing', 'system'] });
+const user = actor({ cx: 78, cy: ry(2) + 18, label: ['Registered', 'user'] });
+const operator = actor({ cx: 1090, cy: ry(2), label: 'Operator' });
+const auditor = actor({ cx: 1090, cy: Math.round((ry(5) + ry(6)) / 2), label: 'Auditor' });
+const admin = actor({ cx: 1090, cy: Math.round((ry(7) + ry(8)) / 2), label: ['Administrator'] });
 p.push(sys.svg, user.svg, operator.svg, auditor.svg, admin.svg);
 
 /** Liên kết tác nhân bên trái với use case ở cột trái, qua làn dọc riêng. */
@@ -103,7 +105,8 @@ function linkRight(a, target) {
 linkLeft(sys, left.screen);
 linkLeft(user, left.report);
 linkLeft(user, left.appealOwn);
-['decide', 'confirm', 'appeal', 'label'].forEach((k) => linkRight(operator, right[k]));
+linkLeft(user, left.reportComment);
+['decide', 'confirm', 'appeal', 'label', 'comment'].forEach((k) => linkRight(operator, right[k]));
 ['rates', 'log'].forEach((k) => linkRight(auditor, right[k]));
 ['sample', 'roles'].forEach((k) => linkRight(admin, right[k]));
 
@@ -116,6 +119,8 @@ p.push(edge([
   [JOIN_X, right.decide.box.cy], [right.decide.box.l, right.decide.box.cy],
 ], { dashed: true, label: '«trigger»', labelAt: 0.35, labelDy: -8 }));
 p.push(edge([[left.appealOwn.box.r, left.appealOwn.box.cy], [right.appeal.box.l, right.appeal.box.cy]],
+  { dashed: true, label: '«trigger»', labelAt: 0.5, labelDy: -8 }));
+p.push(edge([[left.reportComment.box.r, left.reportComment.box.cy], [right.comment.box.l, right.comment.box.cy]],
   { dashed: true, label: '«trigger»', labelAt: 0.5, labelDy: -8 }));
 
 p.push(text(

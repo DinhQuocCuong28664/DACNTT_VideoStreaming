@@ -97,25 +97,25 @@ function colorLegend(x, y, entries) {
 // ngữ thị giác với bảy hình còn lại: storage = công khai, compute = tài khoản,
 // network = chủ video, secret = rẽ nhánh và lỗi.
 const START = node(C1, 36, 'Visitor opens the site', 'plain', 46);
-const HOME = node(C1, 116, ['Catalogue page', 'browse, filter, search'], 'storage');
+const HOME = node(C1, 116, ['Home feed', 'browse and search'], 'storage');
 // Ba dòng để giữ nguyên chữ "adaptive": tính thích ứng của luồng phát chính là
 // điều hệ thống này làm, rút gọn thành "playback" là làm mất nội dung.
-const WATCH = node(C1, 906, ['Watch page', 'adaptive playback,', 'like, comment, share'], 'storage', 76);
+const WATCH = node(C1, 906, ['Watch page', 'adaptive playback,', 'comment, subscribe'], 'storage', 76);
 
 const AUTH = decision(cx2, 248, 'Signed in?');
 const LOGIN = node(C2, 320, ['Sign in', 'e-mail, or Google'], 'compute');
 const REG = node(C2, 416, 'Register an account', 'compute', 46);
-const UPLOAD = node(C2, 500, ['Upload page', 'title, description,', 'category, visibility'], 'network', 76);
+const UPLOAD = node(C2, 500, ['Upload page', 'title, description,', 'visibility'], 'network', 76);
 const PRESIGN = node(C2, 606, ['Browser transfers the file', 'directly to Amazon S3'], 'network');
 // "Video shown as PROCESSING" tràn ra ngoài hộp 200px: chữ hoa rộng hơn ước
 // lượng theo số ký tự, và `chip` căn giữa chứ không xuống dòng nên nó lặng lẽ
 // thò ra hai bên. "is" thay cho "shown as" giữ nguyên nghĩa mà vừa khung.
 const PROC = node(C2, 694, ['Video is PROCESSING', "on the owner's channel"], 'network');
-const READY = node(C2, 810, ['Video reaches READY', 'and joins the catalogue'], 'network');
+const READY = node(C2, 810, ['Video reaches READY', 'and joins the feed'], 'network');
 
 const RESET = node(C3, 416, ['Reset a forgotten password', 'via e-mailed token'], 'compute');
 const FAILED = node(C3, 810, ['Video reaches ERROR', 'the watch page says so'], 'secret');
-const CHANNEL = node(C3, 906, ['Channel management', 'change visibility, delete'], 'network');
+const CHANNEL = node(C3, 906, ['Creator studio', 'edit, schedule, delete'], 'network');
 
 [START, HOME, WATCH, AUTH, LOGIN, REG, UPLOAD, PRESIGN, PROC, READY, RESET, FAILED, CHANNEL]
   .forEach((n) => p.push(n.svg));

@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "title": "Amazon Rekognition list price used by the cost comparison",
+  "runs": [
+    {
+      "id": "2026-11-05-aws-rekognition-price-singapore",
+      "date": "2026-11-05",
+      "path": "prices",
+      "region": "ap-southeast-1",
+      "currency": "USD",
+      "rekognition": {
+        "api": "DetectModerationLabels (Group 2 image API)",
+        "usagetype": "APS1-Group2-ImagesProcessed",
+        "usd_per_image": 0.0013,
+        "tier": "first 1 000 000 images per month, no free tier"
+      },
+      "provenance": "aws-price-list-api",
+      "source": "aws pricing get-products --region us-east-1 --service-code AmazonRekognition --filters Type=TERM_MATCH,Field=location,Value=\"Asia Pacific (Singapore)\""
+    }
+  ]
+}

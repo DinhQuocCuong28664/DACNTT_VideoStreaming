@@ -1,27 +1,31 @@
 \chapter*{Abstract}
 \addcontentsline{toc}{chapter}{Abstract}
 
-A video sharing platform must turn every upload, in any format, codec or resolution, into HTTP
-Live Streaming (HLS) renditions that a browser can play at adaptive quality. Transcoding is a bursty
-workload: a server cluster kept running to wait for uploads pays for idle capacity most of the time,
-yet the platform must still absorb many uploads arriving at once.
+\begin{center}
+\textbf{\large Building a Video Sharing Platform with an Automated HLS Transcoding Pipeline on a
+Serverless Container and Event-Driven Architecture}
+\end{center}
+\vspace{0.5em}
 
-This project designs, builds and evaluates a complete video sharing platform whose transcoding runs
-on serverless containers driven by events. An upload to Amazon S3 emits an event that Amazon SQS
-buffers and an AWS Lambda function submits to AWS Batch on AWS Fargate, where a container packaging
-FFmpeg exists only while it works: it produces up to six renditions from 144p to 1080p, a master
-playlist and a thumbnail, and then terminates. Videos of five minutes or more are split into chunks
-encoded in parallel. Amazon CloudFront delivers the streams, and Origin Access Control together with
-CloudFront Signed Cookies keeps a private video unreachable even to someone who knows its manifest
-URL. Uploads are screened with Amazon Rekognition, and staff review doubtful videos in a console
-whose recorded decisions make the error rates of the screening measurable. The infrastructure is
-described in thirteen Terraform modules, and seven GitHub Actions workflows run the tests, the
-security scans and the deployment.
+A video sharing platform must turn every upload, whatever its format and resolution, into
+HTTP Live Streaming (HLS) renditions that a browser can play at adaptive quality. Transcoding is a
+bursty workload: a server kept running to wait for uploads is idle most of the time, yet the platform
+must still absorb many uploads that arrive at once.
 
-Measured on the deployed system, a four-hour video was ready 135 minutes after its upload at the
-production quota of 8~vCPU, and one hundred clips submitted at once were all processed without a
-failure. Measuring the time to first frame exposed a content delivery configuration that served
-Vietnam from Europe; correcting it cut the median from 727.69~ms to 110.32~ms. For the part of the
-bill that the architecture controls, the estimated monthly cost is 3.40~USD against 133.35~USD for
-an always-on instance. The saving comes from removing idle capacity, and it narrows as sustained
-utilisation rises.
+This project designs, builds and evaluates a complete video sharing platform whose transcoding runs on
+serverless containers driven by events. The arrival of a file in Amazon S3 is queued by Amazon SQS and
+starts one AWS Step Functions execution per upload, which runs FFmpeg as AWS Batch jobs on AWS Fargate,
+Spot capacity first and On-Demand capacity as overflow, so no compute exists while nothing is
+processed. FFmpeg decodes the source once and writes up to six renditions from 144p to 1080p, each
+with a capped constant rate factor and key frames aligned across rungs; videos longer than five
+minutes are cut into chunks that are encoded in parallel and stitched into ordinary playlists. The
+segments are encrypted with AES-128 and served by Amazon CloudFront only to requests that carry a
+policy signed for that video. Uploads are screened with Amazon Rekognition, and staff decisions are
+recorded so that the error rates of the screening can be measured. Eleven Terraform modules describe
+the infrastructure, and two GitHub Actions workflows lint, test and scan every change.
+
+Measured on the production system, a four-hour video was ready 38.3~minutes after its upload, and of one
+hundred uploads started at once every accepted upload reached the ready state while the rest were
+refused with a status the client can retry. Once cached, the requests before the first frame took
+435~ms at the 95th percentile. Processing three hundred five-minute videos a month is estimated at
+31.87~USD, against 309.56~USD with an always-on server.
