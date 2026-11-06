@@ -128,7 +128,15 @@
   list-style: none;
 }
 
+.landing-step {
+  position: relative;
+}
+
+/* Filled icons joined by a line read as a pipeline. This is the final state;
+   the motion block at the end of the file animates into it. */
 .landing-step-icon {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -136,8 +144,22 @@
   height: 48px;
   margin-bottom: var(--space-md);
   border-radius: 50%;
-  background: var(--bg-tertiary);
+  background: var(--inverse-bg);
+  color: var(--inverse-fg);
   font-size: 1.5rem;
+}
+
+/* Connector from this step's icon to the next one (horizontal in the grid). */
+.landing-step:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  top: 23px;
+  left: calc(48px + var(--space-sm));
+  width: calc(100% + var(--space-xl) - 48px - 2 * var(--space-sm));
+  height: 2px;
+  border-radius: 1px;
+  background: var(--border-hover);
+  transform-origin: left center;
 }
 
 .landing-step-title {
@@ -222,6 +244,11 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  /* Two columns: only 1 -> 2 and 3 -> 4 sit side by side. */
+  .landing-step:nth-child(2n)::after {
+    display: none;
+  }
+
   .landing-features {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -250,8 +277,114 @@
     border-left: none;
   }
 
+  /* One column: a vertical timeline. Text sits beside the icon so the
+     connector running down to the next icon never crosses it. */
+  .landing-step {
+    display: grid;
+    grid-template-columns: 48px minmax(0, 1fr);
+    column-gap: var(--space-md);
+    align-content: start;
+  }
+
+  .landing-step-icon {
+    grid-row: span 2;
+    margin-bottom: 0;
+  }
+
+  .landing-step-title {
+    padding-top: 12px;
+  }
+
+  .landing-step:not(:last-child)::after {
+    display: block;
+    top: calc(48px + var(--space-sm));
+    left: 23px;
+    width: 2px;
+    height: calc(100% + var(--space-xl) - 48px - 2 * var(--space-sm));
+    transform-origin: center top;
+  }
+
   .landing-section-title,
   .landing-cta-title {
     font-size: var(--font-size-2xl);
   }
+}
+
+/* ── Motion ──
+   Everything that moves lives here, behind no-preference, so people who ask
+   for reduced motion get the final state above with nothing animating. The
+   global reduced-motion rule in index.css cannot stop scroll-linked
+   animations (their duration is ignored), which is why this guard matters. */
+@media (prefers-reduced-motion: no-preference) {
+  /* Hero: title, subtitle, buttons, then the product shot, under 0.7 s. */
+  .landing-hero > * {
+    animation: fade-up 450ms var(--ease-out) backwards;
+  }
+
+  .landing-hero > :nth-child(2) { animation-delay: 60ms; }
+  .landing-hero > :nth-child(3) { animation-delay: 120ms; }
+
+  .landing-hero > .landing-shot {
+    animation: shot-rise 600ms var(--ease-out) 200ms backwards;
+  }
+
+  /* Pipeline: each icon fills in turn and the line to the next step draws
+     after it, so the four steps read as one flow from upload to playback. */
+  .landing-steps.is-visible .landing-step-icon {
+    animation: step-activate 250ms var(--ease-out) backwards;
+  }
+
+  .landing-steps.is-visible .landing-step::after {
+    animation: line-draw-x 300ms var(--ease-out) backwards;
+  }
+
+  .landing-steps.is-visible .landing-step:nth-child(1) .landing-step-icon { animation-delay: 250ms; }
+  .landing-steps.is-visible .landing-step:nth-child(1)::after { animation-delay: 450ms; }
+  .landing-steps.is-visible .landing-step:nth-child(2) .landing-step-icon { animation-delay: 700ms; }
+  .landing-steps.is-visible .landing-step:nth-child(2)::after { animation-delay: 900ms; }
+  .landing-steps.is-visible .landing-step:nth-child(3) .landing-step-icon { animation-delay: 1150ms; }
+  .landing-steps.is-visible .landing-step:nth-child(3)::after { animation-delay: 1350ms; }
+  .landing-steps.is-visible .landing-step:nth-child(4) .landing-step-icon { animation-delay: 1600ms; }
+
+  @media (max-width: 600px) {
+    .landing-steps.is-visible .landing-step::after {
+      animation-name: line-draw-y;
+    }
+  }
+}
+
+/* Product shot grows slightly as it scrolls into view. Browsers without
+   scroll-driven animations (Firefox for now) keep the entrance only. */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .landing-hero > .landing-shot {
+      animation: shot-rise 600ms var(--ease-out) 200ms backwards, shot-grow linear both;
+      animation-timeline: auto, view();
+      animation-range: normal, entry 0% cover 45%;
+    }
+  }
+}
+
+@keyframes shot-rise {
+  from { opacity: 0; transform: translateY(24px); }
+}
+
+/* Uses the `scale` property, not `transform`, so it composes with shot-rise. */
+@keyframes shot-grow {
+  from { scale: 0.95; }
+}
+
+@keyframes step-activate {
+  from {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+  }
+}
+
+@keyframes line-draw-x {
+  from { scale: 0 1; }
+}
+
+@keyframes line-draw-y {
+  from { scale: 1 0; }
 }
