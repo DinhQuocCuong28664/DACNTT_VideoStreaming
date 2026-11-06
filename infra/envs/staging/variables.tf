@@ -9,3 +9,21 @@ variable "alert_emails" {
   type        = list(string)
   default     = []
 }
+
+variable "attach_hosts" {
+  description = "Put the hosts on the distributions and create their CNAMEs; false while other distributions still own them (docs/ops/cdn-to-b.md)"
+  type        = bool
+  default     = true
+}
+
+variable "cdn_transition_reader_arns" {
+  description = "Old media distributions that may still read the processed bucket during a move (docs/ops/cdn-to-b.md)"
+  type        = list(string)
+  default     = []
+}
+
+variable "web_transition_reader_arns" {
+  description = "Old web distributions that may still read the web bucket during a move (docs/ops/cdn-to-b.md)"
+  type        = list(string)
+  default     = []
+}

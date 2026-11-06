@@ -15,7 +15,7 @@ variable "redirect_hosts" {
 }
 
 variable "certificate_arn" {
-  description = "Existing ACM certificate (us-east-1, account A) covering host and redirect_hosts; null issues a new one validated on Cloudflare"
+  description = "Existing ACM certificate (us-east-1) covering host and redirect_hosts; null issues a new one validated on Cloudflare"
   type        = string
   default     = null
 }
@@ -40,4 +40,10 @@ variable "price_class" {
   description = "PriceClass_200 includes Asian edges"
   type        = string
   default     = "PriceClass_200"
+}
+
+variable "transition_reader_arns" {
+  description = "Other CloudFront distributions that may read the bucket while this one replaces them (docs/ops/cdn-to-b.md); empty otherwise"
+  type        = list(string)
+  default     = []
 }

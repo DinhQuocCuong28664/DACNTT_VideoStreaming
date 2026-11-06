@@ -33,6 +33,6 @@ aws s3 sync "$DIST/assets" "s3://$BUCKET/assets" --exclude "*.map" \
 aws s3 sync "$DIST" "s3://$BUCKET" --exclude "assets/*" --exclude "*.map" \
   --cache-control "public, max-age=0, must-revalidate"
 
-aws cloudfront create-invalidation --profile dacntt-a \
+aws cloudfront create-invalidation \
   --distribution-id "$DISTRIBUTION" --paths "/*" --query 'Invalidation.Id' --output text
 echo "Published to $(out web_url)"

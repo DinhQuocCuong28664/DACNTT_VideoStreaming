@@ -37,7 +37,7 @@ variable "price_class" {
 }
 
 variable "certificate_arn" {
-  description = "Existing ACM certificate (us-east-1, account A) covering host; null issues a new one validated on Cloudflare"
+  description = "Existing ACM certificate (us-east-1) covering host; null issues a new one validated on Cloudflare"
   type        = string
   default     = null
 }
@@ -46,4 +46,10 @@ variable "attach_host" {
   description = "Put the host on the distribution and create its CNAME. False while another distribution still owns it (cutover)"
   type        = bool
   default     = true
+}
+
+variable "transition_reader_arns" {
+  description = "Other CloudFront distributions that may read the bucket while this one replaces them (docs/ops/cdn-to-b.md); empty otherwise"
+  type        = list(string)
+  default     = []
 }

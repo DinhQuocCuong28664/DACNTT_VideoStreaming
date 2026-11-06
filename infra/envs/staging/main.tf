@@ -49,21 +49,11 @@ provider "aws" {
   }
 }
 
-# Account A holds only CloudFront and its certificate (account B may not create
-# distributions). Profile dacntt-a; ACM for CloudFront must be in us-east-1.
+# CloudFront lives in this account as well: distributions use the default provider, and the
+# certificates they present must be issued in us-east-1.
 provider "aws" {
-  alias   = "account_a"
-  region  = "ap-southeast-1"
-  profile = "dacntt-a"
-  default_tags {
-    tags = { Project = "DACNTT", Stack = "v2", Environment = local.environment, ManagedBy = "Terraform" }
-  }
-}
-
-provider "aws" {
-  alias   = "account_a_us_east_1"
-  region  = "us-east-1"
-  profile = "dacntt-a"
+  alias  = "us_east_1"
+  region = "us-east-1"
   default_tags {
     tags = { Project = "DACNTT", Stack = "v2", Environment = local.environment, ManagedBy = "Terraform" }
   }
@@ -93,8 +83,8 @@ module "storage" {
 module "cdn" {
   source = "../../modules/cdn"
   providers = {
-    aws.account_a = aws.account_a
-    aws.us_east_1 = aws.account_a_us_east_1
+    aws.cdn       = aws
+    aws.us_east_1 = aws.us_east_1
   }
   name                                  = local.name
   host                                  = local.cdn_host
@@ -102,19 +92,23 @@ module "cdn" {
   signing_public_key_pem                = file("${path.module}/cdn-signing-public.pem")
   processed_bucket_arn                  = module.storage.bucket_arns["processed"]
   processed_bucket_regional_domain_name = module.storage.processed_bucket_regional_domain_name
+  transition_reader_arns                = var.cdn_transition_reader_arns
   cloudflare_zone_id                    = local.cloudflare_zone_id
+  attach_host                           = var.attach_hosts
 }
 
 module "web" {
   source = "../../modules/web"
   providers = {
-    aws.account_a = aws.account_a
-    aws.us_east_1 = aws.account_a_us_east_1
+    aws.cdn       = aws
+    aws.us_east_1 = aws.us_east_1
   }
-  name               = local.name
-  host               = trimprefix(local.web_origin, "https://")
-  cloudflare_zone_id = local.cloudflare_zone_id
-  force_destroy      = true
+  name                   = local.name
+  host                   = trimprefix(local.web_origin, "https://")
+  cloudflare_zone_id     = local.cloudflare_zone_id
+  transition_reader_arns = var.web_transition_reader_arns
+  force_destroy          = true
+  attach_hosts           = var.attach_hosts
 }
 
 module "events" {

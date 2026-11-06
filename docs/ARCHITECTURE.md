@@ -37,7 +37,7 @@ autoplay/up-next queue.
 | Constraint | Value (measured 2026-10-28) | Consequence |
 |---|---|---|
 | AWS account B (`749680934725`, `ap-southeast-1`) | All compute and storage | Credits; Fargate only, no always-on instances |
-| AWS account A (`911707244328`) | CloudFront + ACM only (B may not create CloudFront) | Cross-account OAC/bucket policy; new paid resources need the owner's OK |
+| AWS account A (`911707244328`) | CloudFront + ACM of environments not yet moved; B may create CloudFront since 2026-11-05 and the code targets B (`docs/ops/cdn-to-b.md`) | Nothing new in A; delete its resources after each move, with the owner's OK |
 | Fargate quota | 30 vCPU Spot + 30 vCPU On-Demand (raised 2026-10-30; 8 + 8 before) | Ceilings: prod 24 + 24, staging 8 + 8 |
 | VPCs | 5 per region, 4 in use (old dev, old staging, bench, default) | One VPC (`zelos`, 10.20.0.0/16) shared by every v2 environment; each environment has its own security group |
 | Fargate quota is per account | Old stack, staging and prod share the same 30 + 30 vCPU | Measurements run only while the other stacks' queues are idle |
@@ -445,7 +445,7 @@ status and moderation, so private, unlisted, unready or removed videos never app
 | 12 | EventBridge Scheduler one-time schedule per scheduled video, deleted after it fires | Polling cron | Exact time, no idle polling |
 | 13 | Powertools logger/tracer/metrics, X-Ray, structured English logs | Free-form logs | Correlate by `videoId` and execution ARN across Lambda, Step Functions and Batch |
 | 14 | Environments `prod` and `staging`, prefix `zelos-{env}`, plus `shared` for the VPC and ECR; state per environment (`zelos/{env}/terraform.tfstate`) with DynamoDB locking | Reusing `dacntt-dev-*`; one VPC per environment | Names match their role; the old stack stays untouched until cutover; the VPC limit leaves room for one VPC |
-| 15 | CloudFront in account A, origins in B | Everything in B | B is not allowed to create CloudFront distributions |
+| 15 | **Revised 2026-11-05:** everything in account B, CloudFront included (move: `docs/ops/cdn-to-b.md`) | CloudFront in account A, origins in B (the original decision) | B may now create distributions; one account means one set of credentials and no cross-account bucket policy |
 | 16 | Email through Gmail SMTP with a per-recipient throttle | SES | SES account is in sandbox |
 | 17 | **Approved 2026-10-28:** DynamoDB on-demand for rate limits, view marks, watch progress, analytics heartbeats and notifications | Everything in MongoDB (free cluster throttles at 100 ops/s); Atlas Flex (8–30 USD per month outside AWS credits); Redis (rejected earlier) | Serverless, pay per request, TTL built in, covered by AWS credits; keeps MongoDB for documents and search |
 | 18 | AES key in a private keys bucket, referenced by the workflow; key endpoint takes a per-video playback token | Key in MongoDB passed through the workflow; key endpoint behind the user JWT | Keys stay out of execution history and logs; embeds can fetch keys without a login session |
