@@ -766,7 +766,7 @@ Main flow &
   1. The administrator searches users by the start of their e-mail address or handle. \newline
   2. The administrator chooses user, operator, auditor or administrator. \newline
   3. The server changes the role, logs who changed whom from which role to which, and forgets the cached session of that user. \newline
-  4. The change takes effect on the user's next request. \\
+  4. The change takes effect within 30 seconds, when every instance of the API has read the account again. \\
 Alternative flows &
   2a. The change would demote the last administrator: the server answers 409. \\
 Postcondition & The role is changed, and the change is logged. \\

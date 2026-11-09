@@ -606,7 +606,9 @@ the same address}}
 
 Authorisation is a table of permissions held by roles, which Table~\ref{tab:permissions} lists. The
 API checks a permission, never a role name, so adding a role changes one table. The role is read
-from the account on each request through a short cache that is cleared when the role changes.
+from the account on each request through a cache of 30~seconds in each instance of the function. The
+instance that changes a role clears its own entry at once; the other running instances see the
+change when their entry expires, so a role change reaches every instance within 30~seconds.
 
 \begin{table}[H]
 \centering
