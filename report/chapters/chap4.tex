@@ -413,9 +413,9 @@ and loads a lower rendition at once rather than stalling.
 \label{fig:abr-loop}
 \end{figure}
 
-Two settings of the player shape the result. \name{capLevelToPlayerSize} keeps the player from
-choosing a rendition larger than the video element on the screen, which saves bandwidth on small
-windows; Chapter~\ref{chap:evaluation} shows its effect in the measurements. A choice in the quality
+Two settings of the player shape the result. \name{capLevelToPlayerSize} caps the choice at the
+smallest rendition whose width or height covers the larger side of the video element on the screen,
+multiplied by the pixel ratio of the display, which saves bandwidth on small windows; Chapter~\ref{chap:evaluation} shows its effect in the measurements. A choice in the quality
 menu fixes the rendition and turns automatic selection off until the viewer chooses Auto again. The
 loop depends on the encoding side in two ways: segments that start with a key frame at the same
 instant in every rung make a switch invisible, and a \texttt{BANDWIDTH} measured as a real peak makes

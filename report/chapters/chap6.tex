@@ -170,8 +170,9 @@ Slow 3G & 500 kbit/s, 400 ms latency & 9.01 s & 9.29 s & 0 \\
 
 The rung the player settled on shows the two limits of Section~\ref{sec:abr-design} at work. In every
 run the first segment was loaded at 144p, the lowest rung, and the player then moved up. Unthrottled
-and on Fast~3G it settled on 480p, not 1080p: at this window size the video element is 880 pixels
-wide, and the player never chooses a rung larger than the element. On Slow~3G it settled on 240p,
+and on Fast~3G it settled on 480p, not 1080p: in the browser window of the test, 1280 by 720 pixels,
+the video element is 825 pixels wide, and the player caps its choice at the smallest rung that
+covers the element, here 480p at 850 pixels. On Slow~3G it settled on 240p,
 whose peak of 408~kbit/s fits under the link of 500~kbit/s, and still played without a stall.
 
 \subsection{Declared and Delivered Bit Rate}
