@@ -66,7 +66,9 @@ runs in parallel with encoding, so the columns do not add up to the total.
 \section{Load}
 
 Table~\ref{tab:raw-burst} summarises the 89 videos of Figure~\ref{fig:burst} that reached
-\status{ready}, and Table~\ref{tab:raw-lambda} gives the log of the API function during that run and
+\status{ready} with a timing record; the three that became ready after a refused completion call
+have none, because the measurement tool stopped following them, and the \texttt{follow\_up} field
+of the result file records their executions. Table~\ref{tab:raw-lambda} gives the log of the API function during that run and
 during the API run of Table~\ref{tab:raw-api}.
 
 \input{generated/tab-v2-burst}

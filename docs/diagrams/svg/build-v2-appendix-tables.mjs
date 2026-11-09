@@ -196,11 +196,14 @@ ${body}
   const work = k.runs.map((r) => r.timings_s.end_to_end - r.timings_s.queue_to_first_job);
   const created = k.failures.filter((f) => /^POST \/uploads:/.test(f.error)).length;
   const completed = k.failures.filter((f) => /\/complete:/.test(f.error)).length;
+  // A refused completion call does not stop processing (the S3 event starts it); follow_up
+  // records what those executions did after the tool stopped following them.
+  const lateReady = Object.values(k.follow_up?.completion_refused_executions ?? {}).filter((e) => e.status === 'SUCCEEDED').length;
   const stats = (a) => [fix(Math.min(...a)), fix(median(a)), fix(nearestRank(a, 95)), fix(Math.max(...a))];
   const spot = k.runs.reduce((s, r) => s + r.capacity_used.spot, 0);
   const od = k.runs.reduce((s, r) => s + r.capacity_used.ondemand, 0);
   table('tab-v2-burst.tex', {
-    caption: `One hundred simultaneous uploads: ${k.runs.length} ready, ${created} refused at creation and ${completed} at completion; times in seconds`,
+    caption: `One hundred simultaneous uploads: ${k.runs.length + lateReady} ready (${k.runs.length} timed, ${lateReady} of the ${completed} with a refused completion call) and ${created} refused at creation; times of the timed videos in seconds`,
     label: 'tab:raw-burst',
     spec: 'l r r r r',
     head: ['TIME PER VIDEO', 'MIN', 'MEDIAN', '95TH PCT.', 'MAX'],

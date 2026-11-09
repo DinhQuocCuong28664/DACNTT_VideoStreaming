@@ -5002,5 +5002,16 @@
       "max": 8846
     },
     "reading": "No 502 and no function errors after 9dfb755; the 11 failures are Lambda throttles at 80 instances in the first minute. First requests on new instances wait up to ~8.8 s on the free Atlas cluster (100 operations/s), longer than the client's three retries (~3.5 s)."
+  },
+  "follow_up": {
+    "checked": "2026-11-09",
+    "method": "aws stepfunctions describe-execution on zelos-prod-transcode:<videoId>-1, and CloudWatch AWS/Rekognition DetectModerationLabels sums for 2026-11-04 07:50-08:15 (UTC+7); read-only",
+    "completion_refused_executions": {
+      "6aea828942a7d633868d7e3a-1": { "status": "SUCCEEDED", "start": "2026-11-04T07:55:43.737+07:00", "stop": "2026-11-04T08:05:45.763+07:00" },
+      "6aea828942a7d633868d7e34-1": { "status": "SUCCEEDED", "start": "2026-11-04T07:55:43.695+07:00", "stop": "2026-11-04T07:57:27.972+07:00" },
+      "6aea828a42a7d633868d7e3e-1": { "status": "SUCCEEDED", "start": "2026-11-04T07:55:45.503+07:00", "stop": "2026-11-04T08:05:30.029+07:00" }
+    },
+    "rekognition": { "successful_requests": 736, "throttled": 68, "user_errors": 0, "server_errors": 0 },
+    "reading": "The 3 uploads whose completion call got 429 had already reached S3, so the S3 event started their executions and all three succeeded; the tool stopped following them at the 429, so they have no timing record and were not deleted. 92 of 100 uploads therefore reached READY; only the 8 refused at creation produced no video. Moderation was on during this run (switched off later by 482811f): 736 successful requests = 92 videos x 8 frames, and the 68 throttled calls were absorbed by the SDK's adaptive retries."
   }
 }

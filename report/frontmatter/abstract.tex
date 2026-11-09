@@ -25,7 +25,7 @@ recorded so that the error rates of the screening can be measured. Eleven Terraf
 the infrastructure, and two GitHub Actions workflows lint, test and scan every change.
 
 Measured on the production system, a four-hour video was ready 38.3~minutes after its upload, and of one
-hundred uploads started at once every accepted upload reached the ready state while the rest were
-refused with a status the client can retry. Once cached, the requests before the first frame took
+hundred uploads started at once 92 reached the ready state while the other 8 were refused at creation
+with a status the client can retry. Once cached, the requests before the first frame took
 435~ms at the 95th percentile. Processing three hundred five-minute videos a month is estimated at
 31.87~USD, against 309.56~USD with an always-on server.

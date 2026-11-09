@@ -22,7 +22,7 @@ of the report that holds the evidence. All five were reached on the production s
 \textbf{OBJECTIVE} & \textbf{RESULT} & \textbf{EVIDENCE} \\
 \midrule
 1. Web platform & Users register with a verified e-mail address or Google, upload files of up to 20~GB straight to Amazon S3 and watch every video at up to six quality levels. Each video is public, unlisted, private, protected by a password or reserved for members. Channels, subscriptions, comments, playlists, memberships, a search that ignores diacritics and a staff console complete the platform. & Sections~\ref{sec:interface-design}, \ref{sec:content-protection}, \ref{sec:ui-showcase} \\
-2. Event-driven pipeline & The creation of the source object alone starts a Step Functions execution, named after the video and its upload version so that a duplicate event never starts a second one. The execution ends with an HLS package encrypted with AES-128 and served through CloudFront with a signed policy. Every measured upload that was accepted reached \status{ready}. & Sections~\ref{sec:workflow-design}, \ref{sec:media-design}, \ref{sec:pipeline-evaluation} \\
+2. Event-driven pipeline & The creation of the source object alone starts a Step Functions execution, named after the video and its upload version so that a duplicate event never starts a second one. The execution ends with an HLS package encrypted with AES-128 and served through CloudFront with a signed policy. In a burst of 100 uploads, every upload whose file reached Amazon S3 became \status{ready}. & Sections~\ref{sec:workflow-design}, \ref{sec:media-design}, \ref{sec:pipeline-evaluation} \\
 3. On-demand containers & Every FFmpeg job runs in a Fargate task that exists only while the job runs; with nothing to process, both compute environments hold zero vCPUs. Spot capacity is used first and On-Demand as overflow, which a burst of 100 uploads used. A four-hour video was ready in 38.3~minutes. & Sections~\ref{sec:compute-design}, \ref{sec:chunked-evaluation}, \ref{sec:burst-evaluation} \\
 4. Infrastructure as Code and CI & Eleven Terraform modules build three environments on AWS and Cloudflare. Two workflows lint, type-check, test, scan for secrets and vulnerable dependencies, and run FFmpeg in the image on every change; 294 unit tests, 13 image checks and 27 end-to-end tests pass. & Sections~\ref{sec:iac}, \ref{sec:cicd}, \ref{sec:testing} \\
 5. Empirical evaluation & Playback start, playback under limited bandwidth, declared against delivered bit rate, transcoding time from a 36-second clip to a four-hour video, 100 simultaneous uploads, API load and monthly cost were measured on production. Nine of the ten non-functional requirements are met and the tenth at its median. & Chapter~\ref{chap:evaluation}, Table~\ref{tab:nfr-evidence} \\
@@ -36,8 +36,8 @@ of the report that holds the evidence. All five were reached on the production s
 The processing tier costs nothing while idle and scales with the work. A transcoding container
 exists only while its job runs, so the month of Section~\ref{sec:cost-analysis} costs 31.87~USD
 against 309.56~USD for an always-on server, and a burst of uploads is absorbed by the queue instead of
-failing: in the burst of Section~\ref{sec:burst-evaluation}, no video failed once it had been
-accepted.
+failing: in the burst of Section~\ref{sec:burst-evaluation}, no video failed once its file had
+reached Amazon S3.
 
 The work grows with the content, not with the path. Every measured video needed between 4.6 and
 5.8~vCPU-seconds per second of source, from a 36-second clip to a four-hour video, so both the cost
@@ -71,8 +71,8 @@ bounded by the six slots that the capacity of one compute environment allows. Ev
 
 \textbf{Load.} The free MongoDB cluster slows down above 100 operations per second. During the burst
 of 100 uploads, the first requests of new API instances waited up to 8.8~seconds on it, longer than
-the three retries of the client, so 11 uploads were refused although the pipeline had capacity to queue
-them. Start-up on an unthrottled connection met its target of three seconds at the median but not in
+the three retries of the client, so 8 uploads were refused at creation although the pipeline had
+capacity to queue them. Start-up on an unthrottled connection met its target of three seconds at the median but not in
 the slowest of five runs.
 
 \textbf{Moderation.} Screening samples one frame every five seconds, so content shown for less than
