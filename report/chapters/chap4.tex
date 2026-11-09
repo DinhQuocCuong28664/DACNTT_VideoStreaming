@@ -757,8 +757,9 @@ the requests rather than failing them, and a request refused under overload rece
 the client retries. Chapter~\ref{chap:evaluation} measures the effect.
 
 On the compute side, the ceilings are those of Batch and Fargate: 24 vCPUs of Spot and 24 of
-On-Demand in production, within an account quota of 30 each. The two queues keep short videos ahead
-of chunks, and the chunk planner sizes chunks to the six slots that the ceiling allows, so a long
-video uses the whole capacity without blocking new uploads behind it. On the delivery side, the CDN
+On-Demand in production, set by Terraform below the account quota of 64 of each kind so that staging
+can run beside production. The two queues keep short videos ahead of chunks: the scheduler starts a
+waiting job of \name{main} before any waiting chunk, so a new upload waits at most for one running
+chunk to end, a few minutes, and is never queued behind all the chunks of a long video. On the delivery side, the CDN
 caches segments for every viewer, because the signed policy is not part of the cache key, so the
 number of viewers adds load at the edge rather than at the origin.
