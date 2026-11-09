@@ -41,7 +41,9 @@ reached Amazon S3.
 
 The work grows with the content, not with the path. Every measured video needed between 4.6 and
 5.8~vCPU-seconds per second of source, from a 36-second clip to a four-hour video, so both the cost
-and the capacity needed for a given catalogue can be predicted from its length alone.
+and the capacity needed for a given catalogue can be predicted from its length. Three of the four
+sources were test patterns, which are easy to encode, so content that is harder to compress would
+sit at the top of this range or above it.
 
 The output is honest to the player. Every segment of a rung starts with a key frame at the same
 instant, and the declared bandwidth of every rung equals the measured peak of its segments
@@ -65,7 +67,8 @@ it is not digital rights management: a viewer who may play a video can also save
 
 \textbf{Transcoding.} The ladder has six fixed rungs whatever the content. On a long video the audio
 job sits on the critical path, 10.8~of the 38.3~minutes of the four-hour run, and the chunks are
-bounded by the six slots that the capacity of one compute environment allows. Every video also waits
+bounded by the twelve slots that the capacity of the two compute environments allows. That run used a
+synthetic test pattern, which is easier to encode than a recording. Every video also waits
 19 to 35~seconds for Fargate tasks to start, about a quarter of the time of a short clip
 (Section~\ref{sec:size-evaluation}).
 

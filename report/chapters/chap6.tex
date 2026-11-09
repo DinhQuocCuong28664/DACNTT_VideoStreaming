@@ -26,7 +26,7 @@ lower ceilings, and changes are checked there before they reach production (Sect
 Web application & S3 bucket behind CloudFront & Hashed assets cached for a year \\
 API & One Lambda function, Node.js 22, 512 MB, behind a Cloudflare Worker & 80 reserved instances \\
 Workflow & S3 events, SQS, the starter, Step Functions and four Lambda steps & One execution per upload version \\
-Compute & AWS Batch on Fargate Spot and Fargate On-Demand, queues \name{main} and \name{bulk} & 24 + 24 vCPUs, six chunk slots \\
+Compute & AWS Batch on Fargate Spot and Fargate On-Demand, queues \name{main} and \name{bulk} & 24 + 24 vCPUs, six + six chunk slots \\
 Media delivery & CloudFront, Origin Access Control, signed query policy & Edges of price class 200, which include Asia \\
 Documents and search & MongoDB Atlas, free M0 cluster of its own & 500 connections, 100 operations per second \\
 Short-lived data & Five DynamoDB tables on demand & Billed per request \\
@@ -253,11 +253,13 @@ video takes. This ratio is what makes the cost of Section~\ref{sec:cost-analysis
 \subsection{A Four-Hour Video}
 \label{sec:chunked-evaluation}
 
-A four-hour 1080p video of 5.26~GiB, with moving content and sound, was ready 38.3~minutes after its
-upload completed. Figure~\ref{fig:four-hour} shows where the time went. The probe split it into 48
-chunks of five minutes. The audio job encoded the sound of the whole video in 10.8~minutes, and the
-chunks started only when it finished, because each chunk copies its window of that audio. The 48
-chunks then ran six at a time, in eight waves, for 26.5~minutes. The video reached \status{ready}
+A four-hour 1080p video of 5.26~GiB, a synthetic moving test pattern at 30 frames per second with a
+tone as its sound, was ready 38.3~minutes after its upload completed. Figure~\ref{fig:four-hour}
+shows where the time went. The probe split it into 48 chunks of five minutes. The audio job encoded
+the sound of the whole video in 10.8~minutes, and the chunks started only when it finished, because
+each chunk copies its window of that audio. The 48 chunks then ran twelve at a time, six on Spot and
+six that overflowed to On-Demand, for 26.5~minutes; a chunk took between 4 and 8~minutes. The video
+reached \status{ready}
 24~seconds after the last chunk, of which stitching and publishing took under 3~seconds. The run used 18.7~vCPU-hours, 4.67~vCPU-seconds per second of source, the same ratio as
 the shorter files. For the 1~GB file and this run, screening was switched off so that test content
 was not sent to Rekognition; its cost is added by calculation in Section~\ref{sec:cost-analysis}.
@@ -270,9 +272,11 @@ was not sent to Rekognition; its cost is added by calculation in Section~\ref{se
 \end{figure}
 
 The timeline shows what limits a long video. The audio job is on the critical path for more than a
-quarter of the time, and the chunks are bounded by the six slots that the 24~vCPUs of one compute
-environment allow. Neither is a limit of the design: the audio can be encoded in parallel with the
-chunks, and the slots grow with the capacity granted. Chapter~\ref{chap:conclusion} returns to both.
+quarter of the time, and the chunks are bounded by the twelve slots that the 48~vCPUs of the two
+compute environments allow. Neither is a limit of the design: the audio can be encoded in parallel
+with the chunks, and the slots grow with the capacity granted. The test pattern is also easier to
+encode than a recording, so a real four-hour recording would need more time per chunk.
+Chapter~\ref{chap:conclusion} returns to these limits.
 
 \section{Behaviour under Load}
 \label{sec:load-testing}

@@ -155,8 +155,9 @@ encoding in about thirty seconds on four vCPUs, while a longer single encode ben
 because one ffmpeg run feeds up to six x264 encoders from a single decoder. The threshold of five
 minutes for the chunked path is kept because, below it, one eight-vCPU job avoids starting the extra
 audio, chunk and stitch tasks. Chunks use four vCPUs each, so the 24 vCPUs of the Spot environment
-run six chunks at once; the planner uses this number of slots to size the chunks, as
-Section~\ref{sec:chunked-design} explains.
+run six chunks at once and the On-Demand environment six more. The planner sizes the chunks for the
+six Spot slots, as Section~\ref{sec:chunked-design} explains; when the overflow is free as well,
+twelve chunks run at once.
 
 \section{Media Design}
 \label{sec:media-design}
