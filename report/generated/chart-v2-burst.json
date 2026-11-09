@@ -1,8 +1,10 @@
 {
   "source": "2026-11-04-v2-s3c-burst.json",
   "started": 100,
-  "ready": 89,
-  "failed": 11,
+  "ready": 92,
+  "timed": 89,
+  "late_ready": 3,
+  "refused_at_creation": 8,
   "videos": [
     {
       "wait": 24.9,
