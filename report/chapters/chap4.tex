@@ -663,8 +663,10 @@ owner's appeal}}
 The \name{analyse} job takes one frame every five seconds, at most 120 frames, so the interval
 widens for long videos and the cost of a video is bounded. Each frame goes to Amazon Rekognition,
 four at a time, and the labels are mapped by a shared policy to block, review or ignore, following the
-label taxonomy of the service~\cite{awsrekognitionmoderation}. A block label at 90\% confidence or
-more removes the video; any other relevant label holds it for review. Labels such as graphic violence
+label taxonomy of the service~\cite{awsrekognitionmoderation}. Labels below 60\% confidence are
+treated as noise. A block label at 90\% confidence or more removes the video; any other relevant
+label holds it for review. A throttled call to Rekognition is retried by the client with adaptive
+back-off, up to five attempts, so a burst of uploads slows the screening rather than skipping frames. Labels such as graphic violence
 in animation or illustration are lowered to review, since fiction is not the same as a recording. A
 video with violence that may stay is published behind a warning that the viewer dismisses. Screening
 fails closed: when no frame, or less than 80\% of the planned frames, could be analysed, the video is

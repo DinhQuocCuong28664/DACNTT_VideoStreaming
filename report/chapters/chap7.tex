@@ -78,8 +78,9 @@ the three retries of the client, so 8 uploads were refused at creation although 
 capacity to queue them. Start-up on an unthrottled connection met its target of three seconds at the median but not in
 the slowest of five runs.
 
-\textbf{Moderation.} Screening samples one frame every five seconds, so content shown for less than
-that can pass, and its thresholds of 60 and 90~per cent follow the provider's guidance rather than a
+\textbf{Moderation.} Screening samples one frame every five seconds and at most 120 frames, so
+content shown between two samples can pass. On a long video the gap widens: a four-hour video is
+sampled once every two minutes. The sound is not screened at all, and the thresholds of 60 and 90~per cent follow the provider's guidance rather than a
 calibration on this platform's content. The console measures the error rates from human decisions,
 but too few decisions exist yet for a rate to mean anything, so this report makes no claim about the
 accuracy of the screening.
