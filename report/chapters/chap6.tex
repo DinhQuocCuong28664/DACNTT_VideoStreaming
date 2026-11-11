@@ -390,6 +390,15 @@ left out, because they cost the same in both designs. With compute this cheap, s
 largest item; its cost grows with the number of frames sampled, which is why the sampling interval
 widens for long videos (Section~\ref{sec:screening-design}).
 
+A smaller always-on server narrows the gap without closing it. At the prices of
+Table~\ref{tab:raw-prices}, a c6i.xlarge with four vCPUs costs 143.08~USD a month for compute and a
+t3.medium with two burstable vCPUs 38.54~USD, against 8.47~USD per use. Both would still be idle
+most of the month, and with a half or a quarter of the vCPUs each video would take two to four times
+as long, so a burst would queue longer still. The serverless design also pays for parts that a
+server does not need: Step Functions state transitions, the invocations of the workflow functions,
+SQS messages and the work bucket. At 300 videos a month they stay well under 0.50~USD at list
+prices, so they do not change the comparison.
+
 \section{Evidence for the Non-Functional Requirements}
 \label{sec:nfr-evidence}
 
