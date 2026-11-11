@@ -133,7 +133,8 @@ Before a player can show a frame it makes five requests: the playback grant from
 playlist, a rendition playlist, the key from the API and the first segment.
 Figure~\ref{fig:ttff-steps} shows how long each took. The first request after a pause took 1425~ms,
 because every cache was cold: the CDN had to fetch the playlists and the segment from the bucket,
-and the two calls to the API were slower too. The next 19 requests averaged 320~ms with a 95th percentile of 435~ms. Once
+and the two calls to the API were slower too. The next 19 requests averaged 320~ms with a 95th percentile of 435~ms, which with 19 samples is
+also the slowest of them (Appendix~\ref{app:measurement-tables}). Once
 the files are cached at the edge, the three CDN requests together take under 50~ms, and the two
 calls to the API, the grant and the key, make up more than four fifths of the time.
 

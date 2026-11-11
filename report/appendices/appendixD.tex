@@ -33,6 +33,11 @@ Table~\ref{tab:cost-comparison} & \texttt{2026-11-04-v2-prices.json}, \texttt{20
 The scripts are under \mbox{\texttt{scripts}}. Every run was made on the production environment,
 with the configuration of Chapter~\ref{chap:implementation}.
 
+Percentiles use the nearest rank: the $p$-th percentile of $n$ sorted values is the value at position
+$\lfloor p\,n \rfloor$, counted from zero and capped at the last one. With 20 values or fewer, the
+95th percentile is therefore the largest value, which is why the columns 95TH PCT.\ and MAX agree in
+Table~\ref{tab:raw-ttff} and in the bursts of 10 and 20 requests of Table~\ref{tab:raw-api}.
+
 \section{Playback}
 
 Table~\ref{tab:raw-ttff} breaks the requests of Figure~\ref{fig:ttff-steps} into their steps. The
