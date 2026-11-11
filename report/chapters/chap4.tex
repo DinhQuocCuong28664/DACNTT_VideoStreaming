@@ -142,10 +142,10 @@ while a long one is being processed does not wait behind dozens of chunks.
 \toprule
 \textbf{ROLE} & \textbf{SIZE} & \textbf{QUEUE} & \textbf{WORK} \\
 \midrule
-analyse & 2 vCPU, 4 GB & main & Moderation frames, thumbnail, seek-preview sprites \\
-encode & 4 vCPU, 8 GB up to 60~s; 8 vCPU, 16 GB above & main & Every rung of a video up to five minutes, in one ffmpeg run \\
-audio & 1 vCPU, 2 GB & main & The AAC tracks of a long video, once per bitrate \\
-chunk & 4 vCPU, 8 GB per child & bulk & Every rung of one chunk of a long video \\
+analyse & 2 vCPU, 4 GiB & main & Moderation frames, thumbnail, seek-preview sprites \\
+encode & 4 vCPU, 8 GiB up to 60~s; 8 vCPU, 16 GiB above & main & Every rung of a video up to five minutes, in one ffmpeg run \\
+audio & 1 vCPU, 2 GiB & main & The AAC tracks of a long video, once per bitrate \\
+chunk & 4 vCPU, 8 GiB per child & bulk & Every rung of one chunk of a long video \\
 \bottomrule
 \end{tabularx}
 \end{table}

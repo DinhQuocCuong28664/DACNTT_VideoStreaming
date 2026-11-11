@@ -68,7 +68,7 @@ with its handle, its subscriber count and its videos.
 \end{figure}
 
 Figure~\ref{fig:ui-upload} shows the upload page before a file is chosen. It states the accepted
-formats and the ceiling of 20~GB, and tells the creator that processing starts when the transfer
+formats and the ceiling of 20~GiB, which the interface writes as GB, and tells the creator that processing starts when the transfer
 ends. Figure~\ref{fig:ui-console} shows the accuracy tab of the staff console. Every rate is shown
 with the number of decisions behind it, and the console says that there is not enough data rather
 than print a rate computed from no decision at all.
@@ -219,7 +219,9 @@ other videos measured, both synthetic test patterns, give the same agreement in 
 Figure~\ref{fig:transcode-size} shows how long a video took from the end of its upload to
 \status{ready}, for the four file sizes, and Table~\ref{tab:transcode-results} gives the values. The
 36-second clip has 640 by 360 pixels; the other three are 1080p test patterns at 30 frames per
-second. The two shorter files take the single path, and the two longer ones the chunked path.
+second. The two shorter files take the single path, and the two longer ones the chunked path. The
+sizes in MB and GB are the decimal names of the test files; limits and memory are given in binary
+units (MiB, GiB) throughout, and AWS bills memory by the GB-hour, which is a GiB-hour.
 
 \begin{figure}[htbp]
 \centering
@@ -357,10 +359,10 @@ Burst of 80      & 80 & 80 & 4395 & 5663 \\
 
 The cost model of Section~\ref{sec:serverless-containers} assumes a month of 300 uploads of five
 minutes each and 5.5~vCPU-seconds of work per second of source, the upper part of the range measured
-in Table~\ref{tab:transcode-results}. That is 137.5~vCPU-hours a month. Every task uses 2~GB of memory
+in Table~\ref{tab:transcode-results}. That is 137.5~vCPU-hours a month. Every task uses 2~GiB of memory
 per vCPU, so at the Fargate On-Demand list prices of 0.05056~USD per vCPU-hour and 0.00553~USD per
 GB-hour, one vCPU-hour costs 0.06162~USD. The alternative is an always-on c6i.2xlarge instance with
-eight vCPUs and 16~GB, at 0.392~USD an hour for 730 hours. Screening sends one frame every five
+eight vCPUs and 16~GiB, at 0.392~USD an hour for 730 hours. Screening sends one frame every five
 seconds to Rekognition, 60 frames for a five-minute video, at 0.0013~USD a frame~\cite{awsrekognitionpricing}.
 Table~\ref{tab:cost-comparison} gives the result.
 
