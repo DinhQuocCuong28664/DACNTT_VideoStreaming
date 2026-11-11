@@ -417,7 +417,7 @@ Chapter~\ref{chap:implementation}.
 \toprule
 \textbf{NFR} & \textbf{EVIDENCE} & \textbf{RESULT} \\
 \midrule
-NFR-01 Playback start & Once cached, the requests before the first frame take 435~ms at the 95th percentile (Figure~\ref{fig:ttff-steps}). Unthrottled, playback started after 2.27~s at the median and 3.23~s in the slowest of five runs, with no stall (Table~\ref{tab:qoe-playback}) & Met at the median; one run of five above 3~s \\
+NFR-01 Playback start & Once cached, the requests before the first frame take 435~ms at the 95th percentile (Figure~\ref{fig:ttff-steps}). Unthrottled, playback started after 2.27~s at the median, with no stall; two of the five runs took longer than 3~s, 3.10 and 3.23~s (Table~\ref{tab:raw-qoe}) & Met at the median (2.27~s); two runs of five above 3~s \\
 NFR-02 Processing time & A 10-minute video was ready in 147 to 149~s (Table~\ref{tab:transcode-results}); a four-hour video in 38.3~minutes (Figure~\ref{fig:four-hour}) & Met \\
 NFR-03 Burst load & Of 100 simultaneous uploads, 92 reached \status{ready}, including 3 whose completion call was refused; the 8 refused at creation received 429 (Section~\ref{sec:burst-evaluation}) & Met \\
 NFR-04 Idle cost & With nothing processing, both compute environments want 0~vCPUs and no task runs; the API, the workflow and the two scheduled functions (an hourly roll-up and a daily reconciler) are billed per invocation & Met \\
