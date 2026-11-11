@@ -589,7 +589,7 @@ Postcondition & The video is published at the chosen time, or stays private. \\
 
 \begin{table}[H]
 \centering
-\caption{Use case UC-14: manage membership tiers}
+\caption{Use case UC-14: customise the channel and manage membership tiers}
 \label{tab:uc-tiers}
 \small
 \begin{tabularx}{\textwidth}{p{0.2\textwidth} X}
@@ -597,15 +597,20 @@ Postcondition & The video is published at the chosen time, or stays private. \\
 \textbf{FIELD} & \textbf{CONTENT} \\
 \midrule
 Actor & Creator \\
-Requirements & FR-13 \\
+Requirements & FR-13, FR-16 \\
 Precondition & The creator is signed in. \\
 Main flow &
-  1. The creator creates a tier with a name, price, level, perks and badge colour. \newline
-  2. The creator edits or retires a tier. \newline
-  3. The creator reads the list of current members with their tier and end date. \\
+  1. The creator sets the handle and the description of the channel. \newline
+  2. The creator uploads an avatar or a banner, a JPEG or PNG image of up to 2~MiB, which the server screens with the policy of the videos before it replaces the current one. \newline
+  3. The creator creates a tier with a name, price, level, perks and badge colour. \newline
+  4. The creator edits or retires a tier. \newline
+  5. The creator reads the list of current members with their tier and end date. \\
 Alternative flows &
-  1a. The channel already has five tiers: the server answers 409. \\
-Postcondition & The tiers are offered on the channel page. \\
+  1a. The handle is reserved or already taken: the server answers 409. \newline
+  2a. The image is too large or of another type: the server answers 400. \newline
+  2b. The image breaks the content rules: the server answers 403 and the current image stays. \newline
+  3a. The channel already has five tiers: the server answers 409. \\
+Postcondition & The channel page shows the profile and offers the tiers. \\
 \bottomrule
 \end{tabularx}
 \end{table}
