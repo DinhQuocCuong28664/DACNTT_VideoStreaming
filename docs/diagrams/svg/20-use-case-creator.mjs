@@ -83,12 +83,8 @@ p.push(edge([[uc.upload.box.r, uc.upload.box.cy], [vis.box.l, vis.box.cy]],
 p.push(edge([[uc.transcode.box.r, uc.transcode.box.cy], [screen.box.l, screen.box.cy]],
   { dashed: true, label: '«include»', labelDy: -8 }));
 
-// Upload xong thì S3 phát sự kiện và việc chuyển mã bắt đầu.
-const TRIG_X = UC_X + RX + 22;
-p.push(edge([
-  [uc.upload.box.r, uc.upload.box.cy + 22], [TRIG_X, uc.upload.box.cy + 22],
-  [TRIG_X, uc.transcode.box.cy - 20], [uc.transcode.box.r - 14, uc.transcode.box.cy - 20],
-], { dashed: true, label: '«trigger»', labelAt: 0.5, labelDx: 50 }));
+// The upload starting the transcode is not drawn as an arrow: UML 2.5 has no use-case relation for
+// it. The system actor and the note below say that events start the processing use cases.
 
 p.push(text(
   ['The processing use cases attach to a system actor because events start them:',
