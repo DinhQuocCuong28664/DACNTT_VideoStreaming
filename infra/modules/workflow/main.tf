@@ -363,8 +363,10 @@ locals {
     BackoffRate     = 2
     JitterStrategy  = "FULL"
   }]
+  # Errors of the Batch API itself, not of the job. A 500 (Batch.ServerException) at SubmitJob
+  # once failed a video at once in production (fault test, 2026-11-12); it is transient, so retry.
   batch_retry = [{
-    ErrorEquals     = ["Batch.AWSBatchException", "Batch.TooManyRequestsException"]
+    ErrorEquals     = ["Batch.AWSBatchException", "Batch.ServerException", "Batch.TooManyRequestsException"]
     IntervalSeconds = 5
     MaxAttempts     = 5
     BackoffRate     = 2
