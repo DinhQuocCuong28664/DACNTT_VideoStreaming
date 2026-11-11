@@ -326,14 +326,14 @@ Quy ước mỗi slide:
 - **Tiêu đề (EN):** Reproducible and checked on every change
 - **Ý trên slide (EN):**
   - 11 Terraform modules build staging and production on AWS and Cloudflare
-  - Every push: lint, type check, 294 unit tests, 13 FFmpeg checks in the image
+  - Every push: lint, type check, 305 unit tests, 13 FFmpeg checks in the image
   - Security gate: Gitleaks, Trivy, eslint-plugin-security
   - 27 end-to-end tests pass against production
 - **Hình:** `03-cicd-pipeline.png` (Hình 5.1)
 - **Lời nói (VI):** Toàn bộ hạ tầng viết bằng mười một module Terraform, staging và production dựng từ cùng mã. Mỗi
-  lần push đều chạy lint, kiểm kiểu, 294 unit test, mười ba kiểm tra FFmpeg ngay trong image, và cổng bảo mật quét
+  lần push đều chạy lint, kiểm kiểu, 305 unit test, mười ba kiểm tra FFmpeg ngay trong image, và cổng bảo mật quét
   bí mật và thư viện có lỗ hổng. Hai mươi bảy test end-to-end chạy trên production.
-- **Nguồn:** `report/chapters/chap5.tex` dòng 136 (11 module), 207 và 303–305 (294/13/27), 344.
+- **Nguồn:** `report/chapters/chap5.tex` dòng 136 (11 module), 207 và 303–305 (305/13/27), 344.
 
 ### Slide 16 — Conclusion
 
@@ -343,7 +343,7 @@ Quy ước mỗi slide:
   - 01 Platform: uploads up to 20 GB, six quality levels, channels, memberships, staff console
   - 02 Event-driven: one named execution per upload; 92 of 100 in a burst ready
   - 03 Serverless: zero vCPUs when idle; a four-hour video in 38.3 min
-  - 04 Reproducible: 11 Terraform modules; 294 + 13 + 27 tests pass
+  - 04 Reproducible: 11 Terraform modules; 305 + 13 + 27 tests pass
   - 05 Measured: 9 of 10 NFRs met; the tenth (start ≤ 3 s) at its median
   - Hai dải dưới: Limits (AES-128 is not DRM · free database tier · fixed ladder) và Next (VMAF ladder · audio
     in parallel · playback without MSE)
@@ -376,13 +376,13 @@ Chỉ mở khi bị hỏi. Chữ trên slide bằng tiếng Anh; câu trả lờ
 | B2 | Twelve chunks at once | 6 on Spot + 6 overflow on On-Demand; 48 chunks of 236–476 s; planner sized for 6 Spot slots | Vì sao chunk bị giới hạn | execution `6aea92c79af78a13720d8c37-1` |
 | B3 | Why one IV per upload version | Chunks number segments from 0; the stitched playlist renumbers them; an implicit IV would not decrypt | Bảo mật mã hoá | `transcoder/src/context.ts` dòng 29, 54 |
 | B4 | Versus a managed encoder | MediaConvert ≈ 76–122 USD/month for 9,000 output minutes vs 8.47 USD Fargate compute | So sánh với MediaConvert | Price List API, 2026-11-09 |
-| B5 | Real content, not only test patterns | Screen recording 1912×1080, 4 min 40 s: 5.49 vCPU-s per source second | Hằng số 5,5 đo trên gì | execution `6aea3d0094989c6980c6c03c-1` |
+| B5 | Real content, not only test patterns | Screen recording 1912×1080, 4 min 40 s: 5.50 vCPU-s per source second | Hằng số 5,5 đo trên gì | `docs/results/runs/2026-11-03-v2-real-recording.json` (execution `6aea3d0094989c6980c6c03c-1`) |
 | B6 | Limits of screening | 1 frame / 5 s, max 120 (a 4-hour video: every 2 min); no audio screening; 60% / 90% thresholds | Kiểm duyệt video dài | `shared/src/moderation/policy.ts` |
 
 ### Cần kiểm lại (đợt A)
 
 1. Slide 2: con số 138 vCPU-giờ dùng hệ số 5,5 vCPU-giây mỗi giây nguồn, chủ yếu đo trên test pattern (xem
-   `.local-notes/defense-qa.md` câu 3). Nếu bị hỏi thì nói thêm điểm đo trên bản ghi thật: 5,49.
+   `.local-notes/defense-qa.md` câu 3). Nếu bị hỏi thì nói thêm điểm đo trên bản ghi thật: 5,50.
 2. Slide 4: "viewer = creator" nghĩa là không có vai trò creator riêng (`chap3.tex`, đoạn sau Bảng 3.1). Bạn xem
    cách viết này có dễ hiểu không.
 3. Thời lượng: đợt A là 160 s cho Đức. Bạn đọc to thử từng đoạn lời nói, dài quá thì báo để mình cắt.
@@ -415,8 +415,8 @@ Chỉ mở khi bị hỏi. Chữ trên slide bằng tiếng Anh; câu trả lờ
 
 1. Slide 12: "30–60 s trước khi mã hoá" là cách nói tròn của 29–57 s trong `chap6.tex` dòng 245.
 2. Slide 13: video 4 giờ là test pattern tổng hợp. Nếu bị hỏi nội dung video, nói thẳng và dẫn sang slide B5.
-3. Slide 16: "9 of 10 NFRs met, the tenth at its median" lấy từ Bảng 7.1; NFR-01 đạt ở trung vị, một lượt trên
-   năm lượt vượt 3 s.
+3. Slide 16: "9 of 10 NFRs met, the tenth at its median" lấy từ Bảng 7.1; NFR-01 đạt ở trung vị (2,27 s), hai
+   trong năm lượt vượt 3 s (3,10 và 3,23 s).
 4. Slide dự phòng B4: giá MediaConvert là ước lượng từ Price List API, chưa rõ tier nào hỗ trợ AES-128. Chỉ nói là
    ước lượng.
 5. Tổng thời lượng: 840 s (14 phút), Đức 410 s, Cường 430 s, chênh 5%. Còn 60 s dự phòng trong 15 phút.
