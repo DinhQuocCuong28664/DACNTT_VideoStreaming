@@ -1,6 +1,6 @@
-# Script shell phải giữ đuôi dòng LF dù checkout trên Windows (core.autocrlf=true).
-# scripts/ec2-userdata.sh được Terraform đọc thẳng từ bản checkout và chạy bằng
-# bash trên EC2; một ký tự \r cuối dòng làm cả script hỏng từ dòng đầu.
+# Shell scripts, PEM keys and infra JavaScript keep LF endings even on a Windows checkout
+# (core.autocrlf=true): a trailing \r breaks bash scripts, changes the CloudFront public key
+# Terraform reads, and alters the hash of CloudFront Function code.
 *.sh text eol=lf
 *.pem text eol=lf
 infra/**/*.js text eol=lf
