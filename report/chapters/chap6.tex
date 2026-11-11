@@ -267,7 +267,9 @@ Section~\ref{sec:cost-analysis} predictable.
 \label{sec:chunked-evaluation}
 
 A four-hour 1080p video of 5.26~GiB, a synthetic moving test pattern at 30 frames per second with a
-tone as its sound, was ready 38.3~minutes after its upload completed. Figure~\ref{fig:four-hour}
+tone as its sound, was ready 38.3~minutes after its upload completed. Being larger than the 5~GiB
+of a single POST, the file also went through the multipart path in production: 169 parts of
+32~MiB, uploaded in 132.6~seconds and completed by the API. Figure~\ref{fig:four-hour}
 shows where the time went. The probe split it into 48 chunks of five minutes. The audio job encoded
 the sound of the whole video in 10.8~minutes, and the chunks started only when it finished, because
 each chunk copies its window of that audio. The 48 chunks then ran twelve at a time, six on Spot and
