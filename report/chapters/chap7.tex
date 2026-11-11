@@ -77,8 +77,8 @@ synthetic test pattern, which is easier to encode than a recording. Every video 
 \textbf{Load.} The free MongoDB cluster slows down above 100 operations per second. During the burst
 of 100 uploads, the first requests of new API instances waited up to 8.8~seconds on it, longer than
 the three retries of the client, so 8 uploads were refused at creation although the pipeline had
-capacity to queue them. Start-up on an unthrottled connection met its target of three seconds at the median but not in
-the slowest of five runs.
+capacity to queue them. Start-up on an unthrottled connection met its target of three seconds at the median (2.27~s) but not
+in two of five runs, which took 3.10 and 3.23~s.
 
 \textbf{Moderation.} Screening samples one frame every five seconds and at most 120 frames, so
 content shown between two samples can pass. On a long video the gap widens: a four-hour video is

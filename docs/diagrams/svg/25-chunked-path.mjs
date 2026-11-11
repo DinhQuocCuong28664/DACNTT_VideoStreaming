@@ -39,10 +39,12 @@ for (let i = 0; i < 6; i += 1) {
   p.push(k.svg);
 }
 p.push(text([
-  'Six slots run at once (24 vCPU / 4); the rest wait in the queue. A child trims its exact window,',
-  'copies the matching audio, offsets timestamps onto one timeline and writes c0007_000.ts … per rung.',
-], 456, 530, { size: 15.5, anchor: 'start', fill: PALETTE.ink, lineHeight: 22 }));
-p.push(text('A child that fails for good writes an abort marker; the others stop.', 456, 590, { size: 15.5, anchor: 'start', fill: PALETTE.muted }));
+  // Same capacity as Sections 4.2.3 and 6.5.2: six Spot slots of 4 vCPU, six more on On-Demand.
+  'Six Spot slots run at once, up to twelve with the On-Demand overflow; the rest wait in the queue.',
+  'A child trims its exact window, copies the matching audio, offsets timestamps onto one timeline',
+  'and writes c0007_000.ts … per rung.',
+], 456, 522, { size: 15.5, anchor: 'start', fill: PALETTE.ink, lineHeight: 22 }));
+p.push(text('A child that fails for good writes an abort marker; the others stop.', 456, 596, { size: 15.5, anchor: 'start', fill: PALETTE.muted }));
 
 p.push(edge([[audio.box.r, 446], [kids[0].box.x, 446]]));
 

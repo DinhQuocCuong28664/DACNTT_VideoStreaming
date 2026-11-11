@@ -404,7 +404,9 @@ exact addresses.
 
 The player is built on hls.js, and Figure~\ref{fig:abr-loop} shows the loop by which it chooses a
 quality. Before any segment is loaded, it has no measurement and starts from a default estimate of
-500~kbit/s. After each segment it measures the throughput of the download, folds it into moving
+500~kbit/s. Since the start level is left to it, hls.js first downloads one segment of the lowest
+rung only to measure the throughput, without decoding or showing it, so the first picture comes
+from a rung chosen on a real measurement. After each segment it measures the throughput of the download, folds it into moving
 averages, scales the estimate down by a safety factor of 0.95 and chooses the highest rendition whose
 declared \texttt{BANDWIDTH} fits under it~\cite{hlsjs}. The switch takes effect at the next segment
 boundary. If the buffer runs low while a segment is still downloading slowly, the player abandons it

@@ -24,7 +24,7 @@ lower ceilings, and changes are checked there before they reach production (Sect
 \textbf{PART} & \textbf{SERVICE} & \textbf{SETTING} \\
 \midrule
 Web application & S3 bucket behind CloudFront & Hashed assets cached for a year \\
-API & One Lambda function, Node.js 22, 512 MB, behind a Cloudflare Worker & 80 reserved instances \\
+API & One Lambda function, Node.js 22, 512 MiB, behind a Cloudflare Worker & 80 reserved instances \\
 Workflow & S3 events, SQS, the starter, Step Functions and four Lambda steps & One execution per upload version \\
 Compute & AWS Batch on Fargate Spot and Fargate On-Demand, queues \name{main} and \name{bulk} & 24 + 24 vCPUs, six + six chunk slots \\
 Media delivery & CloudFront, Origin Access Control, signed query policy & Edges of price class 200, which include Asia \\
@@ -170,10 +170,12 @@ Slow 3G & 500 kbit/s, 400 ms latency & 9.01 s & 9.29 s & 0 \\
 \end{table}
 
 The rung the player settled on shows the two limits of Section~\ref{sec:abr-design} at work. In every
-run the first segment was loaded at 144p, the lowest rung, and the player then moved up. Unthrottled
-and on Fast~3G it settled on 480p, not 1080p: in the browser window of the test, 1280 by 720 pixels,
+run the player first downloaded one 144p segment only to measure the throughput; it neither decoded
+nor showed that segment, so the first picture already came from the rung it then kept, and no run
+changed rung while it played. Unthrottled
+and on Fast~3G that rung was 480p, not 1080p: in the browser window of the test, 1280 by 720 pixels,
 the video element is 825 pixels wide, and the player caps its choice at the smallest rung that
-covers the element, here 480p at 850 pixels. On Slow~3G it settled on 240p,
+covers the element, here 480p at 850 pixels. On Slow~3G it was 240p,
 whose peak of 408~kbit/s fits under the link of 500~kbit/s, and still played without a stall.
 
 \subsection{Declared and Delivered Bit Rate}
@@ -265,7 +267,9 @@ Section~\ref{sec:cost-analysis} predictable.
 \label{sec:chunked-evaluation}
 
 A four-hour 1080p video of 5.26~GiB, a synthetic moving test pattern at 30 frames per second with a
-tone as its sound, was ready 38.3~minutes after its upload completed. Figure~\ref{fig:four-hour}
+tone as its sound, was ready 38.3~minutes after its upload completed. Being larger than the 5~GiB
+of a single POST, the file also went through the multipart path in production: 169 parts of
+32~MiB, uploaded in 132.6~seconds and completed by the API. Figure~\ref{fig:four-hour}
 shows where the time went. The probe split it into 48 chunks of five minutes. The audio job encoded
 the sound of the whole video in 10.8~minutes, and the chunks started only when it finished, because
 each chunk copies its window of that audio. The 48 chunks then ran twelve at a time, six on Spot and
@@ -334,7 +338,13 @@ through the Worker from Vietnam. A warm instance answered in 156~ms at the media
 95th percentile, network and Worker included. Every burst of up to 80 simultaneous requests was
 answered without an error. The latency of a burst is dominated by start-up: 79 of the 193
 invocations of the run started a new instance, each taking about 1.1~seconds to start before it
-handled its request.
+handled its request. The phases ran one after another, and the instances of one burst were still
+warm for the next, so each burst only needed new instances beyond those already running: 9 for the
+burst of 10, then 10, 20 and 40, which add up to the 79 that Lambda reported. The log gives this
+total, not a count per burst, but it explains the order of the medians. Nearly every request of the
+burst of 10 waited for a start, while half of the burst of 20 found a warm instance, so its median
+lies at about the fastest request that waited; in the larger bursts the new instances also queue
+longer on the database.
 
 \begin{table}[H]
 \centering
@@ -417,7 +427,7 @@ Chapter~\ref{chap:implementation}.
 \toprule
 \textbf{NFR} & \textbf{EVIDENCE} & \textbf{RESULT} \\
 \midrule
-NFR-01 Playback start & Once cached, the requests before the first frame take 435~ms at the 95th percentile (Figure~\ref{fig:ttff-steps}). Unthrottled, playback started after 2.27~s at the median and 3.23~s in the slowest of five runs, with no stall (Table~\ref{tab:qoe-playback}) & Met at the median; one run of five above 3~s \\
+NFR-01 Playback start & Once cached, the requests before the first frame take 435~ms at the 95th percentile (Figure~\ref{fig:ttff-steps}). Unthrottled, playback started after 2.27~s at the median, with no stall; two of the five runs took longer than 3~s, 3.10 and 3.23~s (Table~\ref{tab:raw-qoe}) & Met at the median (2.27~s); two runs of five above 3~s \\
 NFR-02 Processing time & A 10-minute video was ready in 147 to 149~s (Table~\ref{tab:transcode-results}); a four-hour video in 38.3~minutes (Figure~\ref{fig:four-hour}) & Met \\
 NFR-03 Burst load & Of 100 simultaneous uploads, 92 reached \status{ready}, including 3 whose completion call was refused; the 8 refused at creation received 429 (Section~\ref{sec:burst-evaluation}) & Met \\
 NFR-04 Idle cost & With nothing processing, both compute environments want 0~vCPUs and no task runs; the API, the workflow and the two scheduled functions (an hourly roll-up and a daily reconciler) are billed per invocation & Met \\
