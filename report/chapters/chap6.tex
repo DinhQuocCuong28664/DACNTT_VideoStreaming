@@ -338,7 +338,13 @@ through the Worker from Vietnam. A warm instance answered in 156~ms at the media
 95th percentile, network and Worker included. Every burst of up to 80 simultaneous requests was
 answered without an error. The latency of a burst is dominated by start-up: 79 of the 193
 invocations of the run started a new instance, each taking about 1.1~seconds to start before it
-handled its request.
+handled its request. The phases ran one after another, and the instances of one burst were still
+warm for the next, so each burst only needed new instances beyond those already running: 9 for the
+burst of 10, then 10, 20 and 40, which add up to the 79 that Lambda reported. The log gives this
+total, not a count per burst, but it explains the order of the medians. Nearly every request of the
+burst of 10 waited for a start, while half of the burst of 20 found a warm instance, so its median
+lies at about the fastest request that waited; in the larger bursts the new instances also queue
+longer on the database.
 
 \begin{table}[H]
 \centering
