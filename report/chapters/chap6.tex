@@ -252,7 +252,11 @@ is the same for a clip and for a long video. Second, the chunked path makes time
 than the source: the 10-minute file is ready 25~seconds after the 2-minute one, and the 26.7-minute
 file needs about twice as long as the 10-minute one for nearly three times the content. Third, the
 work per second of source is nearly constant, between 4.6 and 5.8 vCPU-seconds, whichever path a
-video takes. This ratio is what makes the cost of Section~\ref{sec:cost-analysis} predictable.
+video takes. The samples differ in two ways that the ratio does not show: the 36-second clip is a
+360p source and gets three rungs instead of six, and screening was off for the 1~GB file and the
+four-hour run (Section~\ref{sec:chunked-evaluation}), which shortens their analysis job. The range
+is therefore an estimate for planning, not a constant. This ratio is what makes the cost of
+Section~\ref{sec:cost-analysis} predictable.
 
 \subsection{A Four-Hour Video}
 \label{sec:chunked-evaluation}
