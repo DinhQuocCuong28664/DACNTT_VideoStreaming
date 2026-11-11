@@ -6,6 +6,7 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { WorkflowInput, buildTranscodePlan, summarizeProbe, workPaths, type FfprobeOutput, type TranscodePlan } from '@zelos/shared';
+import { redactUrlQueries } from './lib/redact.js';
 import { required, s3Store, type ObjectStore } from './lib/s3.js';
 
 const run = promisify(execFile);
@@ -71,8 +72,19 @@ async function ffprobeUrl(url: string): Promise<FfprobeOutput> {
     '-reconnect', '1',
     '-rw_timeout', '30000000',
     url,
-  ], { maxBuffer: 10 * 1024 * 1024, timeout: 120_000 });
+  ], { maxBuffer: 10 * 1024 * 1024, timeout: 120_000 }).catch((err: unknown) => {
+    // execFile's message repeats the command line, presigned URL and session token included;
+    // keep only what ffprobe said, with any URL query removed.
+    throw new Error(sourceUnreadable((err as { stderr?: unknown }).stderr));
+  });
   return JSON.parse(stdout) as FfprobeOutput;
+}
+
+/** The message of an ffprobe failure: its last stderr line, without URL queries. */
+export function sourceUnreadable(stderr: unknown): string {
+  const lines = String(stderr ?? '').trim().split(/\r?\n/).filter(Boolean);
+  const last = lines.length ? redactUrlQueries(lines[lines.length - 1] ?? '') : '';
+  return `ffprobe could not read the source${last ? `: ${last}` : ''}`;
 }
 
 let deps: ProbeDeps | undefined;
