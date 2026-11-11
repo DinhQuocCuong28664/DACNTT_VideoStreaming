@@ -117,7 +117,7 @@ FR-18 & Automatic screening & Before a video is published, sampled frames are cl
 FR-19 & Reports & A signed-in viewer reports a video or a comment for one of eight reasons, with at most one open report per item. \\
 FR-20 & Staff review & Operators approve or remove held and reported videos, and dismiss or remove reported comments; every video decision carries a reason code from a closed list. \\
 FR-21 & Appeals & The owner of a removed or held video appeals with a message; an operator upholds or rejects the appeal with a note. \\
-FR-22 & Accountability & Each decision is logged with the verdict the machine had reached, so that false positive and false negative rates can be estimated, the latter from random audit samples, each rate with a confidence interval; an auditor reads them but cannot decide. \\
+FR-22 & Accountability & Each decision is logged with the verdict the machine had reached, so that the error rates of the screening can be estimated: the share of automatic removals reversed on review, and the share of machine approvals that fail a random audit, each with a confidence interval; an auditor reads them but cannot decide. \\
 FR-23 & Role management & An administrator assigns the roles user, operator, auditor and administrator; the last administrator cannot be demoted, and every change is logged. \\
 \bottomrule
 \end{tabularx}
@@ -745,7 +745,7 @@ Main flow &
 Alternative flows &
   1a. A video already sampled is not added twice. \newline
   2a. The sample was already labelled: the server answers 404. \\
-Postcondition & The false negative rate includes the new labels. \\
+Postcondition & The share of approvals that failed the audit, the false omission rate of the screening, includes the new labels. \\
 \bottomrule
 \end{tabularx}
 \end{table}

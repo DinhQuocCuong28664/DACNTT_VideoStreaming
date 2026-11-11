@@ -712,10 +712,16 @@ none recorded & either & unclassified \\
 Decisions alone cannot measure what the screening misses, because nobody reviews a video that the
 machine approved and no viewer reported. The random audit fills this gap: an administrator draws a
 sample of videos that the machine alone approved, an operator labels each one pass or fail, and a
-failed video is removed. From these records the console computes the false positive rate of
-automatic removals, the precision of holds and the false negative rate from the audit, each with a
-95\% Wilson interval, which stays meaningful for small samples and rates near zero, and the sample
-size beside it.
+failed video is removed. From these records the console computes three rates, each with a 95\%
+Wilson interval, which stays meaningful for small samples and rates near zero, and the sample size
+beside it. The first is the share of reviewed automatic removals that a person reversed. Its
+denominator is the removals, not every acceptable video, so it estimates the false discovery rate of
+removals (one minus their precision) rather than the false positive rate. The second is the
+precision of holds. The third is the share of audited approvals that failed, which estimates the
+false omission rate of approvals rather than the false negative rate, since its denominator is the
+approved videos and not every violating one. Removals reach a person when an operator opens them or
+the owner appeals, not at random, so the first rate can be biased toward contested cases; only the
+third comes from a random sample.
 
 \subsection{Roles and Separation of Duties}
 \label{sec:roles-design}
