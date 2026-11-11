@@ -1,428 +1,92 @@
 # Dựng lại hệ thống trên tài khoản AWS mới
 
-> Viết ngày 2026-08-18, sau khi tài khoản `881415010110` bị AWS đóng.
-> Mục đích: đưa toàn bộ hạ tầng trở lại hoạt động trên một tài khoản AWS khác,
-> với ít thao tác thủ công nhất.
+Tài liệu này dùng khi phải đưa toàn bộ hệ thống v2 sang một tài khoản AWS khác, ví dụ khi tài khoản
+hiện tại (B, `749680934725`) bị đóng hoặc hết tín dụng. Lệnh triển khai chi tiết nằm ở
+[`docs/ops/deploy.md`](ops/deploy.md). Ở đây chỉ ghi những gì **khác** khi tài khoản là mới.
 
-## Điều quan trọng nhất phải biết trước
+Bản cũ của tài liệu này mô tả lần dựng lại v1 (EC2) ngày 2026-08-18. Bản đó vẫn đọc được trong lịch sử git.
 
-**Tên S3 bucket là duy nhất trên toàn cầu, không chỉ trong một tài khoản.** Nếu
-bucket cũ vẫn tồn tại thì `terraform apply` trên tài khoản mới sẽ báo
-`BucketAlreadyExists` và dừng.
+## 1. Cái gì còn, cái gì mất
 
-**Ngày 2026-08-18 đã chủ động xoá toàn bộ bucket của tài khoản cũ** (xem phần
-"Hiện trạng đã xoá" ở cuối tài liệu), nên các tên sau **đã được giải phóng và
-dùng lại được ngay**:
-
-- `dacntt-terraform-state`
-- `dacntt-dev-raw-bucket`
-- `dacntt-dev-processed-bucket`
-- `zelostech.site`
-
-→ **Không cần đổi `project_name`.** Giữ nguyên `dacntt` để mọi thứ khớp với báo
-cáo, tài liệu và tên tài nguyên đã mô tả trong đồ án.
-
-*(Nếu không xoá trước, sẽ phải chờ AWS purge tài khoản đã đóng — thường tới
-khoảng 90 ngày — rồi mới lấy lại được tên.)*
-
-## Những gì KHÔNG mất, không phải làm lại
-
-| Thành phần | Ghi chú |
+| Thành phần | Khi đổi tài khoản |
 |---|---|
-| MongoDB Atlas | Nằm ngoài AWS — toàn bộ user, video metadata, comment còn nguyên |
-| Tên miền `zelostech.site` | Ở Hostinger, không liên quan AWS |
-| Cloudflare (DNS + HTTPS) | Còn nguyên, chỉ cần trỏ lại IP/endpoint mới |
-| Mã nguồn + 11 Terraform module | Trong git |
-| Báo cáo LaTeX + số liệu thực nghiệm | Trong git |
-| Video demo (HLS) | Đã sao lưu ở `backup-aws/demo-video/` |
-
-## Các bước
-
-### 1. Cấu hình credentials tài khoản mới
-
-```bash
-aws configure
-aws sts get-caller-identity   # xác nhận đúng account mới trước khi làm tiếp
-```
-
-### 2. Giữ nguyên tên — không cần sửa gì
-
-Vì bucket cũ đã được xoá, tất cả tên đều dùng lại được. **Không sửa**
-`project_name`, `backend.tf`, `bootstrap-terraform-state.sh` hay `frontend.tf`.
-
-Chỉ kiểm tra lại `infrastructure/environments/dev/terraform.tfvars` có đủ các
-giá trị nhạy cảm (tệp này không nằm trong git):
-
-```hcl
-mongodb_uri = "mongodb+srv://<user>:<pass>@..."   # Atlas cũ vẫn dùng được
-jwt_secret  = "<chuỗi ngẫu nhiên >= 32 ký tự>"
-enable_cloudfront = false   # giữ false cho tới khi chắc chắn tài khoản mới
-                            # được phép tạo CloudFront (tài khoản cũ bị chặn)
-```
-
-### 3. Tạo backend lưu Terraform state
-
-```bash
-bash scripts/bootstrap-terraform-state.sh
-```
-
-### 4. Dựng toàn bộ hạ tầng
-
-```bash
-cd infrastructure/environments/dev
-# -reconfigure để Terraform quên bản ghi backend đã cache trong .terraform/ của
-# tài khoản cũ; tên bucket không đổi nhưng tài khoản thì đổi.
-terraform init -reconfigure
-terraform apply
-```
-
-**Về CloudFront:** giữ `enable_cloudfront = false` (mặc định hiện tại) cho lần
-apply đầu tiên. Tài khoản cũ bị AWS chặn tạo CloudFront với lỗi
-`AccessDenied: Your account must be verified before you can add new CloudFront
-resources`, và chưa rõ tài khoản mới có bị chặn tương tự không. Cách kiểm tra rẻ
-nhất là dựng xong phần còn lại trước, rồi thử riêng:
-
-```bash
-terraform apply -target=aws_cloudfront_distribution.frontend
-```
-
-Nếu lệnh trên chạy được thì bật `enable_cloudfront = true` và apply lại để có
-đúng kiến trúc gốc trong báo cáo. Nếu vẫn bị chặn thì tiếp tục dùng Cloudflare
-làm lớp HTTPS tạm thời như hiện nay — hệ thống vẫn chạy đầy đủ, chỉ khác ở lớp
-CDN (xem Chương 6 của báo cáo).
-
-### 5. Build và đẩy Docker image transcoder
-
-```bash
-cd transcoder
-ECR=$(cd ../infrastructure/environments/dev && terraform output -raw ecr_repository_url)
-aws ecr get-login-password --region ap-southeast-1 | docker login --username AWS --password-stdin "${ECR%%/*}"
-docker build -t "$ECR:latest" .
-docker push "$ECR:latest"
-```
-
-### 6. Trỏ lại DNS trên Cloudflare
-
-| Bản ghi | Trỏ tới |
-|---|---|
-| `zelostech.site` (CNAME) | Endpoint S3 website mới, hoặc domain CloudFront nếu đã bật |
-| `api` (A) | IP public của EC2 backend mới |
-
-Giữ nguyên Proxy (đám mây cam) và SSL/TLS ở chế độ **Full/Full (strict)** như hiện tại.
-Ở chế độ này Cloudflare kết nối về máy chủ qua **cổng 443** (kiểm chứng 2026-09-25: mọi
-kết nối từ dải IP Cloudflare đều vào `:443`), nên nginx phải có chứng chỉ thật — xem
-bước 7. Tài liệu này trước đây ghi "Flexible", là sai.
-
-### 7. Khôi phục backend trên EC2
-
-`scripts/ec2-userdata.sh` tự làm phần lớn việc này khi Terraform dựng máy: cài
-Node 24, Nginx (port 80 → 5000, bắt buộc vì Cloudflare free không chuyển tiếp
-port 5000), pm2, và ghi đủ `backend/.env`: `MONGODB_URI`, `JWT_SECRET`, mật
-khẩu Gmail và khoá riêng ký CloudFront đọc từ Secrets Manager; `EMAIL_USER` và
-`CLOUDFRONT_KEY_PAIR_ID` do Terraform chèn vào script (từ `var.email_user` và
-`module.cloudfront.signing_key_pair_id`). Không còn biến nào phải sửa tay.
-
-Script cũng tự xin chứng chỉ Let's Encrypt cho `api.zelostech.site` bằng
-certbot + plugin `dns-cloudflare` (DNS-01, vì máy nằm sau proxy Cloudflare),
-với Cloudflare API token đọc từ secret `dacntt-dev/cloudflare-api-token`, rồi
-bật nginx cổng 443. Trước 2026-09-25 phần này cài tay trên máy, và dựng lại
-máy thì Cloudflare trả 521 cho mọi request API.
-
-Việc còn phải làm:
-
-- Tài khoản AWS mới: nạp khoá riêng CloudFront vào secret
-  `dacntt-dev/cloudfront-private-key` **trước** khi dựng EC2 (lệnh ở
-  `docs/PRIVATE_VIDEO_SIGNED_COOKIES.md`, bước 5). Thiếu thì
-  `/var/log/user-data.log` in cảnh báo và trình phát bị CloudFront trả 403.
-- Tài khoản AWS mới: nạp Cloudflare API token (quyền Zone → DNS → Edit cho
-  `zelostech.site`) vào secret `dacntt-dev/cloudflare-api-token` **trước** khi
-  dựng EC2: `aws secretsmanager put-secret-value --secret-id
-  dacntt-dev/cloudflare-api-token --secret-string <token>`. Thiếu thì nginx chỉ
-  nghe cổng 80 và API trả 521 qua Cloudflare.
-- Cập nhật GitHub Secrets: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`.
-- Đọc `pm2 logs backend-api` sau khi máy lên: phải thấy dòng
-  `✉️  SMTP ready as ...`. Nếu thấy `⚠️  Email is not configured` hoặc
-  `❌ SMTP check failed` thì mail đặt lại mật khẩu sẽ không tới người dùng.
-
-### 8. Nạp lại video demo
-
-MongoDB vẫn còn bản ghi video cũ nhưng `hlsUrl` trỏ tới bucket đã chết. Hai lựa
-chọn:
-
-- **Đơn giản nhất:** upload lại video qua giao diện web để pipeline tự chạy và
-  sinh bản ghi mới.
-- **Giữ nguyên bản ghi cũ:** đẩy thư mục `backup-aws/demo-video/` lên bucket
-  processed mới đúng đường dẫn `videos/<videoId>/`, rồi cập nhật `hlsUrl` và
-  `thumbnailUrl` trong MongoDB cho khớp tên bucket mới.
-
-## Kiểm tra lại sau khi dựng xong
-
-```bash
-# 1. Hạ tầng hợp lệ
-cd infrastructure/environments/dev && terraform validate
-
-# 2. Pipeline chạy thật đầu-cuối
-# Tài khoản của token phải đã xác minh email, nếu không initiate-upload trả
-# 403 EMAIL_NOT_VERIFIED. Tài khoản thử thì đánh dấu bằng tay:
-#   node backend/scripts/verify-email.js <email>
-export API_URL="https://api.zelostech.site/api"
-export JWT_TOKEN="<token đăng nhập>"
-node scripts/measure-transcode.js samples/video-100mb.mp4 verify-rebuild
-# → phải kết thúc ở trạng thái READY, có hlsUrl và thumbnail
-```
-
-## Bẫy đã gặp trước đây — đừng lặp lại
-
-1. **Secret rỗng làm sập pipeline.** Nếu chưa cấu hình email thông báo, để trống
-   `email_app_password`; module đã sửa để khi đó không tạo secret và Job
-   Definition không tham chiếu tới nó. Đừng tạo secret rỗng thủ công.
-2. **Tên ECR repository phải khớp Terraform.** `.github/workflows/ci-transcoder.yml`
-   dùng biến `ECR_REPOSITORY`; nếu đổi `project_name` thì phải sửa biến này theo,
-   nếu không CI sẽ đẩy image vào một repo khác với repo mà Batch đang đọc.
-3. **Kiểm tra `statusReason` của job Batch khi thất bại**, đừng chỉ nhìn trạng
-   thái FAILED. Một lỗi cấu hình từng làm mọi container chết trước khi chạy, và
-   nó bị bỏ sót vì lúc đó đang chạy thí nghiệm mà job vốn dĩ được dự kiến sẽ fail.
-4. **Mail đặt lại mật khẩu hỏng im lặng.** Userdata cũ ghi `EMAIL_USER` và
-   `EMAIL_APP_PASSWORD` thành `REPLACE_ME_AFTER_BOOT` để sửa tay sau; sau lần
-   dựng lại không ai sửa, và vì API quên mật khẩu cố ý trả cùng một câu dù gửi
-   được hay không, lỗi SMTP 535 chỉ nằm trong log pm2 cho tới khi có người thử
-   (phát hiện 2026-09-24). Giờ userdata tự lấy từ Secrets Manager và backend
-   kiểm tra SMTP lúc khởi động.
-5. **Sửa `scripts/ec2-userdata.sh` rồi `terraform apply` là dựng lại máy
-   backend** (`user_data_replace_on_change = true`). Từ 2026-09-24 mọi giá trị
-   trong `backend/.env` đều được userdata dựng lại từ Secrets Manager và biến
-   Terraform, nên việc này không còn làm mất cấu hình; vẫn nên đọc
-   `/var/log/user-data.log` và `pm2 logs` sau khi máy mới lên.
-6. **Chuỗi đánh dấu trong userdata bị `replace()` thay ở mọi chỗ.** Terraform
-   thay `__EMAIL_USER__` và `__CLOUDFRONT_KEY_PAIR_ID__` bằng giá trị thật ở
-   *mọi* lần xuất hiện trong script. Đừng viết lại đúng chuỗi đó trong câu so
-   sánh (`[ "$X" = "__EMAIL_USER__" ]` sẽ thành "đã cấu hình thì xoá trắng");
-   dùng mẫu `case "$X" in __*__)` như script đang làm.
-
----
-
-# Hiện trạng đã xoá — bản ghi ngày 2026-08-18
-
-Tài khoản cũ: `881415010110` (đã bị AWS đóng). Toàn bộ tài nguyên được chủ động
-xoá để **giải phóng tên S3 bucket** cho tài khoản mới, thay vì chờ AWS purge.
-
-## Danh sách dịch vụ đã xoá — dùng để đối chiếu khi dựng lại
-
-Cột "Dựng lại bằng" cho biết sau này khôi phục bằng cách nào.
-
-| # | Dịch vụ / Tài nguyên | Tên | Dựng lại bằng |
-|---|---|---|---|
-| 1 | S3 bucket (video gốc) | `dacntt-dev-raw-bucket` | `terraform apply` (module `s3`) |
-| 2 | S3 bucket (HLS đã chuyển mã) | `dacntt-dev-processed-bucket` | `terraform apply` (module `s3`) |
-| 3 | S3 bucket (frontend) | `zelostech.site` | `terraform apply` (`frontend.tf`) |
-| 4 | S3 bucket (Terraform state) | `dacntt-terraform-state` | `scripts/bootstrap-terraform-state.sh` |
-| 5 | DynamoDB (khoá state) | `dacntt-terraform-locks` | `scripts/bootstrap-terraform-state.sh` |
-| 6 | SQS queue chính | `dacntt-dev-transcode-queue` | `terraform apply` (module `sqs`) |
-| 7 | SQS dead-letter queue | `dacntt-dev-transcode-dlq` | `terraform apply` (module `sqs`) |
-| 8 | ECR repository | `dacntt-dev-transcoder` | `terraform apply` (module `ecr`) + `docker push` |
-| 9 | ECR repository (thừa) | `dacntt-transcoder` | **KHÔNG dựng lại** — xem ghi chú (a) |
-| 10 | Batch job queue | `dacntt-dev-transcode-queue` | `terraform apply` (module `batch`) |
-| 11 | Batch job definition | `dacntt-dev-transcoder-job` | `terraform apply` (module `batch`) |
-| 12 | Lambda job submitter | `dacntt-dev-job-submitter` | `terraform apply` (module `lambda`) — xem ghi chú (b) |
-| 13 | EC2 backend API | `i-00e3512648190a36c` | Tạo mới + `scripts/ec2-userdata.sh`, xem bước 7 |
-| 14 | Secrets Manager | `dacntt-dev/mongodb-uri`, `dacntt-dev/jwt-secret` | `terraform apply` (module `secrets`) |
-| 15 | SNS topic | `dacntt-dev-dlq-alert` | `terraform apply` (module `sns`) |
-| 16 | CloudWatch log groups | `/ecs/dacntt-dev/*`, `/aws/batch/job`, `/aws/lambda/*` | Tự tạo lại khi dịch vụ chạy |
-| 17 | CloudWatch dashboard | `dacntt-dev-overview` | `terraform apply` (module `monitoring`) |
-| 18 | IAM roles + policies | 6 role `dacntt-dev-*` | `terraform apply` (module `iam`) |
-| 19 | ACM certificate | `zelostech.site` (us-east-1) | `terraform apply` — chỉ khi bật CloudFront |
-| 20 | S3 bucket cũ (trước Terraform) | `vidshare-raw-bucket`, `vidshare-processed-bucket` | **KHÔNG dựng lại** — di sản giai đoạn đầu |
-
-### Kiểm chứng sau khi xoá (chạy lúc 2026-08-18)
-
-```
-S3 buckets          : 0
-SQS queues          : 0
-ECR repos           : 0
-Batch job queues    : 0
-EC2 (chưa terminate): 0
-Secrets             : 0
-SNS topics          : 0
-Log groups          : 0
-DynamoDB tables     : 0
-ACM certificates    : 0
-```
-
-## Hai tài nguyên KHÔNG xoá được (đều miễn phí)
-
-| Tài nguyên | Lý do |
-|---|---|
-| Batch compute environment `dacntt-dev-fargate-ce` | Kẹt ở trạng thái `INVALID`. AWS đã thu hồi quyền `ecs:ListClusters` của chính service role mà Batch dùng để dọn ECS cluster, nên nó không tự xoá được. Đã thử cấp lại quyền tạm thời nhưng không gỡ được. |
-| VPC `dacntt-dev-vpc` + 2 subnet + security group | Bị compute environment ở trên giữ tham chiếu nên không xoá theo được. |
-
-Cả hai **không phát sinh chi phí** (VPC, subnet, security group, IAM role đều
-miễn phí) và sẽ bị AWS xoá khi purge tài khoản. Không ảnh hưởng tới việc dựng lại
-trên tài khoản mới, vì chúng nằm ở tài khoản cũ và không chiếm tên toàn cục.
-
-## Ghi chú
-
-**(a) `dacntt-transcoder` là repository thừa.** Nó sinh ra từ một lỗi cũ: biến
-`ECR_REPOSITORY` trong `.github/workflows/ci-transcoder.yml` từng thiếu tiền tố
-môi trường, khiến CI đẩy image vào `dacntt-transcoder` trong khi Batch lại đọc từ
-`dacntt-dev-transcoder`. Lỗi đã sửa; khi dựng lại **chỉ cần đúng một repository**
-là `dacntt-dev-transcoder`.
-
-**(b) Lambda phải xoá khỏi Terraform state thủ công.** Lúc dọn dẹp, AWS đã chặn
-API Lambda (403 `AccessDeniedException`) trước các dịch vụ khác, khiến
-`terraform destroy` không refresh được state và dừng giữa chừng. Đã gỡ bằng
-`terraform state rm` cho `aws_lambda_function.job_submitter` và
-`aws_lambda_event_source_mapping.sqs_trigger` rồi mới destroy tiếp. Trên tài
-khoản mới không gặp vấn đề này.
-
-**(c) Thứ tự xoá quan trọng.** Bucket `zelostech.site` có `force_destroy = false`
-nên phải xoá sạch object trước khi xoá bucket. Bucket `dacntt-terraform-state`
-bật versioning nên phải xoá cả object version lẫn delete marker (dùng
-`list-object-versions` + `delete-objects`), xoá object thường là chưa đủ.
-
-## Còn nguyên vẹn ngoài AWS — không phải dựng lại
-
-- **MongoDB Atlas** — toàn bộ user, video metadata, comment
-- **Tên miền** `zelostech.site` (Hostinger)
-- **Cloudflare** — DNS, HTTPS, cấu hình proxy
-- **Bản sao lưu cục bộ** `backup-aws/` — Terraform state cũ (tham khảo) và video
-  demo dạng HLS (17 MB)
-
----
-
-# Hiện trạng sau khi dựng lại — 2026-08-18
-
-Tài khoản mới: `749680934725`. Dựng lại từ đúng repository này, không khôi phục
-từ bản sao lưu nào.
-
-## Đã chạy được, có kiểm chứng thực tế
-
-| Thành phần | Bằng chứng |
-|---|---|
-| 66 tài nguyên Terraform | `terraform apply` thành công, `terraform plan` sạch |
-| Trang chủ HTTPS | `https://zelostech.site` trả HTTP 200 qua Cloudflare |
-| Backend API HTTPS | `https://api.zelostech.site` trả 200, CORS phản chiếu đúng origin |
-| Đăng ký / đăng nhập | Tạo được tài khoản mới → backend nối được MongoDB Atlas |
-| Pipeline chuyển mã đầu-cuối | Video 100MB: READY sau 437.65 s, hệ số thời gian thực 3.647× |
-| Kết quả HLS | 65 tệp (42.8 MB) trong bucket processed: đủ 360p/720p/1080p + master + thumbnail |
-
-Hệ số 3.647× nằm đúng trong dải 3.70–3.97× đo được trên tài khoản cũ ở cùng
-cấu hình 1 vCPU, cho thấy hạ tầng dựng lại tương đương chứ không chỉ "chạy được".
-
-## Chưa chạy được — và vì sao chấp nhận
-
-**Phát video từ trình duyệt.** Bucket processed đang private hoàn toàn (không có
-bucket policy nào). Đây là trạng thái đúng theo thiết kế: đường truy cập duy
-nhất lẽ ra là CloudFront + Origin Access Control. Vì tài khoản mới chưa được
-AWS cho phép tạo CloudFront, hiện không có đường hợp lệ nào để phát video, và
-mọi yêu cầu tới tệp `.m3u8` trả về HTTP 403.
-
-Đã cân nhắc mở public tạm thời cho bucket để demo phát được ngay, nhưng **quyết
-định không làm**: đó chính là lỗ hổng mà Chương 6 của báo cáo phân tích và phê
-phán (tài khoản cũ từng có policy public thêm tay khiến mọi video, kể cả video
-riêng tư, tải trực tiếp được từ S3). Tái lập nó để demo cho đẹp sẽ mâu thuẫn
-với chính luận điểm của đồ án.
-
-Khi AWS duyệt CloudFront: đặt `enable_cloudfront = true` trong `terraform.tfvars`
-rồi `terraform apply`. Module cloudfront sẽ tự tạo bucket policy cho OAC, và
-việc phát video hoạt động mà không cần mở public bất cứ thứ gì.
-
-## Khác biệt so với hệ thống cũ (đều là cải thiện)
-
-1. **Máy chủ backend nay nằm trong Terraform** (`backend-ec2.tf`). Trước đây tạo
-   tay qua Console — chính vì vậy mà khi mất tài khoản cũ, mọi thứ khác dựng lại
-   bằng một lệnh còn riêng máy chủ phải làm lại thủ công.
-2. **Quản trị máy chủ qua AWS Systems Manager**, không cần khoá SSH. Instance cũ
-   không gắn key pair nào nên khi sự cố chỉ vào được bằng EC2 Instance Connect
-   thao tác tay trên Console.
-3. **Backend dùng IAM Role thay cho khoá AWS tĩnh.** Không còn `AWS_ACCESS_KEY_ID`
-   và `AWS_SECRET_ACCESS_KEY` nằm trong tệp `.env` trên máy chủ.
-
-## Việc còn lại
-
-- [ ] Gửi ticket xin AWS mở quyền CloudFront (bản nháp: `backup-aws/aws-support-ticket-new-account-cloudfront.md`)
-- [ ] Sau khi được duyệt: `enable_cloudfront = true` → `terraform apply` → trỏ
-      bản ghi `zelostech.site` trên Cloudflare sang tên miền CloudFront
-- [ ] Cập nhật GitHub Secrets (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`,
-      `EC2_HOST`) sang tài khoản/máy chủ mới để CI/CD chạy lại được
-
----
-
-# Bật/tắt máy chủ để tiết kiệm chi phí
-
-Hệ thống không cần chạy 24/7. Chỉ **máy chủ Backend API (EC2)** mới phát sinh chi
-phí theo giờ; mọi thành phần còn lại (S3, SQS, Lambda, Batch/Fargate) đều tính
-theo lượt dùng nên tắt máy không tiết kiệm thêm được gì ở đó.
-
-## Chi phí ước tính (ap-southeast-1)
-
-| Khoản | Chạy 24/7 | Khi đã tắt |
-|---|---|---|
-| EC2 `t3.micro` | ~$9.3/tháng | **$0** |
-| Địa chỉ IPv4 công khai | ~$3.6/tháng | **$0** (bị thu hồi) |
-| Ổ đĩa EBS 20 GB gp3 | ~$1.9/tháng | ~$1.9/tháng — **vẫn tính** |
-| Secrets Manager (2 secret) | $0.8/tháng | $0.8/tháng |
-| ECR (ảnh Docker ~0.5 GB) | ~$0.05/tháng | ~$0.05/tháng |
-
-Tắt máy tiết kiệm khoảng **$13/tháng**. Ổ đĩa vẫn bị tính vì dữ liệu được giữ
-lại — chỉ khi `terraform destroy` mới hết hẳn, nhưng khi đó phải dựng lại từ đầu.
-
-## Tắt máy
-
-```bash
-aws ec2 stop-instances --instance-ids <INSTANCE_ID>
-```
-
-Không cần chuẩn bị gì trước. pm2 đã lưu danh sách tiến trình (`pm2 save`) nên
-Backend API tự khởi động lại khi máy bật lên.
-
-## Bật lại — BẮT BUỘC cập nhật DNS
-
-Máy dùng **IP tự động cấp**, không phải Elastic IP. AWS thu hồi IP khi tắt và cấp
-IP **khác** khi bật lại, nên bản ghi DNS cũ sẽ trỏ vào hư không và toàn bộ API
-ngừng hoạt động dù máy chạy bình thường.
-
-```bash
-# 1. Bật máy
-aws ec2 start-instances --instance-ids <INSTANCE_ID>
-
-# 2. Lấy IP mới (chờ vài chục giây cho máy khởi động xong)
-aws ec2 describe-instances --instance-ids <INSTANCE_ID> \
-  --query "Reservations[0].Instances[0].PublicIpAddress" --output text
-
-# 3. Kiểm tra API đã sống chưa
-curl -s -o /dev/null -w "%{http_code}\n" http://<IP_MOI>/
-```
-
-**Chỉ cần sửa đúng một bản ghi trên Cloudflare:**
-
-| Bản ghi | Sửa? | Trỏ tới |
-|---|---|---|
-| `api` (A) | ✅ **Có** | IP mới của EC2 |
-| `zelostech.site` (CNAME) | ❌ Không | Endpoint S3 website — không liên quan EC2 |
-| `www` (CNAME) | ❌ Không | `zelostech.site` |
-| `_272aca68…` (CNAME) | ❌ Không | Xác thực chứng chỉ ACM — **đừng xoá**, cần cho CloudFront sau này |
-
-Giữ nguyên Proxy (đám mây cam) và SSL/TLS ở chế độ **Full/Full (strict)** như hiện tại.
-Ở chế độ này Cloudflare kết nối về máy chủ qua **cổng 443** (kiểm chứng 2026-09-25: mọi
-kết nối từ dải IP Cloudflare đều vào `:443`), nên nginx phải có chứng chỉ thật — xem
-bước 7. Tài liệu này trước đây ghi "Flexible", là sai.
-
-## Muốn khỏi phải sửa DNS mỗi lần?
-
-Hai hướng, mỗi hướng một đánh đổi:
-
-- **Cấp Elastic IP** — IP cố định, không phải đụng DNS nữa. Nhưng AWS tính phí
-  Elastic IP kể cả khi máy đang tắt (~$3.6/tháng), nên chỉ còn tiết kiệm ~$9
-  thay vì ~$13.
-- **Script tự cập nhật DNS** — dùng Cloudflare API để tự sửa bản ghi `api` sau
-  khi máy khởi động. Cần một API token của Cloudflare có quyền sửa DNS của vùng
-  `zelostech.site`.
-
-## Khi máy tắt thì cái gì còn chạy?
-
-| Thành phần | Trạng thái |
-|---|---|
-| Giao diện web (S3 + Cloudflare) | ✅ Vẫn tải được |
-| S3, SQS, Lambda, Batch/Fargate | ✅ Nguyên vẹn |
-| MongoDB Atlas | ✅ Không liên quan AWS |
-| Đăng nhập, danh sách video, tải lên | ❌ Ngừng — đều đi qua Backend API |
+| Mã nguồn, Terraform, báo cáo, số đo | Còn: nằm trong git |
+| MongoDB Atlas (người dùng, metadata video, bình luận) | Còn: nằm ngoài AWS. Nhưng mọi video cũ trỏ tới tệp không còn tồn tại (xem §4) |
+| Tên miền `zelostech.site`, DNS và Worker Cloudflare | Còn: chỉ phải trỏ lại về tài nguyên mới |
+| Bucket raw, processed, work, keys, web, artifacts | **Mất**, cả tệp gốc, HLS và khoá AES |
+| Secrets Manager (`zelos-<env>/api`, `zelos-<env>/mongodb-uri`, `dacntt-dev/cloudflare-api-token`) | **Mất**: phải nhập lại từ nguồn gốc (Atlas, Google Cloud Console, Gmail, Cloudflare) |
+| Khoá riêng ký CloudFront | **Mất** nếu chỉ lưu trong secret. Phải có bản sao ngoài AWS, nếu không thì tạo cặp khoá mới (§3, bước 4) |
+| Image transcoder trong ECR, state Terraform | **Mất**: build lại và tạo lại |
+
+## 2. Kiểm tra trước khi bắt đầu
+
+1. **Tên bucket state là duy nhất toàn cầu.**
+   - `dacntt-terraform-state` còn nằm ở tài khoản cũ thì tài khoản mới không tạo được. `scripts/bootstrap-terraform-state.sh` sẽ in "already exists" như thể không có lỗi.
+   - Cách xử lý: xoá bucket cũ trước, hoặc dùng tên mới và sửa khối `backend "s3"` trong cả ba file `infra/envs/{shared,staging,prod}/main.tf`.
+   - Các bucket khác không gặp vấn đề này, vì tên của chúng có gắn ID tài khoản (`zelos-<env>-raw-<account>`, `zelos-artifacts-<account>`).
+2. **Quota của tài khoản mới rất thấp.** Xin nâng quota trước, vì mỗi yêu cầu mất vài ngày.
+   - Lambda concurrent executions: API prod giữ trước 80, staging 20, mà AWS buộc phải để trống ít nhất 100. Cần ít nhất khoảng 250. Quota mặc định 10 sẽ làm `terraform apply` lỗi.
+   - Fargate On-Demand và Fargate Spot vCPU: prod cần 24 + 24, staging 8 + 8.
+   - Kiểm tra bằng `python ~/.claude/aws-quota-report.py` sau khi thêm profile mới.
+3. **CloudFront phải được bật cho tài khoản mới.** Tài khoản B từng bị chặn tạo distribution cho tới khi được AWS xác minh (`docs/ops/cdn-to-b.md`).
+4. **Tên host của CloudFront.** Một host (`zelostech.site`, `cdn.zelostech.site`) chỉ gắn được vào một distribution tại một thời điểm.
+   - Nếu distribution cũ còn sống, apply lần đầu với `-var attach_hosts=false`, rồi chuyển host theo cách của `docs/ops/cdn-to-b.md`.
+   - Nếu tài khoản cũ đã đóng thì bỏ qua bước này.
+
+## 3. Các bước
+
+Chạy từ gốc repo trong Git Bash, với `MSYS_NO_PATHCONV=1` và profile `default` trỏ tới tài khoản mới.
+
+1. **Credentials:** `aws configure` cho tài khoản mới, vùng `ap-southeast-1`, rồi kiểm tra bằng `aws sts get-caller-identity`.
+2. **State:** chạy `scripts/bootstrap-terraform-state.sh`. Tạo lại secret token Cloudflare (lấy từ dashboard Cloudflare) với tên `dacntt-dev/cloudflare-api-token`, rồi export `CLOUDFLARE_API_TOKEN`.
+3. **Hạ tầng chung:**
+
+   ```bash
+   terraform -chdir=infra/envs/shared init -reconfigure
+   terraform -chdir=infra/envs/shared apply
+   ```
+
+   `-reconfigure` để Terraform bỏ cấu hình backend đã cache trong `.terraform/` của tài khoản cũ.
+4. **Khoá ký CloudFront** (chỉ khi mất khoá riêng):
+
+   ```bash
+   openssl genrsa -out cdn-signing-private.pem 2048
+   openssl rsa -in cdn-signing-private.pem -pubout -out infra/envs/<env>/cdn-signing-public.pem
+   ```
+
+   Commit khoá công khai (giữ đuôi dòng LF). Khoá riêng giữ ngoài repo và chỉ đưa vào secret ở bước 7.
+5. **Image transcoder:** build và push lên ECR mới, gắn tag là SHA của commit (`deploy.md` §5.2).
+6. **Từng môi trường** (staging trước, rồi prod): build mã Lambda và layer ffprobe, rồi `terraform init -reconfigure` và `apply -var transcoder_image_tag=<sha>` (`deploy.md` §5.1, §5.3). Terraform tự tạo:
+   - chứng chỉ ACM ở `us-east-1`, xác thực qua bản ghi Cloudflare;
+   - các CNAME của web và CDN.
+7. **Secret:** điền `zelos-<env>/api` và `zelos-<env>/mongodb-uri` theo danh sách khoá ở `deploy.md` §4. `cloudfrontKeyPairId` lấy từ `terraform output cdn_key_pair_id` của tài khoản mới.
+8. **Worker:**
+   - Function URL đã đổi, nên sửa `TARGET_HOST` của môi trường đó trong `infra/cloudflare-worker/wrangler.toml` theo `terraform output api_function_url`.
+   - Chạy `npx wrangler deploy --env <env>`, rồi commit `wrangler.toml`.
+   - `ORIGIN_VERIFY_SECRET` còn nguyên trên Cloudflare. Chỉ phải chạy lại `wrangler secret put` nếu tạo `originSecret` mới.
+9. **Index, web, seed:**
+   - Chạy `scripts/ensure-indexes.sh <env>` và `scripts/deploy-web.sh <env>`.
+   - Nếu dùng database mới, chạy `node scripts/seed.mjs role` và `node scripts/seed.mjs e2e`.
+
+## 4. Video cũ
+
+Tệp HLS, tệp gốc và khoá AES đều nằm trong bucket của tài khoản cũ. Vì vậy mọi video cũ trong MongoDB sẽ không phát được nữa. Chọn một trong hai cách:
+
+- **Database mới (đơn giản nhất):** tạo database hoặc cluster mới, rồi nạp lại video demo bằng `node scripts/seed.mjs demo --env <env> --manifest .local-notes/demo-videos.json`. Lệnh này chạy video qua pipeline thật.
+- **Giữ database cũ:**
+  - Cách 1: chép bucket `processed` và `keys` sang tài khoản mới trước khi tài khoản cũ đóng (`aws s3 sync` giữa hai tài khoản), với đúng key cũ (`videos/{videoId}/v{uploadVersion}/...`).
+  - Cách 2: xoá các video không còn tệp.
+
+  Có một lưu ý: URI khoá trong playlist chứa host API, và host này không đổi (`api.zelostech.site`). Vì vậy chép nguyên trạng thì video vẫn phát được.
+
+## 5. Kiểm tra sau khi dựng xong
+
+Kiểm tra theo `deploy.md` §6. Tối thiểu cần:
+
+- `/health` của API trả về 200.
+- Một video tải lên mới đi tới `READY` và phát được ở mọi mức chất lượng.
+- Bộ E2E chạy qua, kể cả khi đặt `E2E_PIPELINE=1`.
+
+Nếu job Batch thất bại, đọc `statusReason` của job chứ đừng chỉ nhìn trạng thái `FAILED`. Lỗi cấu hình như thiếu quyền ECR hoặc sai tag image làm container chết trước khi chạy, và chỉ thấy được trong trường đó.
+
+Sau khi xong, cập nhật ID tài khoản mới trong `docs/ARCHITECTURE.md` mục 2 và trong tài liệu chính sách tài khoản của người vận hành.

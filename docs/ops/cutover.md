@@ -1,5 +1,7 @@
 # Production cutover: v1 → v2
 
+> One-off runbook, done on 2026-11-04. For routine releases see [deploy.md](deploy.md).
+
 How `zelostech.site`, `www.zelostech.site`, `cdn.zelostech.site` and `api.zelostech.site` move
 from the old stack (`dacntt-dev-*`) to `infra/envs/prod`. The old stack keeps running untouched
 until the end, so every step can be rolled back by pointing the names back.
