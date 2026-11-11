@@ -50,7 +50,7 @@ p.push(dep.svg);
 const steps = [
   { title: 'Build', sub: ['esbuild bundles', 'of the API and', 'the functions'] },
   { title: 'Image', sub: ['docker build,', 'push to ECR,', 'tag = commit'] },
-  { title: 'Terraform', sub: ['apply in B, A', 'and Cloudflare', 'with that tag'] },
+  { title: 'Terraform', sub: ['apply AWS', 'and Cloudflare', 'with that tag'] },
   { title: 'Indexes', sub: ['direct invoke', 'of the API:', 'ensure-indexes'] },
   { title: 'Web files', sub: ['hashed assets,', 'then index.html,', 'invalidate CDN'] },
   { title: 'E2E smoke', sub: ['Playwright,', '27 tests on', 'production'] },

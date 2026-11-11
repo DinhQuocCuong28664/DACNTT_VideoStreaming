@@ -36,8 +36,8 @@ DATA.videos.forEach((v, i) => {
   body.push(block(x0, y(v.total), w, y(v.wait) - y(v.total), COLOR.dark));
 });
 body.push(T('Seconds to READY', X0, TOP - 12, { size: FONT.small, anchor: 'start', fill: COLOR.ink }));
-body.push(T(`${n} videos that reached READY, sorted by time to READY`, (X0 + X1) / 2, BOTTOM + 24, { size: FONT.small, anchor: 'middle', fill: COLOR.ink }));
-body.push(T(`${DATA.failed} of ${DATA.started} uploads were refused with 429 and never reached processing`, (X0 + X1) / 2, BOTTOM + 46, { size: FONT.small, anchor: 'middle', fill: COLOR.muted }));
+body.push(T(`${n} timed videos that reached READY, sorted by time to READY`, (X0 + X1) / 2, BOTTOM + 24, { size: FONT.small, anchor: 'middle', fill: COLOR.ink }));
+body.push(T(`${DATA.late_ready} more reached READY after a refused completion call; ${DATA.refused_at_creation} of ${DATA.started} were refused at creation`, (X0 + X1) / 2, BOTTOM + 46, { size: FONT.small, anchor: 'middle', fill: COLOR.muted }));
 
 const svg = document_({ width: W, height: H, body: body.join('') });
 const out = write('30-chart-burst', svg);

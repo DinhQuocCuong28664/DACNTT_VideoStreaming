@@ -93,11 +93,16 @@ const median = (a) => { const s = [...a].sort((x, y) => x - y); return s[Math.fl
   const videos = k.runs
     .map((r) => ({ wait: r.timings_s.queue_to_first_job, total: r.timings_s.end_to_end }))
     .sort((a, b) => a.total - b.total);
+  // A refused completion call does not stop processing (the S3 event starts it); follow_up records
+  // the executions the tool stopped following.
+  const lateReady = Object.values(k.follow_up?.completion_refused_executions ?? {}).filter((e) => e.status === 'SUCCEEDED').length;
   write('chart-v2-burst.json', {
     source: '2026-11-04-v2-s3c-burst.json',
     started: 100,
-    ready: k.runs.length,
-    failed: k.failures.length,
+    ready: k.runs.length + lateReady,
+    timed: k.runs.length,
+    late_ready: lateReady,
+    refused_at_creation: k.failures.filter((f) => /^POST \/uploads:/.test(f.error)).length,
     videos,
   });
 }

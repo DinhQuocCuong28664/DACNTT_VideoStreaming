@@ -58,7 +58,7 @@ the global one of 300 requests a minute.
 \texttt{/videos/:id/unlock} & POST & Public, limited & Exchange the password of a video for an unlock token \\
 \texttt{/videos/:id/playback} & GET & Public & Master playlist address, signed query policy and playback token \\
 \texttt{/videos/:id/key} & GET & Playback token & The 16-byte AES key of the upload version \\
-\texttt{/videos/:id/view} & POST & Public, limited & Count a view after 30 seconds of playback \\
+\texttt{/videos/:id/view} & POST & Playback token, limited & Count a view once 30 seconds have passed since the playback token was issued \\
 \texttt{/videos/:id} & PATCH & Signed in & Edit title, description, tags, category, visibility, password, audience, tier and violence warning \\
 \texttt{/videos/:id} & DELETE & Signed in & Delete the video, its comments and its files \\
 \midrule
@@ -117,7 +117,7 @@ the global one of 300 requests a minute.
 \texttt{/videos/:id/report} & POST & Signed in, limited & Report a video with a listed reason \\
 \texttt{/videos/:id/appeal} & GET, POST & Signed in & Read or file the owner's appeal \\
 \texttt{/admin/stats} & GET & \texttt{moderation:review} or \texttt{metrics:read} & Counts shown on the console tabs \\
-\texttt{/admin/queue} & GET & \texttt{moderation:review} & Videos held or reported \\
+\texttt{/admin/queue} & GET & \texttt{moderation:review} & Videos held or reported, or with \texttt{tab=removed} the videos the machine removed \\
 \texttt{/admin/videos/:id/reports} & GET & \texttt{moderation:review} & Reports of one video \\
 \texttt{/admin/videos/:id/decision} & POST & \texttt{moderation:review} & Approve or remove with a reason code \\
 \texttt{/admin/comments} & GET & \texttt{moderation:review} & Reported comments \\

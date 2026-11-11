@@ -63,7 +63,7 @@ the browser writes to S3 directly. A burst of uploads becomes a burst of message
 holds, and every upload gets its own workflow execution. Compute scales by starting containers: the
 Spot environment may run up to 24 vCPUs, and once it is full or Spot capacity is short, jobs overflow
 to an On-Demand environment of another 24 vCPUs. Both environments scale to zero when the queues are
-empty, which is what makes the platform cost nothing while idle. Delivery scales at the edge, since
+empty, which is what makes the processing tier cost nothing while idle. Delivery scales at the edge, since
 the CDN caches segments and every viewer shares the same cached copies.
 
 \section{Transcoding Workflow}
@@ -142,10 +142,10 @@ while a long one is being processed does not wait behind dozens of chunks.
 \toprule
 \textbf{ROLE} & \textbf{SIZE} & \textbf{QUEUE} & \textbf{WORK} \\
 \midrule
-analyse & 2 vCPU, 4 GB & main & Moderation frames, thumbnail, seek-preview sprites \\
-encode & 4 vCPU, 8 GB up to 60~s; 8 vCPU, 16 GB above & main & Every rung of a video up to five minutes, in one ffmpeg run \\
-audio & 1 vCPU, 2 GB & main & The AAC tracks of a long video, once per bitrate \\
-chunk & 4 vCPU, 8 GB per child & bulk & Every rung of one chunk of a long video \\
+analyse & 2 vCPU, 4 GiB & main & Moderation frames, thumbnail, seek-preview sprites \\
+encode & 4 vCPU, 8 GiB up to 60~s; 8 vCPU, 16 GiB above & main & Every rung of a video up to five minutes, in one ffmpeg run \\
+audio & 1 vCPU, 2 GiB & main & The AAC tracks of a long video, once per bitrate \\
+chunk & 4 vCPU, 8 GiB per child & bulk & Every rung of one chunk of a long video \\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -155,8 +155,9 @@ encoding in about thirty seconds on four vCPUs, while a longer single encode ben
 because one ffmpeg run feeds up to six x264 encoders from a single decoder. The threshold of five
 minutes for the chunked path is kept because, below it, one eight-vCPU job avoids starting the extra
 audio, chunk and stitch tasks. Chunks use four vCPUs each, so the 24 vCPUs of the Spot environment
-run six chunks at once; the planner uses this number of slots to size the chunks, as
-Section~\ref{sec:chunked-design} explains.
+run six chunks at once and the On-Demand environment six more. The planner sizes the chunks for the
+six Spot slots, as Section~\ref{sec:chunked-design} explains; when the overflow is free as well,
+twelve chunks run at once.
 
 \section{Media Design}
 \label{sec:media-design}
@@ -272,7 +273,11 @@ combination called Capped CRF in Section~\ref{sec:bitrate-ladder}. CRF falls by 
 rung as the resolution grows, because the same CRF looks worse on a larger screen. The maximum rates
 follow the spacing of common HLS ladders, roughly doubling from rung to rung, and the buffer holds
 two seconds at the maximum rate, which lets the rate vary within a segment while keeping the peak of
-each segment close to the cap~\cite{applehlsauthoring, ffmpegdocs}.
+each segment close to the cap~\cite{applehlsauthoring, ffmpegdocs}. The cap is not a hard ceiling
+for a segment. VBV lets any six-second window carry six seconds at the maximum rate plus one full
+buffer, up to a third more, and a segment file also holds the audio and the MPEG-TS packaging of
+188-byte packets. The measured peaks of Section~\ref{sec:bitrate-evaluation} therefore lie up to
+6.6\% above the video cap plus the audio rate.
 
 \begin{table}[H]
 \centering
@@ -412,9 +417,9 @@ and loads a lower rendition at once rather than stalling.
 \label{fig:abr-loop}
 \end{figure}
 
-Two settings of the player shape the result. \name{capLevelToPlayerSize} keeps the player from
-choosing a rendition larger than the video element on the screen, which saves bandwidth on small
-windows; Chapter~\ref{chap:evaluation} shows its effect in the measurements. A choice in the quality
+Two settings of the player shape the result. \name{capLevelToPlayerSize} caps the choice at the
+smallest rendition whose width or height covers the larger side of the video element on the screen,
+multiplied by the pixel ratio of the display, which saves bandwidth on small windows; Chapter~\ref{chap:evaluation} shows its effect in the measurements. A choice in the quality
 menu fixes the rendition and turns automatic selection off until the viewer chooses Auto again. The
 loop depends on the encoding side in two ways: segments that start with a key frame at the same
 instant in every rung make a switch invisible, and a \texttt{BANDWIDTH} measured as a real peak makes
@@ -605,7 +610,9 @@ the same address}}
 
 Authorisation is a table of permissions held by roles, which Table~\ref{tab:permissions} lists. The
 API checks a permission, never a role name, so adding a role changes one table. The role is read
-from the account on each request through a short cache that is cleared when the role changes.
+from the account on each request through a cache of 30~seconds in each instance of the function. The
+instance that changes a role clears its own entry at once; the other running instances see the
+change when their entry expires, so a role change reaches every instance within 30~seconds.
 
 \begin{table}[H]
 \centering
@@ -662,8 +669,10 @@ owner's appeal}}
 The \name{analyse} job takes one frame every five seconds, at most 120 frames, so the interval
 widens for long videos and the cost of a video is bounded. Each frame goes to Amazon Rekognition,
 four at a time, and the labels are mapped by a shared policy to block, review or ignore, following the
-label taxonomy of the service~\cite{awsrekognitionmoderation}. A block label at 90\% confidence or
-more removes the video; any other relevant label holds it for review. Labels such as graphic violence
+label taxonomy of the service~\cite{awsrekognitionmoderation}. Labels below 60\% confidence are
+treated as noise. A block label at 90\% confidence or more removes the video; any other relevant
+label holds it for review. A throttled call to Rekognition is retried by the client with adaptive
+back-off, up to five attempts, so a burst of uploads slows the screening rather than skipping frames. Labels such as graphic violence
 in animation or illustration are lowered to review, since fiction is not the same as a recording. A
 video with violence that may stay is published behind a warning that the viewer dismisses. Screening
 fails closed: when no frame, or less than 80\% of the planned frames, could be analysed, the video is
@@ -703,10 +712,16 @@ none recorded & either & unclassified \\
 Decisions alone cannot measure what the screening misses, because nobody reviews a video that the
 machine approved and no viewer reported. The random audit fills this gap: an administrator draws a
 sample of videos that the machine alone approved, an operator labels each one pass or fail, and a
-failed video is removed. From these records the console computes the false positive rate of
-automatic removals, the precision of holds and the false negative rate from the audit, each with a
-95\% Wilson interval, which stays meaningful for small samples and rates near zero, and the sample
-size beside it.
+failed video is removed. From these records the console computes three rates, each with a 95\%
+Wilson interval, which stays meaningful for small samples and rates near zero, and the sample size
+beside it. The first is the share of reviewed automatic removals that a person reversed. Its
+denominator is the removals, not every acceptable video, so it estimates the false discovery rate of
+removals (one minus their precision) rather than the false positive rate. The second is the
+precision of holds. The third is the share of audited approvals that failed, which estimates the
+false omission rate of approvals rather than the false negative rate, since its denominator is the
+approved videos and not every violating one. Removals reach a person when an operator opens them or
+the owner appeals, not at random, so the first rate can be biased toward contested cases; only the
+third comes from a random sample.
 
 \subsection{Roles and Separation of Duties}
 \label{sec:roles-design}
@@ -756,8 +771,9 @@ the requests rather than failing them, and a request refused under overload rece
 the client retries. Chapter~\ref{chap:evaluation} measures the effect.
 
 On the compute side, the ceilings are those of Batch and Fargate: 24 vCPUs of Spot and 24 of
-On-Demand in production, within an account quota of 30 each. The two queues keep short videos ahead
-of chunks, and the chunk planner sizes chunks to the six slots that the ceiling allows, so a long
-video uses the whole capacity without blocking new uploads behind it. On the delivery side, the CDN
+On-Demand in production, set by Terraform below the account quota of 64 of each kind so that staging
+can run beside production. The two queues keep short videos ahead of chunks: the scheduler starts a
+waiting job of \name{main} before any waiting chunk, so a new upload waits at most for one running
+chunk to end, a few minutes, and is never queued behind all the chunks of a long video. On the delivery side, the CDN
 caches segments for every viewer, because the signed policy is not part of the cache key, so the
 number of viewers adds load at the edge rather than at the origin.

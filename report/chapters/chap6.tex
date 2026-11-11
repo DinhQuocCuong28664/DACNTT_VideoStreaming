@@ -26,7 +26,7 @@ lower ceilings, and changes are checked there before they reach production (Sect
 Web application & S3 bucket behind CloudFront & Hashed assets cached for a year \\
 API & One Lambda function, Node.js 22, 512 MB, behind a Cloudflare Worker & 80 reserved instances \\
 Workflow & S3 events, SQS, the starter, Step Functions and four Lambda steps & One execution per upload version \\
-Compute & AWS Batch on Fargate Spot and Fargate On-Demand, queues \name{main} and \name{bulk} & 24 + 24 vCPUs, six chunk slots \\
+Compute & AWS Batch on Fargate Spot and Fargate On-Demand, queues \name{main} and \name{bulk} & 24 + 24 vCPUs, six + six chunk slots \\
 Media delivery & CloudFront, Origin Access Control, signed query policy & Edges of price class 200, which include Asia \\
 Documents and search & MongoDB Atlas, free M0 cluster of its own & 500 connections, 100 operations per second \\
 Short-lived data & Five DynamoDB tables on demand & Billed per request \\
@@ -68,7 +68,7 @@ with its handle, its subscriber count and its videos.
 \end{figure}
 
 Figure~\ref{fig:ui-upload} shows the upload page before a file is chosen. It states the accepted
-formats and the ceiling of 20~GB, and tells the creator that processing starts when the transfer
+formats and the ceiling of 20~GiB, which the interface writes as GB, and tells the creator that processing starts when the transfer
 ends. Figure~\ref{fig:ui-console} shows the accuracy tab of the staff console. Every rate is shown
 with the number of decisions behind it, and the console says that there is not enough data rather
 than print a rate computed from no decision at all.
@@ -133,7 +133,8 @@ Before a player can show a frame it makes five requests: the playback grant from
 playlist, a rendition playlist, the key from the API and the first segment.
 Figure~\ref{fig:ttff-steps} shows how long each took. The first request after a pause took 1425~ms,
 because every cache was cold: the CDN had to fetch the playlists and the segment from the bucket,
-and the two calls to the API were slower too. The next 19 requests averaged 320~ms with a 95th percentile of 435~ms. Once
+and the two calls to the API were slower too. The next 19 requests averaged 320~ms with a 95th percentile of 435~ms, which with 19 samples is
+also the slowest of them (Appendix~\ref{app:measurement-tables}). Once
 the files are cached at the edge, the three CDN requests together take under 50~ms, and the two
 calls to the API, the grant and the key, make up more than four fifths of the time.
 
@@ -170,8 +171,9 @@ Slow 3G & 500 kbit/s, 400 ms latency & 9.01 s & 9.29 s & 0 \\
 
 The rung the player settled on shows the two limits of Section~\ref{sec:abr-design} at work. In every
 run the first segment was loaded at 144p, the lowest rung, and the player then moved up. Unthrottled
-and on Fast~3G it settled on 480p, not 1080p: at this window size the video element is 880 pixels
-wide, and the player never chooses a rung larger than the element. On Slow~3G it settled on 240p,
+and on Fast~3G it settled on 480p, not 1080p: in the browser window of the test, 1280 by 720 pixels,
+the video element is 825 pixels wide, and the player caps its choice at the smallest rung that
+covers the element, here 480p at 850 pixels. On Slow~3G it settled on 240p,
 whose peak of 408~kbit/s fits under the link of 500~kbit/s, and still played without a stall.
 
 \subsection{Declared and Delivered Bit Rate}
@@ -181,7 +183,10 @@ The player can only choose safely if the playlist is truthful. Table~\ref{tab:bi
 what the master playlist of the recording declares against what its segments contain. The peak
 segment bit rate equals the declared \texttt{BANDWIDTH} in every rung, and the average equals
 \texttt{AVERAGE-BANDWIDTH}, because both values are measured from the segments when the playlist is
-written. Every segment lasts between 5.97 and 6.01~seconds, except the last one of each rung. The two
+written. From 360p up, the peak lies above the video cap plus the audio rate of
+Table~\ref{tab:ladder}, by at most 6.6\% at 1080p (4933 against 4628~kbit/s), which the buffer and
+the packaging allow (Section~\ref{sec:ladder-design}). Every segment lasts between 5.97 and
+6.01~seconds, except the last one of each rung. The two
 other videos measured, both synthetic test patterns, give the same agreement in all six rungs.
 
 \begin{table}[H]
@@ -214,7 +219,9 @@ other videos measured, both synthetic test patterns, give the same agreement in 
 Figure~\ref{fig:transcode-size} shows how long a video took from the end of its upload to
 \status{ready}, for the four file sizes, and Table~\ref{tab:transcode-results} gives the values. The
 36-second clip has 640 by 360 pixels; the other three are 1080p test patterns at 30 frames per
-second. The two shorter files take the single path, and the two longer ones the chunked path.
+second. The two shorter files take the single path, and the two longer ones the chunked path. The
+sizes in MB and GB are the decimal names of the test files; limits and memory are given in binary
+units (MiB, GiB) throughout, and AWS bills memory by the GB-hour, which is a GiB-hour.
 
 \begin{figure}[htbp]
 \centering
@@ -243,21 +250,27 @@ three and the line below it the range}}
 
 Three observations follow. First, 29 to 57~seconds of every run pass before any encoding starts:
 7 to 25~seconds from the upload to the end of the probe, then 19 to 35~seconds
-while Batch starts Fargate tasks. This is the price of having no compute running while idle, and it
+while Batch starts Fargate tasks. This is the price of having no transcoding capacity running while idle, and it
 is the same for a clip and for a long video. Second, the chunked path makes time grow far more slowly
 than the source: the 10-minute file is ready 25~seconds after the 2-minute one, and the 26.7-minute
 file needs about twice as long as the 10-minute one for nearly three times the content. Third, the
 work per second of source is nearly constant, between 4.6 and 5.8 vCPU-seconds, whichever path a
-video takes. This ratio is what makes the cost of Section~\ref{sec:cost-analysis} predictable.
+video takes. The samples differ in two ways that the ratio does not show: the 36-second clip is a
+360p source and gets three rungs instead of six, and screening was off for the 1~GB file and the
+four-hour run (Section~\ref{sec:chunked-evaluation}), which shortens their analysis job. The range
+is therefore an estimate for planning, not a constant. This ratio is what makes the cost of
+Section~\ref{sec:cost-analysis} predictable.
 
 \subsection{A Four-Hour Video}
 \label{sec:chunked-evaluation}
 
-A four-hour 1080p video of 5.26~GiB, with moving content and sound, was ready 38.3~minutes after its
-upload completed. Figure~\ref{fig:four-hour} shows where the time went. The probe split it into 48
-chunks of five minutes. The audio job encoded the sound of the whole video in 10.8~minutes, and the
-chunks started only when it finished, because each chunk copies its window of that audio. The 48
-chunks then ran six at a time, in eight waves, for 26.5~minutes. The video reached \status{ready}
+A four-hour 1080p video of 5.26~GiB, a synthetic moving test pattern at 30 frames per second with a
+tone as its sound, was ready 38.3~minutes after its upload completed. Figure~\ref{fig:four-hour}
+shows where the time went. The probe split it into 48 chunks of five minutes. The audio job encoded
+the sound of the whole video in 10.8~minutes, and the chunks started only when it finished, because
+each chunk copies its window of that audio. The 48 chunks then ran twelve at a time, six on Spot and
+six that overflowed to On-Demand, for 26.5~minutes; a chunk took between 4 and 8~minutes. The video
+reached \status{ready}
 24~seconds after the last chunk, of which stitching and publishing took under 3~seconds. The run used 18.7~vCPU-hours, 4.67~vCPU-seconds per second of source, the same ratio as
 the shorter files. For the 1~GB file and this run, screening was switched off so that test content
 was not sent to Rekognition; its cost is added by calculation in Section~\ref{sec:cost-analysis}.
@@ -270,9 +283,11 @@ was not sent to Rekognition; its cost is added by calculation in Section~\ref{se
 \end{figure}
 
 The timeline shows what limits a long video. The audio job is on the critical path for more than a
-quarter of the time, and the chunks are bounded by the six slots that the 24~vCPUs of one compute
-environment allow. Neither is a limit of the design: the audio can be encoded in parallel with the
-chunks, and the slots grow with the capacity granted. Chapter~\ref{chap:conclusion} returns to both.
+quarter of the time, and the chunks are bounded by the twelve slots that the 48~vCPUs of the two
+compute environments allow. Neither is a limit of the design: the audio can be encoded in parallel
+with the chunks, and the slots grow with the capacity granted. The test pattern is also easier to
+encode than a recording, so a real four-hour recording would need more time per chunk.
+Chapter~\ref{chap:conclusion} returns to these limits.
 
 \section{Behaviour under Load}
 \label{sec:load-testing}
@@ -282,9 +297,13 @@ chunks, and the slots grow with the capacity granted. Chapter~\ref{chap:conclusi
 
 One hundred uploads of the 36-second clip were started at the same moment, twenty from each of five
 accounts. Figure~\ref{fig:burst} shows every video that reached \status{ready}, sorted by how long it
-took. Of the 100 uploads, 89 reached \status{ready} and none failed during processing. The other 11
-requests were refused with 429 by the API, 8 when the upload was created and 3 when it was
-completed, and the client gave up after three retries.
+took. Of the 100 uploads, 92 reached \status{ready} and none failed during processing. Eight were
+refused with 429 when the upload was created, and the client gave up after three retries, so no
+video existed for them. Three more received 429 on the completion call, after their file had
+already reached Amazon S3; the event of S3 started their processing all the same, and the execution
+history shows all three ready. The measurement tool stopped following them at the refusal, so the
+figure and the times below cover the other 89. Screening was on during this run, and Rekognition
+answered all 736 frames of the 92 videos, retrying the 68 calls it throttled.
 
 \begin{figure}[htbp]
 \centering
@@ -340,10 +359,10 @@ Burst of 80      & 80 & 80 & 4395 & 5663 \\
 
 The cost model of Section~\ref{sec:serverless-containers} assumes a month of 300 uploads of five
 minutes each and 5.5~vCPU-seconds of work per second of source, the upper part of the range measured
-in Table~\ref{tab:transcode-results}. That is 137.5~vCPU-hours a month. Every task uses 2~GB of memory
+in Table~\ref{tab:transcode-results}. That is 137.5~vCPU-hours a month. Every task uses 2~GiB of memory
 per vCPU, so at the Fargate On-Demand list prices of 0.05056~USD per vCPU-hour and 0.00553~USD per
 GB-hour, one vCPU-hour costs 0.06162~USD. The alternative is an always-on c6i.2xlarge instance with
-eight vCPUs and 16~GB, at 0.392~USD an hour for 730 hours. Screening sends one frame every five
+eight vCPUs and 16~GiB, at 0.392~USD an hour for 730 hours. Screening sends one frame every five
 seconds to Rekognition, 60 frames for a five-minute video, at 0.0013~USD a frame~\cite{awsrekognitionpricing}.
 Table~\ref{tab:cost-comparison} gives the result.
 
@@ -373,6 +392,15 @@ left out, because they cost the same in both designs. With compute this cheap, s
 largest item; its cost grows with the number of frames sampled, which is why the sampling interval
 widens for long videos (Section~\ref{sec:screening-design}).
 
+A smaller always-on server narrows the gap without closing it. At the prices of
+Table~\ref{tab:raw-prices}, a c6i.xlarge with four vCPUs costs 143.08~USD a month for compute and a
+t3.medium with two burstable vCPUs 38.54~USD, against 8.47~USD per use. Both would still be idle
+most of the month, and with a half or a quarter of the vCPUs each video would take two to four times
+as long, so a burst would queue longer still. The serverless design also pays for parts that a
+server does not need: Step Functions state transitions, the invocations of the workflow functions,
+SQS messages and the work bucket. At 300 videos a month they stay well under 0.50~USD at list
+prices, so they do not change the comparison.
+
 \section{Evidence for the Non-Functional Requirements}
 \label{sec:nfr-evidence}
 
@@ -391,8 +419,8 @@ Chapter~\ref{chap:implementation}.
 \midrule
 NFR-01 Playback start & Once cached, the requests before the first frame take 435~ms at the 95th percentile (Figure~\ref{fig:ttff-steps}). Unthrottled, playback started after 2.27~s at the median and 3.23~s in the slowest of five runs, with no stall (Table~\ref{tab:qoe-playback}) & Met at the median; one run of five above 3~s \\
 NFR-02 Processing time & A 10-minute video was ready in 147 to 149~s (Table~\ref{tab:transcode-results}); a four-hour video in 38.3~minutes (Figure~\ref{fig:four-hour}) & Met \\
-NFR-03 Burst load & Of 100 simultaneous uploads, all 89 accepted reached \status{ready}; the 11 refused received 429 (Figure~\ref{fig:burst}) & Met \\
-NFR-04 Idle cost & With nothing processing, both compute environments want 0~vCPUs and no task runs; the API and the workflow are billed per request & Met \\
+NFR-03 Burst load & Of 100 simultaneous uploads, 92 reached \status{ready}, including 3 whose completion call was refused; the 8 refused at creation received 429 (Section~\ref{sec:burst-evaluation}) & Met \\
+NFR-04 Idle cost & With nothing processing, both compute environments want 0~vCPUs and no task runs; the API, the workflow and the two scheduled functions (an hourly roll-up and a daily reconciler) are billed per invocation & Met \\
 NFR-05 API latency & 156~ms at the median when warm; 80 of 80 simultaneous requests answered (Table~\ref{tab:api-load}) & Met \\
 NFR-06 Content security & A request to the CDN without a policy is refused with 403; the tests of Section~\ref{sec:testing} refuse the key for another video, version, origin or a missing token & Met \\
 NFR-07 API security & A request to the function that skips the Worker, and a preflight from another origin, are refused with 403; sign-in is rate-limited & Met \\

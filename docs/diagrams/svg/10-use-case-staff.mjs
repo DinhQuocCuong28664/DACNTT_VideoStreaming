@@ -110,23 +110,14 @@ linkLeft(user, left.reportComment);
 ['rates', 'log'].forEach((k) => linkRight(auditor, right[k]));
 ['sample', 'roles'].forEach((k) => linkRight(admin, right[k]));
 
-// ── Quan hệ «trigger» ───────────────────────────────────────────────────────────
-const JOIN_X = right.decide.box.l - 40;   // nơi nhánh sàng lọc đi xuống hợp với nhánh báo cáo, sát cột phải
-p.push(edge([[left.report.box.r, left.report.box.cy], [right.decide.box.l, right.decide.box.cy]],
-  { dashed: true, label: '«trigger»', labelAt: 0.3, labelDy: -8 }));
-p.push(edge([
-  [left.screen.box.r, left.screen.box.cy], [JOIN_X, left.screen.box.cy],
-  [JOIN_X, right.decide.box.cy], [right.decide.box.l, right.decide.box.cy],
-], { dashed: true, label: '«trigger»', labelAt: 0.35, labelDy: -8 }));
-p.push(edge([[left.appealOwn.box.r, left.appealOwn.box.cy], [right.appeal.box.l, right.appeal.box.cy]],
-  { dashed: true, label: '«trigger»', labelAt: 0.5, labelDy: -8 }));
-p.push(edge([[left.reportComment.box.r, left.reportComment.box.cy], [right.comment.box.l, right.comment.box.cy]],
-  { dashed: true, label: '«trigger»', labelAt: 0.5, labelDy: -8 }));
+// No arrows between use cases here: UML 2.5 only has «include», «extend» and generalisation
+// between use cases, and none of them means "this one puts work in the other's queue". That link
+// is the Precondition row of the specification tables (UC-17, UC-18) and the note below.
 
 p.push(text(
   ['Reporting and appealing are open to every signed-in user. An administrator can also do everything',
    'an operator or an auditor can, so each association is drawn once, at the role that owns the use case.',
-   'Screening acts on its own; what it holds back, and what viewers report, reaches an operator for a decision.'],
+   'What screening holds back, what viewers report and what owners appeal reaches an operator\'s queue.'],
   40, H - 78, { size: 18, anchor: 'start', fill: PALETTE.muted, lineHeight: 23 }));
 
 const svg = document_({ width: W, height: H, body: p.join('\n') });

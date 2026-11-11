@@ -44,6 +44,8 @@
 
 % % -------------------Bibliography-----------------------
 \renewcommand{\bibname}{References}
+% A title that ends in a question mark: ieeetr adds its own period after every title.
+\makeatletter\newcommand{\bibqmark}{?\@ifnextchar.{\@gobble}{}}\makeatother
 \cleardoublepage\phantomsection
 \addcontentsline{toc}{chapter}{\bibname}
 \bibliographystyle{ieeetr}

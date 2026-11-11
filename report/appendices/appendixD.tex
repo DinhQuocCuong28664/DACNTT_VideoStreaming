@@ -33,6 +33,11 @@ Table~\ref{tab:cost-comparison} & \texttt{2026-11-04-v2-prices.json}, \texttt{20
 The scripts are under \mbox{\texttt{scripts}}. Every run was made on the production environment,
 with the configuration of Chapter~\ref{chap:implementation}.
 
+Percentiles use the nearest rank: the $p$-th percentile of $n$ sorted values is the value at position
+$\lfloor p\,n \rfloor$, counted from zero and capped at the last one. With 20 values or fewer, the
+95th percentile is therefore the largest value, which is why the columns 95TH PCT.\ and MAX agree in
+Table~\ref{tab:raw-ttff} and in the bursts of 10 and 20 requests of Table~\ref{tab:raw-api}.
+
 \section{Playback}
 
 Table~\ref{tab:raw-ttff} breaks the requests of Figure~\ref{fig:ttff-steps} into their steps. The
@@ -40,9 +45,14 @@ first request found every cache cold; the other 19 followed it one after another
 
 \input{generated/tab-v2-ttff}
 
-Table~\ref{tab:raw-qoe} gives every playback run behind Table~\ref{tab:qoe-playback}. The bit rate is
-the mean of the rung shown during the run, and the rung is read from the size of the video element's
-picture, so it is the rung on screen rather than the one being downloaded.
+Table~\ref{tab:raw-qoe} gives every playback run behind Table~\ref{tab:qoe-playback}. The rung is
+read from the size of the video element's picture, so it is the rung on screen rather than the one
+being downloaded; no run changed rung while it played. The bit rate is that of the rung on screen,
+computed from the bytes of the segments of that rung which the run downloaded. Without throttling,
+the player buffers the whole video, so the value equals the average of the rung over the whole
+video (716~kbit/s at 480p, Table~\ref{tab:bitrate-check}). Under Fast~3G and Slow~3G it downloads
+only the first one to two minutes, which are harder to compress than the rest, so the value lies
+above that average: 809 against 716~kbit/s at 480p, and 258 against 249~kbit/s at 240p.
 
 \input{generated/tab-v2-qoe}
 
@@ -66,7 +76,9 @@ runs in parallel with encoding, so the columns do not add up to the total.
 \section{Load}
 
 Table~\ref{tab:raw-burst} summarises the 89 videos of Figure~\ref{fig:burst} that reached
-\status{ready}, and Table~\ref{tab:raw-lambda} gives the log of the API function during that run and
+\status{ready} with a timing record; the three that became ready after a refused completion call
+have none, because the measurement tool stopped following them, and the \texttt{follow\_up} field
+of the result file records their executions. Table~\ref{tab:raw-lambda} gives the log of the API function during that run and
 during the API run of Table~\ref{tab:raw-api}.
 
 \input{generated/tab-v2-burst}

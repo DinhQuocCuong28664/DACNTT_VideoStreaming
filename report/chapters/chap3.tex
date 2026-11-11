@@ -1,7 +1,7 @@
 \chapter{Requirements Analysis}
 \label{chap:requirements}
 
-This chapter describes who uses the platform and what each group needs, states the functional and
+This chapter describes who uses the platform and what each group needs, states the
 functional requirements (FR) and non-functional requirements (NFR) that follow from those needs, and models them as use cases (UC), each
 specified step by step and checked against the routes of the API that implement it.
 
@@ -22,13 +22,13 @@ that answer those needs.
 \toprule
 \textbf{STAKEHOLDER} & \textbf{NEEDS} & \textbf{REQUIREMENTS} \\
 \midrule
-Anonymous visitor & Find and watch public videos at once, without an account, on any connection & FR-05, FR-06, FR-09, NFR-01 \\
+Anonymous visitor & Find and watch public videos at once, without an account, on any connection, in their language and a light or dark theme & FR-05, FR-06, FR-09, FR-17, NFR-01 \\
 Viewer (registered user) & Take part: react, comment, subscribe, join memberships, keep a library, receive notifications & FR-01, FR-02, FR-10 to FR-14 \\
 Creator (registered user) & Upload large files without waiting, decide who sees each video, edit and schedule it, earn members, read analytics & FR-03, FR-04, FR-06 to FR-08, FR-13, FR-15, FR-16, NFR-02, NFR-03 \\
 Operator & A queue of what the screening held back or viewers reported, and a way to decide with a reason and resolve appeals & FR-18 to FR-21 \\
 Auditor & The error rates of the screening with their uncertainty, and a decision log that cannot be altered & FR-22 \\
 Administrator & Assign staff roles and draw random audit samples & FR-22, FR-23 \\
-Development team & A system that costs nothing while idle, is reproducible from code, observable and safe to change & NFR-04 to NFR-10 \\
+Development team & A system that costs almost nothing while idle, is reproducible from code, observable and safe to change & NFR-04 to NFR-10 \\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -68,11 +68,11 @@ FR-01 & Accounts & Register with a display name, an e-mail address and a passwor
 FR-02 & Password recovery and change & A reset link by e-mail, valid for one hour and usable once; a change from the settings page that requires the current password. \\
 FR-03 & Direct upload & The browser sends the file straight to Amazon S3: in one request up to 5~GiB, and in parts of 32~MiB up to 20~GiB, with progress, speed, remaining time and cancel. \\
 FR-04 & Automatic processing & Without any manual step, the source becomes an encrypted HLS package with up to six renditions from 144p to 1080p bounded by the source, a thumbnail and seek-preview images; long videos are split into chunks encoded in parallel, and the owner sees the progress of each step. \\
-FR-05 & Playback & An adaptive player with manual quality, speed, picture-in-picture, full screen, captions, chapters, seek preview and resume from the last position. \\
+FR-05 & Playback and sharing & An adaptive player with manual quality, speed, picture-in-picture, full screen, captions, chapters, seek preview and resume from the last position. A link can be shared with a start time, and public and unlisted videos can be embedded in another site. \\
 FR-06 & Visibility and audience & Each video is public, unlisted, private or password-protected, and may be limited to channel members from a chosen tier upward. A stranger learns nothing about a private video, not even that it exists. \\
 FR-07 & Creator studio & The owner edits the title, description, tags, category and thumbnail, uploads WebVTT captions, defines chapters and deletes a video with all its files. \\
 FR-08 & Scheduled publishing & The owner chooses a publication time between five minutes and one year ahead; the video becomes public at that time. \\
-FR-09 & Discovery & A home feed of the newest videos, full-text search over videos and channels that tolerates typing errors and missing diacritics, suggestions while typing, categories and related videos. \\
+FR-09 & Discovery & A home feed of the newest videos, full-text search over videos and channels that tolerates typing errors and missing diacritics, suggestions while typing, categories, related videos, and a page per channel that lists its videos. \\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -117,7 +117,7 @@ FR-18 & Automatic screening & Before a video is published, sampled frames are cl
 FR-19 & Reports & A signed-in viewer reports a video or a comment for one of eight reasons, with at most one open report per item. \\
 FR-20 & Staff review & Operators approve or remove held and reported videos, and dismiss or remove reported comments; every video decision carries a reason code from a closed list. \\
 FR-21 & Appeals & The owner of a removed or held video appeals with a message; an operator upholds or rejects the appeal with a note. \\
-FR-22 & Accountability & Each decision is logged with the verdict the machine had reached, so that false positive and false negative rates can be estimated, the latter from random audit samples, each rate with a confidence interval; an auditor reads them but cannot decide. \\
+FR-22 & Accountability & Each decision is logged with the verdict the machine had reached, so that the error rates of the screening can be estimated: the share of automatic removals reversed on review, and the share of machine approvals that fail a random audit, each with a confidence interval; an auditor reads them but cannot decide. \\
 FR-23 & Role management & An administrator assigns the roles user, operator, auditor and administrator; the last administrator cannot be demoted, and every change is logged. \\
 \bottomrule
 \end{tabularx}
@@ -150,7 +150,7 @@ each target against the measurements of Chapter~\ref{chap:evaluation}.
 NFR-01 & Playback start & Through the CDN, the first frame appears within one second at the 95th percentile once the files are cached, and playback starts within three seconds on an unthrottled connection without stalling. \\
 NFR-02 & Processing time & A video of up to ten minutes is ready within three minutes after its upload completes, and a four-hour video within one hour. \\
 NFR-03 & Burst load & One hundred simultaneous uploads lose no work: every upload the API accepts reaches \status{ready}, and an upload refused under overload receives a status the client can retry. \\
-NFR-04 & Idle cost & No compute runs and none is billed while nothing is being processed. \\
+NFR-04 & Idle cost & No transcoding container runs and no compute capacity is reserved or billed while nothing is being processed; functions that run on a schedule are billed per invocation. \\
 NFR-05 & API latency & A warm API answers within 300~ms at the median and serves 80 concurrent requests without errors. \\
 NFR-06 & Content security & Segments, playlists and keys of a video are unreachable without a grant for that video, even to someone who knows their addresses. \\
 NFR-07 & API security & Sign-in and other sensitive routes are rate-limited, only the web origins of the platform may call the API from a browser, and the function behind the API answers only requests that came through its gateway. \\
@@ -319,13 +319,14 @@ open to every visitor.
 \textbf{FIELD} & \textbf{CONTENT} \\
 \midrule
 Actor & Anonymous visitor or registered user \\
-Requirements & FR-09 \\
+Requirements & FR-09, FR-16 \\
 Precondition & None. \\
 Main flow &
   1. The visitor opens the home page, which lists, newest first, videos that are ready, public and approved by moderation. \newline
   2. As the visitor scrolls, the page loads the next page through a cursor, so the list never repeats or skips a video. \newline
   3. The visitor types in the search box and receives suggestions after two characters. \newline
-  4. The visitor submits the query, optionally within a category; the server returns matching videos by relevance and, on the first page, up to three matching channels. \\
+  4. The visitor submits the query, optionally within a category; the server returns matching videos by relevance and, on the first page, up to three matching channels. \newline
+  5. The visitor opens a channel page, which shows the profile, the subscriber count and the channel's videos, newest first. \\
 Alternative flows &
   4a. Nothing matches: the page shows an empty result. \newline
   4b. More than sixty searches in a minute: the server answers 429. \\
@@ -351,13 +352,15 @@ Main flow &
   2. The page asks for playback and receives the master playlist address, a signed CDN policy for this video and a playback token, both valid for two hours. \newline
   3. The player loads the playlists and segments from the CDN with the policy, and fetches the decryption key from the API with the playback token. \newline
   4. The player switches renditions as the bandwidth changes; a signed-in viewer resumes from the last position, which the player saves every minute and on pause. \newline
-  5. After thirty seconds of playback, or the whole of a shorter video, the page reports a view, which the server counts unless the same viewer was counted within thirty minutes or the viewer owns the video. \\
+  5. After thirty seconds of playback, or the whole of a shorter video, the page reports a view with its playback token, which the server counts only if that much time has passed since the token was issued, and not if the same viewer was counted within thirty minutes or the viewer owns the video. \newline
+  6. The viewer copies the link, optionally starting at the current time, or the code that embeds the player in another site. \\
 Alternative flows &
   1a. The video is private or not ready, and the viewer is not its owner: the server answers 404. \newline
   1b. The video was removed or is under review: the server answers 403 with a distinct code, and the page explains it. \newline
   1c. The video is password-protected: the page shows only a password form (UC-06). \newline
   2a. The video is for members and the viewer is not one of a high enough tier: the page shows, instead of the player, a card that leads to the channel's tiers. \newline
-  3a. The grant expires during playback: the player asks for a new one and continues. \\
+  3a. The grant expires during playback: the player asks for a new one and continues. \newline
+  6a. In an embedded player, a private, password-protected or members-only video shows a card that leads to the site instead of playing. \\
 Postcondition & The view count may have grown by one. \\
 \bottomrule
 \end{tabularx}
@@ -589,7 +592,7 @@ Postcondition & The video is published at the chosen time, or stays private. \\
 
 \begin{table}[H]
 \centering
-\caption{Use case UC-14: manage membership tiers}
+\caption{Use case UC-14: customise the channel and manage membership tiers}
 \label{tab:uc-tiers}
 \small
 \begin{tabularx}{\textwidth}{p{0.2\textwidth} X}
@@ -597,15 +600,20 @@ Postcondition & The video is published at the chosen time, or stays private. \\
 \textbf{FIELD} & \textbf{CONTENT} \\
 \midrule
 Actor & Creator \\
-Requirements & FR-13 \\
+Requirements & FR-13, FR-16 \\
 Precondition & The creator is signed in. \\
 Main flow &
-  1. The creator creates a tier with a name, price, level, perks and badge colour. \newline
-  2. The creator edits or retires a tier. \newline
-  3. The creator reads the list of current members with their tier and end date. \\
+  1. The creator sets the handle and the description of the channel. \newline
+  2. The creator uploads an avatar or a banner, a JPEG or PNG image of up to 2~MiB, which the server screens with the policy of the videos before it replaces the current one. \newline
+  3. The creator creates a tier with a name, price, level, perks and badge colour. \newline
+  4. The creator edits or retires a tier. \newline
+  5. The creator reads the list of current members with their tier and end date. \\
 Alternative flows &
-  1a. The channel already has five tiers: the server answers 409. \\
-Postcondition & The tiers are offered on the channel page. \\
+  1a. The handle is reserved or already taken: the server answers 409. \newline
+  2a. The image is too large or of another type: the server answers 400. \newline
+  2b. The image breaks the content rules: the server answers 403 and the current image stays. \newline
+  3a. The channel already has five tiers: the server answers 409. \\
+Postcondition & The channel page shows the profile and offers the tiers. \\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -680,12 +688,13 @@ Postcondition & An open report waits for an operator. \\
 \midrule
 Actor & Operator or administrator \\
 Requirements & FR-20, FR-22 \\
-Precondition & The person holds the permission to review. \\
+Precondition & The person holds the permission to review, and a video was held by the screening, reported by viewers or removed by the machine. \\
 Main flow &
   1. The operator opens the review queue of held and reported videos, plays a video and reads its reports grouped by reason. \newline
   2. The operator approves or removes the video with a reason code from the closed list of that decision and an optional note. \newline
   3. The server keeps the machine's verdict if it was not kept before, applies the decision, closes the open reports and logs the decision with its outcome class. \newline
-  4. For a reported comment, the operator dismisses the reports or removes the comment and its replies. \\
+  4. For a reported comment, the operator dismisses the reports or removes the comment and its replies. \newline
+  5. In the tab of removed videos, the operator confirms a removal the machine made or restores the video, and the decision is logged as a confirmation or a restoration. \\
 Alternative flows &
   2a. The reason code does not belong to the decision: the server answers 400. \newline
   2b. An operator tries to change a decision taken by an administrator: the server answers 403. \\
@@ -745,7 +754,7 @@ Main flow &
 Alternative flows &
   1a. A video already sampled is not added twice. \newline
   2a. The sample was already labelled: the server answers 404. \\
-Postcondition & The false negative rate includes the new labels. \\
+Postcondition & The share of approvals that failed the audit, the false omission rate of the screening, includes the new labels. \\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -766,7 +775,7 @@ Main flow &
   1. The administrator searches users by the start of their e-mail address or handle. \newline
   2. The administrator chooses user, operator, auditor or administrator. \newline
   3. The server changes the role, logs who changed whom from which role to which, and forgets the cached session of that user. \newline
-  4. The change takes effect on the user's next request. \\
+  4. The change takes effect within 30 seconds, when every instance of the API has read the account again. \\
 Alternative flows &
   2a. The change would demote the last administrator: the server answers 409. \\
 Postcondition & The role is changed, and the change is logged. \\
