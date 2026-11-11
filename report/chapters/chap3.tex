@@ -28,7 +28,7 @@ Creator (registered user) & Upload large files without waiting, decide who sees 
 Operator & A queue of what the screening held back or viewers reported, and a way to decide with a reason and resolve appeals & FR-18 to FR-21 \\
 Auditor & The error rates of the screening with their uncertainty, and a decision log that cannot be altered & FR-22 \\
 Administrator & Assign staff roles and draw random audit samples & FR-22, FR-23 \\
-Development team & A system that costs nothing while idle, is reproducible from code, observable and safe to change & NFR-04 to NFR-10 \\
+Development team & A system that costs almost nothing while idle, is reproducible from code, observable and safe to change & NFR-04 to NFR-10 \\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -150,7 +150,7 @@ each target against the measurements of Chapter~\ref{chap:evaluation}.
 NFR-01 & Playback start & Through the CDN, the first frame appears within one second at the 95th percentile once the files are cached, and playback starts within three seconds on an unthrottled connection without stalling. \\
 NFR-02 & Processing time & A video of up to ten minutes is ready within three minutes after its upload completes, and a four-hour video within one hour. \\
 NFR-03 & Burst load & One hundred simultaneous uploads lose no work: every upload the API accepts reaches \status{ready}, and an upload refused under overload receives a status the client can retry. \\
-NFR-04 & Idle cost & No compute runs and none is billed while nothing is being processed. \\
+NFR-04 & Idle cost & No transcoding container runs and no compute capacity is reserved or billed while nothing is being processed; functions that run on a schedule are billed per invocation. \\
 NFR-05 & API latency & A warm API answers within 300~ms at the median and serves 80 concurrent requests without errors. \\
 NFR-06 & Content security & Segments, playlists and keys of a video are unreachable without a grant for that video, even to someone who knows their addresses. \\
 NFR-07 & API security & Sign-in and other sensitive routes are rate-limited, only the web origins of the platform may call the API from a browser, and the function behind the API answers only requests that came through its gateway. \\

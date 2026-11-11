@@ -248,7 +248,7 @@ three and the line below it the range}}
 
 Three observations follow. First, 29 to 57~seconds of every run pass before any encoding starts:
 7 to 25~seconds from the upload to the end of the probe, then 19 to 35~seconds
-while Batch starts Fargate tasks. This is the price of having no compute running while idle, and it
+while Batch starts Fargate tasks. This is the price of having no transcoding capacity running while idle, and it
 is the same for a clip and for a long video. Second, the chunked path makes time grow far more slowly
 than the source: the 10-minute file is ready 25~seconds after the 2-minute one, and the 26.7-minute
 file needs about twice as long as the 10-minute one for nearly three times the content. Third, the
@@ -409,7 +409,7 @@ Chapter~\ref{chap:implementation}.
 NFR-01 Playback start & Once cached, the requests before the first frame take 435~ms at the 95th percentile (Figure~\ref{fig:ttff-steps}). Unthrottled, playback started after 2.27~s at the median and 3.23~s in the slowest of five runs, with no stall (Table~\ref{tab:qoe-playback}) & Met at the median; one run of five above 3~s \\
 NFR-02 Processing time & A 10-minute video was ready in 147 to 149~s (Table~\ref{tab:transcode-results}); a four-hour video in 38.3~minutes (Figure~\ref{fig:four-hour}) & Met \\
 NFR-03 Burst load & Of 100 simultaneous uploads, 92 reached \status{ready}, including 3 whose completion call was refused; the 8 refused at creation received 429 (Section~\ref{sec:burst-evaluation}) & Met \\
-NFR-04 Idle cost & With nothing processing, both compute environments want 0~vCPUs and no task runs; the API and the workflow are billed per request & Met \\
+NFR-04 Idle cost & With nothing processing, both compute environments want 0~vCPUs and no task runs; the API, the workflow and the two scheduled functions (an hourly roll-up and a daily reconciler) are billed per invocation & Met \\
 NFR-05 API latency & 156~ms at the median when warm; 80 of 80 simultaneous requests answered (Table~\ref{tab:api-load}) & Met \\
 NFR-06 Content security & A request to the CDN without a policy is refused with 403; the tests of Section~\ref{sec:testing} refuse the key for another video, version, origin or a missing token & Met \\
 NFR-07 API security & A request to the function that skips the Worker, and a preflight from another origin, are refused with 403; sign-in is rate-limited & Met \\

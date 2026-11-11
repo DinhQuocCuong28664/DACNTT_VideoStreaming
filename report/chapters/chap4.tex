@@ -63,7 +63,7 @@ the browser writes to S3 directly. A burst of uploads becomes a burst of message
 holds, and every upload gets its own workflow execution. Compute scales by starting containers: the
 Spot environment may run up to 24 vCPUs, and once it is full or Spot capacity is short, jobs overflow
 to an On-Demand environment of another 24 vCPUs. Both environments scale to zero when the queues are
-empty, which is what makes the platform cost nothing while idle. Delivery scales at the edge, since
+empty, which is what makes the processing tier cost nothing while idle. Delivery scales at the edge, since
 the CDN caches segments and every viewer shares the same cached copies.
 
 \section{Transcoding Workflow}

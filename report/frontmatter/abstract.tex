@@ -15,8 +15,8 @@ must still absorb many uploads that arrive at once.
 This project designs, builds and evaluates a complete video sharing platform whose transcoding runs on
 serverless containers driven by events. The arrival of a file in Amazon S3 is queued by Amazon SQS and
 starts one AWS Step Functions execution per upload, which runs FFmpeg as AWS Batch jobs on AWS Fargate,
-Spot capacity first and On-Demand capacity as overflow, so no compute exists while nothing is
-processed. FFmpeg decodes the source once and writes up to six renditions from 144p to 1080p, each
+Spot capacity first and On-Demand capacity as overflow, so no transcoding capacity exists while nothing
+is processed. FFmpeg decodes the source once and writes up to six renditions from 144p to 1080p, each
 with a capped constant rate factor and key frames aligned across rungs; videos longer than five
 minutes are cut into chunks that are encoded in parallel and stitched into ordinary playlists. The
 segments are encrypted with AES-128 and served by Amazon CloudFront only to requests that carry a
