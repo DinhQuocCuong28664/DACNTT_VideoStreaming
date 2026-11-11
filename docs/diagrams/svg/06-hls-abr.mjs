@@ -58,13 +58,14 @@ const ladder = card({
   x: CX - 270, y: RY, w: 540, h: 188,
   title: 'One output block per rung, up to six',
   sub: [
-    '144p    video 120 kbps, audio 48 kbps',
-    '240p    video 240 kbps, audio 64 kbps',
-    '360p    video 400 kbps, audio 64 kbps',
-    '480p    video 750 kbps, audio 96 kbps',
-    '720p    video 1500 kbps, audio 128 kbps',
-    '1080p  video 4000 kbps, audio 192 kbps',
-    'each rung has its own playlist.m3u8 and 6-second .ts segments',
+    // Same values as shared/src/ladder.ts and Table 4.2: CRF with a VBV cap, two audio rates.
+    '144p    CRF 28, cap 180 kbps, audio 64 kbps',
+    '240p    CRF 26, cap 350 kbps, audio 64 kbps',
+    '360p    CRF 25, cap 600 kbps, audio 64 kbps',
+    '480p    CRF 24, cap 1100 kbps, audio 64 kbps',
+    '720p    CRF 23, cap 2200 kbps, audio 128 kbps',
+    '1080p  CRF 22, cap 4500 kbps, audio 128 kbps',
+    'each rung has its own index.m3u8 and 6-second .ts segments',
   ],
   tone: 'network',
 });
