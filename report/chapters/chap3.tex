@@ -68,11 +68,11 @@ FR-01 & Accounts & Register with a display name, an e-mail address and a passwor
 FR-02 & Password recovery and change & A reset link by e-mail, valid for one hour and usable once; a change from the settings page that requires the current password. \\
 FR-03 & Direct upload & The browser sends the file straight to Amazon S3: in one request up to 5~GiB, and in parts of 32~MiB up to 20~GiB, with progress, speed, remaining time and cancel. \\
 FR-04 & Automatic processing & Without any manual step, the source becomes an encrypted HLS package with up to six renditions from 144p to 1080p bounded by the source, a thumbnail and seek-preview images; long videos are split into chunks encoded in parallel, and the owner sees the progress of each step. \\
-FR-05 & Playback & An adaptive player with manual quality, speed, picture-in-picture, full screen, captions, chapters, seek preview and resume from the last position. \\
+FR-05 & Playback and sharing & An adaptive player with manual quality, speed, picture-in-picture, full screen, captions, chapters, seek preview and resume from the last position. A link can be shared with a start time, and public and unlisted videos can be embedded in another site. \\
 FR-06 & Visibility and audience & Each video is public, unlisted, private or password-protected, and may be limited to channel members from a chosen tier upward. A stranger learns nothing about a private video, not even that it exists. \\
 FR-07 & Creator studio & The owner edits the title, description, tags, category and thumbnail, uploads WebVTT captions, defines chapters and deletes a video with all its files. \\
 FR-08 & Scheduled publishing & The owner chooses a publication time between five minutes and one year ahead; the video becomes public at that time. \\
-FR-09 & Discovery & A home feed of the newest videos, full-text search over videos and channels that tolerates typing errors and missing diacritics, suggestions while typing, categories and related videos. \\
+FR-09 & Discovery & A home feed of the newest videos, full-text search over videos and channels that tolerates typing errors and missing diacritics, suggestions while typing, categories, related videos, and a page per channel that lists its videos. \\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -319,13 +319,14 @@ open to every visitor.
 \textbf{FIELD} & \textbf{CONTENT} \\
 \midrule
 Actor & Anonymous visitor or registered user \\
-Requirements & FR-09 \\
+Requirements & FR-09, FR-16 \\
 Precondition & None. \\
 Main flow &
   1. The visitor opens the home page, which lists, newest first, videos that are ready, public and approved by moderation. \newline
   2. As the visitor scrolls, the page loads the next page through a cursor, so the list never repeats or skips a video. \newline
   3. The visitor types in the search box and receives suggestions after two characters. \newline
-  4. The visitor submits the query, optionally within a category; the server returns matching videos by relevance and, on the first page, up to three matching channels. \\
+  4. The visitor submits the query, optionally within a category; the server returns matching videos by relevance and, on the first page, up to three matching channels. \newline
+  5. The visitor opens a channel page, which shows the profile, the subscriber count and the channel's videos, newest first. \\
 Alternative flows &
   4a. Nothing matches: the page shows an empty result. \newline
   4b. More than sixty searches in a minute: the server answers 429. \\
@@ -351,13 +352,15 @@ Main flow &
   2. The page asks for playback and receives the master playlist address, a signed CDN policy for this video and a playback token, both valid for two hours. \newline
   3. The player loads the playlists and segments from the CDN with the policy, and fetches the decryption key from the API with the playback token. \newline
   4. The player switches renditions as the bandwidth changes; a signed-in viewer resumes from the last position, which the player saves every minute and on pause. \newline
-  5. After thirty seconds of playback, or the whole of a shorter video, the page reports a view with its playback token, which the server counts only if that much time has passed since the token was issued, and not if the same viewer was counted within thirty minutes or the viewer owns the video. \\
+  5. After thirty seconds of playback, or the whole of a shorter video, the page reports a view with its playback token, which the server counts only if that much time has passed since the token was issued, and not if the same viewer was counted within thirty minutes or the viewer owns the video. \newline
+  6. The viewer copies the link, optionally starting at the current time, or the code that embeds the player in another site. \\
 Alternative flows &
   1a. The video is private or not ready, and the viewer is not its owner: the server answers 404. \newline
   1b. The video was removed or is under review: the server answers 403 with a distinct code, and the page explains it. \newline
   1c. The video is password-protected: the page shows only a password form (UC-06). \newline
   2a. The video is for members and the viewer is not one of a high enough tier: the page shows, instead of the player, a card that leads to the channel's tiers. \newline
-  3a. The grant expires during playback: the player asks for a new one and continues. \\
+  3a. The grant expires during playback: the player asks for a new one and continues. \newline
+  6a. In an embedded player, a private, password-protected or members-only video shows a card that leads to the site instead of playing. \\
 Postcondition & The view count may have grown by one. \\
 \bottomrule
 \end{tabularx}
