@@ -40,9 +40,14 @@ first request found every cache cold; the other 19 followed it one after another
 
 \input{generated/tab-v2-ttff}
 
-Table~\ref{tab:raw-qoe} gives every playback run behind Table~\ref{tab:qoe-playback}. The bit rate is
-the mean of the rung shown during the run, and the rung is read from the size of the video element's
-picture, so it is the rung on screen rather than the one being downloaded.
+Table~\ref{tab:raw-qoe} gives every playback run behind Table~\ref{tab:qoe-playback}. The rung is
+read from the size of the video element's picture, so it is the rung on screen rather than the one
+being downloaded; no run changed rung while it played. The bit rate is that of the rung on screen,
+computed from the bytes of the segments of that rung which the run downloaded. Without throttling,
+the player buffers the whole video, so the value equals the average of the rung over the whole
+video (716~kbit/s at 480p, Table~\ref{tab:bitrate-check}). Under Fast~3G and Slow~3G it downloads
+only the first one to two minutes, which are harder to compress than the rest, so the value lies
+above that average: 809 against 716~kbit/s at 480p, and 258 against 249~kbit/s at 240p.
 
 \input{generated/tab-v2-qoe}
 
