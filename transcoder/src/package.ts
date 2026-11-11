@@ -5,9 +5,12 @@
 import { readFile, stat, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import {
+  NonRetryableError,
+  SEGMENT_SECONDS,
   buildMasterPlaylist,
   buildMediaPlaylist,
   codecsFor,
+  coverageShortfall,
   decryptPrefix,
   keyUri,
   measureBandwidth,
@@ -35,6 +38,8 @@ export interface PackageInput {
   apiBaseUrl: string;
   videoId: string;
   uploadVersion: number;
+  /** Duration the probe read; each rendition must cover it (null skips the check). */
+  expectedDurationSec: number | null;
 }
 
 export async function packageLocal(input: PackageInput): Promise<{ master: string; rungs: RungOutput[] }> {
@@ -55,6 +60,15 @@ export async function packageLocal(input: PackageInput): Promise<{ master: strin
       measured.push({ ...e, bytes });
     }
     if (measured.length === 0) throw new Error(`${r.name}: ffmpeg wrote no segments`);
+    // Checked before anything is uploaded. Another attempt would read the same damaged source,
+    // so the job exits with the non-retryable code and the workflow marks the video failed.
+    const outputSec = measured.reduce((sum, s) => sum + s.duration, 0);
+    const shortfall = coverageShortfall(input.expectedDurationSec, outputSec, SEGMENT_SECONDS);
+    if (shortfall !== null) {
+      throw new NonRetryableError(
+        `${r.name}: the output covers ${outputSec.toFixed(1)} s of the ${input.expectedDurationSec?.toFixed(1)} s the probe read; the source ends early or is damaged`,
+      );
+    }
 
     await writeFile(join(dir, 'index.m3u8'), buildMediaPlaylist(measured, keyTag));
 

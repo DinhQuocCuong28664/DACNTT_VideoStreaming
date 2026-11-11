@@ -17,6 +17,7 @@ import {
   type ProgressState,
 } from '@zelos/shared';
 import { z } from 'zod';
+import { redactUrlQueries } from './lib/redact.js';
 
 const objectId = z.string().regex(/^[a-f0-9]{24}$/);
 const Ref = z.object({ videoId: objectId, uploadVersion: z.number().int().positive() });
@@ -121,7 +122,8 @@ async function publish(input: z.infer<typeof PublishInput>, deps: StatusDeps): P
 }
 
 async function fail(input: z.infer<typeof FailInput>, deps: StatusDeps): Promise<StatusResult> {
-  const reason = [input.error.Error, input.error.Cause].filter(Boolean).join(': ').slice(0, 1000) || 'unknown error';
+  // Redacted before it is stored or mailed: a step's error may quote a presigned URL.
+  const reason = redactUrlQueries([input.error.Error, input.error.Cause].filter(Boolean).join(': ')).slice(0, 1000) || 'unknown error';
   const doc = await deps.videos.fail(input.videoId, input.uploadVersion, reason);
   await deps.alert(`Transcode failed: ${input.videoId}`, `Video ${input.videoId} v${input.uploadVersion}\n${reason}`);
   return doc ? { found: true, status: 'ERROR' } : { found: false };

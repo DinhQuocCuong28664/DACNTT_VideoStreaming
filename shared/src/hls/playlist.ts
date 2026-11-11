@@ -38,6 +38,19 @@ export function parseMediaPlaylist(text: string): SegmentEntry[] {
   return segments;
 }
 
+/**
+ * How many seconds a rendition falls short of the duration the probe read, when the gap is more
+ * than one segment or 1 % of the duration, whichever is larger; null when it is within that
+ * margin or the duration is unknown. ffmpeg stops without an error at the point where a damaged
+ * source ends, so a short output is the only sign that the video would be published truncated.
+ */
+export function coverageShortfall(expectedSec: number | null, outputSec: number, segmentSeconds: number): number | null {
+  if (expectedSec === null || !Number.isFinite(expectedSec) || expectedSec <= 0) return null;
+  const margin = Math.max(segmentSeconds, expectedSec * 0.01);
+  const missing = expectedSec - outputSec;
+  return missing > margin ? missing : null;
+}
+
 export interface KeyTag {
   /** Absolute URI of the key endpoint. */
   uri: string;

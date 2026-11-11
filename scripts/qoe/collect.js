@@ -50,6 +50,9 @@
  *                     Từ 1.5 trở lên mới chạm được bậc 1080p — xem VIEWPORT.
  *   --out <đường dẫn> nơi ghi kết quả JSON
  *   --headed          hiện cửa sổ trình duyệt để quan sát
+ *   --drop-to <name>  mid-run drop: after --drop-at seconds (default 20) of
+ *                     playback, switch the page to this throttled profile
+ *   --drop-at <s>     when the drop happens, in seconds after play() is called
  *
  * Mặc định hai lượt khởi động vì một lượt không đủ, và điều này đo được: trên
  * slow3g với một lượt, lần đo thứ nhất có thời gian chờ 26,04 giây trong khi
@@ -357,11 +360,70 @@ const collectLadderComparison = (rawLogs) => {
 };
 
 /**
+ * What happened after a mid-run bandwidth drop, from one run's logs.
+ *
+ * `events` carry page time in seconds (the recorder's clock, which the drop event
+ * shares); `requests` carry wall-clock milliseconds, like `dropWallMs`. A switch "down"
+ * is one to a rung lower than the highest seen so far: content already buffered at a
+ * higher rung can still come on screen after the drop, and that is not the reaction. Returns:
+ *   heightBefore          the rung on screen when the bandwidth dropped
+ *   requestedHeightBefore the rung of the last segment requested before the drop
+ *   downloadSwitchSec     seconds from the drop to the first request of a lower rung
+ *   requestedHeightAfter  that rung
+ *   displaySwitchSec      seconds from the drop until a lower rung is on screen
+ *   heightAfter           that rung
+ *   shownAfterDrop        every rung change on screen after the drop, as { sec, height }
+ *   stallsAfterDrop       `waiting` events after the drop (each one a stall)
+ * A value is null when it did not happen within the run.
+ */
+const summariseDrop = (events, requests, dropWallMs) => {
+  const dropEvent = events.find((e) => e.type === 'networkDrop');
+  if (!dropEvent || dropWallMs === null) return null;
+  const tDrop = dropEvent.t;
+
+  const switches = events.filter((e) => e.type === 'levelSwitched');
+  const shownBefore = switches.filter((e) => e.t <= tDrop);
+  const heightBefore = shownBefore.length ? shownBefore[shownBefore.length - 1].height : null;
+  let highestShown = Math.max(0, ...shownBefore.map((e) => e.height));
+  let shownDown = null;
+  for (const e of switches.filter((s) => s.t > tDrop)) {
+    if (e.height < highestShown) { shownDown = e; break; }
+    highestShown = Math.max(highestShown, e.height);
+  }
+
+  const requestedBefore = requests.filter((r) => r.wallMs <= dropWallMs);
+  const lastHeight = requestedBefore.length
+    ? renditionToHeight(requestedBefore[requestedBefore.length - 1].rendition)
+    : null;
+  let highestRequested = Math.max(0, ...requestedBefore.map((r) => renditionToHeight(r.rendition)));
+  let requestedDown = null;
+  for (const r of requests.filter((q) => q.wallMs > dropWallMs)) {
+    const h = renditionToHeight(r.rendition);
+    if (h < highestRequested) { requestedDown = r; break; }
+    highestRequested = Math.max(highestRequested, h);
+  }
+
+  return {
+    heightBefore,
+    requestedHeightBefore: lastHeight,
+    downloadSwitchSec: requestedDown ? (requestedDown.wallMs - dropWallMs) / 1000 : null,
+    requestedHeightAfter: requestedDown ? renditionToHeight(requestedDown.rendition) : null,
+    displaySwitchSec: shownDown ? shownDown.t - tDrop : null,
+    heightAfter: shownDown ? shownDown.height : null,
+    shownAfterDrop: switches.filter((e) => e.t > tDrop).map((e) => ({ sec: Math.round((e.t - tDrop) * 100) / 100, height: e.height })),
+    stallsAfterDrop: events.filter((e) => e.type === 'waiting' && e.t > tDrop).length,
+  };
+};
+
+/**
  * Một lần đo: mở trang, phát trong `durationSec`, thu nhật ký sự kiện.
  */
-const collectOnce = async (context, url, durationSec) => {
+const collectOnce = async (context, url, durationSec, drop = null, conditions = null) => {
   const page = await context.newPage();
   const segmentRequests = [];
+  // Wall-clock time of each segment request, so a mid-run bandwidth drop can be
+  // lined up with the first request of a lower rendition.
+  const segmentRequestTimes = [];
   const segmentBytes = [];
   const segmentDurations = new Map(); // rendition → (tên tệp → giây)
   let bitrateByHeight = new Map();
@@ -372,7 +434,10 @@ const collectOnce = async (context, url, durationSec) => {
 
   page.on('request', (request) => {
     const match = RENDITION_PATTERN.exec(request.url());
-    if (match) segmentRequests.push({ rendition: match[1], url: request.url() });
+    if (match) {
+      segmentRequests.push({ rendition: match[1], url: request.url() });
+      segmentRequestTimes.push({ rendition: match[1], file: match[2], wallMs: Date.now() });
+    }
   });
 
   page.on('response', (response) => {
@@ -436,6 +501,8 @@ const collectOnce = async (context, url, durationSec) => {
 
   const client = await context.newCDPSession(page);
   await client.send('Network.enable');
+  // One session sets both the profile and a later drop, so the drop replaces the profile.
+  if (conditions) await client.send('Network.emulateNetworkConditions', { offline: false, ...conditions });
 
   await page.goto(url, { waitUntil: 'domcontentloaded' });
 
@@ -455,7 +522,21 @@ const collectOnce = async (context, url, durationSec) => {
     }
   });
 
-  await page.waitForTimeout(durationSec * 1000);
+  let dropWallMs = null;
+  if (drop) {
+    // Mid-run bandwidth drop: play under the context's profile, then switch this
+    // page to a slower one. The drop is also written into the page's event log,
+    // on the same clock as the level switches the recorder sees.
+    await page.waitForTimeout(drop.atSec * 1000);
+    await client.send('Network.emulateNetworkConditions', { offline: false, ...drop.conditions });
+    dropWallMs = Date.now();
+    await page.evaluate((name) => {
+      if (window.__qoe) window.__qoe.events.push({ t: performance.now() / 1000, type: 'networkDrop', to: name });
+    }, drop.name);
+    await page.waitForTimeout(Math.max(0, durationSec - drop.atSec) * 1000);
+  } else {
+    await page.waitForTimeout(durationSec * 1000);
+  }
 
   const log = await page.evaluate(() => ({
     events: window.__qoe ? window.__qoe.events : [],
@@ -518,6 +599,7 @@ const collectOnce = async (context, url, durationSec) => {
     events,
     attached: log.attached,
     endTime,
+    dropDetail: drop ? summariseDrop(events, segmentRequestTimes, dropWallMs) : null,
     segmentRequests,
     renditionsDownloaded: [...new Set(segmentRequests.map((s) => s.rendition))],
     bitrateLadder: Object.fromEntries(bitrateByHeight),
@@ -538,6 +620,8 @@ const runMeasurement = async (options) => {
     warmups = 2,
     headed = false,
     deviceScaleFactor = 1,
+    dropTo = null,
+    dropAtSec = 20,
   } = options;
 
   // `require` đặt trong hàm để phần còn lại của module (và bộ test của
@@ -553,6 +637,14 @@ const runMeasurement = async (options) => {
     args: ['--autoplay-policy=no-user-gesture-required'],
   });
 
+  if (dropTo !== null && !NETWORK_PROFILES[dropTo]) {
+    throw new Error(`Unknown or unthrottled drop profile: ${dropTo}. Choose one of ${Object.keys(NETWORK_PROFILES).filter((k) => NETWORK_PROFILES[k]).join(', ')}`);
+  }
+  if (dropTo !== null && dropAtSec >= durationSec) {
+    throw new Error(`--drop-at (${dropAtSec}) must be shorter than --duration (${durationSec})`);
+  }
+  const drop = dropTo === null ? null : { name: dropTo, atSec: dropAtSec, conditions: NETWORK_PROFILES[dropTo] };
+
   const conditions = NETWORK_PROFILES[profile];
   const summaries = [];
   const rawLogs = [];
@@ -560,14 +652,9 @@ const runMeasurement = async (options) => {
   try {
     const context = await browser.newContext({ viewport: VIEWPORT, deviceScaleFactor });
 
-    if (conditions) {
-      // Áp giới hạn mạng cho mọi trang trong context này.
-      context.on('page', async (page) => {
-        const client = await context.newCDPSession(page);
-        await client.send('Network.enable');
-        await client.send('Network.emulateNetworkConditions', { offline: false, ...conditions });
-      });
-    }
+    // The throttling profile is applied inside collectOnce, on the page's own CDP session and
+    // before navigation. A second session (the former context-level 'page' handler) cannot be
+    // overridden by the page's session, so a mid-run drop sent there had no effect.
 
     // Lần chạy khởi động, KHÔNG tính vào kết quả: lần tải trang đầu tiên sau
     // khi mở trình duyệt luôn chậm hơn hẳn (biên dịch JIT, cache DNS/TLS còn
@@ -580,12 +667,12 @@ const runMeasurement = async (options) => {
     // gian chờ khởi động 26 giây so với 1,9 giây của bốn lần còn lại.
     for (let w = 1; w <= warmups; w += 1) {
       console.log(`⏳ Chạy khởi động ${w}/${warmups} (không tính vào kết quả)...`);
-      await collectOnce(context, url, durationSec);
+      await collectOnce(context, url, durationSec, drop, conditions);
     }
 
     for (let i = 1; i <= runs; i += 1) {
       process.stdout.write(`📊 Lần đo ${i}/${runs}... `);
-      const log = await collectOnce(context, url, durationSec);
+      const log = await collectOnce(context, url, durationSec, drop, conditions);
       const summary = summarise(log);
 
       if (!log.attached) {
@@ -597,6 +684,14 @@ const runMeasurement = async (options) => {
           `khởi động ${summary.startupDelaySec.toFixed(2)}s · ` +
           `nghẽn ${(summary.rebufferingRatio * 100).toFixed(2)}% · ` +
           `${summary.bitrateSwitchCount} lần đổi mức`
+        );
+      }
+      if (log.dropDetail) {
+        const d = log.dropDetail;
+        const sec = (v) => (v === null ? 'n/a' : `${v.toFixed(1)} s`);
+        console.log(
+          `   drop: shown ${d.heightBefore}p, lower rung requested after ${sec(d.downloadSwitchSec)}, ` +
+          `${d.heightAfter ?? '?'}p on screen after ${sec(d.displaySwitchSec)}, ${d.stallsAfterDrop} stalls`
         );
       }
 
@@ -625,6 +720,8 @@ const parseArgs = (argv) => {
     else if (arg === '--warmups') options.warmups = parseInt(argv[++i], 10);
     else if (arg === '--dpr') options.deviceScaleFactor = parseFloat(argv[++i]);
     else if (arg === '--headed') options.headed = true;
+    else if (arg === '--drop-to') options.dropTo = argv[++i];
+    else if (arg === '--drop-at') options.dropAtSec = parseFloat(argv[++i]);
   }
 
   return options;
@@ -713,12 +810,16 @@ const main = async () => {
 
   const outPath = options.out
     ? path.resolve(options.out)
-    : path.resolve(__dirname, '../../docs/results', `qoe-playback-${options.profile}.json`);
+    : path.resolve(__dirname, '../../docs/results',
+      options.dropTo ? `qoe-playback-${options.profile}-to-${options.dropTo}.json` : `qoe-playback-${options.profile}.json`);
 
   const payload = {
     measuredAt: new Date().toISOString(),
     url: options.url,
     networkProfile: options.profile,
+    // Present only for a mid-run drop: the page switches to `to` after `atSec`.
+    drop: options.dropTo ? { to: options.dropTo, atSec: options.dropAtSec ?? 20 } : undefined,
+    dropDetail: options.dropTo ? rawLogs.map((log) => log.dropDetail) : undefined,
     runs: options.runs,
     durationSec: options.durationSec,
     tool: 'Playwright + Chromium headless',
@@ -760,6 +861,7 @@ module.exports = {
   // nên nạp module này trong Jest không kéo theo trình duyệt.
   parseMasterPlaylist,
   parseRenditionPlaylist,
+  summariseDrop,
   collectLadderComparison,
   measureRenditionBitrates,
   renditionToHeight,

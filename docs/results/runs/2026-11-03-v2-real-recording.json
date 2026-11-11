@@ -1,0 +1,70 @@
+{
+  "schema": 1,
+  "title": "Real recording on the single path (prod, configuration before the 2026-11-04 resize)",
+  "runs": [
+    {
+      "id": "2026-11-03-prod-v2-recording-r1",
+      "date": "2026-11-03",
+      "account": "B",
+      "region": "ap-southeast-1",
+      "environment": "prod",
+      "stack": "v2",
+      "path": "single",
+      "capacity": {
+        "spot_max_vcpus": 24,
+        "ondemand_max_vcpus": 24
+      },
+      "chunk": null,
+      "video": {
+        "label": "recording-4m40",
+        "video_id": "6aea3d0094989c6980c6c03c",
+        "size_bytes": 355320974,
+        "size_gib": 0.331,
+        "duration_s": 279.9,
+        "resolution": "1912x1080",
+        "fps": 28.725,
+        "content": "screen recording of a game, the same video as the playback and bit-rate measurements"
+      },
+      "job_definitions": {
+        "analyse": { "revision": "zelos-prod-analyse:1", "vcpu": 1, "memory_mib": 2048 },
+        "encode": { "revision": "zelos-prod-encode:1", "vcpu": 2, "memory_mib": 4096 }
+      },
+      "concurrency": 1,
+      "queue_position": 1,
+      "measured_from": "execution_start",
+      "timings_s": {
+        "upload": null,
+        "ingest": null,
+        "mark_processing": 1.9,
+        "probe": 2.6,
+        "queue_to_first_job": 27.6,
+        "startup_max": 32.4,
+        "analyse": 93.9,
+        "encode": 722.2,
+        "audio": null,
+        "chunks": null,
+        "stitch": null,
+        "publish": 0.2,
+        "end_to_end": 761.3,
+        "end_to_end_with_upload": null
+      },
+      "vcpu_seconds": 1538,
+      "vcpu_seconds_per_source_second": 5.5,
+      "vcpu_seconds_scope": "all_jobs",
+      "capacity_used": {
+        "spot": null,
+        "ondemand": null
+      },
+      "result": {
+        "final_status": "READY",
+        "hls_verified": true,
+        "variants": 6
+      },
+      "api_retries": 0,
+      "provenance": "measured",
+      "source": "AWS Step Functions execution history (GetExecutionHistory) of zelos-prod-transcode:6aea3d0094989c6980c6c03c-1, read on 2026-11-11; master playlist read from the processed bucket",
+      "notes": "Not a benchmark run: an ordinary upload of a real 1080p recording, read back afterwards. Job times are StartedAt to StoppedAt of the Batch jobs in the execution output; vCPU-seconds = 2 x 722.2 (encode) + 1 x 93.9 (analyse). It ran with the job definitions of revision 1 (encode 2 vCPU, analyse 1 vCPU), before the resize to 4-8 vCPU and 2 vCPU of 2026-11-04, so its time to READY is not comparable with 2026-11-04-v2-s2b-resized.json; the work per second of source is. Upload end is not in the history, so times start when the execution started. Execution started 2026-11-03T19:59:31.606Z, ended 2026-11-03T20:12:12.896Z."
+    }
+  ],
+  "failures": []
+}

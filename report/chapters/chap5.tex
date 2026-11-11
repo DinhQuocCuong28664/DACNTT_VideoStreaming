@@ -300,7 +300,7 @@ lists the edge cases each part must handle, and each line of it is covered by at
 \toprule
 \textbf{LEVEL} & \textbf{SIZE} & \textbf{WHAT IT CHECKS AND WHERE} \\
 \midrule
-Unit & 294 tests in 30 files & Logic of every workspace with Vitest, on every push; the API runs against a real MongoDB server started in memory, with AWS services replaced by in-memory implementations \\
+Unit & 305 tests in 32 files & Logic of every workspace with Vitest, on every push; the API runs against a real MongoDB server started in memory, with AWS services replaced by in-memory implementations \\
 Image smoke & 13 checks & Real FFmpeg inside the built image: both encoding paths encrypted, packaged, decrypted and decoded, on every push \\
 End-to-end & 27 tests in 6 files & The deployed web application and API through Chromium with Playwright, against staging and then production after each deployment \\
 \bottomrule
@@ -314,16 +314,16 @@ joined.
 
 \begin{table}[H]
 \centering
-\caption{Unit tests by workspace, 294 tests in 30 files}
+\caption{Unit tests by workspace, 305 tests in 32 files}
 \label{tab:test-coverage}
 \footnotesize
 \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{0.16\textwidth} >{\raggedright\arraybackslash}p{0.08\textwidth} >{\raggedright\arraybackslash}X}
 \toprule
 \textbf{WORKSPACE} & \textbf{TESTS} & \textbf{FOCUS} \\
 \midrule
-\name{shared} & 99 & The ladder bounded by the source, with portrait and very small sources, and the reduced ladder for long single jobs; frame rates, rotation and sample aspect ratio read from probe data, and the conditions that keep a video on the single path; chunk plans whose windows meet exactly, including 48 chunks for a 4-hour video at 30~fps and a 48-hour video under the array limit; playlists with the peak bandwidth rounded up and codec strings read from the stream; the stitch checks of Section~\ref{sec:chunked-design}; the label policy; progress folding; the event contracts \\
+\name{shared} & 104 & The ladder bounded by the source, with portrait and very small sources, and the reduced ladder for long single jobs; frame rates, rotation and sample aspect ratio read from probe data, and the conditions that keep a video on the single path; chunk plans whose windows meet exactly, including 48 chunks for a 4-hour video at 30~fps and a 48-hour video under the array limit; playlists with the peak bandwidth rounded up and codec strings read from the stream; the stitch checks of Section~\ref{sec:chunked-design}; the check that an output covers the probed duration; the label policy; progress folding; the event contracts \\
 \name{transcoder} & 27 & FFmpeg arguments: one decode, the same key frame rules on every rung, capped CRF with the rung's buffer, chunk seeks half a frame early and audio without repeated packets; the exit codes that Batch retries or not; the encode guard; preview sprites \\
-\name{functions} & 31 & One execution per upload version and none for a duplicate event; state changes of the status function, including publishing once, scheduled publishing and failure alerts; the order of playlist writes; notifications within the daily mail cap; the hourly roll-up and the draft clean-up \\
+\name{functions} & 37 & One execution per upload version and none for a duplicate event; state changes of the status function, including publishing once, scheduled publishing and failure alerts whose reason holds no presigned query; the order of playlist writes; notifications within the daily mail cap; the hourly roll-up and the draft clean-up \\
 \name{api} & 109 & Registration, sign-in, password rules and the Google account rule; the origin secret, client addresses and rate limits; uploads by pre-signed POST and multipart, with exact part sizes; the access rule for every visibility and moderation state; the key returned as 16 raw bytes; views after 30~seconds; comments, reactions, subscriptions and memberships with recounted counters; playlists and history; captions, chapters and schedules; search folding Vietnamese letters; reports, decisions, appeals, audit samples and roles \\
 \name{web} & 28 & Retries with back-off and \texttt{Retry-After}; multipart upload with part retries and cancel; the 30-second view rule on real playback only; the signed policy added to CDN addresses and never to API calls; chapters, timestamps and preview thumbnails \\
 \bottomrule

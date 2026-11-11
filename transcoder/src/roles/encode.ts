@@ -58,6 +58,7 @@ export async function encode(ctx: JobContext): Promise<void> {
     apiBaseUrl: env.API_BASE_URL,
     videoId: env.VIDEO_ID,
     uploadVersion: env.UPLOAD_VERSION,
+    expectedDurationSec: plan.durationSec,
   });
 
   const uploaded = await putDirectory(env.PROCESSED_BUCKET, ctx.processed.root, outputDir, (p) => p.endsWith('.ts'));
