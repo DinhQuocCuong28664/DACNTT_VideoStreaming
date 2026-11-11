@@ -89,7 +89,8 @@ Run every command from the repository root unless a step says otherwise.
 
 ## 4. First-time setup of an environment
 
-Only needed when building an environment from nothing. `cutover.md` shows the prod case in full.
+Only needed when building an environment from nothing. `cutover.md` shows the prod case in full;
+`docs/REBUILD_ON_NEW_AWS_ACCOUNT.md` covers moving everything to another AWS account.
 
 1. State bucket and lock table, once per account: `scripts/bootstrap-terraform-state.sh`.
    Its closing message mentions the old `infrastructure/` path; ignore it.
@@ -307,11 +308,6 @@ rm api.zip
 
 - There is no CD. Some comments still describe one: `ci.yml:2`, `infra/modules/ecr/main.tf:1`
   ("CI pushes one image per commit") and `infra/envs/staging/variables.tf:2`.
-- These files still describe v1 (EC2, `dacntt-dev-*`, `infrastructure/`, OIDC deploy
-  workflows): `docs/REBUILD_ON_NEW_AWS_ACCOUNT.md`, and the
-  scripts `staging-up.sh`, `start-backend.sh`, `stop-backend.sh`, `ec2-userdata.sh`,
-  `package-backend-lambda.js`, `invoke-lambda.py`, `next-job-definition.py`. Do not use them
-  for v2.
 - `cutover.md` still mentions the account A certificate and `--profile dacntt-a`. Since
   `cdn-to-b.md`, certificates are issued in account B.
 - Diagrams in `docs/ARCHITECTURE.md` still draw CloudFront in account A.
