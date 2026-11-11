@@ -44,8 +44,9 @@ The work grows with the content, not with the path. Every measured video needed 
 and the capacity needed for a given catalogue can be predicted from its length. The range is an
 estimate rather than a constant: the clip had three rungs instead of six, and screening was off for
 the two largest runs. Three of the four
-sources were test patterns, which are easy to encode, so content that is harder to compress would
-sit at the top of this range or above it.
+sources were test patterns, which are easy to encode; the one real 1080p recording measured needed
+5.50~vCPU-seconds per second, at the top of this range, and content that is harder still could sit
+above it.
 
 The output is honest to the player. Every segment of a rung starts with a key frame at the same
 instant, and the declared bandwidth of every rung equals the measured peak of its segments

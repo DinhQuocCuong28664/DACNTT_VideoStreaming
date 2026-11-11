@@ -260,8 +260,14 @@ work per second of source is nearly constant, between 4.6 and 5.8 vCPU-seconds, 
 video takes. The samples differ in two ways that the ratio does not show: the 36-second clip is a
 360p source and gets three rungs instead of six, and screening was off for the 1~GB file and the
 four-hour run (Section~\ref{sec:chunked-evaluation}), which shortens their analysis job. The range
-is therefore an estimate for planning, not a constant. This ratio is what makes the cost of
-Section~\ref{sec:cost-analysis} predictable.
+is therefore an estimate for planning, not a constant. The 1080p sources are test patterns; one
+real recording checks the ratio on harder content. The game capture of
+Section~\ref{sec:qoe-playback}, 4~minutes 40~seconds at 1912 by 1080 pixels, went through production
+on 3~November with the earlier task sizes (encode 2~vCPUs, analysis 1~vCPU) and screening on. It
+needed 1538~vCPU-seconds, 5.50 per second of source, at the top of the measured range; its time
+from the start of the workflow to \status{ready}, 12.7~minutes, is not comparable with
+Table~\ref{tab:transcode-results}, because the encode job now gets four times the vCPUs. This ratio
+is what makes the cost of Section~\ref{sec:cost-analysis} predictable.
 
 \subsection{A Four-Hour Video}
 \label{sec:chunked-evaluation}
