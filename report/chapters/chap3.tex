@@ -688,12 +688,13 @@ Postcondition & An open report waits for an operator. \\
 \midrule
 Actor & Operator or administrator \\
 Requirements & FR-20, FR-22 \\
-Precondition & The person holds the permission to review. \\
+Precondition & The person holds the permission to review, and a video was held by the screening, reported by viewers or removed by the machine. \\
 Main flow &
   1. The operator opens the review queue of held and reported videos, plays a video and reads its reports grouped by reason. \newline
   2. The operator approves or removes the video with a reason code from the closed list of that decision and an optional note. \newline
   3. The server keeps the machine's verdict if it was not kept before, applies the decision, closes the open reports and logs the decision with its outcome class. \newline
-  4. For a reported comment, the operator dismisses the reports or removes the comment and its replies. \\
+  4. For a reported comment, the operator dismisses the reports or removes the comment and its replies. \newline
+  5. In the tab of removed videos, the operator confirms a removal the machine made or restores the video, and the decision is logged as a confirmation or a restoration. \\
 Alternative flows &
   2a. The reason code does not belong to the decision: the server answers 400. \newline
   2b. An operator tries to change a decision taken by an administrator: the server answers 403. \\

@@ -117,7 +117,7 @@ the global one of 300 requests a minute.
 \texttt{/videos/:id/report} & POST & Signed in, limited & Report a video with a listed reason \\
 \texttt{/videos/:id/appeal} & GET, POST & Signed in & Read or file the owner's appeal \\
 \texttt{/admin/stats} & GET & \texttt{moderation:review} or \texttt{metrics:read} & Counts shown on the console tabs \\
-\texttt{/admin/queue} & GET & \texttt{moderation:review} & Videos held or reported \\
+\texttt{/admin/queue} & GET & \texttt{moderation:review} & Videos held or reported, or with \texttt{tab=removed} the videos the machine removed \\
 \texttt{/admin/videos/:id/reports} & GET & \texttt{moderation:review} & Reports of one video \\
 \texttt{/admin/videos/:id/decision} & POST & \texttt{moderation:review} & Approve or remove with a reason code \\
 \texttt{/admin/comments} & GET & \texttt{moderation:review} & Reported comments \\
