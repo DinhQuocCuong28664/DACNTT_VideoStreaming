@@ -1,0 +1,355 @@
+{
+  "schema": 1,
+  "title": "v2 fault handling: files that cannot be transcoded (NFR-08)",
+  "runs": [
+    {
+      "id": "2026-11-11-prod-v2-fault-garbage",
+      "date": "2026-11-11",
+      "account": "B",
+      "region": "ap-southeast-1",
+      "environment": "prod",
+      "stack": "v2",
+      "path": "fault",
+      "input": {
+        "label": "garbage",
+        "file": "garbage.mp4",
+        "size_bytes": 524288,
+        "description": "512 KiB of random bytes named .mp4"
+      },
+      "measured_from": "upload_complete",
+      "timings_s": {
+        "upload": 1.3,
+        "ingest": 30.6,
+        "to_mark_failed": 34.9,
+        "end_to_end": 34.9
+      },
+      "execution": {
+        "status": "FAILED",
+        "failed_state": "Probe",
+        "error": "Error: {\"errorType\":\"Error\",\"errorMessage\":\"Command failed: /opt/bin/ffprobe -v error -print_format json -show_format -show_streams -reconnect 1 -rw_timeout 30000000 https://zelos-prod-raw-749680934725.s3.ap-southeast-1.amazonaws.com/raw/6af49e18190c63d281ef6a16/1/source?<presigned query removed>",
+        "states": [
+          {
+            "name": "MarkProcessing",
+            "seconds": 2.1,
+            "task_attempts": 1,
+            "task_failures": 0
+          },
+          {
+            "name": "StillThere",
+            "seconds": 0,
+            "task_attempts": 0,
+            "task_failures": 0
+          },
+          {
+            "name": "Probe",
+            "seconds": 2,
+            "task_attempts": 1,
+            "task_failures": 1
+          },
+          {
+            "name": "MarkFailed",
+            "seconds": 0.2,
+            "task_attempts": 1,
+            "task_failures": 0
+          },
+          {
+            "name": "Failed",
+            "seconds": null,
+            "task_attempts": 0,
+            "task_failures": 0
+          }
+        ]
+      },
+      "result": {
+        "final_status": "ERROR",
+        "error": "Error: {\"errorType\":\"Error\",\"errorMessage\":\"Command failed: /opt/bin/ffprobe -v error -print_format json -show_format -show_streams -reconnect 1 -rw_timeout 30000000 https://zelos-prod-raw-749680934725.s3.ap-southeast-1.amazonaws.com/raw/6af49e18190c63d281ef6a16/1/source?<presigned query removed>"
+      },
+      "api_retries": 0,
+      "provenance": "measured",
+      "source": "scripts/bench/fault.mjs",
+      "image": "54da21dbfc575a9800658082260a469f14bc49f9",
+      "notes": "ffprobe in the Probe Lambda cannot read the file; the Lambda retry list holds only service errors, so the step ran once and the workflow marked the video failed. The stored reason quoted the presigned source URL with the Lambda session token; fixed in commit 8d0405e and deployed on 2026-11-12. The query is redacted in this record."
+    },
+    {
+      "id": "2026-11-12-prod-v2-fault-truncated",
+      "date": "2026-11-12",
+      "account": "B",
+      "region": "ap-southeast-1",
+      "environment": "prod",
+      "stack": "v2",
+      "path": "fault",
+      "input": {
+        "label": "truncated",
+        "file": "truncated-faststart.mp4",
+        "size_bytes": 140000000,
+        "description": "the 4 min 40 s recording remuxed with faststart, cut to its first 140,000,000 bytes: ffprobe reads the full duration, the stream ends early"
+      },
+      "measured_from": "upload_complete",
+      "timings_s": {
+        "upload": 3.2,
+        "ingest": 21.3,
+        "to_mark_failed": 26.2,
+        "end_to_end": 26.2
+      },
+      "execution": {
+        "status": "FAILED",
+        "failed_state": "Encode",
+        "error": "Batch.ServerException: Internal Error Please Try Again (Service: AWSBatch; Status Code: 500; Error Code: ServerException; Request ID: 9d982a93-2628-4dc6-b5ee-7468892fc7b3; Proxy: null)",
+        "states": [
+          {
+            "name": "MarkProcessing",
+            "seconds": 2,
+            "task_attempts": 1,
+            "task_failures": 0
+          },
+          {
+            "name": "StillThere",
+            "seconds": 0,
+            "task_attempts": 0,
+            "task_failures": 0
+          },
+          {
+            "name": "Probe",
+            "seconds": 2.4,
+            "task_attempts": 1,
+            "task_failures": 0
+          },
+          {
+            "name": "Process",
+            "seconds": 0.3,
+            "task_attempts": 0,
+            "task_failures": 0
+          },
+          {
+            "name": "Analyse",
+            "seconds": null,
+            "task_attempts": 1,
+            "task_failures": 0
+          },
+          {
+            "name": "Path",
+            "seconds": 0,
+            "task_attempts": 0,
+            "task_failures": 0
+          },
+          {
+            "name": "Encode",
+            "seconds": null,
+            "task_attempts": 1,
+            "task_failures": 1
+          },
+          {
+            "name": "MarkFailed",
+            "seconds": 0.2,
+            "task_attempts": 1,
+            "task_failures": 0
+          },
+          {
+            "name": "Failed",
+            "seconds": null,
+            "task_attempts": 0,
+            "task_failures": 0
+          }
+        ]
+      },
+      "result": {
+        "final_status": "ERROR",
+        "error": "Batch.ServerException: Internal Error Please Try Again (Service: AWSBatch; Status Code: 500; Error Code: ServerException; Request ID: 9d982a93-2628-4dc6-b5ee-7468892fc7b3; Proxy: null)"
+      },
+      "api_retries": 0,
+      "provenance": "measured",
+      "source": "scripts/bench/fault.mjs",
+      "image": "54da21dbfc575a9800658082260a469f14bc49f9",
+      "notes": "Not a property of the file: SubmitJob of the encode job returned Batch.ServerException (HTTP 500). That error was not in the Batch retry list, so the video failed at once. Fixed in commit 9f43f64 (retry list) and deployed on 2026-11-12."
+    },
+    {
+      "id": "2026-11-12-prod-v2-fault-truncated-r2",
+      "date": "2026-11-12",
+      "account": "B",
+      "region": "ap-southeast-1",
+      "environment": "prod",
+      "stack": "v2",
+      "path": "fault",
+      "input": {
+        "label": "truncated-r2",
+        "file": "truncated-faststart.mp4",
+        "size_bytes": 140000000,
+        "description": "the 4 min 40 s recording remuxed with faststart, cut to its first 140,000,000 bytes: ffprobe reads the full duration, the stream ends early"
+      },
+      "measured_from": "upload_complete",
+      "timings_s": {
+        "upload": 3.2,
+        "ingest": 17.8,
+        "to_mark_failed": null,
+        "end_to_end": 141.1
+      },
+      "execution": {
+        "status": "SUCCEEDED",
+        "failed_state": null,
+        "error": null,
+        "states": [
+          {
+            "name": "MarkProcessing",
+            "seconds": 0.4,
+            "task_attempts": 1,
+            "task_failures": 0
+          },
+          {
+            "name": "StillThere",
+            "seconds": 0,
+            "task_attempts": 0,
+            "task_failures": 0
+          },
+          {
+            "name": "Probe",
+            "seconds": 0.6,
+            "task_attempts": 1,
+            "task_failures": 0
+          },
+          {
+            "name": "Process",
+            "seconds": 121.8,
+            "task_attempts": 0,
+            "task_failures": 0
+          },
+          {
+            "name": "Analyse",
+            "seconds": 60.1,
+            "task_attempts": 1,
+            "task_failures": 0
+          },
+          {
+            "name": "Path",
+            "seconds": 0,
+            "task_attempts": 0,
+            "task_failures": 0
+          },
+          {
+            "name": "Encode",
+            "seconds": 121.8,
+            "task_attempts": 1,
+            "task_failures": 0
+          },
+          {
+            "name": "Publish",
+            "seconds": 0.5,
+            "task_attempts": 1,
+            "task_failures": 0
+          },
+          {
+            "name": "Done",
+            "seconds": 0,
+            "task_attempts": 0,
+            "task_failures": 0
+          }
+        ]
+      },
+      "result": {
+        "final_status": "READY",
+        "error": null
+      },
+      "api_retries": 0,
+      "provenance": "measured",
+      "source": "scripts/bench/fault.mjs",
+      "image": "54da21dbfc575a9800658082260a469f14bc49f9",
+      "notes": "Defect: published READY with 19 segments per rung (about 113 s of video) while the stored duration stayed 279.9 s. ffmpeg stops at the damaged part without an error, and nothing compared the output with the probed duration. Read from work/6af4a1109026446bbc48dc89/v1/encode.json."
+    },
+    {
+      "id": "2026-11-12-prod-v2-fault-truncated-fixed",
+      "date": "2026-11-12",
+      "account": "B",
+      "region": "ap-southeast-1",
+      "environment": "prod",
+      "stack": "v2",
+      "path": "fault",
+      "input": {
+        "label": "truncated-fixed",
+        "file": "truncated-faststart.mp4",
+        "size_bytes": 140000000,
+        "description": "the same truncated file, after the release that checks the output duration (image 9f43f64)"
+      },
+      "measured_from": "upload_complete",
+      "timings_s": {
+        "upload": 31.3,
+        "ingest": 30.3,
+        "to_mark_failed": 154.1,
+        "end_to_end": 154.2
+      },
+      "execution": {
+        "status": "FAILED",
+        "failed_state": "Encode",
+        "error": "States.TaskFailed: {\"Attempts\":[{\"Container\":{\"ExitCode\":3,\"LogStreamName\":\"encode/default/b49676ce82104131bc84699e061228f6\",\"NetworkInterfaces\":[{\"AttachmentId\":\"d00fb136-9a04-474b-867e-b2f5331e913e\",\"PrivateIpv4Address\":\"10.20.11.221\"}],\"TaskArn\":\"arn:aws:ecs:ap-southeast-1:749680934725:task/AWSBatch-zelos-prod-spot",
+        "states": [
+          {
+            "name": "MarkProcessing",
+            "seconds": 2.1,
+            "task_attempts": 1,
+            "task_failures": 0
+          },
+          {
+            "name": "StillThere",
+            "seconds": 0,
+            "task_attempts": 0,
+            "task_failures": 0
+          },
+          {
+            "name": "Probe",
+            "seconds": 2.4,
+            "task_attempts": 1,
+            "task_failures": 0
+          },
+          {
+            "name": "Process",
+            "seconds": 119.1,
+            "task_attempts": 0,
+            "task_failures": 0
+          },
+          {
+            "name": "Analyse",
+            "seconds": 64.2,
+            "task_attempts": 1,
+            "task_failures": 0
+          },
+          {
+            "name": "Path",
+            "seconds": 0,
+            "task_attempts": 0,
+            "task_failures": 0
+          },
+          {
+            "name": "Encode",
+            "seconds": null,
+            "task_attempts": 1,
+            "task_failures": 1,
+            "batch_attempts": 1,
+            "exit_codes": [
+              3
+            ],
+            "status_reason": "Essential container in task exited"
+          },
+          {
+            "name": "MarkFailed",
+            "seconds": 0.2,
+            "task_attempts": 1,
+            "task_failures": 0
+          },
+          {
+            "name": "Failed",
+            "seconds": null,
+            "task_attempts": 0,
+            "task_failures": 0
+          }
+        ]
+      },
+      "result": {
+        "final_status": "ERROR",
+        "error": "States.TaskFailed: {\"Attempts\":[{\"Container\":{\"ExitCode\":3,\"LogStreamName\":\"encode/default/b49676ce82104131bc84699e061228f6\",\"NetworkInterfaces\":[{\"AttachmentId\":\"d00fb136-9a04-474b-867e-b2f5331e913e\",\"PrivateIpv4Address\":\"10.20.11.221\"}],\"TaskArn\":\"arn:aws:ecs:ap-southeast-1:749680934725:task/AWSBatch-zelos-prod-spot-f9da51ce-760c-3adf-92e0-36d3c635ef64/b49676ce82104131bc84699e061228f6\"},\"StartedAt\":1794417875458,\"StatusReason\":\"Essential container in task exited\",\"StoppedAt\":1794417951016}],\"Container\":{\"Command\":[\"node\",\"dist/main.js\",\"encode\"],\"Environment\":[{\"Name\":\"API_BASE_URL\",\"Value\":\"https://api.zelostech.site\"},{\"Name\":\"KEYS_BUCKET\",\"Value\":\"zelos-prod-keys-749680934725\"},{\"Name\":\"APP_ENV\",\"Value\":\"prod\"},{\"Name\":\"MODERATION_ENABLED\",\"Value\":\"false\"},{\"Name\":\"RAW_BUCKET\",\"Value\":\"zelos-prod-raw-749680934725\"},{\"Name\":\"RAW_KEY\",\"Value\":\"raw/6af4a46ff782e0c79f7a3afe/1/source\"},{\"Name\":\"JOB_TIMEOUT_SECONDS\",\"Value\":\"28800\"},{\"Name\":\"UPLOAD_VERSION\",\"Value\":\"1\"},{\"Name\":\"PROCESS"
+      },
+      "api_retries": 0,
+      "provenance": "measured",
+      "source": "scripts/bench/fault.mjs",
+      "image": "9f43f641e61687d21c32736a88ae96af5f20d7dc",
+      "notes": "After the fix: packaging found that each rendition covers less than the probed duration (coverageShortfall) and threw a non-retryable error; the encode job exited with code 3 after one attempt, Batch did not retry, and the workflow marked the video failed. No segment or playlist was uploaded, because the check runs before the upload (the analysis job had already written the thumbnails)."
+    }
+  ]
+}

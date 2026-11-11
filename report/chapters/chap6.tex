@@ -107,10 +107,12 @@ result file.
 \midrule
 Time to first frame & Script that performs the requests of a player, in order, and times each & 20 requests from Vietnam, 720p \\
 Playback quality & Chromium driven by Playwright plays the real page under a network profile & 5 runs of 60 s per profile, after 2 warm-up runs \\
+Bandwidth drop & The same, switching from Fast 3G to Slow 3G after 20 s & 5 runs of 90 s, after 2 warm-up runs \\
 Declared and delivered bit rate & Script that reads the playlists and the segment sizes in the bucket & Every segment of three videos \\
 Transcoding time & Script that uploads through the API and follows the video until \status{ready} & 3 runs per size, one upload at a time \\
 Four-hour video & The same script & 1 run \\
 Burst of uploads & The same script, 100 uploads at once over five accounts & 1 run of 100 uploads \\
+Damaged uploads & Script that uploads a damaged file and reads where the workflow stopped & 2 files, 4 runs \\
 API load & Script that sends read requests in bursts through the Worker, with the function log & 40 sequential, bursts of 10 to 80 \\
 Prices & AWS Price List Query API~\cite{awspricelist} & List prices, Singapore \\
 \bottomrule
@@ -177,6 +179,14 @@ and on Fast~3G that rung was 480p, not 1080p: in the browser window of the test,
 the video element is 825 pixels wide, and the player caps its choice at the smallest rung that
 covers the element, here 480p at 850 pixels. On Slow~3G it was 240p,
 whose peak of 408~kbit/s fits under the link of 500~kbit/s, and still played without a stall.
+
+A profile that stays the same for a whole run does not show a switch, so five more runs started on
+Fast~3G and cut the link to Slow~3G twenty seconds into playback, for 90~seconds in all
+(Table~\ref{tab:raw-qoe-drop}). Every run was showing 480p when the link dropped. The player asked
+for a lower rung 8.5 to 8.9~seconds later, 240p in four runs and 360p in one, and that rung reached
+the screen 20.2 to 20.6~seconds after the drop, once the 480p segments already in the buffer had
+played. Each run changed rung once, and none stalled: the buffer filled on the faster link covered
+the time the player needed to react.
 
 \subsection{Declared and Delivered Bit Rate}
 \label{sec:bitrate-evaluation}
@@ -298,6 +308,31 @@ compute environments allow. Neither is a limit of the design: the audio can be e
 with the chunks, and the slots grow with the capacity granted. The test pattern is also easier to
 encode than a recording, so a real four-hour recording would need more time per chunk.
 Chapter~\ref{chap:conclusion} returns to these limits.
+
+\subsection{Damaged Uploads}
+\label{sec:fault-evaluation}
+
+The runs above only used files that could be transcoded. To test NFR-08, two damaged files were
+uploaded to production through the same script (Table~\ref{tab:raw-fault}). The first is half a
+mebibyte of random bytes named as an MP4 file. The probe step could not read it and failed at once;
+the workflow retries a function only for service errors, so it did not try again, and the video
+was marked \status{error} 34.9~seconds after its upload. The second is the recording of
+Section~\ref{sec:qoe-playback} cut after 140~MB, with its index moved to the front of the file, so
+that the probe still reads the full 279.9~seconds while the stream ends after about two minutes.
+
+These runs found three defects, each fixed and deployed on 12~November before the last run.
+First, the error reason stored on the video, which its owner can read, and sent in the alert quoted
+the presigned address of the source together with the session token of the probe function; the
+reason now keeps only the message of ffprobe, and the query of any address is removed before it is
+stored or sent. Second, one run of the truncated file failed at once on an internal error of the
+Batch API when the encode job was submitted, because that error was not in the retry list; it is
+now retried like the other errors of the Batch API. Third, the next run of the same file was
+published as \status{ready}: ffmpeg stops without an error where the damaged part begins, so every
+rung held 19 segments, about 113~seconds, while the video was listed at 279.9~seconds. Packaging now
+compares each rung with the duration the probe read and, when it falls short by more than one
+segment or 1\%, fails with the code that Batch does not retry. With that release the truncated file
+failed after one attempt with exit code~3, before any segment was uploaded, and the video was
+marked \status{error}.
 
 \section{Behaviour under Load}
 \label{sec:load-testing}
@@ -440,7 +475,7 @@ NFR-04 Idle cost & With nothing processing, both compute environments want 0~vCP
 NFR-05 API latency & 156~ms at the median when warm; 80 of 80 simultaneous requests answered (Table~\ref{tab:api-load}) & Met \\
 NFR-06 Content security & A request to the CDN without a policy is refused with 403; the tests of Section~\ref{sec:testing} refuse the key for another video, version, origin or a missing token & Met \\
 NFR-07 API security & A request to the function that skips the Worker, and a preflight from another origin, are refused with 403; sign-in is rate-limited & Met \\
-NFR-08 Reliability & Retries and the 24-hour limit are part of the workflow (Section~\ref{sec:state-machine}); tests check that a failure sets \status{error} and alerts. No fault occurred during the measurements & Met by design and tests \\
+NFR-08 Reliability & Retries and the 24-hour limit are part of the workflow (Section~\ref{sec:state-machine}). Two damaged files uploaded to production ended in \status{error} without useless retries, after fixes for a truncated file published as ready and an unretried Batch API error (Section~\ref{sec:fault-evaluation}) & Met after two fixes \\
 NFR-09 Reproducibility & Staging and production are built by the same Terraform modules (Section~\ref{sec:iac}); only the values of secrets are written outside the code & Met \\
 NFR-10 Maintainability & The security jobs are required checks of the main branch (Section~\ref{sec:cicd}) & Met \\
 \bottomrule

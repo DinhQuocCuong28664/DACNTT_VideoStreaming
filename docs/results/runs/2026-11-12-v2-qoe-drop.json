@@ -1,0 +1,462 @@
+{
+  "measuredAt": "2026-11-11T17:18:24.943Z",
+  "url": "https://zelostech.site/watch/6aea3d0094989c6980c6c03c",
+  "networkProfile": "fast3g",
+  "drop": {
+    "to": "slow3g",
+    "atSec": 20
+  },
+  "dropDetail": [
+    {
+      "heightBefore": 480,
+      "requestedHeightBefore": 480,
+      "downloadSwitchSec": 8.569,
+      "requestedHeightAfter": 240,
+      "displaySwitchSec": 20.223,
+      "heightAfter": 240,
+      "shownAfterDrop": [
+        {
+          "sec": 20.22,
+          "height": 240
+        }
+      ],
+      "stallsAfterDrop": 0
+    },
+    {
+      "heightBefore": 480,
+      "requestedHeightBefore": 480,
+      "downloadSwitchSec": 8.514,
+      "requestedHeightAfter": 240,
+      "displaySwitchSec": 20.176599999999624,
+      "heightAfter": 240,
+      "shownAfterDrop": [
+        {
+          "sec": 20.18,
+          "height": 240
+        }
+      ],
+      "stallsAfterDrop": 0
+    },
+    {
+      "heightBefore": 480,
+      "requestedHeightBefore": 480,
+      "downloadSwitchSec": 8.878,
+      "requestedHeightAfter": 240,
+      "displaySwitchSec": 20.446099999999625,
+      "heightAfter": 240,
+      "shownAfterDrop": [
+        {
+          "sec": 20.45,
+          "height": 240
+        }
+      ],
+      "stallsAfterDrop": 0
+    },
+    {
+      "heightBefore": 480,
+      "requestedHeightBefore": 480,
+      "downloadSwitchSec": 8.543,
+      "requestedHeightAfter": 360,
+      "displaySwitchSec": 20.62859999999963,
+      "heightAfter": 360,
+      "shownAfterDrop": [
+        {
+          "sec": 20.63,
+          "height": 360
+        }
+      ],
+      "stallsAfterDrop": 0
+    },
+    {
+      "heightBefore": 480,
+      "requestedHeightBefore": 480,
+      "downloadSwitchSec": 8.655,
+      "requestedHeightAfter": 240,
+      "displaySwitchSec": 20.253400000000372,
+      "heightAfter": 240,
+      "shownAfterDrop": [
+        {
+          "sec": 20.25,
+          "height": 240
+        }
+      ],
+      "stallsAfterDrop": 0
+    }
+  ],
+  "runs": 5,
+  "durationSec": 90,
+  "tool": "Playwright + Chromium headless",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "deviceScaleFactor": 1,
+  "note": "Tỉ lệ nghẽn loại trừ thời gian chờ khởi động. Mức chất lượng suy ra từ videoHeight của phần tử <video>, tức là mức đang hiển thị chứ không phải mức đang tải về. Đầu vào P.1203 ở đây là Mode 0 (chỉ siêu dữ liệu); điểm MOS phải do bản cài đặt tham chiếu itu-p1203 tính, kịch bản này không tự tính MOS. Trình phát bật capLevelToPlayerSize, nên khung nhìn và deviceScaleFactor ghi ở trên quyết định bậc thang nào được đo: ở dpr 1 thẻ video rộng 880 px và bậc 1080p không bao giờ được chọn.",
+  "aggregate": {
+    "runs": 5,
+    "startupDelaySec": 5.944700000001117,
+    "startupDelayMaxSec": 6.217800000000745,
+    "rebufferingRatio": 0,
+    "rebufferingRatioMean": 0,
+    "rebufferingRatioMax": 0,
+    "runsWithStalls": 0,
+    "stallCount": 0,
+    "bitrateSwitchCount": 1,
+    "averageBitrateBps": 551998.8937942755
+  },
+  "bitrateLadder": [
+    {
+      "height": 144,
+      "advertised": 200589,
+      "measured": 162206,
+      "peak": 200589,
+      "peakRatio": 1,
+      "ratio": 0.8086485300789176,
+      "segments": 7
+    },
+    {
+      "height": 240,
+      "advertised": 407934,
+      "measured": 252860,
+      "peak": 407934,
+      "peakRatio": 1,
+      "ratio": 0.6198551726504777,
+      "segments": 69
+    },
+    {
+      "height": 360,
+      "advertised": 688166,
+      "measured": 412690,
+      "peak": 688166,
+      "peakRatio": 1,
+      "ratio": 0.5996954223254273,
+      "segments": 12
+    },
+    {
+      "height": 480,
+      "advertised": 1177980,
+      "measured": 958149,
+      "peak": 1169199,
+      "peakRatio": 0.9925457138491316,
+      "ratio": 0.8133830795089899,
+      "segments": 30
+    },
+    {
+      "height": 720,
+      "advertised": 2443317,
+      "measured": null,
+      "peak": null,
+      "peakRatio": null,
+      "ratio": null,
+      "segments": 0
+    },
+    {
+      "height": 1080,
+      "advertised": 4932815,
+      "measured": null,
+      "peak": null,
+      "peakRatio": null,
+      "ratio": null,
+      "segments": 0
+    }
+  ],
+  "runsDetail": [
+    {
+      "startupDelaySec": 5.944700000001117,
+      "stallCount": 0,
+      "stallTotalSec": 0,
+      "rebufferingRatio": 0,
+      "bitrateSwitchCount": 1,
+      "averageBitrateBps": 551998.8937942755,
+      "measuredSpanSec": 91.87660000000149,
+      "stalls": []
+    },
+    {
+      "startupDelaySec": 5.832900000000373,
+      "stallCount": 0,
+      "stallTotalSec": 0,
+      "rebufferingRatio": 0,
+      "bitrateSwitchCount": 1,
+      "averageBitrateBps": 551819.0960272634,
+      "measuredSpanSec": 91.81209999999963,
+      "stalls": []
+    },
+    {
+      "startupDelaySec": 6.217800000000745,
+      "stallCount": 0,
+      "stallTotalSec": 0,
+      "rebufferingRatio": 0,
+      "bitrateSwitchCount": 1,
+      "averageBitrateBps": 552602.0810849557,
+      "measuredSpanSec": 91.90319999999926,
+      "stalls": []
+    },
+    {
+      "startupDelaySec": 5.936199999999255,
+      "stallCount": 0,
+      "stallTotalSec": 0,
+      "rebufferingRatio": 0,
+      "bitrateSwitchCount": 1,
+      "averageBitrateBps": 643397.3667251666,
+      "measuredSpanSec": 91.45219999999925,
+      "stalls": []
+    },
+    {
+      "startupDelaySec": 6.0453999999985095,
+      "stallCount": 0,
+      "stallTotalSec": 0,
+      "rebufferingRatio": 0,
+      "bitrateSwitchCount": 1,
+      "averageBitrateBps": 541104.6892584818,
+      "measuredSpanSec": 91.91429999999889,
+      "stalls": []
+    }
+  ],
+  "p1203Mode0Input": [
+    {
+      "I13": {
+        "streamId": 42,
+        "segments": [
+          {
+            "start": 5.919,
+            "duration": 36.165,
+            "bitrate": 958.16,
+            "fps": 30,
+            "codec": "h264",
+            "resolution": "850x480"
+          },
+          {
+            "start": 42.084,
+            "duration": 49.792,
+            "bitrate": 257,
+            "fps": 30,
+            "codec": "h264",
+            "resolution": "426x240"
+          }
+        ]
+      },
+      "I11": {
+        "streamId": 42,
+        "segments": [
+          {
+            "start": 5.919,
+            "duration": 36.165,
+            "bitrate": 128,
+            "codec": "aac"
+          },
+          {
+            "start": 42.084,
+            "duration": 49.792,
+            "bitrate": 128,
+            "codec": "aac"
+          }
+        ]
+      },
+      "I23": {
+        "streamId": 42,
+        "stalling": []
+      },
+      "IGen": {
+        "displaySize": "1920x1080",
+        "device": "pc",
+        "viewingDistance": "150cm"
+      }
+    },
+    {
+      "I13": {
+        "streamId": 42,
+        "segments": [
+          {
+            "start": 5.808,
+            "duration": 36.163,
+            "bitrate": 958.16,
+            "fps": 30,
+            "codec": "h264",
+            "resolution": "850x480"
+          },
+          {
+            "start": 41.971,
+            "duration": 49.841,
+            "bitrate": 257,
+            "fps": 30,
+            "codec": "h264",
+            "resolution": "426x240"
+          }
+        ]
+      },
+      "I11": {
+        "streamId": 42,
+        "segments": [
+          {
+            "start": 5.808,
+            "duration": 36.163,
+            "bitrate": 128,
+            "codec": "aac"
+          },
+          {
+            "start": 41.971,
+            "duration": 49.841,
+            "bitrate": 128,
+            "codec": "aac"
+          }
+        ]
+      },
+      "I23": {
+        "streamId": 42,
+        "stalling": []
+      },
+      "IGen": {
+        "displaySize": "1920x1080",
+        "device": "pc",
+        "viewingDistance": "150cm"
+      }
+    },
+    {
+      "I13": {
+        "streamId": 42,
+        "segments": [
+          {
+            "start": 6.197,
+            "duration": 36.133,
+            "bitrate": 958.16,
+            "fps": 30,
+            "codec": "h264",
+            "resolution": "850x480"
+          },
+          {
+            "start": 42.33,
+            "duration": 49.573,
+            "bitrate": 257,
+            "fps": 30,
+            "codec": "h264",
+            "resolution": "426x240"
+          }
+        ]
+      },
+      "I11": {
+        "streamId": 42,
+        "segments": [
+          {
+            "start": 6.197,
+            "duration": 36.133,
+            "bitrate": 128,
+            "codec": "aac"
+          },
+          {
+            "start": 42.33,
+            "duration": 49.573,
+            "bitrate": 128,
+            "codec": "aac"
+          }
+        ]
+      },
+      "I23": {
+        "streamId": 42,
+        "stalling": []
+      },
+      "IGen": {
+        "displaySize": "1920x1080",
+        "device": "pc",
+        "viewingDistance": "150cm"
+      }
+    },
+    {
+      "I13": {
+        "streamId": 42,
+        "segments": [
+          {
+            "start": 5.87,
+            "duration": 36.197,
+            "bitrate": 958.16,
+            "fps": 30,
+            "codec": "h264",
+            "resolution": "850x480"
+          },
+          {
+            "start": 42.068,
+            "duration": 49.385,
+            "bitrate": 412.69,
+            "fps": 30,
+            "codec": "h264",
+            "resolution": "638x360"
+          }
+        ]
+      },
+      "I11": {
+        "streamId": 42,
+        "segments": [
+          {
+            "start": 5.87,
+            "duration": 36.197,
+            "bitrate": 128,
+            "codec": "aac"
+          },
+          {
+            "start": 42.068,
+            "duration": 49.385,
+            "bitrate": 128,
+            "codec": "aac"
+          }
+        ]
+      },
+      "I23": {
+        "streamId": 42,
+        "stalling": []
+      },
+      "IGen": {
+        "displaySize": "1920x1080",
+        "device": "pc",
+        "viewingDistance": "150cm"
+      }
+    },
+    {
+      "I13": {
+        "streamId": 42,
+        "segments": [
+          {
+            "start": 5.998,
+            "duration": 36.163,
+            "bitrate": 958.16,
+            "fps": 30,
+            "codec": "h264",
+            "resolution": "850x480"
+          },
+          {
+            "start": 42.161,
+            "duration": 49.753,
+            "bitrate": 237.97,
+            "fps": 30,
+            "codec": "h264",
+            "resolution": "426x240"
+          }
+        ]
+      },
+      "I11": {
+        "streamId": 42,
+        "segments": [
+          {
+            "start": 5.998,
+            "duration": 36.163,
+            "bitrate": 128,
+            "codec": "aac"
+          },
+          {
+            "start": 42.161,
+            "duration": 49.753,
+            "bitrate": 128,
+            "codec": "aac"
+          }
+        ]
+      },
+      "I23": {
+        "streamId": 42,
+        "stalling": []
+      },
+      "IGen": {
+        "displaySize": "1920x1080",
+        "device": "pc",
+        "viewingDistance": "150cm"
+      }
+    }
+  ]
+}

@@ -108,6 +108,41 @@ ${body}
   });
 }
 
+// ── Bandwidth drop during playback ────────────────────────────────────────
+{
+  const d = read('2026-11-12-v2-qoe-drop.json');
+  const rows = d.dropDetail.map((x, j) => [
+    j + 1, fix(d.runsDetail[j].startupDelaySec, 2), `${x.heightBefore}p`,
+    fix(x.downloadSwitchSec, 1), x.requestedHeightAfter ? `${x.requestedHeightAfter}p` : '--',
+    fix(x.displaySwitchSec, 1), x.heightAfter ? `${x.heightAfter}p` : '--', x.stallsAfterDrop,
+  ]);
+  table('tab-v2-qoe-drop.tex', {
+    caption: `Playback runs of ${d.durationSec} seconds that start on Fast 3G and drop to Slow 3G after ${d.drop.atSec} seconds: the rung shown before the drop, and the seconds from the drop until a lower rung was asked for and shown`,
+    label: 'tab:raw-qoe-drop',
+    spec: 'c r c r c r c r',
+    head: ['RUN', 'START-UP', 'BEFORE', 'ASKED', 'RUNG', 'SHOWN', 'RUNG', 'STALLS'],
+    rows,
+  });
+}
+
+// ── Damaged uploads ───────────────────────────────────────────────────────
+{
+  const d = read('2026-11-11-v2-fault.json');
+  const names = { garbage: 'Random bytes', truncated: 'Truncated, run 1', 'truncated-r2': 'Truncated, run 2', 'truncated-fixed': 'Truncated, after the fix' };
+  const rows = d.runs.map((r) => {
+    const failed = r.execution.states.find((s) => s.task_failures > 0);
+    const attempts = failed?.batch_attempts ? `${failed.batch_attempts} (exit ${failed.exit_codes.join(', ')})` : failed ? `${failed.task_attempts}` : '--';
+    return [names[r.input.label] ?? r.input.label, r.image.slice(0, 7), failed?.name ?? '--', attempts, `\\status{${r.result.final_status.toLowerCase()}}`, fix(r.timings_s.end_to_end, 1)];
+  });
+  table('tab-v2-fault.tex', {
+    caption: 'Uploads of damaged files on production; time in seconds from the end of the upload to the end of the workflow',
+    label: 'tab:raw-fault',
+    spec: 'l l l l l r',
+    head: ['FILE', 'IMAGE', 'FAILED STEP', 'ATTEMPTS', 'RESULT', 'TIME'],
+    rows,
+  });
+}
+
 // ── Declared and delivered bit rate ───────────────────────────────────────
 {
   const runs = read('2026-11-04-v2-bitrate.json').runs;
