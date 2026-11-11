@@ -87,7 +87,7 @@ async function single(root: string): Promise<void> {
     inputUrl: src, videoStreamIndex: plan.videoStreamIndex, audioStreamIndex: plan.audioStreamIndex,
     renditions: plan.renditions, fps: plan.fps, segmentSeconds: 6, outputDir: join(dir, 'out'), keyInfoPath: info,
   }));
-  const pkg = await packageLocal({ outputDir: join(dir, 'out'), renditions: plan.renditions, hasAudio: true, fps: plan.fps, fpsKnown: true, key, apiBaseUrl: 'https://api.example', videoId: 'a'.repeat(24), uploadVersion: 1 });
+  const pkg = await packageLocal({ outputDir: join(dir, 'out'), renditions: plan.renditions, hasAudio: true, fps: plan.fps, fpsKnown: true, key, apiBaseUrl: 'https://api.example', videoId: 'a'.repeat(24), uploadVersion: 1, expectedDurationSec: plan.durationSec });
   for (const r of pkg.rungs) {
     check(/^avc1\.4d[0-9a-f]{4},mp4a\.40\.2$/.test(r.codecs ?? ''), `${r.name} CODECS ${r.codecs}`);
     const segs = parseMediaPlaylist(await readFile(join(dir, 'out', r.name, 'index.m3u8'), 'utf8'));
