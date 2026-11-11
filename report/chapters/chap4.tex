@@ -116,10 +116,11 @@ ahead, together with the result of the screening.
 
 Failures are handled in two layers. First, each task retries the errors that may pass on their own:
 a Lambda task retries service errors and throttling up to six times, waiting two seconds and doubling
-the wait, and a Batch task retries a rejected submission up to five times. Every Batch job itself
+the wait, and a Batch task retries up to five times when the Batch API throttles or fails on its own
+side. Every Batch job itself
 has three attempts, so a Spot task reclaimed by AWS is simply run again. An error that another
-attempt cannot fix, such as an unreadable source, makes the container exit with code 3, which Batch
-treats as final. Second, whatever is left after the retries is caught: every task state, and the parallel
+attempt cannot fix, such as an unreadable source or an output shorter than the duration the probe
+read, makes the container exit with code 3, which Batch treats as final. Second, whatever is left after the retries is caught: every task state, and the parallel
 state as a whole, has a \name{Catch} that leads to \name{MarkFailed}, which sets the video to \status{error}
 with the reason, tells the owner once, sends an alert and removes the temporary files. An execution
 also has a timeout of 24 hours, queue time included, so no video can stay in processing forever.
