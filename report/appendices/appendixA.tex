@@ -58,7 +58,7 @@ the global one of 300 requests a minute.
 \texttt{/videos/:id/unlock} & POST & Public, limited & Exchange the password of a video for an unlock token \\
 \texttt{/videos/:id/playback} & GET & Public & Master playlist address, signed query policy and playback token \\
 \texttt{/videos/:id/key} & GET & Playback token & The 16-byte AES key of the upload version \\
-\texttt{/videos/:id/view} & POST & Public, limited & Count a view after 30 seconds of playback \\
+\texttt{/videos/:id/view} & POST & Playback token, limited & Count a view once 30 seconds have passed since the playback token was issued \\
 \texttt{/videos/:id} & PATCH & Signed in & Edit title, description, tags, category, visibility, password, audience, tier and violence warning \\
 \texttt{/videos/:id} & DELETE & Signed in & Delete the video, its comments and its files \\
 \midrule

@@ -351,7 +351,7 @@ Main flow &
   2. The page asks for playback and receives the master playlist address, a signed CDN policy for this video and a playback token, both valid for two hours. \newline
   3. The player loads the playlists and segments from the CDN with the policy, and fetches the decryption key from the API with the playback token. \newline
   4. The player switches renditions as the bandwidth changes; a signed-in viewer resumes from the last position, which the player saves every minute and on pause. \newline
-  5. After thirty seconds of playback, or the whole of a shorter video, the page reports a view, which the server counts unless the same viewer was counted within thirty minutes or the viewer owns the video. \\
+  5. After thirty seconds of playback, or the whole of a shorter video, the page reports a view with its playback token, which the server counts only if that much time has passed since the token was issued, and not if the same viewer was counted within thirty minutes or the viewer owns the video. \\
 Alternative flows &
   1a. The video is private or not ready, and the viewer is not its owner: the server answers 404. \newline
   1b. The video was removed or is under review: the server answers 403 with a distinct code, and the page explains it. \newline
