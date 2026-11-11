@@ -273,7 +273,11 @@ combination called Capped CRF in Section~\ref{sec:bitrate-ladder}. CRF falls by 
 rung as the resolution grows, because the same CRF looks worse on a larger screen. The maximum rates
 follow the spacing of common HLS ladders, roughly doubling from rung to rung, and the buffer holds
 two seconds at the maximum rate, which lets the rate vary within a segment while keeping the peak of
-each segment close to the cap~\cite{applehlsauthoring, ffmpegdocs}.
+each segment close to the cap~\cite{applehlsauthoring, ffmpegdocs}. The cap is not a hard ceiling
+for a segment. VBV lets any six-second window carry six seconds at the maximum rate plus one full
+buffer, up to a third more, and a segment file also holds the audio and the MPEG-TS packaging of
+188-byte packets. The measured peaks of Section~\ref{sec:bitrate-evaluation} therefore lie up to
+6.6\% above the video cap plus the audio rate.
 
 \begin{table}[H]
 \centering

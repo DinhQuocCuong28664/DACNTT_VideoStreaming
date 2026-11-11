@@ -182,7 +182,10 @@ The player can only choose safely if the playlist is truthful. Table~\ref{tab:bi
 what the master playlist of the recording declares against what its segments contain. The peak
 segment bit rate equals the declared \texttt{BANDWIDTH} in every rung, and the average equals
 \texttt{AVERAGE-BANDWIDTH}, because both values are measured from the segments when the playlist is
-written. Every segment lasts between 5.97 and 6.01~seconds, except the last one of each rung. The two
+written. From 360p up, the peak lies above the video cap plus the audio rate of
+Table~\ref{tab:ladder}, by at most 6.6\% at 1080p (4933 against 4628~kbit/s), which the buffer and
+the packaging allow (Section~\ref{sec:ladder-design}). Every segment lasts between 5.97 and
+6.01~seconds, except the last one of each rung. The two
 other videos measured, both synthetic test patterns, give the same agreement in all six rungs.
 
 \begin{table}[H]
