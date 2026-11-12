@@ -8,7 +8,7 @@
         "heading": "1. Chúng tôi là ai",
         "paragraphs": [
           "VidShare (zelostech.site) là sản phẩm của đồ án Dự án CNTT, Khoa Công nghệ thông tin, Trường Đại học Tôn Đức Thắng, do nhóm Đinh Quốc Cường và Võ Huỳnh Minh Đức thực hiện. Nhóm là bên kiểm soát dữ liệu cá nhân thu thập qua trang web này.",
-          "Email tiếp nhận yêu cầu về dữ liệu cá nhân: [FILL: email liên hệ]. Địa chỉ: [FILL: địa chỉ hoặc đơn vị]. Mã số đăng ký (nếu có): [FILL]."
+          "Email tiếp nhận yêu cầu về dữ liệu cá nhân: privacy@zelostech.site. Địa chỉ: [FILL: địa chỉ hoặc đơn vị]. Mã số đăng ký (nếu có): [FILL]."
         ]
       },
       {
@@ -58,7 +58,7 @@
             [
               "Dữ liệu kỹ thuật để chống lạm dụng (bộ đếm giới hạn tần suất)",
               "Khi bạn gọi các chức năng của site",
-              "Bảo vệ hệ thống khỏi spam và tấn công [CHECK: khóa đếm có dùng địa chỉ IP không, và thời gian lưu]"
+              "Bảo vệ hệ thống khỏi spam và tấn công. Khóa đếm là mã tài khoản hoặc địa chỉ IP (IPv6 được gộp về cụm /56), chỉ giữ trong khung đếm, tối đa 1 giờ"
             ],
             [
               "Báo cáo vi phạm và kháng nghị",
@@ -107,7 +107,7 @@
               "Xác thực"
             ],
             [
-              "Nhà cung cấp dịch vụ email (SMTP) [CHECK: tên nhà cung cấp]",
+              "Google (Gmail SMTP)",
               "Email của bạn và nội dung thư",
               "Gửi thư xác minh, đặt lại mật khẩu, thông báo video mới nếu bạn bật"
             ]
@@ -213,7 +213,7 @@
       {
         "heading": "7. Liên hệ",
         "paragraphs": [
-          "[FILL: email liên hệ]"
+          "privacy@zelostech.site"
         ]
       }
     ]

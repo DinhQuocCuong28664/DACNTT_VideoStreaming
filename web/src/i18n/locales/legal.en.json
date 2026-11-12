@@ -8,7 +8,7 @@
         "heading": "1. Who we are",
         "paragraphs": [
           "VidShare (zelostech.site) is the product of an IT Project course at the Faculty of Information Technology, Ton Duc Thang University, built by Dinh Quoc Cuong and Vo Huynh Minh Duc. The team controls the personal data collected through this website.",
-          "Contact e-mail for data requests: [FILL: contact e-mail]. Address: [FILL: address or unit]. Registration number (if any): [FILL]."
+          "Contact e-mail for data requests: privacy@zelostech.site. Address: [FILL: address or unit]. Registration number (if any): [FILL]."
         ]
       },
       {
@@ -58,7 +58,7 @@
             [
               "Technical data for abuse prevention (rate-limit counters)",
               "When you call site features",
-              "Protect the system from spam and attacks [CHECK: whether keys use IP addresses, and retention]"
+              "Protect the system from spam and attacks. The counter key is the account ID or the IP address (IPv6 is grouped to a /56 prefix), kept only for the counting window, at most 1 hour"
             ],
             [
               "Content reports and appeals",
@@ -107,7 +107,7 @@
               "Authentication"
             ],
             [
-              "E-mail (SMTP) provider [CHECK: provider name]",
+              "Google (Gmail SMTP)",
               "Your e-mail address and message content",
               "Verification, password reset, new-upload notices if you opt in"
             ]
@@ -213,7 +213,7 @@
       {
         "heading": "7. Contact",
         "paragraphs": [
-          "[FILL: contact e-mail]"
+          "privacy@zelostech.site"
         ]
       }
     ]
