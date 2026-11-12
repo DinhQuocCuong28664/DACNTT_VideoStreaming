@@ -5,9 +5,9 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { MdCheckCircle, MdDeleteOutline, MdErrorOutline, MdOutlineAccountCircle, MdOutlineCardMembership, MdOutlineLock, MdOutlinePalette } from 'react-icons/md';
+import { MdCheckCircle, MdDeleteOutline, MdErrorOutline, MdOutlineAccountCircle, MdOutlineCardMembership, MdOutlineLock, MdOutlinePalette, MdOutlineWorkspacePremium } from 'react-icons/md';
 import type { IconType } from 'react-icons';
-import { auth, channels, me } from '../api/endpoints';
+import { auth, billing, channels, me } from '../api/endpoints';
 import type { Membership, Tier } from '../api/types';
 import { useAuth } from '../context/auth';
 import { useTheme, type ThemePreference } from '../context/theme';
@@ -21,9 +21,9 @@ import { ImageRejected, uploadImage } from '../lib/images';
 import './SettingsPage.css';
 import './StudioPages.css';
 
-const TABS = ['channel', 'security', 'memberships', 'appearance'] as const;
+const TABS = ['channel', 'security', 'billing', 'memberships', 'appearance'] as const;
 type Tab = (typeof TABS)[number];
-const TAB_ICON = new Map<Tab, IconType>([['channel', MdOutlineAccountCircle], ['security', MdOutlineLock], ['memberships', MdOutlineCardMembership], ['appearance', MdOutlinePalette]]);
+const TAB_ICON = new Map<Tab, IconType>([['channel', MdOutlineAccountCircle], ['security', MdOutlineLock], ['billing', MdOutlineWorkspacePremium], ['memberships', MdOutlineCardMembership], ['appearance', MdOutlinePalette]]);
 
 export default function SettingsPage() {
   const { t } = useTranslation();
@@ -47,6 +47,7 @@ export default function SettingsPage() {
       <div className="settings-content">
         {tab === 'channel' && <ChannelTab notify={showToast} />}
         {tab === 'security' && <SecurityTab notify={showToast} />}
+        {tab === 'billing' && <BillingTab notify={showToast} />}
         {tab === 'memberships' && <MembershipsTab notify={showToast} />}
         {tab === 'appearance' && <AppearanceTab />}
       </div>
@@ -267,6 +268,70 @@ function MembershipsTab({ notify }: { notify: (s: string) => void }) {
         <ConfirmDialog title={t('prefs.retireTier')} message={t('prefs.retireTierHelp', { name: removing.name })} confirmLabel={t('prefs.retireTier')} danger onClose={() => setRemoving(null)}
           onConfirm={async () => { await me.tiers.remove(removing.id); setTiers((list) => list.filter((x) => x.id !== removing.id)); setRemoving(null); }} />
       )}
+    </>
+  );
+}
+
+/** Current plan, when it renews or ends, and the Stripe portal for changing or cancelling it. */
+function BillingTab({ notify }: { notify: (text: string) => void }) {
+  const { t, i18n } = useTranslation();
+  const { user, refreshUser } = useAuth();
+  const [params, setParams] = useSearchParams();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const justPaid = params.get('billing') === 'success';
+  const plan = user?.plan;
+  const locale = i18n.resolvedLanguage === 'en' ? 'en-US' : 'vi-VN';
+
+  // The webhook may land a moment after the redirect: look again a few times before giving up.
+  useEffect(() => {
+    if (!justPaid) return undefined;
+    let tries = 0;
+    const timer = window.setInterval(() => {
+      tries += 1;
+      void refreshUser().then((u) => {
+        if (u && u.plan.id !== 'free') {
+          window.clearInterval(timer);
+          notify(t('plans.activated'));
+          setParams({ tab: 'billing' }, { replace: true });
+        } else if (tries >= 8) {
+          window.clearInterval(timer);
+        }
+      });
+    }, 2000);
+    return () => window.clearInterval(timer);
+  }, [justPaid, refreshUser, notify, setParams, t]);
+
+  const openPortal = async () => {
+    setBusy(true);
+    setError('');
+    try {
+      window.location.assign((await billing.portal()).url);
+    } catch (err) {
+      setError(errorText(t, err));
+      setBusy(false);
+    }
+  };
+
+  if (!plan) return null;
+  const paid = plan.id !== 'free';
+  const date = plan.renewsAt ? new Date(plan.renewsAt).toLocaleDateString(locale) : null;
+  return (
+    <>
+      <header className="settings-head"><h1 className="settings-title">{t('plans.settingsTitle')}</h1><p className="settings-subtitle">{t('plans.testMode')}</p></header>
+      <Section title={t('plans.yourPlan')}>
+        <p className="settings-desc"><strong>{t(`plans.names.${plan.id}`)}</strong></p>
+        {paid && date && <p className="settings-desc">{plan.cancelAtPeriodEnd ? t('plans.endsOn', { date }) : t('plans.renewsOn', { date })}</p>}
+        {justPaid && plan.id === 'free' && <p className="settings-desc">{t('plans.waiting')}</p>}
+        <p className="settings-desc">
+          {t('plans.featureUpload', { gib: Math.round(plan.limits.maxUploadBytes / 1024 ** 3) })} · {t('plans.featureTiers', { count: plan.limits.maxTiers })} · {t('plans.featureAnalytics', { days: plan.limits.analyticsDays })}
+        </p>
+        {error && <p className="settings-error" role="alert"><MdErrorOutline aria-hidden="true" /> {error}</p>}
+        <div className="settings-actions">
+          <Link to="/plans" className="btn btn-primary">{paid ? t('plans.comparePlans') : t('plans.upgrade')}</Link>
+          {paid && <button type="button" className="btn btn-outline" disabled={busy} onClick={() => void openPortal()}>{t('plans.manage')}</button>}
+        </div>
+      </Section>
     </>
   );
 }

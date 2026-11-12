@@ -13,6 +13,7 @@ import { badRequest, conflict, forbidden, notFound } from '../http/errors.js';
 import { rateLimit, requireUser } from '../http/middleware.js';
 import { IMAGE_MAX_BYTES, IMAGE_TYPES, imageUploadKey, sniffImage } from '../services/images.js';
 import { selfView, type UserDoc } from '../model/user.js';
+import { entitlements } from '../billing/plans.js';
 import type { Chapter, VideoDoc } from '../model/video.js';
 import { decodeCursor, encodeCursor, videoViews } from './videos.js';
 import { GRANT_TTL_SEC } from './uploads.js';
@@ -106,14 +107,14 @@ export const studioFeature: Feature = (r, deps) => {
     const path = await takeImage(deps, req, (ext, id) => `images/users/${req.user?.id}/avatar-${id}.${ext}`);
     const u = await users.findOneAndUpdate({ _id: new ObjectId(req.user?.id) }, { $set: { avatar: `${deps.cdn.baseUrl}/${path}`, updatedAt: now() } }, { returnDocument: 'after' });
     if (!u) throw notFound('Account');
-    res.json({ user: selfView(u) });
+    res.json({ user: selfView(u, now()) });
   });
 
   r.put('/me/banner', requireUser, async (req, res) => {
     const path = await takeImage(deps, req, (ext, id) => `images/users/${req.user?.id}/banner-${id}.${ext}`);
     const u = await users.findOneAndUpdate({ _id: new ObjectId(req.user?.id) }, { $set: { banner: `${deps.cdn.baseUrl}/${path}`, updatedAt: now() } }, { returnDocument: 'after' });
     if (!u) throw notFound('Account');
-    res.json({ user: selfView(u) });
+    res.json({ user: selfView(u, now()) });
   });
 
   r.put('/videos/:id/thumbnail', requireUser, async (req, res) => {
@@ -217,8 +218,16 @@ export const studioFeature: Feature = (r, deps) => {
 
   // Analytics ---------------------------------------------------------------------------------
 
+  /** The longest analytics window the signed-in user's plan allows; the request is clamped to it. */
+  async function analyticsWindow(req: Request, asked: number): Promise<{ days: number; limit: number }> {
+    const u = await users.findOne({ _id: new ObjectId(req.user?.id) }, { projection: { createdAt: 1, billing: 1 } });
+    const limit = entitlements(u ?? { createdAt: now() }, now()).analyticsDays;
+    return { days: Math.min(asked, limit), limit };
+  }
+
   r.get('/videos/:id/analytics', requireUser, async (req, res) => {
-    const { days } = daysQuery.parse(req.query);
+    const { days: asked } = daysQuery.parse(req.query);
+    const { days } = await analyticsWindow(req, asked);
     const v = await ownVideo(videos, req);
     const since = new Date(now().getTime() - days * 86_400_000).toISOString().slice(0, 10);
     const rows = await db.collection('analyticsDaily').find({ video: v._id, date: { $gte: since } }).sort({ date: 1 }).toArray();
@@ -231,7 +240,8 @@ export const studioFeature: Feature = (r, deps) => {
   });
 
   r.get('/me/analytics', requireUser, async (req, res) => {
-    const { days } = daysQuery.parse(req.query);
+    const { days: asked } = daysQuery.parse(req.query);
+    const { days } = await analyticsWindow(req, asked);
     const owner = new ObjectId(req.user?.id);
     const since = new Date(now().getTime() - days * 86_400_000).toISOString().slice(0, 10);
     const [perDay, top, subscribers] = await Promise.all([

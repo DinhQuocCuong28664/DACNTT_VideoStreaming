@@ -25,6 +25,7 @@ import { dynamoActivity } from './services/activity.js';
 import { eventBridgeScheduler } from './services/scheduler.js';
 import { rekognitionScreener } from './services/images.js';
 import { atlasSearch, ensureSearchIndexes } from './services/search.js';
+import { disabledBilling, stripeBilling } from './services/billing.js';
 
 const log: Log = (entry) => console.log(JSON.stringify(entry));
 
@@ -75,6 +76,9 @@ async function init(): Promise<Handler> {
     scheduler: eventBridgeScheduler(config.schedule),
     screenImage: rekognitionScreener(),
     search: atlasSearch(db),
+    billing: config.secrets.stripeSecretKey && config.secrets.stripeWebhookSecret
+      ? stripeBilling(config.secrets.stripeSecretKey, config.secrets.stripeWebhookSecret)
+      : disabledBilling,
     cdn: cloudFrontCdn(config.cdnBaseUrl, config.secrets.cloudfrontKeyPairId, config.secrets.cloudfrontPrivateKey),
   }, FEATURES);
   return serverlessExpress({ app, binarySettings: { contentTypes: ['application/octet-stream', 'image/*'] } }) as unknown as Handler;

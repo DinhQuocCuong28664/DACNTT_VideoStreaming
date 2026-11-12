@@ -17,6 +17,7 @@ import type { Activity } from './services/activity.js';
 import type { Scheduler } from './services/scheduler.js';
 import type { ImageScreener } from './services/images.js';
 import type { Search } from './services/search.js';
+import type { Billing } from './services/billing.js';
 import { errorHandler, notFoundHandler } from './http/errors.js';
 import { authenticate, cors, originVerify, rateLimit, type Sessions } from './http/middleware.js';
 
@@ -39,6 +40,7 @@ export interface Deps {
   scheduler: Scheduler;
   screenImage: ImageScreener;
   search: Search;
+  billing: Billing;
 }
 
 /** A feature module adds its routes to the /v1 router. */
@@ -62,7 +64,11 @@ export function createApp(deps: Deps, features: readonly Feature[] = []): expres
   app.get('/health', (_req, res) => { res.json({ ok: true }); });
 
   const v1 = Router();
-  v1.use(express.json({ limit: '64kb' }));
+  // The Stripe webhook is verified against the exact bytes, so keep them for that one path.
+  v1.use(express.json({
+    limit: '64kb',
+    verify: (req, _res, buf) => { if (req.url === '/billing/webhook') (req as unknown as { rawBody: Buffer }).rawBody = buf; },
+  }));
   v1.use(authenticate(deps.tokens, deps.sessions));
   v1.use(rateLimit(deps.kv, config.tables.rateLimits, GLOBAL_LIMIT, deps.now));
   v1.get('/health', (_req, res) => { res.json({ ok: true, env: config.env }); });

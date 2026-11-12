@@ -106,7 +106,10 @@ Only needed when building an environment from nothing. `cutover.md` shows the pr
    - `zelos-<env>/api`, a JSON object with `mongodbUri`, `jwtSecret`, `originSecret`,
      `googleClientId`, `cloudfrontKeyPairId` (`terraform output cdn_key_pair_id`),
      `cloudfrontPrivateKey` (the private half of `cdn-signing-public.pem`, kept outside the
-     repository), `smtpUser`, `smtpPassword`.
+     repository), `smtpUser`, `smtpPassword`, and for payments `stripeSecretKey` (`sk_test_...` in
+     staging and in prod until payments go live) and `stripeWebhookSecret` (`whsec_...`). Without
+     the two Stripe keys the billing routes answer 503 `BILLING_DISABLED` and `/plans` shows
+     that payments are off.
    - `zelos-<env>/mongodb-uri`, the same connection string, for the workflow functions.
 5. MongoDB Atlas: one cluster per environment, network access `0.0.0.0/0` (the functions run
    outside a VPC). Atlas is not managed by Terraform.
@@ -227,6 +230,24 @@ The script:
 4. Invalidates `/*`.
 
 Old hashed assets are not deleted, so tabs opened before the deploy keep working.
+
+### 5.6a Stripe (payments, only when they are switched on)
+
+Use a Stripe sandbox of its own for VidShare (not one shared with another project), in test mode.
+
+1. Dashboard, Developers, Webhooks, add an endpoint `https://<api host>/v1/billing/webhook` with
+   the events `checkout.session.completed`, `customer.subscription.created`,
+   `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_failed`.
+   Copy its signing secret into `stripeWebhookSecret`; copy the secret key into `stripeSecretKey`.
+2. Settings, Billing, Customer portal: activate it (cancel subscription on, update payment method on).
+   `POST /v1/billing/portal` fails until the portal is saved once.
+3. Re-run the Lambda deploy so the cold start reads the new secret, then buy Plus with the test
+   card `4242 4242 4242 4242` and check that `GET /v1/billing` shows the plan.
+4. Locally, `stripe listen --forward-to localhost:<port>/v1/billing/webhook` prints a temporary
+   signing secret for `stripeWebhookSecret`.
+
+Going live later is a different decision: it needs a legal entity, the e-commerce notification
+(Law 122/2025) and refund and complaint policies on the site.
 
 ### 5.7 Seed (new environment or on demand)
 
