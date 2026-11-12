@@ -99,15 +99,22 @@
 /* Thanh tiến trình */
 .player-progress-container {
   position: relative;
-  height: 3px;
-  border-radius: 0;
+  height: 5px;
+  border-radius: 3px;
   cursor: pointer;
   margin-bottom: 10px;
   transition: height var(--transition-fast);
 }
 
+/* A taller invisible hit area: the visible bar stays slim, the target is easy to hit. */
+.player-progress-container::before {
+  content: '';
+  position: absolute;
+  inset: -10px 0;
+}
+
 .player-progress-container:hover {
-  height: 6px;
+  height: 8px;
 }
 
 .player-progress-track,
@@ -117,6 +124,7 @@
   top: 0;
   left: 0;
   height: 100%;
+  border-radius: inherit;
 }
 
 .player-progress-track {
@@ -135,8 +143,8 @@
 .player-progress-thumb {
   position: absolute;
   top: 50%;
-  width: 13px;
-  height: 13px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
   background: var(--brand);
   transform: translate(-50%, -50%) scale(0);
@@ -228,10 +236,49 @@
 }
 
 .volume-slider {
-  width: 72px;
-  height: 3px;
-  accent-color: #ffffff;
+  --fill: 100%;
+  appearance: none;
+  -webkit-appearance: none;
+  width: 90px;
+  height: 18px;
+  margin: 0;
+  background: transparent;
   cursor: pointer;
+}
+
+.volume-slider::-webkit-slider-runnable-track {
+  height: 5px;
+  border-radius: 3px;
+  background: linear-gradient(to right, #ffffff var(--fill), rgba(255, 255, 255, 0.35) var(--fill));
+}
+
+.volume-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  margin-top: -4.5px;
+  border-radius: 50%;
+  background: #ffffff;
+}
+
+.volume-slider::-moz-range-track {
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.volume-slider::-moz-range-progress {
+  height: 5px;
+  border-radius: 3px;
+  background: #ffffff;
+}
+
+.volume-slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border: none;
+  border-radius: 50%;
+  background: #ffffff;
 }
 
 .time-display {
@@ -425,7 +472,7 @@
   }
 
   .volume-slider {
-    width: 44px;
+    width: 56px;
   }
 
   .time-display {
