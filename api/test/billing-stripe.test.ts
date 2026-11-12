@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import Stripe from 'stripe';
+import { secretSchema } from '../src/config.js';
 import { stripeBilling } from '../src/services/billing.js';
 
 const SECRET = 'whsec_test_secret';
@@ -10,6 +11,18 @@ function signed(payload: object) {
   const body = JSON.stringify(payload);
   return { raw: Buffer.from(body), header: signer.webhooks.generateTestHeaderString({ payload: body, secret: SECRET }) };
 }
+
+describe('Stripe secrets in the config', () => {
+  const base = { mongodbUri: 'mongodb://x', jwtSecret: 'j'.repeat(40), originSecret: 'o'.repeat(40) };
+
+  it('accepts a secret key and a restricted key, and refuses anything else', () => {
+    expect(secretSchema.safeParse({ ...base, stripeSecretKey: 'sk_test_abc', stripeWebhookSecret: 'whsec_abc' }).success).toBe(true);
+    expect(secretSchema.safeParse({ ...base, stripeSecretKey: 'rk_test_abc' }).success).toBe(true);
+    expect(secretSchema.safeParse({ ...base, stripeSecretKey: 'pk_test_abc' }).success).toBe(false);
+    expect(secretSchema.safeParse({ ...base, stripeWebhookSecret: 'abc' }).success).toBe(false);
+    expect(secretSchema.safeParse(base).success).toBe(true);
+  });
+});
 
 describe('Stripe gateway', () => {
   it('refuses a payload whose signature does not match', () => {
