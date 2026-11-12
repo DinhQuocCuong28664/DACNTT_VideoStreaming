@@ -30,7 +30,7 @@ const get = (path: string, token?: string) => {
   return token ? r.set('authorization', `Bearer ${token}`) : r;
 };
 const register = (email = 'an@example.com', extra: object = {}) =>
-  post('/auth/register', { email, password: GOOD, displayName: 'An Nguyễn', ...extra });
+  post('/auth/register', { email, password: GOOD, displayName: 'An Nguyễn', birthDate: '1990-01-01', ...extra });
 const linkFrom = (text: string) => /token=([\w-]+)/.exec(text)?.[1] ?? '';
 
 describe('password rules', () => {
@@ -83,12 +83,32 @@ describe('register and sign in', () => {
   });
 
   it('refuses weak and breached passwords with a reason', async () => {
-    const weak = await post('/auth/register', { email: 'b@example.com', password: 'password1', displayName: 'B' });
+    const weak = await post('/auth/register', { email: 'b@example.com', password: 'password1', displayName: 'B', birthDate: '1990-01-01' });
     expect(weak.status).toBe(400);
     expect(weak.body.error).toMatchObject({ code: 'WEAK_PASSWORD', details: { reason: 'common' } });
     ctx.breached.set(GOOD, 12);
     const breached = await register('c@example.com');
     expect(breached.body.error.details.reason).toBe('breached');
+  });
+
+  it('refuses a sign-up under the minimum age and stores no birth date', async () => {
+    // The test clock is fixed at 2026-11-02: born 2014-11-03 is 11 years old, 2014-11-02 is exactly 12.
+    const young = await register('kid@example.com', { birthDate: '2014-11-03' });
+    expect(young.status).toBe(403);
+    expect(young.body.error.code).toBe('UNDER_MIN_AGE');
+    expect(await db.collection('users').countDocuments({ email: 'kid@example.com' })).toBe(0);
+
+    const ok = await register('teen@example.com', { birthDate: '2014-11-02' });
+    expect(ok.status).toBe(201);
+    expect(await db.collection('users').findOne({ email: 'teen@example.com' })).not.toHaveProperty('birthDate');
+  });
+
+  it('refuses a missing, malformed or impossible birth date', async () => {
+    expect((await register('m1@example.com', { birthDate: undefined })).status).toBe(400);
+    expect((await register('m2@example.com', { birthDate: '12/11/2010' })).status).toBe(400);
+    const impossible = await register('m3@example.com', { birthDate: '2010-02-30' });
+    expect(impossible.status).toBe(400);
+    expect(impossible.body.error.code).toBe('INVALID_BIRTH_DATE');
   });
 
   it('lets registration through when the breach service is down', async () => {

@@ -41,7 +41,7 @@
               "Show your channel to others"
             ],
             [
-              "Videos, thumbnails, comments, playlists, channel subscriptions",
+              "Videos, thumbnails, comments, playlists, channel subscriptions, channel memberships (tier, start and end dates, cancellation status)",
               "When you upload or interact",
               "Provide the video sharing service"
             ],
@@ -146,7 +146,7 @@
       {
         "heading": "8. Young users",
         "paragraphs": [
-          "VidShare is only for people aged 12 or over. When you sign up with e-mail you enter your date of birth so the age can be checked; it is checked in your browser only and is neither sent nor stored. When you sign in with Google you confirm your age yourself. If we find an account of someone under 12, we delete it. A parent or legal representative exercises the child's rights. Publishing private-life information of a child aged 7 or over needs the consent of both the child and the representative."
+          "VidShare is only for people aged 12 or over. When you sign up with e-mail you enter your date of birth so the age can be checked; it is sent to our server only to check the age (in your browser and on the server) and is not stored. When you sign in with Google you confirm your age yourself. If we find an account of someone under 12, we delete it. A parent or legal representative exercises the child's rights. Publishing private-life information of a child aged 7 or over needs the consent of both the child and the representative."
         ]
       },
       {
@@ -207,6 +207,7 @@
       {
         "heading": "6. Disclaimer and changes",
         "paragraphs": [
+          "Channel memberships currently run in a sandbox checkout: VidShare charges no money and neither asks for nor stores card or bank details. If real payments are switched on later, we will update these terms and the privacy policy before they apply.",
           "The service is provided \"as is\" for learning purposes, with no promise of continuous availability. We may change these terms and will announce it on the site; if a change affects personal data we ask for consent again."
         ]
       },

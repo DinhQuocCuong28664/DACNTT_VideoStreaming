@@ -782,6 +782,8 @@
     "INVALID_CREDENTIALS": "Email hoặc mật khẩu không đúng.",
     "EMAIL_TAKEN": "Email này đã được dùng cho một tài khoản khác.",
     "HANDLE_TAKEN": "Tên kênh này không dùng được.",
+    "UNDER_MIN_AGE": "VidShare chỉ dành cho người từ đủ 12 tuổi.",
+    "INVALID_BIRTH_DATE": "Hãy nhập ngày sinh hợp lệ.",
     "WEAK_PASSWORD": "Mật khẩu quá yếu.",
     "INVALID_TOKEN": "Liên kết không hợp lệ hoặc đã hết hạn.",
     "ACCOUNT_EXISTS": "Đã có tài khoản dùng email này. Hãy đăng nhập rồi liên kết Google trong Cài đặt.",

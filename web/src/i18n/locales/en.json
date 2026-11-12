@@ -786,6 +786,8 @@
     "INVALID_CREDENTIALS": "The e-mail or password is wrong.",
     "EMAIL_TAKEN": "This e-mail already belongs to another account.",
     "HANDLE_TAKEN": "This handle is not available.",
+    "UNDER_MIN_AGE": "VidShare is only for people aged 12 or over.",
+    "INVALID_BIRTH_DATE": "Enter a valid date of birth.",
     "WEAK_PASSWORD": "The password is too weak.",
     "INVALID_TOKEN": "This link is invalid or has expired.",
     "ACCOUNT_EXISTS": "An account with this e-mail exists. Sign in and link Google in Settings.",

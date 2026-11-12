@@ -101,7 +101,7 @@ export function RegisterPage() {
     setBusy(true);
     try {
       const handle = form.values.handle.trim().replace(/^@/, '').toLowerCase();
-      await register({ email: form.values.email, password: form.values.password, displayName: form.values.displayName, ...(handle ? { handle } : {}) });
+      await register({ email: form.values.email, password: form.values.password, displayName: form.values.displayName, birthDate: form.values.birthDate, ...(handle ? { handle } : {}) });
       done();
     } catch (err) {
       form.setError(errorText(t, err));

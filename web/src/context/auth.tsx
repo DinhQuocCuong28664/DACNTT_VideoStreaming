@@ -17,7 +17,7 @@ interface AuthValue {
   login(email: string, password: string): Promise<User>;
   loginWithGoogle(idToken: string): Promise<User>;
   linkGoogle(idToken: string): Promise<User>;
-  register(input: { email: string; password: string; displayName: string; handle?: string }): Promise<User>;
+  register(input: { email: string; password: string; displayName: string; birthDate: string; handle?: string }): Promise<User>;
   /** Stores a session returned by reset or change password. */
   adopt(session: Session): User;
   updateUser(user: User): void;

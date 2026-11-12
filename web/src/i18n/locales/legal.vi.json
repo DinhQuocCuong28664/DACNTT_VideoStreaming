@@ -41,7 +41,7 @@
               "Hiển thị kênh của bạn cho người khác"
             ],
             [
-              "Video, ảnh thu nhỏ, bình luận, danh sách phát, lượt đăng ký kênh",
+              "Video, ảnh thu nhỏ, bình luận, danh sách phát, lượt đăng ký kênh, gói hội viên kênh (cấp độ, ngày bắt đầu, ngày hết hạn, trạng thái hủy)",
               "Khi bạn tải lên hoặc tương tác",
               "Cung cấp dịch vụ chia sẻ video"
             ],
@@ -146,7 +146,7 @@
       {
         "heading": "8. Người dùng nhỏ tuổi",
         "paragraphs": [
-          "VidShare chỉ dành cho người từ đủ 12 tuổi. Khi đăng ký bằng email, bạn nhập ngày sinh để hệ thống kiểm tra độ tuổi; ngày sinh chỉ được kiểm tra trên trình duyệt của bạn và không được gửi đi hay lưu. Khi đăng nhập bằng Google, bạn tự xác nhận đã đủ tuổi. Nếu phát hiện tài khoản của người chưa đủ 12 tuổi, chúng tôi sẽ xóa tài khoản đó. Cha mẹ hoặc người đại diện thực hiện các quyền thay cho trẻ. Việc công bố thông tin đời sống riêng tư của trẻ từ đủ 7 tuổi cần sự đồng ý của cả trẻ và người đại diện."
+          "VidShare chỉ dành cho người từ đủ 12 tuổi. Khi đăng ký bằng email, bạn nhập ngày sinh để hệ thống kiểm tra độ tuổi; ngày sinh được gửi tới máy chủ chỉ để kiểm tra độ tuổi (cả trên trình duyệt lẫn trên máy chủ) và không được lưu. Khi đăng nhập bằng Google, bạn tự xác nhận đã đủ tuổi. Nếu phát hiện tài khoản của người chưa đủ 12 tuổi, chúng tôi sẽ xóa tài khoản đó. Cha mẹ hoặc người đại diện thực hiện các quyền thay cho trẻ. Việc công bố thông tin đời sống riêng tư của trẻ từ đủ 7 tuổi cần sự đồng ý của cả trẻ và người đại diện."
         ]
       },
       {
@@ -207,6 +207,7 @@
       {
         "heading": "6. Miễn trừ và thay đổi",
         "paragraphs": [
+          "Gói hội viên kênh hiện chạy ở chế độ thanh toán thử nghiệm (sandbox): VidShare không thu tiền, không yêu cầu và không lưu thông tin thẻ hay tài khoản ngân hàng. Nếu sau này bật thanh toán thật, chúng tôi sẽ cập nhật điều khoản và chính sách trước khi áp dụng.",
           "Dịch vụ cung cấp trên cơ sở \"như hiện có\", phục vụ mục đích học tập, không cam kết hoạt động liên tục. Chúng tôi có thể sửa điều khoản và sẽ thông báo trên site; khi thay đổi ảnh hưởng tới dữ liệu cá nhân, chúng tôi xin lại đồng ý."
         ]
       },
