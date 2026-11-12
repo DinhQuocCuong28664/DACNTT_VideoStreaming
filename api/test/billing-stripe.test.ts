@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import Stripe from 'stripe';
+import { secretSchema } from '../src/config.js';
 import { stripeBilling } from '../src/services/billing.js';
 
 const SECRET = 'whsec_test_secret';
@@ -10,6 +11,18 @@ function signed(payload: object) {
   const body = JSON.stringify(payload);
   return { raw: Buffer.from(body), header: signer.webhooks.generateTestHeaderString({ payload: body, secret: SECRET }) };
 }
+
+describe('Stripe secrets in the config', () => {
+  const base = { mongodbUri: 'mongodb://x', jwtSecret: 'j'.repeat(40), originSecret: 'o'.repeat(40) };
+
+  it('accepts a secret key and a restricted key, and refuses anything else', () => {
+    expect(secretSchema.safeParse({ ...base, stripeSecretKey: 'sk_test_abc', stripeWebhookSecret: 'whsec_abc' }).success).toBe(true);
+    expect(secretSchema.safeParse({ ...base, stripeSecretKey: 'rk_test_abc' }).success).toBe(true);
+    expect(secretSchema.safeParse({ ...base, stripeSecretKey: 'pk_test_abc' }).success).toBe(false);
+    expect(secretSchema.safeParse({ ...base, stripeWebhookSecret: 'abc' }).success).toBe(false);
+    expect(secretSchema.safeParse(base).success).toBe(true);
+  });
+});
 
 describe('Stripe gateway', () => {
   it('refuses a payload whose signature does not match', () => {
@@ -30,6 +43,14 @@ describe('Stripe gateway', () => {
       id: 'evt_2', created: 1_800_000_000, type: 'subscription', userId: '6af5494fcbf01de85ebfea13', customerId: 'cus_9',
       subscriptionId: 'sub_9', plan: 'pro', status: 'active', currentPeriodEnd: new Date(1_802_592_000 * 1000), cancelAtPeriodEnd: true,
     });
+  });
+
+  it('sees a cancellation that newer API versions express as cancel_at, with cancel_at_period_end false', () => {
+    const base = { id: 'sub_9', customer: 'cus_9', status: 'active', metadata: { plan: 'plus' }, items: { data: [{ current_period_end: 1_802_592_000 }] } };
+    const cancelled = signed({ id: 'evt_c', object: 'event', type: 'customer.subscription.updated', created: 3, data: { object: { ...base, cancel_at_period_end: false, cancel_at: 1_802_592_000, canceled_at: 2 } } });
+    expect(gateway.parseWebhook(cancelled.raw, cancelled.header)).toMatchObject({ type: 'subscription', status: 'active', cancelAtPeriodEnd: true });
+    const renewing = signed({ id: 'evt_r', object: 'event', type: 'customer.subscription.updated', created: 4, data: { object: { ...base, cancel_at_period_end: false, cancel_at: null } } });
+    expect(gateway.parseWebhook(renewing.raw, renewing.header)).toMatchObject({ cancelAtPeriodEnd: false });
   });
 
   it('marks a deleted subscription canceled and reads an older top-level period end', () => {

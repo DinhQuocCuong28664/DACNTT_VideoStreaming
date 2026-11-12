@@ -53,6 +53,14 @@ function periodEnd(sub: Obj): Date | null {
   return typeof seconds === 'number' ? new Date(seconds * 1000) : null;
 }
 
+/**
+ * A subscription that will end instead of renewing. Older API versions set `cancel_at_period_end`;
+ * newer ones (flexible billing, which the customer portal uses) leave it false and set `cancel_at`.
+ */
+function cancelsLater(sub: Obj): boolean {
+  return sub['cancel_at_period_end'] === true || typeof sub['cancel_at'] === 'number';
+}
+
 function normalise(event: Stripe.Event): BillingEvent {
   const base = { id: event.id, created: event.created };
   const obj = event.data.object as unknown as Obj;
@@ -73,7 +81,7 @@ function normalise(event: Stripe.Event): BillingEvent {
         userId: str(meta['userId']), customerId: idOf(obj['customer']), subscriptionId: str(obj['id']) ?? '',
         plan: isPaidPlan(plan) ? plan : null,
         status: event.type === 'customer.subscription.deleted' ? 'canceled' : (str(obj['status']) ?? 'incomplete'),
-        currentPeriodEnd: periodEnd(obj), cancelAtPeriodEnd: obj['cancel_at_period_end'] === true,
+        currentPeriodEnd: periodEnd(obj), cancelAtPeriodEnd: cancelsLater(obj),
       };
     }
     case 'invoice.payment_failed':

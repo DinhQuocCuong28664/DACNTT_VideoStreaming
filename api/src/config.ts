@@ -48,8 +48,8 @@ export const secretSchema = z.object({
   cloudfrontPrivateKey: z.string().optional(),
   smtpUser: z.string().optional(),
   smtpPassword: z.string().optional(),
-  /** Stripe secret key and the signing secret of the webhook endpoint; both unset disables billing. */
-  stripeSecretKey: z.string().startsWith('sk_').optional(),
+  /** Stripe secret key (`sk_`) or restricted key (`rk_`) and the signing secret of the webhook endpoint; both unset disables billing. */
+  stripeSecretKey: z.string().regex(/^[sr]k_(test|live)_/).optional(),
   stripeWebhookSecret: z.string().startsWith('whsec_').optional(),
 });
 
