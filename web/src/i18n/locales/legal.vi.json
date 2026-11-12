@@ -7,8 +7,8 @@
       {
         "heading": "1. Chúng tôi là ai",
         "paragraphs": [
-          "VidShare (zelostech.site) là sản phẩm của đồ án Dự án CNTT, Khoa Công nghệ thông tin, Trường Đại học Tôn Đức Thắng, do nhóm Đinh Quốc Cường và Võ Huỳnh Minh Đức thực hiện. Nhóm là bên kiểm soát dữ liệu cá nhân thu thập qua trang web này.",
-          "Email tiếp nhận yêu cầu về dữ liệu cá nhân: privacy@zelostech.site. Địa chỉ: [FILL: địa chỉ hoặc đơn vị]. Mã số đăng ký (nếu có): [FILL]."
+          "VidShare (zelostech.site) là sản phẩm của đồ án Dự án CNTT, Khoa Công nghệ thông tin, Trường Đại học Tôn Đức Thắng, do hai cá nhân Đinh Quốc Cường và Võ Huỳnh Minh Đức thực hiện. Hai cá nhân này là bên kiểm soát dữ liệu cá nhân thu thập qua trang web này; hiện chưa có pháp nhân hay mã số đăng ký kinh doanh.",
+          "Email tiếp nhận yêu cầu về dữ liệu cá nhân: privacy@zelostech.site."
         ]
       },
       {
@@ -120,8 +120,8 @@
       {
         "heading": "5. Lưu trữ và chuyển dữ liệu ra nước ngoài",
         "paragraphs": [
-          "Dữ liệu được lưu trên hạ tầng Amazon Web Services tại Singapore (ap-southeast-1) và cụm MongoDB Atlas [CHECK: khu vực của cụm]. Đây là việc chuyển dữ liệu cá nhân xuyên biên giới.",
-          "Chúng tôi giữ dữ liệu tài khoản tới khi bạn yêu cầu xóa. Thông báo trong ứng dụng tự xóa sau 90 ngày. Các thời hạn khác: [FILL: thời gian lưu lịch sử xem, nhật ký, bản sao lưu]."
+          "Dữ liệu được lưu trên hạ tầng Amazon Web Services tại Singapore (ap-southeast-1) và cụm MongoDB Atlas trên AWS tại Hồng Kông (ap-east-1). Đây là việc chuyển dữ liệu cá nhân xuyên biên giới.",
+          "Chúng tôi giữ dữ liệu tài khoản tới khi bạn yêu cầu xóa. Thông báo trong ứng dụng tự xóa sau 90 ngày. Lịch sử xem được giữ tới khi bạn xóa hoặc xóa tài khoản. Nhật ký hệ thống được giữ 30 ngày. Hiện chúng tôi không giữ bản sao lưu riêng của cơ sở dữ liệu."
         ]
       },
       {
@@ -146,7 +146,7 @@
       {
         "heading": "8. Người dùng nhỏ tuổi",
         "paragraphs": [
-          "VidShare không dành cho trẻ em dưới 13 tuổi [CHECK: ngưỡng tuổi do nhóm quyết định]. Cha mẹ hoặc người đại diện thực hiện các quyền thay cho trẻ. Việc công bố thông tin đời sống riêng tư của trẻ từ đủ 7 tuổi cần sự đồng ý của cả trẻ và người đại diện."
+          "VidShare không dành cho trẻ em dưới 13 tuổi. Cha mẹ hoặc người đại diện thực hiện các quyền thay cho trẻ. Việc công bố thông tin đời sống riêng tư của trẻ từ đủ 7 tuổi cần sự đồng ý của cả trẻ và người đại diện."
         ]
       },
       {

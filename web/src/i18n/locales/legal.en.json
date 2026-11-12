@@ -7,8 +7,8 @@
       {
         "heading": "1. Who we are",
         "paragraphs": [
-          "VidShare (zelostech.site) is the product of an IT Project course at the Faculty of Information Technology, Ton Duc Thang University, built by Dinh Quoc Cuong and Vo Huynh Minh Duc. The team controls the personal data collected through this website.",
-          "Contact e-mail for data requests: privacy@zelostech.site. Address: [FILL: address or unit]. Registration number (if any): [FILL]."
+          "VidShare (zelostech.site) is the product of an IT Project course at the Faculty of Information Technology, Ton Duc Thang University, built by the two individuals Dinh Quoc Cuong and Vo Huynh Minh Duc. These two individuals control the personal data collected through this website; there is no legal entity or business registration number yet.",
+          "Contact e-mail for data requests: privacy@zelostech.site."
         ]
       },
       {
@@ -120,8 +120,8 @@
       {
         "heading": "5. Storage and cross-border transfer",
         "paragraphs": [
-          "Data is stored on Amazon Web Services in Singapore (ap-southeast-1) and a MongoDB Atlas cluster [CHECK: cluster region]. This is a cross-border transfer of personal data.",
-          "We keep account data until you ask us to delete it. In-app notifications are deleted after 90 days. Other periods: [FILL: retention for watch history, logs, backups]."
+          "Data is stored on Amazon Web Services in Singapore (ap-southeast-1) and a MongoDB Atlas cluster on AWS in Hong Kong (ap-east-1). This is a cross-border transfer of personal data.",
+          "We keep account data until you ask us to delete it. In-app notifications are deleted after 90 days. Watch history is kept until you delete it or delete your account. System logs are kept for 30 days. We do not currently keep separate database backups."
         ]
       },
       {
@@ -146,7 +146,7 @@
       {
         "heading": "8. Young users",
         "paragraphs": [
-          "VidShare is not intended for children under 13 [CHECK: age threshold to be decided by the team]. A parent or legal representative exercises the child's rights. Publishing private-life information of a child aged 7 or over needs the consent of both the child and the representative."
+          "VidShare is not intended for children under 13. A parent or legal representative exercises the child's rights. Publishing private-life information of a child aged 7 or over needs the consent of both the child and the representative."
         ]
       },
       {
