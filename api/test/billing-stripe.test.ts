@@ -45,6 +45,14 @@ describe('Stripe gateway', () => {
     });
   });
 
+  it('sees a cancellation that newer API versions express as cancel_at, with cancel_at_period_end false', () => {
+    const base = { id: 'sub_9', customer: 'cus_9', status: 'active', metadata: { plan: 'plus' }, items: { data: [{ current_period_end: 1_802_592_000 }] } };
+    const cancelled = signed({ id: 'evt_c', object: 'event', type: 'customer.subscription.updated', created: 3, data: { object: { ...base, cancel_at_period_end: false, cancel_at: 1_802_592_000, canceled_at: 2 } } });
+    expect(gateway.parseWebhook(cancelled.raw, cancelled.header)).toMatchObject({ type: 'subscription', status: 'active', cancelAtPeriodEnd: true });
+    const renewing = signed({ id: 'evt_r', object: 'event', type: 'customer.subscription.updated', created: 4, data: { object: { ...base, cancel_at_period_end: false, cancel_at: null } } });
+    expect(gateway.parseWebhook(renewing.raw, renewing.header)).toMatchObject({ cancelAtPeriodEnd: false });
+  });
+
   it('marks a deleted subscription canceled and reads an older top-level period end', () => {
     const { raw, header } = signed({
       id: 'evt_3', object: 'event', type: 'customer.subscription.deleted', created: 5,
