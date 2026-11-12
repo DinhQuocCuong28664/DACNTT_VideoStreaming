@@ -1,0 +1,221 @@
+{
+  "privacy": {
+    "title": "Chính sách bảo vệ dữ liệu cá nhân",
+    "updated": "Cập nhật lần cuối: 12/11/2026 · Phiên bản 1.0",
+    "draftNote": "Bản nháp, cần người có chuyên môn pháp lý xem lại trước khi áp dụng chính thức.",
+    "sections": [
+      {
+        "heading": "1. Chúng tôi là ai",
+        "paragraphs": [
+          "VidShare (zelostech.site) là sản phẩm của đồ án Dự án CNTT, Khoa Công nghệ thông tin, Trường Đại học Tôn Đức Thắng, do nhóm Đinh Quốc Cường và Võ Huỳnh Minh Đức thực hiện. Nhóm là bên kiểm soát dữ liệu cá nhân thu thập qua trang web này.",
+          "Email tiếp nhận yêu cầu về dữ liệu cá nhân: [FILL: email liên hệ]. Địa chỉ: [FILL: địa chỉ hoặc đơn vị]. Mã số đăng ký (nếu có): [FILL]."
+        ]
+      },
+      {
+        "heading": "2. Dữ liệu chúng tôi thu thập và mục đích",
+        "table": {
+          "head": [
+            "Dữ liệu",
+            "Khi nào thu",
+            "Dùng để làm gì"
+          ],
+          "rows": [
+            [
+              "Email, tên hiển thị, tên người dùng (handle)",
+              "Khi bạn đăng ký",
+              "Tạo và quản lý tài khoản, gửi email xác minh và đặt lại mật khẩu"
+            ],
+            [
+              "Mật khẩu (chỉ lưu dạng băm)",
+              "Khi bạn đăng ký bằng mật khẩu",
+              "Đăng nhập"
+            ],
+            [
+              "Mã định danh tài khoản Google, email Google",
+              "Khi bạn đăng nhập bằng Google",
+              "Đăng nhập, liên kết tài khoản"
+            ],
+            [
+              "Ảnh đại diện, ảnh bìa, mô tả kênh",
+              "Khi bạn tự cập nhật hồ sơ",
+              "Hiển thị kênh của bạn cho người khác"
+            ],
+            [
+              "Video, ảnh thu nhỏ, bình luận, danh sách phát, lượt đăng ký kênh",
+              "Khi bạn tải lên hoặc tương tác",
+              "Cung cấp dịch vụ chia sẻ video"
+            ],
+            [
+              "Tiến độ xem, lịch sử xem, lượt xem",
+              "Khi bạn xem video",
+              "Tiếp tục xem dở, tính lượt xem hợp lệ, đề xuất nội dung"
+            ],
+            [
+              "Thông báo trong ứng dụng",
+              "Khi có hoạt động liên quan tới bạn",
+              "Báo tin cho bạn; tự xóa sau 90 ngày"
+            ],
+            [
+              "Dữ liệu kỹ thuật để chống lạm dụng (bộ đếm giới hạn tần suất)",
+              "Khi bạn gọi các chức năng của site",
+              "Bảo vệ hệ thống khỏi spam và tấn công [CHECK: khóa đếm có dùng địa chỉ IP không, và thời gian lưu]"
+            ],
+            [
+              "Báo cáo vi phạm và kháng nghị",
+              "Khi bạn hoặc người khác gửi",
+              "Xử lý kiểm duyệt nội dung"
+            ]
+          ]
+        },
+        "paragraphs": [
+          "Chúng tôi không dùng dữ liệu cho mục đích khác ngoài bảng trên nếu chưa hỏi ý kiến bạn."
+        ]
+      },
+      {
+        "heading": "3. Kiểm duyệt nội dung tự động",
+        "paragraphs": [
+          "Ảnh đại diện, ảnh bìa và video bạn tải lên được dịch vụ Amazon Rekognition kiểm tra tự động để phát hiện nội dung không phù hợp. Nếu dịch vụ không trả về kết quả thì nội dung không được hiển thị. Bạn có thể kháng nghị quyết định kiểm duyệt trong trang Studio."
+        ]
+      },
+      {
+        "heading": "4. Bên thứ ba nhận dữ liệu",
+        "table": {
+          "head": [
+            "Bên nhận",
+            "Dữ liệu",
+            "Lý do"
+          ],
+          "rows": [
+            [
+              "Amazon Web Services (S3, CloudFront, Lambda, DynamoDB, Rekognition, Batch)",
+              "Toàn bộ tệp bạn tải lên, dữ liệu tiến độ xem, thông báo",
+              "Lưu trữ, xử lý video, phân phối nội dung, kiểm duyệt"
+            ],
+            [
+              "MongoDB Atlas",
+              "Tài khoản, video, bình luận và các dữ liệu hồ sơ",
+              "Cơ sở dữ liệu chính"
+            ],
+            [
+              "Cloudflare",
+              "Mọi yêu cầu tới api.zelostech.site (thông tin kết nối thông thường)",
+              "Cổng chuyển tiếp API"
+            ],
+            [
+              "Google",
+              "Mã đăng nhập Google khi bạn chọn đăng nhập bằng Google",
+              "Xác thực"
+            ],
+            [
+              "Nhà cung cấp dịch vụ email (SMTP) [CHECK: tên nhà cung cấp]",
+              "Email của bạn và nội dung thư",
+              "Gửi thư xác minh, đặt lại mật khẩu, thông báo video mới nếu bạn bật"
+            ]
+          ]
+        },
+        "paragraphs": [
+          "Chúng tôi không bán dữ liệu cá nhân của bạn và không dùng công cụ theo dõi quảng cáo của bên thứ ba."
+        ]
+      },
+      {
+        "heading": "5. Lưu trữ và chuyển dữ liệu ra nước ngoài",
+        "paragraphs": [
+          "Dữ liệu được lưu trên hạ tầng Amazon Web Services tại Singapore (ap-southeast-1) và cụm MongoDB Atlas [CHECK: khu vực của cụm]. Đây là việc chuyển dữ liệu cá nhân xuyên biên giới.",
+          "Chúng tôi giữ dữ liệu tài khoản tới khi bạn yêu cầu xóa. Thông báo trong ứng dụng tự xóa sau 90 ngày. Các thời hạn khác: [FILL: thời gian lưu lịch sử xem, nhật ký, bản sao lưu]."
+        ]
+      },
+      {
+        "heading": "6. Cookie và lưu trữ trên trình duyệt",
+        "paragraphs": [
+          "VidShare không dùng cookie theo dõi, không có Google Analytics hay pixel quảng cáo. Trình duyệt của bạn chỉ lưu những mục cần thiết để site chạy: mã đăng nhập, lựa chọn giao diện sáng hoặc tối, ngôn ngữ, và mã mở khóa tạm thời cho video có mật khẩu. Bạn xóa chúng bất cứ lúc nào trong cài đặt trình duyệt, khi đó bạn sẽ bị đăng xuất."
+        ]
+      },
+      {
+        "heading": "7. Quyền của bạn",
+        "items": [
+          "Biết chúng tôi đang xử lý dữ liệu nào của bạn.",
+          "Đồng ý, không đồng ý, hoặc rút lại sự đồng ý.",
+          "Xem, chỉnh sửa hoặc yêu cầu chỉnh sửa dữ liệu; yêu cầu cung cấp, xóa, hạn chế xử lý hoặc phản đối việc xử lý.",
+          "Khiếu nại, tố cáo, khởi kiện, yêu cầu bồi thường theo quy định pháp luật.",
+          "Tắt thông báo email về video mới trong Cài đặt bất cứ lúc nào."
+        ],
+        "paragraphs": [
+          "Cách yêu cầu: gửi email tới địa chỉ ở mục 1. Chúng tôi xác nhận đã nhận và hướng dẫn thủ tục trong 2 ngày làm việc; cho xem, chỉnh sửa hoặc cung cấp dữ liệu trong 10 ngày (15 ngày nếu cần bên thứ ba cùng thực hiện); xử lý yêu cầu rút đồng ý, hạn chế, phản đối trong 15 ngày (20 ngày nếu cần bên thứ ba ngừng xử lý); xóa dữ liệu trong 20 ngày (30 ngày nếu cần bên thứ ba cùng xóa). Yêu cầu phức tạp có thể được gia hạn một lần, chúng tôi sẽ báo lý do."
+        ]
+      },
+      {
+        "heading": "8. Người dùng nhỏ tuổi",
+        "paragraphs": [
+          "VidShare không dành cho trẻ em dưới 13 tuổi [CHECK: ngưỡng tuổi do nhóm quyết định]. Cha mẹ hoặc người đại diện thực hiện các quyền thay cho trẻ. Việc công bố thông tin đời sống riêng tư của trẻ từ đủ 7 tuổi cần sự đồng ý của cả trẻ và người đại diện."
+        ]
+      },
+      {
+        "heading": "9. Khi có sự cố",
+        "paragraphs": [
+          "Nếu xảy ra lộ hoặc mất dữ liệu cá nhân, chúng tôi thông báo cho cơ quan chuyên trách bảo vệ dữ liệu cá nhân chậm nhất 72 giờ kể từ khi phát hiện."
+        ]
+      },
+      {
+        "heading": "10. Thay đổi chính sách",
+        "paragraphs": [
+          "Khi thay đổi mục đích hoặc loại dữ liệu xử lý, chúng tôi thông báo trên site và xin lại sự đồng ý nếu cần."
+        ]
+      }
+    ]
+  },
+  "terms": {
+    "title": "Điều khoản sử dụng",
+    "updated": "Cập nhật lần cuối: 12/11/2026 · Phiên bản 1.0",
+    "draftNote": "Bản nháp, cần người có chuyên môn pháp lý xem lại trước khi áp dụng chính thức.",
+    "sections": [
+      {
+        "heading": "1. Phạm vi",
+        "paragraphs": [
+          "VidShare là nền tảng chia sẻ video phục vụ đồ án học tập. Khi tạo tài khoản bạn xác nhận đã đọc các điều khoản này và Chính sách bảo vệ dữ liệu cá nhân. Việc đồng ý được ghi lại bằng thao tác tích ô đồng ý khi đăng ký, không suy ra từ việc tiếp tục sử dụng."
+        ]
+      },
+      {
+        "heading": "2. Tài khoản",
+        "items": [
+          "Bạn cung cấp thông tin đúng và giữ bí mật mật khẩu.",
+          "Bạn chịu trách nhiệm về hoạt động dưới tài khoản của mình.",
+          "Chúng tôi có thể khóa tài khoản vi phạm điều khoản này."
+        ]
+      },
+      {
+        "heading": "3. Nội dung bạn tải lên",
+        "items": [
+          "Bạn giữ quyền sở hữu nội dung và cấp cho VidShare quyền lưu trữ, xử lý (chuyển mã) và phân phối nội dung đó để vận hành dịch vụ.",
+          "Bạn cam kết có quyền đối với nội dung tải lên và nội dung không vi phạm pháp luật Việt Nam.",
+          "Nội dung bị cấm: nội dung vi phạm bản quyền, khiêu dâm, bạo lực cực đoan, thù ghét, lừa đảo, xâm phạm đời tư hoặc thông tin cá nhân của người khác."
+        ]
+      },
+      {
+        "heading": "4. Kiểm duyệt",
+        "paragraphs": [
+          "Nội dung được kiểm tra tự động và có thể bị gỡ hoặc ẩn. Bạn có quyền kháng nghị trong Studio. Bình luận và video có thể bị báo cáo và xem xét bởi quản trị viên."
+        ]
+      },
+      {
+        "heading": "5. Hành vi bị cấm",
+        "items": [
+          "Tấn công, dò quét hoặc làm quá tải hệ thống.",
+          "Tạo lượt xem, lượt đăng ký hoặc bình luận giả.",
+          "Thu thập dữ liệu người dùng khác trái phép."
+        ]
+      },
+      {
+        "heading": "6. Miễn trừ và thay đổi",
+        "paragraphs": [
+          "Dịch vụ cung cấp trên cơ sở \"như hiện có\", phục vụ mục đích học tập, không cam kết hoạt động liên tục. Chúng tôi có thể sửa điều khoản và sẽ thông báo trên site; khi thay đổi ảnh hưởng tới dữ liệu cá nhân, chúng tôi xin lại đồng ý."
+        ]
+      },
+      {
+        "heading": "7. Liên hệ",
+        "paragraphs": [
+          "[FILL: email liên hệ]"
+        ]
+      }
+    ]
+  }
+}

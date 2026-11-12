@@ -88,10 +88,12 @@ export function RegisterPage() {
   const form = useForm({ displayName: '', handle: '', email: '', password: '', confirm: '' });
   const [show, setShow] = useState(false);
   const [mismatch, setMismatch] = useState(false);
+  const [consent, setConsent] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
+    if (!consent) return form.setError(t('auth.consentRequired'));
     if (form.values.password !== form.values.confirm) return setMismatch(true);
     setBusy(true);
     try {
@@ -120,8 +122,17 @@ export function RegisterPage() {
         </div>
         <p className="field-help">{t('auth.passwordHint')}</p>
         <ShowPassword checked={show} onChange={setShow} />
+        <label className="auth-check auth-consent">
+          <input type="checkbox" checked={consent} onChange={(e) => { setConsent(e.target.checked); form.setError(''); }} required />
+          <span>
+            <Trans i18nKey="auth.consentLabel" components={{ 1: <Link to="/terms" target="_blank" />, 3: <Link to="/privacy" target="_blank" /> }} />
+          </span>
+        </label>
         <div className="auth-divider"><span>{t('auth.or')}</span></div>
         <GoogleSignInButton text="signup_with" onCredential={async (c) => { await loginWithGoogle(c); done(); }} onError={form.setError} />
+        <p className="field-help">
+          <Trans i18nKey="auth.consentGoogle" components={{ 1: <Link to="/terms" target="_blank" />, 3: <Link to="/privacy" target="_blank" /> }} />
+        </p>
         <div className="auth-actions">
           <Link to="/login" state={location.state} className="btn btn-ghost">{t('auth.signInInstead')}</Link>
           <button type="submit" className="btn btn-primary" disabled={busy}>{busy ? t('auth.registerSubmitting') : t('auth.registerSubmit')}</button>

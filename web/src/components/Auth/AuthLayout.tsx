@@ -1,4 +1,5 @@
 import type { InputHTMLAttributes, ReactNode } from 'react';
+import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { MdErrorOutline } from 'react-icons/md';
 import { LogoIcon } from '../Layout/Logo';
@@ -28,6 +29,10 @@ export default function AuthLayout({ title, subtitle, children }: { title: strin
             <option value="en">{t('language.en')}</option>
           </select>
         </label>
+        <nav className="legal-links" aria-label={t('nav.privacy')}>
+          <Link to="/privacy">{t('nav.privacy')}</Link>
+          <Link to="/terms">{t('nav.terms')}</Link>
+        </nav>
       </footer>
     </div>
   );

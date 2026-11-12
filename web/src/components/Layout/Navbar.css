@@ -297,6 +297,22 @@
   font-size: 1.25rem;
 }
 
+/* Privacy and terms links, in the left menu and under the auth card. */
+.legal-links {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.legal-links a {
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.guide-section.legal-links {
+  padding: 8px 12px;
+}
+
 .guide-signin {
   padding: 4px 12px 8px;
 }
