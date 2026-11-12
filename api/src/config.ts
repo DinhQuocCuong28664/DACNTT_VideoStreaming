@@ -48,6 +48,9 @@ export const secretSchema = z.object({
   cloudfrontPrivateKey: z.string().optional(),
   smtpUser: z.string().optional(),
   smtpPassword: z.string().optional(),
+  /** Stripe secret key and the signing secret of the webhook endpoint; both unset disables billing. */
+  stripeSecretKey: z.string().startsWith('sk_').optional(),
+  stripeWebhookSecret: z.string().startsWith('whsec_').optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

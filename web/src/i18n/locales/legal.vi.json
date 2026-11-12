@@ -41,7 +41,7 @@
               "Hiển thị kênh của bạn cho người khác"
             ],
             [
-              "Video, ảnh thu nhỏ, bình luận, danh sách phát, lượt đăng ký kênh, gói hội viên kênh (cấp độ, ngày bắt đầu, ngày hết hạn, trạng thái hủy)",
+              "Video, ảnh thu nhỏ, bình luận, danh sách phát, lượt đăng ký kênh, gói hội viên kênh (cấp độ, ngày bắt đầu, ngày hết hạn, trạng thái hủy), gói nền tảng của bạn (Free, Plus, Pro hoặc Max, trạng thái và ngày gia hạn)",
               "Khi bạn tải lên hoặc tương tác",
               "Cung cấp dịch vụ chia sẻ video"
             ],
@@ -110,6 +110,11 @@
               "Google (Gmail SMTP)",
               "Email của bạn và nội dung thư",
               "Gửi thư xác minh, đặt lại mật khẩu, thông báo video mới nếu bạn bật"
+            ],
+            [
+              "Stripe (dịch vụ thanh toán, đặt tại nước ngoài)",
+              "Email, tên và thông tin thanh toán bạn nhập trên trang thanh toán của Stripe. VidShare không nhận và không lưu số thẻ; chỉ lưu mã khách hàng, mã đăng ký, gói, trạng thái và ngày gia hạn",
+              "Thu phí gói Plus, Pro, Max, gia hạn hằng tháng, huỷ gói và đổi thẻ"
             ]
           ]
         },
@@ -207,7 +212,8 @@
       {
         "heading": "6. Miễn trừ và thay đổi",
         "paragraphs": [
-          "Gói hội viên kênh hiện chạy ở chế độ thanh toán thử nghiệm (sandbox): VidShare không thu tiền, không yêu cầu và không lưu thông tin thẻ hay tài khoản ngân hàng. Nếu sau này bật thanh toán thật, chúng tôi sẽ cập nhật điều khoản và chính sách trước khi áp dụng.",
+          "Gói nền tảng Plus, Pro và Max thu phí hằng tháng qua Stripe và tự gia hạn cho tới khi bạn hủy. Hiện thanh toán đang ở chế độ thử: chỉ dùng thẻ thử của Stripe, không nhập thẻ thật và không có tiền thật bị trừ. Bạn hủy bất cứ lúc nào trong Cài đặt, mục Gói và thanh toán, và vẫn dùng gói đến hết kỳ đã trả. Khi bật thanh toán thật, chúng tôi sẽ cập nhật điều khoản này, công bố chính sách hoàn tiền và khiếu nại trước khi áp dụng.",
+          "Gói hội viên kênh (người xem tham gia kênh của người sáng tạo) khác với gói nền tảng và hiện chạy ở chế độ thanh toán thử nghiệm (sandbox): VidShare không thu tiền, không yêu cầu và không lưu thông tin thẻ hay tài khoản ngân hàng. Nếu sau này bật thanh toán thật, chúng tôi sẽ cập nhật điều khoản và chính sách trước khi áp dụng.",
           "Dịch vụ cung cấp trên cơ sở \"như hiện có\", phục vụ mục đích học tập, không cam kết hoạt động liên tục. Chúng tôi có thể sửa điều khoản và sẽ thông báo trên site; khi thay đổi ảnh hưởng tới dữ liệu cá nhân, chúng tôi xin lại đồng ý."
         ]
       },

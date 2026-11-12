@@ -26,6 +26,7 @@ const AdminPage = lazy(() => import('./pages/AdminPage'));
 const LandingPage = lazy(() => import('./pages/LandingPage'));
 const PrivacyPage = lazy(() => import('./pages/legal/LegalPage').then((m) => ({ default: m.PrivacyPage })));
 const TermsPage = lazy(() => import('./pages/legal/LegalPage').then((m) => ({ default: m.TermsPage })));
+const PlansPage = lazy(() => import('./pages/PlansPage'));
 const EmbedPage = lazy(() => import('./pages/EmbedPage'));
 const loadLibrary = () => import('./pages/LibraryPages');
 const Library = {
@@ -88,6 +89,7 @@ export default function App() {
           <Route path="/landing" element={<LandingPage />} />
           <Route path="/privacy" element={<PrivacyPage />} />
           <Route path="/terms" element={<TermsPage />} />
+          <Route path="/plans" element={<PlansPage />} />
           <Route path="/subscriptions" element={<Protected><Library.Subscriptions /></Protected>} />
           <Route path="/history" element={<Protected><Library.History /></Protected>} />
           <Route path="/playlists" element={<Protected><Library.Playlists /></Protected>} />

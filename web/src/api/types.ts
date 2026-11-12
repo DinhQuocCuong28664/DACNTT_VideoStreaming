@@ -21,8 +21,16 @@ export interface User {
   googleLinked: boolean;
   notifyByEmail: boolean;
   counters: { subscribers: number; videos: number };
+  plan: UserPlan;
   createdAt: string;
 }
+
+export type PlanId = 'free' | 'plus' | 'pro' | 'max';
+export interface PlanLimits { maxUploadBytes: number; maxTiers: number; analyticsDays: number }
+export interface UserPlan { id: PlanId; renewsAt: string | null; cancelAtPeriodEnd: boolean; limits: PlanLimits }
+export interface PlanInfo { id: PlanId; priceVnd: number; limits: PlanLimits }
+export interface PlansResponse { enabled: boolean; currency: 'VND'; plans: PlanInfo[] }
+export interface BillingState { enabled: boolean; plan: PlanId; renewsAt: string | null; cancelAtPeriodEnd: boolean; hasCustomer: boolean; limits: PlanLimits }
 
 export interface Session { token: string; user: User }
 

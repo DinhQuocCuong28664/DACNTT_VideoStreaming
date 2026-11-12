@@ -12,6 +12,28 @@ import { fakeCdn } from '../src/services/cdn.js';
 import { memoryActivity } from '../src/services/activity.js';
 import { memoryScheduler } from '../src/services/scheduler.js';
 import { HttpError } from '../src/http/errors.js';
+import type { Billing, BillingEvent, CheckoutInput } from '../src/services/billing.js';
+
+/** Signature the fake Stripe accepts; the body of a webhook is the JSON of a normalised event. */
+export const GOOD_SIGNATURE = 'good-signature';
+
+export function fakeBilling() {
+  const checkouts: CheckoutInput[] = [];
+  const portals: { customerId: string; returnUrl: string }[] = [];
+  const billing: Billing = {
+    enabled: true,
+    async createCheckout(input) { checkouts.push(input); return { url: `https://checkout.example.test/${input.plan}` }; },
+    async createPortal(customerId, returnUrl) { portals.push({ customerId, returnUrl }); return { url: 'https://portal.example.test/session' }; },
+    parseWebhook(raw, signature) {
+      if (signature !== GOOD_SIGNATURE) throw new HttpError(400, 'BAD_SIGNATURE', 'bad');
+      const event = JSON.parse(raw.toString('utf8')) as BillingEvent;
+      // JSON turns the period end into text; the real gateway hands over a Date.
+      if (event.type === 'subscription' && event.currentPeriodEnd) event.currentPeriodEnd = new Date(event.currentPeriodEnd);
+      return event;
+    },
+  };
+  return { billing, checkouts, portals };
+}
 
 export const ORIGIN_SECRET = 'o'.repeat(40);
 export const WEB = 'https://v2-staging.zelostech.site';
@@ -48,6 +70,7 @@ export interface TestContext {
   imageLabels: { value: string[] | null };
   /** What the fake Atlas Search returns. */
   searchResults: { videos: string[]; suggest: string[]; channels: string[]; calls: { q: string; skip: number }[] };
+  billing: Omit<ReturnType<typeof fakeBilling>, 'billing'>;
 }
 
 /** Builds the app with in-memory fakes; pass `db` for features that need MongoDB. */
@@ -64,7 +87,9 @@ export function testApp(features: readonly Feature[] = [], opts: { db?: Db; conf
   const sched = memoryScheduler();
   const imageLabels: { value: string[] | null } = { value: [] };
   const searchResults: TestContext['searchResults'] = { videos: [], suggest: [], channels: [], calls: [] };
+  const fake = fakeBilling();
   const deps: Deps = {
+    billing: fake.billing,
     config: opts.config ?? testConfig(),
     db: opts.db ?? ({} as Db),
     kv,
@@ -92,7 +117,7 @@ export function testApp(features: readonly Feature[] = [], opts: { db?: Db; conf
       async channels(_q, limit) { return searchResults.channels.slice(0, limit); },
     },
   };
-  const ctx: TestContext = { deps, kv, users, clock, mail, google, breached, s3, activity, schedules: sched.schedules, imageLabels, searchResults };
+  const ctx: TestContext = { deps, kv, users, clock, mail, google, breached, s3, activity, schedules: sched.schedules, imageLabels, searchResults, billing: { checkouts: fake.checkouts, portals: fake.portals } };
   return { app: createApp(deps, features), ctx };
 }
 

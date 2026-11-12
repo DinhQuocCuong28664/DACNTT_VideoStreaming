@@ -86,6 +86,21 @@
   gap: var(--space-sm);
 }
 
+.settings-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: var(--space-md);
+}
+
+.settings-error {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--error, #d93025);
+  font-size: var(--font-size-sm);
+}
+
 .settings-desc {
   margin-bottom: var(--space-md);
   font-size: var(--font-size-sm);

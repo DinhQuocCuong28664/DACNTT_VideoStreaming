@@ -21,7 +21,7 @@ export async function connect(uri: string, dbName: string, poolSize: number): Pr
 export const COLLECTIONS = [
   'users', 'videos', 'comments', 'reactions', 'subscriptions', 'membershipTiers', 'memberships',
   'playlists', 'analyticsDaily', 'reports', 'appeals', 'auditSamples', 'moderationEvents', 'roleChanges',
-  'emailTokens',
+  'emailTokens', 'billingEvents',
 ] as const;
 
 /**
@@ -34,6 +34,7 @@ export async function ensureIndexes(db: Db): Promise<void> {
       { key: { email: 1 }, name: 'email_unique', unique: true },
       { key: { handle: 1 }, name: 'handle_unique', unique: true },
       { key: { googleSub: 1 }, name: 'google_unique', unique: true, partialFilterExpression: { googleSub: { $type: 'string' } } },
+      { key: { 'billing.customerId': 1 }, name: 'stripe_customer', partialFilterExpression: { 'billing.customerId': { $type: 'string' } } },
     ]),
     db.collection('videos').createIndexes([
       { key: { owner: 1, createdAt: -1 }, name: 'owner_recent' },
@@ -92,5 +93,7 @@ export async function ensureIndexes(db: Db): Promise<void> {
       // Expired tokens disappear on their own.
       { key: { expiresAt: 1 }, name: 'expiry_ttl', expireAfterSeconds: 0 },
     ]),
+    // Stripe retries for three days; keep processed event ids for sixty so a late retry is still a duplicate.
+    db.collection('billingEvents').createIndexes([{ key: { at: 1 }, name: 'event_ttl', expireAfterSeconds: 60 * 86_400 }]),
   ]);
 }

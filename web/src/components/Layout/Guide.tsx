@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import type { IconType } from 'react-icons';
 import {
   MdAdminPanelSettings, MdChevronRight, MdHistory, MdHome, MdOutlineAccountCircle, MdOutlineAdminPanelSettings,
-  MdOutlineComputer, MdOutlineFileUpload, MdOutlineHome, MdOutlineInfo, MdOutlineMusicNote, MdOutlinePlaylistPlay,
+  MdOutlineComputer, MdOutlineFileUpload, MdOutlineHome, MdOutlineInfo, MdOutlineMusicNote, MdOutlinePlaylistPlay, MdOutlineWorkspacePremium,
   MdOutlineSchool, MdOutlineSettings, MdOutlineSportsEsports, MdOutlineSubscriptions, MdOutlineTheaterComedy,
   MdOutlineVideoLibrary, MdOutlineWatchLater, MdSettings, MdSubscriptions, MdVideoLibrary,
 } from 'react-icons/md';
@@ -94,6 +94,7 @@ export default function Guide({ variant = 'full', onNavigate }: { variant?: 'ful
         {EXPLORE.map((c) => renderItem({ to: `/?category=${c.value}`, label: t(`categories.${c.value}`), icon: c.icon, active: at('/') && category === c.value }))}
       </div>
       <div className="guide-section">
+        {renderItem({ to: '/plans', label: t('nav.plans'), icon: MdOutlineWorkspacePremium, active: at('/plans') })}
         {renderItem({ to: '/landing', label: t('nav.aboutVidShare'), icon: MdOutlineInfo, active: at('/landing') })}
       </div>
       <div className="guide-section legal-links">

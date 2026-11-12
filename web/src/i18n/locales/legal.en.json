@@ -41,7 +41,7 @@
               "Show your channel to others"
             ],
             [
-              "Videos, thumbnails, comments, playlists, channel subscriptions, channel memberships (tier, start and end dates, cancellation status)",
+              "Videos, thumbnails, comments, playlists, channel subscriptions, channel memberships (tier, start and end dates, cancellation status), your platform plan (Free, Plus, Pro or Max, its status and renewal date)",
               "When you upload or interact",
               "Provide the video sharing service"
             ],
@@ -110,6 +110,11 @@
               "Google (Gmail SMTP)",
               "Your e-mail address and message content",
               "Verification, password reset, new-upload notices if you opt in"
+            ],
+            [
+              "Stripe (payment service, located abroad)",
+              "E-mail, name and the payment details you type on Stripe's payment page. VidShare receives and stores no card number; it keeps only the customer ID, subscription ID, plan, status and renewal date",
+              "Charge the Plus, Pro and Max plans, monthly renewal, cancellation and card changes"
             ]
           ]
         },
@@ -207,7 +212,8 @@
       {
         "heading": "6. Disclaimer and changes",
         "paragraphs": [
-          "Channel memberships currently run in a sandbox checkout: VidShare charges no money and neither asks for nor stores card or bank details. If real payments are switched on later, we will update these terms and the privacy policy before they apply.",
+          "The Plus, Pro and Max platform plans are charged monthly through Stripe and renew automatically until you cancel. Payments currently run in test mode: use only Stripe's test card, enter no real card and no real money is charged. You can cancel at any time in Settings, Plan and billing, and keep the plan until the end of the paid period. When real payments are switched on, we will update these terms, publish a refund and complaints policy before they apply.",
+          "Channel memberships (a viewer joining a creator's channel) are different from the platform plans and currently run in a sandbox checkout: VidShare charges no money and neither asks for nor stores card or bank details. If real payments are switched on later, we will update these terms and the privacy policy before they apply.",
           "The service is provided \"as is\" for learning purposes, with no promise of continuous availability. We may change these terms and will announce it on the site; if a change affects personal data we ask for consent again."
         ]
       },
