@@ -98,6 +98,9 @@ async function setRole() {
   });
 }
 
+/** Sign-up needs a date of birth (minimum age check); seed accounts are adults. */
+const SEED_BIRTH_DATE = '1990-01-01';
+
 /** The demo account of this environment, created on first use. */
 async function demoSession() {
   const file = join(ROOT, '.local-notes', `${values.env}-demo-account.json`);
@@ -110,7 +113,7 @@ async function demoSession() {
     };
     // Saved first, so the password is never lost; removed again if the API refuses it.
     writeFileSync(file, `${JSON.stringify(account, null, 2)}\n`, { mode: 0o600 });
-    await api('/auth/register', { body: account }).catch((err) => {
+    await api('/auth/register', { body: { ...account, birthDate: SEED_BIRTH_DATE } }).catch((err) => {
       unlinkSync(file);
       throw err;
     });
@@ -155,7 +158,7 @@ async function ensureAccount(file, key, profile) {
   writeFileSync(file, `${JSON.stringify({ ...all, [key]: account }, null, 2)}
 `, { mode: 0o600 });
   try {
-    await api('/auth/register', { body: account });
+    await api('/auth/register', { body: { ...account, birthDate: SEED_BIRTH_DATE } });
   } catch (err) {
     writeFileSync(file, `${JSON.stringify(all, null, 2)}
 `, { mode: 0o600 });

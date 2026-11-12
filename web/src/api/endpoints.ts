@@ -8,7 +8,7 @@ import type {
 const enc = encodeURIComponent;
 
 export const auth = {
-  register: (b: { email: string; password: string; displayName: string; handle?: string }) => api.post<Session>('/auth/register', b),
+  register: (b: { email: string; password: string; displayName: string; birthDate: string; handle?: string }) => api.post<Session>('/auth/register', b),
   login: (b: { email: string; password: string }) => api.post<Session>('/auth/login', b),
   google: (idToken: string) => api.post<Session>('/auth/google', { idToken }),
   linkGoogle: (idToken: string) => api.post<{ user: User }>('/auth/link-google', { idToken }),

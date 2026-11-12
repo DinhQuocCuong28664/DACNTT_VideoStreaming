@@ -26,7 +26,7 @@ const post = (path: string, body: object, token?: string) => {
 };
 
 async function user(email = 'owner@example.com', verified = true): Promise<{ token: string; id: string }> {
-  const res = await post('/auth/register', { email, password: 'correct horse battery', displayName: 'Owner' });
+  const res = await post('/auth/register', { email, password: 'correct horse battery', displayName: 'Owner', birthDate: '1990-01-01' });
   if (verified) await db.collection('users').updateOne({ email }, { $set: { emailVerified: true } });
   return { token: res.body.token, id: res.body.user.id };
 }

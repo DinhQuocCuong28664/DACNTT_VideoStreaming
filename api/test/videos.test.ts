@@ -35,7 +35,7 @@ const send = (method: 'get' | 'post' | 'patch' | 'delete', path: string, body?: 
 };
 
 async function user(email: string, role = 'user') {
-  const res = await send('post', '/auth/register', { email, password: 'correct horse battery', displayName: email.split('@')[0] });
+  const res = await send('post', '/auth/register', { email, password: 'correct horse battery', displayName: email.split('@')[0], birthDate: '1990-01-01' });
   await db.collection('users').updateOne({ email }, { $set: { emailVerified: true, role } });
   return { token: res.body.token as string, id: res.body.user.id as string };
 }

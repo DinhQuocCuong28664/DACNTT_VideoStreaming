@@ -28,7 +28,7 @@ export function world(db: Db) {
   async function user(email: string, role = 'user'): Promise<Who> {
     users += 1;
     // Each sign-up from its own address, so the registration limit never interferes.
-    const res = await call('post', '/auth/register', { email, password: 'correct horse battery', displayName: email.split('@')[0] }, { ip: `203.0.113.${users}` });
+    const res = await call('post', '/auth/register', { email, password: 'correct horse battery', displayName: email.split('@')[0], birthDate: '1990-01-01' }, { ip: `203.0.113.${users}` });
     if (res.status !== 201) throw new Error(`register failed: ${JSON.stringify(res.body)}`);
     await db.collection('users').updateOne({ email }, { $set: { emailVerified: true, role } });
     return { token: res.body.token as string, id: res.body.user.id as string };

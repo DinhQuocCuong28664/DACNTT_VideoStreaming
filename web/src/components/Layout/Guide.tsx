@@ -97,6 +97,10 @@ export default function Guide({ variant = 'full', onNavigate }: { variant?: 'ful
         {renderItem({ to: '/plans', label: t('nav.plans'), icon: MdOutlineWorkspacePremium, active: at('/plans') })}
         {renderItem({ to: '/landing', label: t('nav.aboutVidShare'), icon: MdOutlineInfo, active: at('/landing') })}
       </div>
+      <div className="guide-section legal-links">
+        <Link to="/privacy" onClick={onNavigate}>{t('nav.privacy')}</Link>
+        <Link to="/terms" onClick={onNavigate}>{t('nav.terms')}</Link>
+      </div>
     </nav>
   );
 }

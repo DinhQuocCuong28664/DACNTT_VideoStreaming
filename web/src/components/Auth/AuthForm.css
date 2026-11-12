@@ -205,9 +205,19 @@
   color: var(--text-secondary);
 }
 
+.auth-consent {
+  align-items: flex-start;
+  margin-top: var(--space-sm);
+}
+
+.auth-consent a {
+  color: var(--accent-primary);
+}
+
 .auth-page-footer {
   display: flex;
-  justify-content: flex-start;
+  justify-content: space-between;
+  align-items: center;
   width: 100%;
   max-width: 1040px;
   margin-top: var(--space-sm);

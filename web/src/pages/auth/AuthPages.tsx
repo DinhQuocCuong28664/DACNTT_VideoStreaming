@@ -10,6 +10,7 @@ import { auth } from '../../api/endpoints';
 import { useAuth } from '../../context/auth';
 import { isInternalPath } from '../../lib/paths';
 import { errorText } from '../../lib/errors';
+import { MIN_AGE, isOldEnough } from '../../lib/age';
 import AuthLayout, { AuthError, AuthField } from '../../components/Auth/AuthLayout';
 import GoogleSignInButton from '../../components/Auth/GoogleSignInButton';
 import { ResendVerificationButton } from '../../components/Auth/EmailVerification';
@@ -85,18 +86,22 @@ export function RegisterPage() {
   const { register, loginWithGoogle } = useAuth();
   const done = useAuthRedirect();
   const location = useLocation();
-  const form = useForm({ displayName: '', handle: '', email: '', password: '', confirm: '' });
+  const form = useForm({ displayName: '', handle: '', email: '', birthDate: '', password: '', confirm: '' });
   const [show, setShow] = useState(false);
   const [mismatch, setMismatch] = useState(false);
+  const [tooYoung, setTooYoung] = useState(false);
+  const [consent, setConsent] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
+    if (!isOldEnough(form.values.birthDate)) return setTooYoung(true);
+    if (!consent) return form.setError(t('auth.consentRequired'));
     if (form.values.password !== form.values.confirm) return setMismatch(true);
     setBusy(true);
     try {
       const handle = form.values.handle.trim().replace(/^@/, '').toLowerCase();
-      await register({ email: form.values.email, password: form.values.password, displayName: form.values.displayName, ...(handle ? { handle } : {}) });
+      await register({ email: form.values.email, password: form.values.password, displayName: form.values.displayName, birthDate: form.values.birthDate, ...(handle ? { handle } : {}) });
       done();
     } catch (err) {
       form.setError(errorText(t, err));
@@ -105,7 +110,7 @@ export function RegisterPage() {
     }
     return undefined;
   };
-  const change = (e: ChangeEvent<HTMLInputElement>) => { form.onChange(e); setMismatch(false); };
+  const change = (e: ChangeEvent<HTMLInputElement>) => { form.onChange(e); setMismatch(false); setTooYoung(false); };
 
   return (
     <AuthLayout title={t('auth.registerTitle')} subtitle={t('auth.registerSubtitle')}>
@@ -114,14 +119,24 @@ export function RegisterPage() {
         <AuthField id="displayName" name="displayName" label={t('auth.displayNameLabel')} autoComplete="name" value={form.values.displayName} onChange={change} required maxLength={50} autoFocus />
         <AuthField id="handle" name="handle" label={t('auth.usernameLabel')} help={t('auth.handleHelp')} autoComplete="username" value={form.values.handle} onChange={change} minLength={3} maxLength={30} pattern="@?[A-Za-z0-9][A-Za-z0-9._]{1,28}[A-Za-z0-9]" />
         <AuthField id="reg-email" name="email" type="email" label="Email" autoComplete="email" value={form.values.email} onChange={change} required />
+        <AuthField id="birthDate" name="birthDate" type="date" label={t('auth.birthDateLabel')} help={t('auth.birthDateHelp', { age: MIN_AGE })} error={tooYoung ? t('auth.ageTooYoung', { age: MIN_AGE }) : ''} value={form.values.birthDate} onChange={change} max={new Date().toISOString().slice(0, 10)} autoComplete="bday" required />
         <div className="auth-field-pair">
           <AuthField id="reg-password" name="password" type={show ? 'text' : 'password'} label={t('auth.passwordLabel')} autoComplete="new-password" value={form.values.password} onChange={change} required minLength={8} />
           <AuthField id="confirm" name="confirm" type={show ? 'text' : 'password'} label={t('auth.confirmPasswordLabel')} autoComplete="new-password" value={form.values.confirm} onChange={change} error={mismatch ? t('auth.passwordMismatch') : ''} required minLength={8} />
         </div>
         <p className="field-help">{t('auth.passwordHint')}</p>
         <ShowPassword checked={show} onChange={setShow} />
+        <label className="auth-check auth-consent">
+          <input type="checkbox" checked={consent} onChange={(e) => { setConsent(e.target.checked); form.setError(''); }} required />
+          <span>
+            <Trans i18nKey="auth.consentLabel" components={{ 1: <Link to="/terms" target="_blank" />, 3: <Link to="/privacy" target="_blank" /> }} />
+          </span>
+        </label>
         <div className="auth-divider"><span>{t('auth.or')}</span></div>
         <GoogleSignInButton text="signup_with" onCredential={async (c) => { await loginWithGoogle(c); done(); }} onError={form.setError} />
+        <p className="field-help">
+          <Trans i18nKey="auth.consentGoogle" components={{ 1: <Link to="/terms" target="_blank" />, 3: <Link to="/privacy" target="_blank" /> }} />
+        </p>
         <div className="auth-actions">
           <Link to="/login" state={location.state} className="btn btn-ghost">{t('auth.signInInstead')}</Link>
           <button type="submit" className="btn btn-primary" disabled={busy}>{busy ? t('auth.registerSubmitting') : t('auth.registerSubmit')}</button>

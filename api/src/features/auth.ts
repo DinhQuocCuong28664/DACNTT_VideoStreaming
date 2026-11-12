@@ -13,6 +13,7 @@ import type { Feature } from '../app.js';
 import { PROBLEM_MESSAGES, passwordProblem } from '../auth/passwords.js';
 import { badRequest, conflict, HttpError, notFound, unauthorized } from '../http/errors.js';
 import { rateLimit, requireUser } from '../http/middleware.js';
+import { MIN_AGE, ageOn } from '../model/age.js';
 import { HANDLE_RE, RESERVED_HANDLES, handleBase, selfView, type UserDoc } from '../model/user.js';
 
 const email = z.string().trim().toLowerCase().max(254).email();
@@ -21,7 +22,9 @@ const displayName = z.string().trim().min(1).max(50);
 const handle = z.string().trim().toLowerCase().regex(HANDLE_RE, 'Use 3-30 letters, digits, dots or underscores');
 const token = z.string().min(20).max(200);
 
-const registerBody = z.object({ email, password, displayName, handle: handle.optional() });
+/** Checked for the minimum age and never stored. */
+const birthDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use the format YYYY-MM-DD');
+const registerBody = z.object({ email, password, displayName, birthDate, handle: handle.optional() });
 const loginBody = z.object({ email, password });
 const googleBody = z.object({ idToken: z.string().min(10).max(4096) });
 const emailBody = z.object({ email });
@@ -92,6 +95,9 @@ export const authFeature: Feature = (r, deps) => {
 
   r.post('/auth/register', limit('register', 5, HOUR, ipKey), async (req, res) => {
     const body = registerBody.parse(req.body);
+    const age = ageOn(body.birthDate, now());
+    if (age === null) throw badRequest('INVALID_BIRTH_DATE', 'Enter a valid date of birth');
+    if (age < MIN_AGE) throw new HttpError(403, 'UNDER_MIN_AGE', `VidShare is only for people aged ${MIN_AGE} or over`);
     await checkNewPassword(body.password, { email: body.email, ...(body.handle ? { handle: body.handle } : {}) });
     if (body.handle && RESERVED_HANDLES.has(body.handle)) throw conflict('HANDLE_TAKEN', 'This handle is not available');
     const passwordHash = await deps.passwords.hash(body.password);
