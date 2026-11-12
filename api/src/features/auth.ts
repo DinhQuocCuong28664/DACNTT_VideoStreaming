@@ -61,7 +61,7 @@ export const authFeature: Feature = (r, deps) => {
 
   const session = (u: UserDoc) => ({
     token: deps.tokens.access({ sub: u._id.toHexString(), role: u.role, tv: u.tokenVersion }),
-    user: selfView(u),
+    user: selfView(u, now()),
   });
 
   /** Sends a one-time link, at most a few per recipient and hour; never throws. */
@@ -156,7 +156,7 @@ export const authFeature: Feature = (r, deps) => {
     const g = await deps.google(idToken);
     if (!g) throw unauthorized('Google sign-in failed');
     const me = await mustFind(users, req);
-    if (me.googleSub === g.sub) return void res.json({ user: selfView(me) });
+    if (me.googleSub === g.sub) return void res.json({ user: selfView(me, now()) });
     if (me.googleSub) throw conflict('GOOGLE_ALREADY_LINKED', 'Another Google account is linked; unlink it first');
     if (await users.findOne({ googleSub: g.sub }, { projection: { _id: 1 } })) {
       throw conflict('GOOGLE_IN_USE', 'This Google account belongs to another user');
@@ -168,7 +168,7 @@ export const authFeature: Feature = (r, deps) => {
       { returnDocument: 'after' },
     );
     if (!u) throw conflict('GOOGLE_ALREADY_LINKED', 'Try again');
-    res.json({ user: selfView(u) });
+    res.json({ user: selfView(u, now()) });
   });
 
   r.post('/auth/verify-email', limit('verify', 20, 15 * 60, ipKey), async (req, res) => {
@@ -239,7 +239,7 @@ export const authFeature: Feature = (r, deps) => {
   });
 
   r.get('/auth/me', requireUser, async (req, res) => {
-    res.json({ user: selfView(await mustFind(users, req)) });
+    res.json({ user: selfView(await mustFind(users, req), now()) });
   });
 };
 

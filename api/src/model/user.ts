@@ -1,6 +1,7 @@
 /** User documents and the shape the API returns for them. */
 import type { ObjectId } from 'mongodb';
 import type { Role } from '../auth/tokens.js';
+import { activePlan, entitlements, type BillingState } from '../billing/plans.js';
 
 export interface UserDoc {
   _id: ObjectId;
@@ -21,13 +22,22 @@ export interface UserDoc {
   /** Subscribers who opted in receive an e-mail for each new upload. */
   notifyByEmail: boolean;
   counters: { subscribers: number; videos: number };
+  /** Platform plan, kept in step with Stripe by the billing webhook; absent on the free plan. */
+  billing?: BillingState | null;
   createdAt: Date;
   updatedAt: Date;
 }
 
 /** The signed-in user's own view, including private fields. */
-export function selfView(u: UserDoc) {
+export function selfView(u: UserDoc, now: Date = new Date()) {
+  const ent = entitlements(u, now);
   return {
+    plan: {
+      id: activePlan(u, now),
+      renewsAt: u.billing?.currentPeriodEnd?.toISOString() ?? null,
+      cancelAtPeriodEnd: u.billing?.cancelAtPeriodEnd ?? false,
+      limits: { maxUploadBytes: ent.maxUploadBytes, maxTiers: ent.maxTiers, analyticsDays: ent.analyticsDays },
+    },
     id: u._id.toHexString(),
     email: u.email,
     emailVerified: u.emailVerified,

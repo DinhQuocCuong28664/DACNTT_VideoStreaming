@@ -7,7 +7,8 @@ import { MongoServerError, ObjectId } from 'mongodb';
 import { z } from 'zod';
 import type { Request } from 'express';
 import type { Feature } from '../app.js';
-import { badRequest, conflict, forbidden, notFound } from '../http/errors.js';
+import { badRequest, conflict, forbidden, HttpError, notFound } from '../http/errors.js';
+import { entitlements } from '../billing/plans.js';
 import { rateLimit, requireUser } from '../http/middleware.js';
 import { HANDLE_RE, RESERVED_HANDLES, publicView, selfView, type UserDoc } from '../model/user.js';
 import type { VideoDoc } from '../model/video.js';
@@ -42,7 +43,8 @@ export interface MembershipDoc {
 /** Handles may change twice in fourteen days, as on YouTube. */
 export const HANDLE_CHANGES = { max: 2, windowDays: 14 };
 const MEMBERSHIP_DAYS = 30;
-const MAX_TIERS = 5;
+/** Hard ceiling for every plan; the plan's own `maxTiers` is checked as well. */
+const MAX_TIERS = 10;
 
 const tierBody = z.object({
   name: z.string().trim().min(1).max(50),
@@ -155,7 +157,13 @@ export const channelsFeature: Feature = (r, deps) => {
   r.post('/me/tiers', requireUser, async (req, res) => {
     const body = tierBody.parse(req.body);
     const channelId = meId(req);
-    if ((await tiers.countDocuments({ channel: channelId, active: true })) >= MAX_TIERS) throw conflict('TOO_MANY_TIERS', `At most ${MAX_TIERS} tiers`);
+    const owner = await users.findOne({ _id: channelId }, { projection: { createdAt: 1, billing: 1 } });
+    const plan = entitlements(owner ?? { createdAt: now() }, now());
+    const active = await tiers.countDocuments({ channel: channelId, active: true });
+    if (active >= MAX_TIERS) throw conflict('TOO_MANY_TIERS', `At most ${MAX_TIERS} tiers`);
+    if (active >= plan.maxTiers) {
+      throw new HttpError(403, 'PLAN_LIMIT', `Your plan allows ${plan.maxTiers} membership tiers`, { limit: 'tiers', max: plan.maxTiers, plan: plan.plan });
+    }
     const doc: TierDoc = { _id: new ObjectId(), channel: channelId, ...body, active: true, createdAt: now() };
     try {
       await tiers.insertOne(doc);
@@ -252,6 +260,6 @@ export const channelsFeature: Feature = (r, deps) => {
     }
     if (!after) throw notFound('Account');
     if (body.displayName !== undefined) await videos.updateMany({ owner: me._id }, { $set: { channelName: body.displayName } });
-    res.json({ user: selfView(after) });
+    res.json({ user: selfView(after, now()) });
   });
 };

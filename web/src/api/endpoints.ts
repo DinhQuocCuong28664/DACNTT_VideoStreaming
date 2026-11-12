@@ -1,8 +1,8 @@
 /** Typed calls of every v2 route the web app uses, grouped like the API features. */
 import { api, request } from './http';
 import type {
-  Category, Channel, ChannelPage, Comment, LockedStub, Membership, Notification, Page, Playback,
-  PlaylistItem, PlaylistSummary, Role, Session, Tier, UploadGrant, User, VideoCard, VideoDetails, Visibility,
+  BillingState, Category, Channel, ChannelPage, Comment, LockedStub, Membership, Notification, Page, Playback,
+  PlanId, PlansResponse, PlaylistItem, PlaylistSummary, Role, Session, Tier, UploadGrant, User, VideoCard, VideoDetails, Visibility,
 } from './types';
 
 const enc = encodeURIComponent;
@@ -21,7 +21,14 @@ export const auth = {
   logout: () => api.post<void>('/auth/logout'),
 };
 
-const unlockHeader = (unlockToken?: string | null): Record<string, string> => (unlockToken ? { 'X-Unlock-Token': unlockToken } : {});
+export const billing = {
+  plans: () => api.get<PlansResponse>('/plans'),
+  state: () => api.get<BillingState>('/billing'),
+  checkout: (plan: PlanId) => api.post<{ url: string }>('/billing/checkout', { plan }),
+  portal: () => api.post<{ url: string }>('/billing/portal', {}),
+};
+
+const unlockHeader =(unlockToken?: string | null): Record<string, string> => (unlockToken ? { 'X-Unlock-Token': unlockToken } : {});
 
 export const videos = {
   list: (q: { cursor?: string | null; category?: Category | null; limit?: number } = {}) => api.get<Page<VideoCard>>('/videos', { query: q }),

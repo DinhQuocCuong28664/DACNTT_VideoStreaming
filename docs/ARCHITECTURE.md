@@ -28,6 +28,7 @@ product; none is optional.
 | F11 | Creator studio | Edit metadata, captions (VTT upload), chapters, thumbnail, visibility, schedule; analytics: views per day, watch time, audience retention |
 | F12 | Trust & safety | Automatic screening (Rekognition), review queue, decisions with reason codes, appeals, audit sampling with FP/FN metrics, event log, user/role admin; roles `user`, `operator`, `auditor`, `admin` |
 | F13 | UI | Light/dark theme, Vietnamese/English, 403/404 pages, design system in vanilla CSS (no Tailwind) |
+| F14 | Platform plans | Free, Plus, Pro and Max (VND per month) bought through Stripe Checkout (test mode until payments go live); the webhook alone sets the plan; limits per plan (upload size, membership tiers, analytics window) come from one `entitlements(user)` function; accounts created before 2026-11-13 keep the Pro limits |
 
 Not in scope (owner, 2026-10-28): age restriction, owner download toggle, replace-file-keep-link,
 autoplay/up-next queue.
@@ -506,7 +507,9 @@ paging `?cursor=&limit=`.
   thumbnail, unlock (password)
 - `comments`: list, replies, create, delete, pin, report
 - `channels`: get by id or `@handle`, videos, sections, banner, subscribe, subscription status
-- `memberships`: tiers CRUD, join, cancel, status, roster
+- `memberships`: tiers CRUD, join, cancel, status, roster (a simulated checkout: no money moves)
+- `billing`: plans (public), billing state, Stripe checkout, customer portal, webhook
+  (`POST /v1/billing/webhook`, signed by Stripe, each event applied once)
 - `me`: profile, avatar, history (list, delete), watch-later, playlists CRUD + items,
   notifications (list, mark read), subscriptions feed, studio analytics
 - `admin`: moderation queue, decisions, comment reports, appeals, audit samples, metrics,

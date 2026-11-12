@@ -11,6 +11,7 @@ import type { Feature } from '../app.js';
 import { badRequest, conflict, forbidden, HttpError, notFound } from '../http/errors.js';
 import { rateLimit, requireUser } from '../http/middleware.js';
 import type { UserDoc } from '../model/user.js';
+import { entitlements } from '../billing/plans.js';
 import {
   PART_SIZE, POST_MAX_BYTES, partCount, partSizeOf, videoContentType, type VideoDoc,
 } from '../model/video.js';
@@ -42,11 +43,15 @@ export const uploadsFeature: Feature = (r, deps) => {
 
   r.post('/uploads', requireUser, rateLimit(deps.kv, config.tables.rateLimits, { scope: 'upload', limit: 20, windowSec: 3600 }, now), async (req, res) => {
     const body = createBody.parse(req.body);
-    const owner = await users.findOne({ _id: new ObjectId(req.user?.id) }, { projection: { emailVerified: 1, displayName: 1 } });
+    const owner = await users.findOne({ _id: new ObjectId(req.user?.id) }, { projection: { emailVerified: 1, displayName: 1, createdAt: 1, billing: 1 } });
     if (!owner) throw notFound('Account');
     if (!owner.emailVerified) throw forbidden('EMAIL_NOT_VERIFIED', 'Confirm your e-mail address before uploading');
     if (body.size > config.uploadMaxBytes) {
       throw badRequest('FILE_TOO_LARGE', `Files up to ${Math.floor(config.uploadMaxBytes / 1024 ** 3)} GiB are accepted`, { maxBytes: config.uploadMaxBytes });
+    }
+    const plan = entitlements(owner, now());
+    if (body.size > plan.maxUploadBytes) {
+      throw new HttpError(403, 'PLAN_LIMIT', `Your plan allows files up to ${Math.floor(plan.maxUploadBytes / 1024 ** 3)} GiB`, { limit: 'uploadBytes', maxBytes: plan.maxUploadBytes, plan: plan.plan });
     }
     const contentType = videoContentType(body.fileName, body.contentType);
     if (!contentType) throw badRequest('UNSUPPORTED_TYPE', 'This file type is not a supported video');
