@@ -456,10 +456,11 @@ locals {
           "Payload.$"  = "$"
         }
         ResultSelector = {
-          "mode.$"       = "$.Payload.mode"
-          "chunkCount.$" = "$.Payload.chunkCount"
-          "hasAudio.$"   = "$.Payload.hasAudio"
-          "encode.$"     = "$.Payload.encode"
+          "mode.$"        = "$.Payload.mode"
+          "chunkCount.$"  = "$.Payload.chunkCount"
+          "hasAudio.$"    = "$.Payload.hasAudio"
+          "durationSec.$" = "$.Payload.durationSec"
+          "encode.$"      = "$.Payload.encode"
         }
         ResultPath = "$.probe"
         Retry      = local.lambda_retry
