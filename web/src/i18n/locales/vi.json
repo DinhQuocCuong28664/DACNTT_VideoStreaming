@@ -381,6 +381,7 @@
     "copyFailed": "Không sao chép được liên kết",
     "captions": "Phụ đề",
     "captionsOff": "Tắt",
+    "captionAuto": "{{label}} (tự động)",
     "copyEmbed": "Sao chép mã nhúng",
     "embedCopied": "Đã sao chép mã nhúng"
   },
@@ -747,6 +748,7 @@
     "featureUpload": "Tải lên tối đa {{gib}} GiB mỗi video",
     "featureTiers": "Tối đa {{count}} cấp hội viên kênh",
     "featureAnalytics": "Thống kê Studio {{days}} ngày",
+    "featureCaptions": "Phụ đề tự động {{minutes}} phút mỗi tháng, video tối đa {{max}} phút",
     "choose": "Chọn gói {{plan}}",
     "current": "Gói hiện tại của bạn",
     "manage": "Quản lý gói",
@@ -945,6 +947,7 @@
     "thumbnailSaved": "Đã cập nhật hình thu nhỏ",
     "thumbnailReset": "Đã quay lại hình tự động",
     "noCaptions": "Chưa có phụ đề.",
+    "captionAutoBadge": "tự động",
     "captionLang": "Mã ngôn ngữ (vi, en, pt-BR)",
     "captionLabel": "Tên hiện trong trình phát",
     "captionFile": "Tệp WebVTT",

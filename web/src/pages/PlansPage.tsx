@@ -19,6 +19,9 @@ export function PlanFeatures({ plan }: { plan: PlanInfo }) {
       <li><MdCheck aria-hidden="true" />{t('plans.featureUpload', { gib: Math.round(plan.limits.maxUploadBytes / GIB) })}</li>
       <li><MdCheck aria-hidden="true" />{t('plans.featureTiers', { count: plan.limits.maxTiers })}</li>
       <li><MdCheck aria-hidden="true" />{t('plans.featureAnalytics', { days: plan.limits.analyticsDays })}</li>
+      {plan.limits.autoCaptionMinutes > 0 && (
+        <li><MdCheck aria-hidden="true" />{t('plans.featureCaptions', { minutes: plan.limits.autoCaptionMinutes, max: plan.limits.autoCaptionMaxVideoMinutes })}</li>
+      )}
     </ul>
   );
 }

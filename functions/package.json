@@ -21,6 +21,7 @@
     "@aws-sdk/client-secrets-manager": "^3.1158.0",
     "@aws-sdk/client-sfn": "^3.1158.0",
     "@aws-sdk/client-sns": "^3.1158.0",
+    "@aws-sdk/client-transcribe": "^3.1169.0",
     "@aws-sdk/lib-dynamodb": "^3.1159.0",
     "@aws-sdk/s3-request-presigner": "^3.1158.0",
     "@zelos/shared": "^0.1.0",

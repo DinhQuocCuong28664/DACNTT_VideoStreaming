@@ -26,7 +26,7 @@ export interface User {
 }
 
 export type PlanId = 'free' | 'plus' | 'pro' | 'max';
-export interface PlanLimits { maxUploadBytes: number; maxTiers: number; analyticsDays: number }
+export interface PlanLimits { maxUploadBytes: number; maxTiers: number; analyticsDays: number; autoCaptionMinutes: number; autoCaptionMaxVideoMinutes: number }
 export interface UserPlan { id: PlanId; renewsAt: string | null; cancelAtPeriodEnd: boolean; limits: PlanLimits }
 export interface PlanInfo { id: PlanId; priceVnd: number; limits: PlanLimits }
 export interface PlansResponse { enabled: boolean; currency: 'VND'; plans: PlanInfo[] }
@@ -57,7 +57,7 @@ export interface VideoDetails extends VideoCard {
   category: Category | null;
   counters: { views: number; likes: number; comments: number };
   chapters: { startSec: number; title: string }[];
-  captions: { lang: string; label: string }[];
+  captions: { lang: string; label: string; auto: boolean }[];
   previewVtt: string | null;
   locked: Lock | null;
   /** Owner and staff only. */
@@ -77,7 +77,7 @@ export interface Playback {
   cdnQuery: Record<string, string>;
   playbackToken: string;
   expiresAt: string;
-  captions: { lang: string; label: string; url: string }[];
+  captions: { lang: string; label: string; auto: boolean; url: string }[];
 }
 
 export interface Page<T> { items: T[]; nextCursor: string | null }

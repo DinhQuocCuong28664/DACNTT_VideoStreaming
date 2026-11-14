@@ -91,7 +91,7 @@ class Boundary extends Component<WithTranslation & { children: ReactNode }, Boun
       <div className="status-page">
         <header className="status-topbar">
           <a href="/" className="brand-logo" aria-label="VidShare">
-            <span className="brand-logo-tile"><LogoIcon size={18} /></span>
+            <span className="brand-logo-tile"><LogoIcon size={36} /></span>
             <span className="brand-logo-text">VidShare</span>
           </a>
         </header>

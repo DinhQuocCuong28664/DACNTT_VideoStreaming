@@ -13,7 +13,7 @@ export interface UploadInfo {
   completedAt: Date | null;
 }
 
-export interface Caption { lang: string; label: string; path: string }
+export interface Caption { lang: string; label: string; path: string; /** Made by speech recognition, not uploaded by the owner. */ auto?: boolean }
 export interface Chapter { startSec: number; title: string }
 
 export interface VideoDoc {

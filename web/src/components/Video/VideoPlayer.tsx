@@ -58,6 +58,24 @@ export interface VideoPlayerProps {
   onHeartbeat?: (b: { positionSec: number; watchedSec: number; playbackToken: string }) => void;
 }
 
+const CAPTION_PREF_KEY = 'vidshare.captions';
+
+function readCaptionPref(): { on: boolean; lang: string | null } {
+  try {
+    const p = JSON.parse(localStorage.getItem(CAPTION_PREF_KEY) ?? 'null') as { on?: unknown; lang?: unknown } | null;
+    return { on: p?.on === true, lang: typeof p?.lang === 'string' ? p.lang : null };
+  } catch {
+    return { on: false, lang: null };
+  }
+}
+
+/** Keeps the last language even when captions are switched off, so turning them on again picks it. */
+function saveCaptionPref(lang: string | null): void {
+  try {
+    localStorage.setItem(CAPTION_PREF_KEY, JSON.stringify({ on: lang !== null, lang: lang ?? readCaptionPref().lang }));
+  } catch { /* storage blocked: the choice just is not remembered */ }
+}
+
 export default function VideoPlayer({ grant, renew, poster, previewVtt, chapters = [], startTime = null, shareUrl = null, embedCode = null, onView, onHeartbeat }: VideoPlayerProps) {
   const { t } = useTranslation();
   const tRef = useRef(t);
@@ -96,6 +114,16 @@ export default function VideoPlayer({ grant, renew, poster, previewVtt, chapters
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isPiP, setIsPiP] = useState(false);
   const [captionLang, setCaptionLang] = useState<string | null>(null);
+  /** Turning captions on or off is remembered for the next video, as on YouTube. */
+  const pickCaption = useCallback((lang: string | null) => {
+    setCaptionLang(lang);
+    saveCaptionPref(lang);
+  }, []);
+  const toggleCaptions = () => {
+    if (captionLang) { pickCaption(null); return; }
+    const wanted = readCaptionPref().lang;
+    pickCaption(grant.captions.find((c) => c.lang === wanted)?.lang ?? grant.captions[0]?.lang ?? null);
+  };
   const [showControls, setShowControls] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
   const [settingsView, setSettingsView] = useState<'main' | 'speed' | 'quality' | 'captions'>('main');
@@ -282,6 +310,13 @@ export default function VideoPlayer({ grant, renew, poster, previewVtt, chapters
   }, [masterUrl, startTime]);
 
   // ── Captions: one track shown at a time ───────────────────────────────────────────────
+  // A viewer who had captions on sees them on the next video too, in the same language when it exists.
+  useEffect(() => {
+    const pref = readCaptionPref();
+    if (!pref.on || grant.captions.length === 0) return;
+    setCaptionLang(grant.captions.find((c) => c.lang === pref.lang)?.lang ?? grant.captions[0]?.lang ?? null);
+  }, [grant.captions]);
+
   useEffect(() => {
     const tracks = videoRef.current?.textTracks;
     if (!tracks) return;
@@ -393,7 +428,7 @@ export default function VideoPlayer({ grant, renew, poster, previewVtt, chapters
       case 'ArrowDown': e.preventDefault(); v.volume = Math.max(v.volume - 0.1, 0); break;
       case 'm': toggleMute(); break;
       case 'f': void toggleFullscreen(); break;
-      case 'c': if (grant.captions.length) setCaptionLang((l) => (l ? null : grant.captions[0]?.lang ?? null)); break;
+      case 'c': if (grant.captions.length) toggleCaptions(); break;
       default: break;
     }
     handleActivity();
@@ -505,7 +540,7 @@ export default function VideoPlayer({ grant, renew, poster, previewVtt, chapters
           <span className="time-display">{formatTime(currentTime)} / {formatTime(duration)}</span>
           <div className="spacer" />
           {grant.captions.length > 0 && (
-            <button className="control-btn" onClick={() => setCaptionLang((l) => (l ? null : grant.captions[0]?.lang ?? null))} aria-pressed={captionLang !== null} aria-label={t('player.captions')}>
+            <button className="control-btn" onClick={toggleCaptions} aria-pressed={captionLang !== null} aria-label={t('player.captions')}>
               {captionLang ? <MdClosedCaption /> : <MdClosedCaptionOff />}
             </button>
           )}
@@ -560,12 +595,12 @@ export default function VideoPlayer({ grant, renew, poster, previewVtt, chapters
                 {settingsView === 'captions' && (
                   <>
                     <button className="settings-menu-header" onClick={() => setSettingsView('main')}><FiChevronLeft /> {t('player.captions')}</button>
-                    <button className={`settings-option ${captionLang === null ? 'active' : ''}`} onClick={() => { setCaptionLang(null); setShowSettings(false); }}>
+                    <button className={`settings-option ${captionLang === null ? 'active' : ''}`} onClick={() => { pickCaption(null); setShowSettings(false); }}>
                       <span>{t('player.captionsOff')}</span>{captionLang === null && <FiCheck />}
                     </button>
                     {grant.captions.map((c) => (
-                      <button key={c.lang} className={`settings-option ${captionLang === c.lang ? 'active' : ''}`} onClick={() => { setCaptionLang(c.lang); setShowSettings(false); }}>
-                        <span>{c.label}</span>{captionLang === c.lang && <FiCheck />}
+                      <button key={c.lang} className={`settings-option ${captionLang === c.lang ? 'active' : ''}`} onClick={() => { pickCaption(c.lang); setShowSettings(false); }}>
+                        <span>{c.auto ? t('player.captionAuto', { label: c.label }) : c.label}</span>{captionLang === c.lang && <FiCheck />}
                       </button>
                     ))}
                   </>
