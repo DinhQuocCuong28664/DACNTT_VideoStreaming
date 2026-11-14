@@ -65,7 +65,7 @@ describe('captions and chapters', () => {
     expect((await putCaption(id, 'xx_YY', VTT)).body.error.code).toBe('BAD_LANGUAGE');
     const ok = await putCaption(id, 'vi', VTT);
     expect(ok.status).toBe(200);
-    expect(ok.body.captions).toEqual([{ lang: 'vi', label: 'Tiếng Việt' }]);
+    expect(ok.body.captions).toEqual([{ lang: 'vi', label: 'Tiếng Việt', auto: false }]);
     expect((await w.ctx.deps.storage.get('processed', `videos/${id}/v2/captions/vi.vtt`))?.toString()).toBe(VTT);
     const play = await w.call('get', `/videos/${id}/playback`);
     expect(play.body.captions[0].url).toBe(`https://cdn.example.test/videos/${id}/v2/captions/vi.vtt`);
