@@ -66,13 +66,18 @@ export interface StatusDeps {
   readWork: <T>(key: string) => Promise<T | null>;
   emitPublished: (detail: { videoId: string; ownerId: string; publishedAt: string }) => Promise<void>;
   alert: (subject: string, message: string) => Promise<void>;
+  /** Whether the owner's plan puts their jobs in the priority queues. */
+  priorityLane: (ownerId: string) => Promise<boolean>;
   now: () => Date;
   log: (entry: Record<string, unknown>) => void;
 }
 
+/** Which Batch queues the workflow uses for this video: the owner's plan decides. */
+export type Lane = 'priority' | 'standard';
+
 export type StatusResult =
-  | { found: false }
-  | { found: true; status?: string; published?: boolean };
+  | { found: false; lane?: Lane }
+  | { found: true; status?: string; published?: boolean; lane?: Lane };
 
 async function start(input: z.infer<typeof StartInput>, deps: StatusDeps): Promise<StatusResult> {
   const keyRef = keyObject(input.videoId, input.uploadVersion);
@@ -82,9 +87,13 @@ async function start(input: z.infer<typeof StartInput>, deps: StatusDeps): Promi
   const doc = await deps.videos.startProcessing(input.videoId, input.uploadVersion, emptyProgress(input.chunkCount ?? 0), keyRef);
   if (!doc) {
     deps.log({ level: 'warn', msg: 'video deleted or superseded before processing', videoId: input.videoId });
-    return { found: false };
+    // The workflow reads the lane of every start result, so it is present here too.
+    return { found: false, lane: 'standard' };
   }
-  return { found: true, status: doc.status };
+  // The lane is read at every start, so a plan bought or cancelled meanwhile applies to the next upload.
+  // A lookup that fails must not stop the video: it just takes the standard lane.
+  const lane: Lane = await deps.priorityLane(doc.owner).then((p) => (p ? 'priority' : 'standard'), () => 'standard');
+  return { found: true, status: doc.status, lane };
 }
 
 async function publish(input: z.infer<typeof PublishInput>, deps: StatusDeps): Promise<StatusResult> {
@@ -167,7 +176,7 @@ export async function handle(event: unknown, deps: StatusDeps): Promise<StatusRe
 let runtime: StatusDeps | undefined;
 
 async function createRuntime(): Promise<StatusDeps> {
-  const [{ S3Client, PutObjectCommand, GetObjectCommand }, { EventBridgeClient, PutEventsCommand }, { SNSClient, PublishCommand }, { SecretsManagerClient, GetSecretValueCommand }, { videosCollection, mongoVideoStore }, { required }] = await Promise.all([
+  const [{ S3Client, PutObjectCommand, GetObjectCommand }, { EventBridgeClient, PutEventsCommand }, { SNSClient, PublishCommand }, { SecretsManagerClient, GetSecretValueCommand }, { videosCollection, usersCollection, mongoVideoStore, ownerHasPriority }, { required }] = await Promise.all([
     import('@aws-sdk/client-s3'),
     import('@aws-sdk/client-eventbridge'),
     import('@aws-sdk/client-sns'),
@@ -184,6 +193,7 @@ async function createRuntime(): Promise<StatusDeps> {
   const topicArn = required('ALERT_TOPIC_ARN');
   const secret = await new SecretsManagerClient({}).send(new GetSecretValueCommand({ SecretId: required('MONGODB_SECRET_ARN') }));
   const videos = mongoVideoStore(await videosCollection(secret.SecretString ?? '', required('DB_NAME')));
+  const users = await usersCollection(secret.SecretString ?? '', required('DB_NAME'));
 
   return {
     videos,
@@ -211,6 +221,7 @@ async function createRuntime(): Promise<StatusDeps> {
     async alert(subject, message) {
       await sns.send(new PublishCommand({ TopicArn: topicArn, Subject: subject.slice(0, 100), Message: message }));
     },
+    priorityLane: (ownerId) => ownerHasPriority(users, ownerId, new Date()),
     now: () => new Date(),
     log: (entry) => console.log(JSON.stringify(entry)),
   };

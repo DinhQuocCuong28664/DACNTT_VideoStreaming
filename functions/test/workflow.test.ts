@@ -105,7 +105,7 @@ function memoryStore(initial: VideoDoc & Record<string, unknown>) {
   return { store, doc };
 }
 
-function statusDeps(store: VideoStore, work: Record<string, unknown> = {}) {
+function statusDeps(store: VideoStore, work: Record<string, unknown> = {}, priorityLane: StatusDeps['priorityLane'] = async () => false) {
   const keys = new Map<string, string>();
   const published: unknown[] = [];
   const alerts: string[] = [];
@@ -119,6 +119,7 @@ function statusDeps(store: VideoStore, work: Record<string, unknown> = {}) {
     readWork: async <T>(k: string) => ((new Map(Object.entries(work)).get(k) ?? null) as T | null),
     emitPublished: async (d) => { published.push(d); },
     alert: async (s) => { alerts.push(s); },
+    priorityLane,
     now: () => new Date('2026-11-01T00:00:00Z'),
     log: () => undefined,
   };
@@ -137,17 +138,24 @@ describe('status', () => {
   it('start creates one key, keeps it on a retry, and moves the video to PROCESSING', async () => {
     const { store, doc } = memoryStore(base);
     const { deps, keys } = statusDeps(store);
-    expect(await handle({ action: 'start', videoId, uploadVersion: 1 }, deps)).toEqual({ found: true, status: 'PROCESSING' });
+    expect(await handle({ action: 'start', videoId, uploadVersion: 1 }, deps)).toEqual({ found: true, status: 'PROCESSING', lane: 'standard' });
     const first = keys.get(`keys/${videoId}/v1.json`);
     await handle({ action: 'start', videoId, uploadVersion: 1 }, deps);
     expect(keys.get(`keys/${videoId}/v1.json`)).toBe(first);
     expect(doc.status).toBe('PROCESSING');
   });
 
+  it('start puts a paid owner in the priority lane and falls back to standard when the lookup fails', async () => {
+    const paid = statusDeps(memoryStore(base).store, {}, async (owner) => owner === ownerId);
+    expect(await handle({ action: 'start', videoId, uploadVersion: 1 }, paid.deps)).toMatchObject({ found: true, lane: 'priority' });
+    const broken = statusDeps(memoryStore(base).store, {}, async () => { throw new Error('mongo down'); });
+    expect(await handle({ action: 'start', videoId, uploadVersion: 1 }, broken.deps)).toMatchObject({ found: true, lane: 'standard' });
+  });
+
   it('start reports a deleted or newer video as not found', async () => {
     const { store } = memoryStore({ ...base, uploadVersion: 2 });
     const { deps } = statusDeps(store);
-    expect(await handle({ action: 'start', videoId, uploadVersion: 1 }, deps)).toEqual({ found: false });
+    expect(await handle({ action: 'start', videoId, uploadVersion: 1 }, deps)).toEqual({ found: false, lane: 'standard' });
   });
 
   it('folds progress events from both branches and ignores events of an old version', async () => {

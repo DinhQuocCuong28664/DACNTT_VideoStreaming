@@ -1,5 +1,5 @@
 output "job_queue_arns" {
-  description = "Queue ARNs by name: main, bulk"
+  description = "Queue ARNs by name: priority, main, priority-bulk, bulk"
   value       = { for k, q in aws_batch_job_queue.this : k => q.arn }
 }
 

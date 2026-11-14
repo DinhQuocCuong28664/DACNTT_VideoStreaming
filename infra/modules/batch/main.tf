@@ -1,8 +1,9 @@
 # AWS Batch on Fargate for one environment.
 #
-# Two compute environments, Fargate Spot first and Fargate On-Demand as overflow, serve two
-# queues: "main" (analyse, encode, audio; priority 10) and "bulk" (chunk arrays; priority 1),
-# so short videos overtake the chunks of long ones. Both scale to zero when idle.
+# Two compute environments, Fargate Spot first and Fargate On-Demand as overflow, serve four
+# queues: "priority" (20) and "main" (10) for analyse, encode and audio, "priority-bulk" (5) and
+# "bulk" (1) for chunk arrays. Short videos overtake the chunks of long ones, and owners on a
+# paid plan are served before the others within each pair. Both environments scale to zero when idle.
 #
 # One image, one job definition per role. Containers read raw sources and keys, write HLS
 # output and work files, publish progress events and call Rekognition. They have no database
@@ -56,9 +57,15 @@ resource "aws_batch_compute_environment" "this" {
 }
 
 locals {
+  # Batch serves the queue with the higher priority first when capacity is short. The two priority
+  # queues carry the jobs of owners on a paid plan (shared/src/plans.ts, priorityTranscode):
+  # their short jobs go ahead of everyone's, and their chunks go ahead of other people's chunks
+  # but behind the short jobs of free accounts, so a long video never blocks quick ones.
   queues = {
-    main = 10
-    bulk = 1
+    priority      = 20
+    main          = 10
+    priority-bulk = 5
+    bulk          = 1
   }
 }
 
