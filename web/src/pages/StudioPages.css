@@ -98,6 +98,8 @@
   display: flex;
   gap: var(--space-md);
   min-width: 320px;
+  /* A long title without spaces (file names) must wrap instead of pushing the other columns out of view. */
+  max-width: 480px;
 }
 
 .studio-thumb {
@@ -148,6 +150,7 @@
 .studio-video-title {
   font-weight: 500;
   color: var(--text-primary);
+  overflow-wrap: anywhere;
 }
 
 .studio-video-desc,
