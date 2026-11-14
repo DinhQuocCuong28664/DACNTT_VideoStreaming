@@ -27,7 +27,7 @@ export const billingFeature: Feature = (r, deps) => {
       currency: 'VND',
       plans: PLAN_LIST.map((p) => ({
         id: p.id, priceVnd: p.priceVnd,
-        limits: { maxUploadBytes: p.maxUploadBytes, maxTiers: p.maxTiers, analyticsDays: p.analyticsDays },
+        limits: { maxUploadBytes: p.maxUploadBytes, maxTiers: p.maxTiers, analyticsDays: p.analyticsDays, autoCaptionMinutes: p.autoCaptionMinutes, autoCaptionMaxVideoMinutes: p.autoCaptionMaxVideoMinutes },
       })),
     });
   });
@@ -42,7 +42,7 @@ export const billingFeature: Feature = (r, deps) => {
       renewsAt: u.billing?.currentPeriodEnd?.toISOString() ?? null,
       cancelAtPeriodEnd: u.billing?.cancelAtPeriodEnd ?? false,
       hasCustomer: Boolean(u.billing?.customerId),
-      limits: { maxUploadBytes: e.maxUploadBytes, maxTiers: e.maxTiers, analyticsDays: e.analyticsDays },
+      limits: { maxUploadBytes: e.maxUploadBytes, maxTiers: e.maxTiers, analyticsDays: e.analyticsDays, autoCaptionMinutes: e.autoCaptionMinutes, autoCaptionMaxVideoMinutes: e.autoCaptionMaxVideoMinutes },
     });
   });
 

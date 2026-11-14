@@ -25,7 +25,7 @@ product; none is optional.
 | F8 | Subscriptions | Subscribe/unsubscribe, subscription feed, in-app notifications for new uploads (optional email) |
 | F9 | Memberships | Tiers per channel, join/cancel (sandbox payment), member roster, members-only videos, member badge |
 | F10 | Library | Watch history, watch later, playlists (ordered, public/unlisted/private) |
-| F11 | Creator studio | Edit metadata, captions (VTT upload), chapters, thumbnail, visibility, schedule; analytics: views per day, watch time, audience retention |
+| F11 | Creator studio | Edit metadata, captions (VTT upload, or automatic with Amazon Transcribe on paid plans), chapters, thumbnail, visibility, schedule; analytics: views per day, watch time, audience retention |
 | F12 | Trust & safety | Automatic screening (Rekognition), review queue, decisions with reason codes, appeals, audit sampling with FP/FN metrics, event log, user/role admin; roles `user`, `operator`, `auditor`, `admin` |
 | F13 | UI | Light/dark theme, Vietnamese/English, 403/404 pages, design system in vanilla CSS (no Tailwind) |
 | F14 | Platform plans | Free, Plus, Pro and Max (VND per month) bought through Stripe Checkout (test mode until payments go live); the webhook alone sets the plan; limits per plan (upload size, membership tiers, analytics window) come from one `entitlements(user)` function; accounts created before 2026-11-13 keep the Pro limits |
@@ -258,6 +258,15 @@ flowchart TD
 - Captions are side-loaded WebVTT files that the player adds as text tracks, so uploading or
   removing a caption never rewrites a published playlist. Chapters are stored on the video and
   drawn by the player.
+- Automatic captions (Lambda `captions`, outside the transcode state machine so a Transcribe
+  problem can never fail a video): the VideoPublished event starts one Transcribe job on the raw
+  upload (language picked from Vietnamese and English), named `<env>-<videoId>-<version>` so a
+  redelivered event starts nothing; the job's finished event copies the WebVTT file next to the
+  video as a track marked `auto`. Plans set the monthly minutes and the longest video
+  (`autoCaptionMinutes`, `autoCaptionMaxVideoMinutes` in `shared/src/plans.ts`); the minutes are
+  reserved atomically in `captionUsage` (one document per user and month) before the job starts
+  and returned if it fails. Videos without audio, over 2 GB, or already captioned by the owner are
+  skipped and cost nothing; a track the owner uploads replaces the automatic one.
 
 ### 5.2 FFmpeg processing graph (single job)
 
@@ -624,7 +633,7 @@ Each line becomes at least one automated test in the new code.
 
 ```
 api/            Lambda API (TypeScript, Express adapter, esbuild bundle)
-functions/      starter, probe, status, stitch, notifier (TypeScript)
+functions/      starter, probe, status, stitch, notifier, captions (TypeScript)
 transcoder/     container image: analyse, encode, audio, chunk (TypeScript, FFmpeg)
 web/            React SPA (TypeScript, Vite, hls.js, vanilla CSS)
 shared/         schemas (zod), video states, event contracts, label policy

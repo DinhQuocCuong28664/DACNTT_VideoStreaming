@@ -95,7 +95,7 @@ export function videoViews(deps: Deps) {
       category: v.category,
       counters: { views: v.counters.views, likes: v.counters.likes, comments: v.counters.comments },
       chapters: v.chapters,
-      captions: v.captions.map((c) => ({ lang: c.lang, label: c.label })),
+      captions: v.captions.map((c) => ({ lang: c.lang, label: c.label, auto: c.auto === true })),
       previewVtt: access.play && v.previewVtt ? `${deps.cdn.baseUrl}/${v.previewVtt}` : null,
       locked: access.play ? null : access.lock,
       ...(access.as === 'viewer' ? {} : {
@@ -168,7 +168,7 @@ export const videosFeature: Feature = (r, deps) => {
       cdnQuery: deps.cdn.videoPolicy(id, expiresAt),
       playbackToken: deps.tokens.playback(id, v.uploadVersion, req.user?.id ?? null),
       expiresAt: expiresAt.toISOString(),
-      captions: v.captions.map((c) => ({ lang: c.lang, label: c.label, url: `${deps.cdn.baseUrl}/${c.path}` })),
+      captions: v.captions.map((c) => ({ lang: c.lang, label: c.label, auto: c.auto === true, url: `${deps.cdn.baseUrl}/${c.path}` })),
     });
   });
 

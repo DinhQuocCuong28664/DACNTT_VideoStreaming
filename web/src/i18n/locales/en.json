@@ -384,6 +384,7 @@
     "copyFailed": "Could not copy the link",
     "captions": "Captions",
     "captionsOff": "Off",
+    "captionAuto": "{{label}} (auto-generated)",
     "copyEmbed": "Copy embed code",
     "embedCopied": "Embed code copied"
   },
@@ -751,6 +752,7 @@
     "featureUpload": "Uploads up to {{gib}} GiB per video",
     "featureTiers": "Up to {{count}} channel membership tiers",
     "featureAnalytics": "{{days}} days of Studio analytics",
+    "featureCaptions": "Automatic captions: {{minutes}} min a month, videos up to {{max}} min",
     "choose": "Get {{plan}}",
     "current": "Your current plan",
     "manage": "Manage subscription",
@@ -949,6 +951,7 @@
     "thumbnailSaved": "Thumbnail updated",
     "thumbnailReset": "Back to the automatic thumbnail",
     "noCaptions": "No subtitles yet.",
+    "captionAutoBadge": "auto-generated",
     "captionLang": "Language code (vi, en, pt-BR)",
     "captionLabel": "Name shown in the player",
     "captionFile": "WebVTT file",

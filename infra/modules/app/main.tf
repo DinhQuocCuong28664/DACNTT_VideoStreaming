@@ -1,6 +1,7 @@
 # The API Lambda (Express behind a Function URL, fronted by the Cloudflare Worker) and the
-# background functions that serve it: notifier (VideoPublished), hourly analytics roll-up,
-# daily draft reconciler, plus the EventBridge Scheduler group for scheduled publishing.
+# background functions that serve it: notifier (VideoPublished), automatic captions (VideoPublished
+# and Transcribe job events), hourly analytics roll-up, daily draft reconciler, plus the
+# EventBridge Scheduler group for scheduled publishing.
 # Code is built before plan or apply: `npm run build` in api/ and functions/.
 
 data "aws_region" "current" {}
@@ -14,6 +15,7 @@ locals {
     notifier   = { memory = 512, timeout = 300, reserved = 2 }
     rollup     = { memory = 256, timeout = 300, reserved = 1 }
     reconciler = { memory = 256, timeout = 300, reserved = 1 }
+    captions   = { memory = 256, timeout = 60, reserved = 2 }
   }
 
   schedule_group = "${var.name}-publish"
@@ -58,6 +60,13 @@ locals {
       API_SECRET_ARN = aws_secretsmanager_secret.api.arn
       DB_NAME        = var.db_name
       RAW_BUCKET     = var.bucket_names.raw
+    }
+    captions = {
+      API_SECRET_ARN   = aws_secretsmanager_secret.api.arn
+      DB_NAME          = var.db_name
+      RAW_BUCKET       = var.bucket_names.raw
+      WORK_BUCKET      = var.bucket_names.work
+      PROCESSED_BUCKET = var.bucket_names.processed
     }
   }
 }
@@ -330,8 +339,38 @@ data "aws_iam_policy_document" "reconciler" {
   }
 }
 
+data "aws_iam_policy_document" "captions" {
+  statement {
+    actions   = ["secretsmanager:GetSecretValue"]
+    resources = [aws_secretsmanager_secret.api.arn]
+  }
+  statement {
+    # Transcribe reads the source with these credentials, and the function checks its size.
+    sid       = "ReadSource"
+    actions   = ["s3:GetObject"]
+    resources = ["${var.bucket_arns.raw}/raw/*"]
+  }
+  statement {
+    # The plan says whether the video has audio; Transcribe writes its subtitle file here.
+    sid       = "ReadPlanWriteSubtitles"
+    actions   = ["s3:GetObject", "s3:PutObject"]
+    resources = ["${var.bucket_arns.work}/work/*"]
+  }
+  statement {
+    sid       = "PublishCaption"
+    actions   = ["s3:PutObject"]
+    resources = ["${var.bucket_arns.processed}/videos/*"]
+  }
+  statement {
+    sid       = "UseTranscribe"
+    actions   = ["transcribe:StartTranscriptionJob", "transcribe:GetTranscriptionJob"]
+    resources = ["arn:aws:transcribe:${local.region}:${local.account}:transcription-job/${var.name}-*"]
+  }
+}
+
 locals {
   background_policies = {
+    captions   = data.aws_iam_policy_document.captions.json
     notifier   = data.aws_iam_policy_document.notifier.json
     rollup     = data.aws_iam_policy_document.rollup.json
     reconciler = data.aws_iam_policy_document.reconciler.json
@@ -398,6 +437,55 @@ resource "aws_lambda_permission" "published" {
   function_name = aws_lambda_function.background["notifier"].function_name
   principal     = "events.amazonaws.com"
   source_arn    = aws_cloudwatch_event_rule.published.arn
+}
+
+# Automatic captions: the same VideoPublished event, plus Transcribe's own job events (default bus).
+resource "aws_cloudwatch_event_target" "published_captions" {
+  rule           = aws_cloudwatch_event_rule.published.name
+  event_bus_name = var.event_bus_name
+  arn            = aws_lambda_function.background["captions"].arn
+  retry_policy {
+    maximum_retry_attempts       = 10
+    maximum_event_age_in_seconds = 3600
+  }
+}
+
+resource "aws_lambda_permission" "published_captions" {
+  statement_id  = "AllowVideoPublished"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.background["captions"].function_name
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.published.arn
+}
+
+resource "aws_cloudwatch_event_rule" "transcribe" {
+  name        = "${var.name}-transcribe-job"
+  description = "Finished Transcribe jobs of this environment"
+  event_pattern = jsonencode({
+    source        = ["aws.transcribe"]
+    "detail-type" = ["Transcribe Job State Change"]
+    detail = {
+      TranscriptionJobStatus = ["COMPLETED", "FAILED"]
+      TranscriptionJobName   = [{ prefix = "${var.name}-" }]
+    }
+  })
+}
+
+resource "aws_cloudwatch_event_target" "transcribe" {
+  rule = aws_cloudwatch_event_rule.transcribe.name
+  arn  = aws_lambda_function.background["captions"].arn
+  retry_policy {
+    maximum_retry_attempts       = 10
+    maximum_event_age_in_seconds = 3600
+  }
+}
+
+resource "aws_lambda_permission" "transcribe" {
+  statement_id  = "AllowTranscribeJobs"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.background["captions"].function_name
+  principal     = "events.amazonaws.com"
+  source_arn    = aws_cloudwatch_event_rule.transcribe.arn
 }
 
 # Roll-up at five past every hour; reconciler once a day at 03:30 UTC.
