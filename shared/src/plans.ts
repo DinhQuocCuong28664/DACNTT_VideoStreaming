@@ -22,6 +22,8 @@ export interface Entitlements {
   autoCaptionMaxVideoMinutes: number;
   /** Transcoding jobs of this user go to the Batch queues that are served first when capacity is short. */
   priorityTranscode: boolean;
+  /** Longest video, in minutes, that the pipeline accepts (checked after the probe). */
+  maxVideoMinutes: number;
 }
 
 export interface PlanDef extends Entitlements {
@@ -30,10 +32,10 @@ export interface PlanDef extends Entitlements {
 }
 
 export const PLANS: Record<PlanId, PlanDef> = {
-  free: { id: 'free', priceVnd: 0, maxUploadBytes: 2 * GIB, maxTiers: 2, analyticsDays: 28, autoCaptionMinutes: 0, autoCaptionMaxVideoMinutes: 0, priorityTranscode: false },
-  plus: { id: 'plus', priceVnd: 49_000, maxUploadBytes: 5 * GIB, maxTiers: 3, analyticsDays: 90, autoCaptionMinutes: 20, autoCaptionMaxVideoMinutes: 15, priorityTranscode: true },
-  pro: { id: 'pro', priceVnd: 99_000, maxUploadBytes: 20 * GIB, maxTiers: 5, analyticsDays: 365, autoCaptionMinutes: 40, autoCaptionMaxVideoMinutes: 30, priorityTranscode: true },
-  max: { id: 'max', priceVnd: 199_000, maxUploadBytes: 20 * GIB, maxTiers: 10, analyticsDays: 365, autoCaptionMinutes: 80, autoCaptionMaxVideoMinutes: 60, priorityTranscode: true },
+  free: { id: 'free', priceVnd: 0, maxUploadBytes: 2 * GIB, maxTiers: 2, analyticsDays: 28, autoCaptionMinutes: 0, autoCaptionMaxVideoMinutes: 0, priorityTranscode: false, maxVideoMinutes: 60 },
+  plus: { id: 'plus', priceVnd: 49_000, maxUploadBytes: 5 * GIB, maxTiers: 3, analyticsDays: 90, autoCaptionMinutes: 20, autoCaptionMaxVideoMinutes: 15, priorityTranscode: true, maxVideoMinutes: 180 },
+  pro: { id: 'pro', priceVnd: 99_000, maxUploadBytes: 20 * GIB, maxTiers: 5, analyticsDays: 365, autoCaptionMinutes: 40, autoCaptionMaxVideoMinutes: 30, priorityTranscode: true, maxVideoMinutes: 360 },
+  max: { id: 'max', priceVnd: 199_000, maxUploadBytes: 20 * GIB, maxTiers: 10, analyticsDays: 365, autoCaptionMinutes: 80, autoCaptionMaxVideoMinutes: 60, priorityTranscode: true, maxVideoMinutes: 720 },
 };
 
 export const PLAN_LIST: readonly PlanDef[] = [PLANS.free, PLANS.plus, PLANS.pro, PLANS.max];
@@ -46,6 +48,7 @@ const LEGACY: Entitlements = {
   autoCaptionMinutes: PLANS.pro.autoCaptionMinutes, autoCaptionMaxVideoMinutes: PLANS.pro.autoCaptionMaxVideoMinutes,
   // Legacy accounts kept the Pro limits they had; the queue priority is new, so it is not part of that.
   priorityTranscode: false,
+  maxVideoMinutes: PLANS.pro.maxVideoMinutes,
 };
 
 export const isPlanId = (v: unknown): v is PlanId => typeof v === 'string' && (PLAN_IDS as readonly string[]).includes(v);
@@ -84,6 +87,6 @@ export function entitlements(user: PlanSubject, now: Date): Entitlements & { pla
   return {
     plan, maxUploadBytes: e.maxUploadBytes, maxTiers: e.maxTiers, analyticsDays: e.analyticsDays,
     autoCaptionMinutes: e.autoCaptionMinutes, autoCaptionMaxVideoMinutes: e.autoCaptionMaxVideoMinutes,
-    priorityTranscode: e.priorityTranscode,
+    priorityTranscode: e.priorityTranscode, maxVideoMinutes: e.maxVideoMinutes,
   };
 }

@@ -5,7 +5,7 @@
  */
 import { MongoClient, ObjectId, type Collection, type Document } from 'mongodb';
 import { entitlements, type ProgressState, type TranscodeProgress } from '@zelos/shared';
-import type { VideoDoc, VideoStore } from '../status.js';
+import type { OwnerLimits, VideoDoc, VideoStore } from '../status.js';
 
 let client: MongoClient | undefined;
 
@@ -94,8 +94,9 @@ export async function usersCollection(uri: string, dbName: string): Promise<Coll
   return client.db(dbName).collection('users');
 }
 
-/** Whether the owner's current plan puts their transcoding jobs in the priority queues. */
-export async function ownerHasPriority(users: Collection<Document>, ownerId: string, now: Date): Promise<boolean> {
+/** What the owner's current plan allows the pipeline to do with their video. */
+export async function ownerLimits(users: Collection<Document>, ownerId: string, now: Date): Promise<OwnerLimits> {
   const u = await users.findOne({ _id: new ObjectId(ownerId) }, { projection: { createdAt: 1, billing: 1 } });
-  return entitlements({ createdAt: u?.['createdAt'] ?? now, billing: u?.['billing'] ?? null }, now).priorityTranscode;
+  const e = entitlements({ createdAt: u?.['createdAt'] ?? now, billing: u?.['billing'] ?? null }, now);
+  return { priority: e.priorityTranscode, maxVideoMinutes: e.maxVideoMinutes };
 }

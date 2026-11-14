@@ -749,6 +749,7 @@
     "featureTiers": "Tối đa {{count}} cấp hội viên kênh",
     "featureAnalytics": "Thống kê Studio {{days}} ngày",
     "featureCaptions": "Phụ đề tự động {{minutes}} phút mỗi tháng, video tối đa {{max}} phút",
+    "featureLength": "Video dài tối đa {{hours}} giờ",
     "featurePriority": "Xử lý ưu tiên: video của bạn được xử lý trước khi nhiều người tải lên cùng lúc",
     "choose": "Chọn gói {{plan}}",
     "current": "Gói hiện tại của bạn",
