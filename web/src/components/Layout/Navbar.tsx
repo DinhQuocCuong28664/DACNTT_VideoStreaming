@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import {
   MdAdminPanelSettings, MdArrowBack, MdMenu, MdMoreVert, MdOutlineAccountCircle, MdOutlineDarkMode, MdOutlineFileUpload,
   MdOutlineInfo, MdOutlineLightMode, MdOutlineLogout, MdOutlineNotifications, MdOutlineSettings, MdOutlineTranslate,
-  MdOutlineVideoCall, MdOutlineVideoLibrary, MdSearch,
+  MdOutlineVideoCall, MdOutlineVideoLibrary, MdOutlineVideoSettings, MdSearch,
 } from 'react-icons/md';
 import { useAuth } from '../../context/auth';
 import { useTheme } from '../../context/theme';
@@ -130,6 +130,7 @@ export default function Navbar({ onMenuClick }: { onMenuClick: () => void }) {
                   </div>
                   <div className="dropdown-divider" />
                   <Link to={channelPath} className="dropdown-item" onClick={close}><MdOutlineVideoLibrary /><span>{t('nav.yourChannel')}</span></Link>
+                  <Link to="/studio" className="dropdown-item" onClick={close}><MdOutlineVideoSettings /><span>{t('nav.studio')}</span></Link>
                   <Link to="/upload" className="dropdown-item" onClick={close}><MdOutlineFileUpload /><span>{t('nav.uploadVideo')}</span></Link>
                   <Link to="/settings" className="dropdown-item" onClick={close}><MdOutlineSettings /><span>{t('nav.settings')}</span></Link>
                   {isStaff && <Link to="/admin" className="dropdown-item" onClick={close}><MdAdminPanelSettings /><span>{t('nav.admin')}</span></Link>}
