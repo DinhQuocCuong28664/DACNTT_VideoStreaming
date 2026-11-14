@@ -535,6 +535,7 @@ export default function VideoPlayer({ grant, renew, poster, previewVtt, chapters
           <div className="volume-control">
             <button className="control-btn" onClick={toggleMute} aria-label={t('player.toggleMute')}><VolumeIcon /></button>
             <input className="volume-slider" type="range" min="0" max="1" step="0.05" value={muted ? 0 : volume} aria-label={t('player.volume')}
+              style={{ '--fill': `${(muted ? 0 : volume) * 100}%` } as React.CSSProperties}
               onChange={(e) => { const v = video(); if (v) { v.volume = Number(e.target.value); v.muted = v.volume === 0; } }} />
           </div>
           <span className="time-display">{formatTime(currentTime)} / {formatTime(duration)}</span>
