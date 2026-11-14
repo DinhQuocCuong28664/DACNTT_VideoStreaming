@@ -18,9 +18,55 @@
   height: 30px;
 }
 
-.brand-logo-tile img {
+/* The mark is two stacked images: the snake with unlit eyes, and a layer with the glowing eyes.
+   Light theme shows the first only; switching to dark fades the eyes in with a short flare. */
+.logo-mark {
+  position: relative;
+  display: inline-block;
+  flex-shrink: 0;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3));
+  transition: filter 0.7s ease;
+}
+
+.logo-mark img {
+  position: absolute;
+  inset: 0;
   display: block;
-  border-radius: 8px;
+  width: 100%;
+  height: 100%;
+}
+
+.logo-mark-eyes {
+  opacity: 0;
+  transition: opacity 0.7s ease;
+}
+
+[data-theme='dark'] .logo-mark {
+  filter: drop-shadow(0 0 5px rgba(150, 255, 70, 0.35));
+}
+
+[data-theme='dark'] .logo-mark-eyes {
+  opacity: 1;
+  animation: logo-eyes-awake 1.4s ease-out;
+}
+
+@keyframes logo-eyes-awake {
+  0% { opacity: 0; filter: brightness(0.5); }
+  28% { opacity: 1; filter: brightness(2.2); }
+  44% { opacity: 0.35; filter: brightness(1); }
+  62% { opacity: 1; filter: brightness(1.7); }
+  100% { opacity: 1; filter: brightness(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .logo-mark,
+  .logo-mark-eyes {
+    transition: none;
+  }
+
+  [data-theme='dark'] .logo-mark-eyes {
+    animation: none;
+  }
 }
 
 .brand-logo-text {

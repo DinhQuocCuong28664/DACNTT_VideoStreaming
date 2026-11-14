@@ -46,10 +46,6 @@
   margin-bottom: var(--space-lg);
 }
 
-.auth-logo img {
-  display: block;
-  border-radius: 12px;
-}
 
 .auth-title {
   font-size: 2.25rem;
