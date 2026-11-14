@@ -162,7 +162,7 @@ export const studioFeature: Feature = (r, deps) => {
     await storage.put(config.buckets.processed, path, req.body, 'text/vtt; charset=utf-8');
     const captions = [...others, { lang, label, path }].sort((a, b) => a.lang.localeCompare(b.lang));
     await videos.updateOne({ _id: v._id }, { $set: { captions, updatedAt: now() } });
-    res.json({ captions: captions.map((c) => ({ lang: c.lang, label: c.label })) });
+    res.json({ captions: captions.map((c) => ({ lang: c.lang, label: c.label, auto: c.auto === true })) });
   });
 
   r.delete('/videos/:id/captions/:lang', requireUser, async (req, res) => {

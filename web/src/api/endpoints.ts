@@ -100,7 +100,7 @@ export const playlists = {
 
 export const studio = {
   captions: (id: string, lang: string, label: string, vtt: string) =>
-    request<{ captions: { lang: string; label: string }[] }>('PUT', `/videos/${enc(id)}/captions/${enc(lang)}`, { query: { label }, raw: { body: vtt, contentType: 'text/vtt' } }),
+    request<{ captions: { lang: string; label: string; auto: boolean }[] }>('PUT', `/videos/${enc(id)}/captions/${enc(lang)}`, { query: { label }, raw: { body: vtt, contentType: 'text/vtt' } }),
   removeCaption: (id: string, lang: string) => api.del<void>(`/videos/${enc(id)}/captions/${enc(lang)}`),
   chapters: (id: string, chapters: { startSec: number; title: string }[]) => api.put<{ chapters: { startSec: number; title: string }[] }>(`/videos/${enc(id)}/chapters`, { chapters }),
   thumbnail: (id: string, uploadId: string) => api.put<{ thumbnail: string | null }>(`/videos/${enc(id)}/thumbnail`, { uploadId }),

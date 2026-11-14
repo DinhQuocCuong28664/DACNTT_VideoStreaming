@@ -1,11 +1,16 @@
 import { Link } from 'react-router-dom';
 import './Logo.css';
 
-export function LogoIcon({ size = 20 }: { size?: number }) {
+/**
+ * The brand mark: a crowned snake on a dark tile. The base image has unlit eyes; the eyes layer
+ * on top is invisible in the light theme and fades in (Logo.css) when the dark theme is on.
+ */
+export function LogoIcon({ size = 36 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 32 32" fill="none" aria-hidden="true">
-      <path d="M 13.29 10.09 Q 11.50 9.00 11.50 11.10 L 11.50 20.90 Q 11.50 23.00 13.29 21.91 L 21.21 17.09 Q 23.00 16.00 21.21 14.91 Z" fill="currentColor" />
-    </svg>
+    <span className="logo-mark" style={{ width: size, height: size }} aria-hidden="true">
+      <img src="/logo-base-128.png" alt="" decoding="async" />
+      <img className="logo-mark-eyes" src="/logo-eyes-128.png" alt="" decoding="async" />
+    </span>
   );
 }
 
@@ -13,7 +18,7 @@ export function LogoIcon({ size = 20 }: { size?: number }) {
 export default function Logo({ onClick }: { onClick?: () => void }) {
   return (
     <Link to="/" className="brand-logo" onClick={onClick} aria-label="VidShare">
-      <span className="brand-logo-tile"><LogoIcon size={18} /></span>
+      <span className="brand-logo-tile"><LogoIcon size={36} /></span>
       <span className="brand-logo-text">VidShare</span>
     </Link>
   );
