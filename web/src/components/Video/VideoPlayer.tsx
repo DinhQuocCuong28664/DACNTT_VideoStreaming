@@ -565,7 +565,7 @@ export default function VideoPlayer({ grant, renew, poster, previewVtt, chapters
                     </button>
                     {grant.captions.map((c) => (
                       <button key={c.lang} className={`settings-option ${captionLang === c.lang ? 'active' : ''}`} onClick={() => { setCaptionLang(c.lang); setShowSettings(false); }}>
-                        <span>{c.label}</span>{captionLang === c.lang && <FiCheck />}
+                        <span>{c.auto ? t('player.captionAuto', { label: c.label }) : c.label}</span>{captionLang === c.lang && <FiCheck />}
                       </button>
                     ))}
                   </>

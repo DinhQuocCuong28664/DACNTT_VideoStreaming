@@ -305,7 +305,7 @@ function CaptionsForm({ video, setBusy, onSaved, notify }: FormProps) {
       {video.captions.length === 0 ? <p className="settings-desc">{t('studio.noCaptions')}</p> : (
         <ul className="studio-list">
           {video.captions.map((c) => (
-            <li key={c.lang} className="studio-list-row"><span><strong>{c.label}</strong> · {c.lang}</span>
+            <li key={c.lang} className="studio-list-row"><span><strong>{c.label}</strong> · {c.lang}{c.auto ? ` · ${t('studio.captionAutoBadge')}` : ''}</span>
               <button type="button" className="btn-icon" disabled={busy} aria-label={t('studio.removeCaption', { label: c.label })} onClick={() => remove(c.lang)}><MdDeleteOutline /></button></li>
           ))}
         </ul>

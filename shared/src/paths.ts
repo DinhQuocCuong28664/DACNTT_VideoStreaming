@@ -40,6 +40,9 @@ export const workPaths = (videoId: string, uploadVersion: number) => {
     abortMarker: `${root}/abort`,
     encodeResult: `${root}/encode.json`,
     analyseResult: `${root}/analyse.json`,
+    /** Transcribe writes its subtitle file here as <job name>.vtt; the captions function copies it out. */
+    captionsPrefix: `${root}/captions/`,
+    captionVtt: (jobName: string) => `${root}/captions/${jobName}.vtt`,
   };
 };
 
