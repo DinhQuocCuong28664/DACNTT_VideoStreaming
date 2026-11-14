@@ -26,7 +26,7 @@ export interface User {
 }
 
 export type PlanId = 'free' | 'plus' | 'pro' | 'max';
-export interface PlanLimits { maxUploadBytes: number; maxTiers: number; analyticsDays: number; autoCaptionMinutes: number; autoCaptionMaxVideoMinutes: number }
+export interface PlanLimits { maxUploadBytes: number; maxTiers: number; analyticsDays: number; autoCaptionMinutes: number; autoCaptionMaxVideoMinutes: number; priorityTranscode: boolean }
 export interface UserPlan { id: PlanId; renewsAt: string | null; cancelAtPeriodEnd: boolean; limits: PlanLimits }
 export interface PlanInfo { id: PlanId; priceVnd: number; limits: PlanLimits }
 export interface PlansResponse { enabled: boolean; currency: 'VND'; plans: PlanInfo[] }

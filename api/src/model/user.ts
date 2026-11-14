@@ -36,7 +36,7 @@ export function selfView(u: UserDoc, now: Date = new Date()) {
       id: activePlan(u, now),
       renewsAt: u.billing?.currentPeriodEnd?.toISOString() ?? null,
       cancelAtPeriodEnd: u.billing?.cancelAtPeriodEnd ?? false,
-      limits: { maxUploadBytes: ent.maxUploadBytes, maxTiers: ent.maxTiers, analyticsDays: ent.analyticsDays, autoCaptionMinutes: ent.autoCaptionMinutes, autoCaptionMaxVideoMinutes: ent.autoCaptionMaxVideoMinutes },
+      limits: { maxUploadBytes: ent.maxUploadBytes, maxTiers: ent.maxTiers, analyticsDays: ent.analyticsDays, autoCaptionMinutes: ent.autoCaptionMinutes, autoCaptionMaxVideoMinutes: ent.autoCaptionMaxVideoMinutes, priorityTranscode: ent.priorityTranscode },
     },
     id: u._id.toHexString(),
     email: u.email,

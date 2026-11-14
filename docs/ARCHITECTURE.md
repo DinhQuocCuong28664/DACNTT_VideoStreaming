@@ -69,7 +69,7 @@ flowchart LR
     ST[Lambda: starter]
     SFN{{Step Functions<br/>transcode workflow}}
     PR[Lambda: probe]
-    BQ[[Batch queues<br/>main / bulk]]
+    BQ[[Batch queues<br/>priority / main / bulk]]
     FG[Fargate Spot → On-Demand<br/>FFmpeg containers]
     OUT[(S3 processed)]
     KEYS[(S3 keys, private)]
@@ -220,8 +220,12 @@ The API creates, moves or deletes one EventBridge Scheduler one-time schedule wh
   `node:22-slim` plus a pinned static FFmpeg, built for `linux/amd64`.
 - Compute environments: Fargate Spot first, Fargate On-Demand second (max 24 + 24 vCPU in prod,
   8 + 8 in staging),
-  shared by two queues: `main` (priority 10: `analyse`, `encode`, `audio`) and `bulk`
-  (priority 1: chunk arrays), so short videos overtake long ones.
+  shared by four queues: `priority` (20) and `main` (10) for `analyse`, `encode` and `audio`,
+  `priority-bulk` (5) and `bulk` (1) for chunk arrays, so short videos overtake long ones. Lambda
+  `status` reads the owner's plan at `start` and returns a lane; the state machine then submits every
+  job of that video to the priority pair for owners on a paid plan (`priorityTranscode` in
+  `shared/src/plans.ts`) and to the standard pair for the rest. Priority only decides who is served
+  first when capacity is short; with free capacity every job starts at once.
 - Network: tasks run in public subnets with a public IP, so there is no NAT gateway to pay for
   while idle; S3 traffic goes through a free gateway endpoint.
 - Containers only read from S3 raw and keys, and write to S3 processed and work. They have **no

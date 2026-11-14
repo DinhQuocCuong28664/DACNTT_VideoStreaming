@@ -4,7 +4,7 @@
  * The client is created once per Lambda instance with a small pool (§5.8 connection budget).
  */
 import { MongoClient, ObjectId, type Collection, type Document } from 'mongodb';
-import type { ProgressState, TranscodeProgress } from '@zelos/shared';
+import { entitlements, type ProgressState, type TranscodeProgress } from '@zelos/shared';
 import type { VideoDoc, VideoStore } from '../status.js';
 
 let client: MongoClient | undefined;
@@ -86,4 +86,16 @@ export function mongoVideoStore(videos: Collection<Document>, now: () => Date = 
       return toDoc(d);
     },
   };
+}
+
+export async function usersCollection(uri: string, dbName: string): Promise<Collection<Document>> {
+  client ??= new MongoClient(uri, { maxPoolSize: 2, maxIdleTimeMS: 60_000, serverSelectionTimeoutMS: 10_000 });
+  await client.connect();
+  return client.db(dbName).collection('users');
+}
+
+/** Whether the owner's current plan puts their transcoding jobs in the priority queues. */
+export async function ownerHasPriority(users: Collection<Document>, ownerId: string, now: Date): Promise<boolean> {
+  const u = await users.findOne({ _id: new ObjectId(ownerId) }, { projection: { createdAt: 1, billing: 1 } });
+  return entitlements({ createdAt: u?.['createdAt'] ?? now, billing: u?.['billing'] ?? null }, now).priorityTranscode;
 }

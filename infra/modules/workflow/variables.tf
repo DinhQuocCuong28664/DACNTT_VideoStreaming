@@ -43,7 +43,7 @@ variable "alert_topic_arn" {
 }
 
 variable "job_queue_arns" {
-  description = "Batch queue ARNs by name: main, bulk"
+  description = "Batch queue ARNs by name: priority, main, priority-bulk, bulk"
   type        = map(string)
 }
 

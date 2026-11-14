@@ -22,6 +22,7 @@ export function PlanFeatures({ plan }: { plan: PlanInfo }) {
       {plan.limits.autoCaptionMinutes > 0 && (
         <li><MdCheck aria-hidden="true" />{t('plans.featureCaptions', { minutes: plan.limits.autoCaptionMinutes, max: plan.limits.autoCaptionMaxVideoMinutes })}</li>
       )}
+      {plan.limits.priorityTranscode && <li><MdCheck aria-hidden="true" />{t('plans.featurePriority')}</li>}
     </ul>
   );
 }

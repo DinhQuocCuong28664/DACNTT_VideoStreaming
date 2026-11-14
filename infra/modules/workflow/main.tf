@@ -385,8 +385,9 @@ locals {
     Type     = "Task"
     Resource = "arn:aws:states:::batch:submitJob.sync"
     Parameters = merge({
-      "JobName.$"   = "States.Format('${role}-{}-{}', $.videoId, $.uploadVersion)"
-      JobQueue      = role == "chunk" ? var.job_queue_arns["bulk"] : var.job_queue_arns["main"]
+      "JobName.$" = "States.Format('${role}-{}-{}', $.videoId, $.uploadVersion)"
+      # Chosen per video by the Lane states: the owner's plan decides between the priority and the standard pair.
+      "JobQueue.$"  = role == "chunk" ? "$.queues.bulk" : "$.queues.main"
       JobDefinition = var.job_definition_arns[role]
       ContainerOverrides = merge({ Environment = local.job_env }, role == "encode" ? {
         ResourceRequirements = [
@@ -417,7 +418,7 @@ locals {
             "uploadVersion.$" = "$.uploadVersion"
           }
         }
-        ResultSelector = { "found.$" = "$.Payload.found" }
+        ResultSelector = { "found.$" = "$.Payload.found", "lane.$" = "$.Payload.lane" }
         ResultPath     = "$.start"
         Retry          = local.lambda_retry
         Catch          = local.to_failed
@@ -426,7 +427,25 @@ locals {
       StillThere = {
         Type    = "Choice"
         Choices = [{ Variable = "$.start.found", BooleanEquals = false, Next = "Gone" }]
-        Default = "Probe"
+        Default = "PickLane"
+      }
+      # Owners on a paid plan use the priority queues; everyone else, and any unknown lane, the standard ones.
+      PickLane = {
+        Type    = "Choice"
+        Choices = [{ Variable = "$.start.lane", StringEquals = "priority", Next = "LanePriority" }]
+        Default = "LaneStandard"
+      }
+      LanePriority = {
+        Type       = "Pass"
+        Result     = { main = var.job_queue_arns["priority"], bulk = var.job_queue_arns["priority-bulk"] }
+        ResultPath = "$.queues"
+        Next       = "Probe"
+      }
+      LaneStandard = {
+        Type       = "Pass"
+        Result     = { main = var.job_queue_arns["main"], bulk = var.job_queue_arns["bulk"] }
+        ResultPath = "$.queues"
+        Next       = "Probe"
       }
       Gone = { Type = "Succeed", Comment = "The video was deleted or replaced before processing" }
       Probe = {

@@ -6,7 +6,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { MdClose, MdDeleteOutline, MdEdit, MdErrorOutline } from 'react-icons/md';
+import { MdClose, MdDeleteOutline, MdEdit, MdErrorOutline, MdLock } from 'react-icons/md';
+import { useAuth } from '../context/auth';
 import { me, studio, videos } from '../api/endpoints';
 import { CATEGORIES, type Category, type VideoDetails } from '../api/types';
 import { useInfiniteList } from '../hooks/useInfiniteList';
@@ -398,17 +399,55 @@ function Bars({ days, label }: { days: Day[]; label: string }) {
 
 const hours = (sec: number) => (sec / 3600).toFixed(1);
 
+const RANGES = [7, 28, 90, 365] as const;
+
+/** Period buttons; a period longer than the plan allows stays visible but locked, with a link to the plans. */
+function RangePicker({ value, onChange }: { value: number; onChange: (days: number) => void }) {
+  const { t } = useTranslation();
+  const { user } = useAuth();
+  const limit = user?.plan.limits.analyticsDays ?? 28;
+  return (
+    <div className="studio-range" role="group" aria-label={t('studio.rangeLabel')}>
+      {RANGES.map((days) => {
+        const locked = days > limit;
+        return (
+          <button
+            key={days}
+            type="button"
+            className="studio-range-btn"
+            aria-pressed={value === days}
+            disabled={locked}
+            title={locked ? t('studio.rangeLocked', { days }) : undefined}
+            onClick={() => onChange(days)}
+          >
+            {locked && <MdLock aria-hidden="true" />}
+            {t('studio.rangeOption', { days })}
+          </button>
+        );
+      })}
+      {RANGES.some((d) => d > limit) && <Link to="/plans" className="studio-range-upgrade">{t('plans.upgrade')}</Link>}
+    </div>
+  );
+}
+
 function VideoAnalytics({ id }: { id: string }) {
   const { t } = useTranslation();
+  const [days, setDays] = useState(28);
   const [data, setData] = useState<Awaited<ReturnType<typeof studio.analytics>> | null>(null);
   const [failed, setFailed] = useState(false);
-  useEffect(() => { studio.analytics(id).then(setData).catch(() => setFailed(true)); }, [id]);
+  useEffect(() => {
+    setData(null);
+    setFailed(false);
+    studio.analytics(id, days).then(setData).catch(() => setFailed(true));
+  }, [id, days]);
   if (failed) return <p className="settings-desc">{t('studio.analyticsFailed')}</p>;
   if (!data) return <Spinner />;
+  const viewsInRange = data.days.reduce((s, d) => s + d.views, 0);
   return (
     <div className="edit-video-form">
+      <RangePicker value={days} onChange={setDays} />
       <div className="studio-stats">
-        <div className="studio-stat"><span className="studio-stat-value">{data.totals.views}</span><span className="studio-stat-label">{t('studio.views28')}</span></div>
+        <div className="studio-stat"><span className="studio-stat-value">{viewsInRange}</span><span className="studio-stat-label">{t('studio.viewsInRange', { days })}</span></div>
         <div className="studio-stat"><span className="studio-stat-value">{hours(data.totals.watchSeconds)}</span><span className="studio-stat-label">{t('studio.watchHours')}</span></div>
       </div>
       <Bars days={data.days} label={t('studio.viewsPerDay')} />
@@ -426,16 +465,22 @@ function VideoAnalytics({ id }: { id: string }) {
 
 function ChannelAnalytics() {
   const { t } = useTranslation();
+  const [days, setDays] = useState(28);
   const [data, setData] = useState<Awaited<ReturnType<typeof me.analytics>> | null>(null);
   const [failed, setFailed] = useState(false);
-  useEffect(() => { me.analytics().then(setData).catch(() => setFailed(true)); }, []);
+  useEffect(() => {
+    setData(null);
+    setFailed(false);
+    me.analytics(days).then(setData).catch(() => setFailed(true));
+  }, [days]);
   const totals = useMemo(() => (data ? data.days.reduce((a, d) => ({ views: a.views + d.views, watch: a.watch + d.watchSeconds }), { views: 0, watch: 0 }) : null), [data]);
   if (failed) return <p className="settings-desc">{t('studio.analyticsFailed')}</p>;
   if (!data || !totals) return <Spinner />;
   return (
     <section className="studio-analytics">
+      <RangePicker value={days} onChange={setDays} />
       <div className="studio-stats">
-        <div className="studio-stat"><span className="studio-stat-value">{totals.views}</span><span className="studio-stat-label">{t('studio.views28')}</span></div>
+        <div className="studio-stat"><span className="studio-stat-value">{totals.views}</span><span className="studio-stat-label">{t('studio.viewsInRange', { days })}</span></div>
         <div className="studio-stat"><span className="studio-stat-value">{hours(totals.watch)}</span><span className="studio-stat-label">{t('studio.watchHours')}</span></div>
         <div className="studio-stat"><span className="studio-stat-value">{data.subscribers}</span><span className="studio-stat-label">{t('studio.subscribers')}</span></div>
       </div>
