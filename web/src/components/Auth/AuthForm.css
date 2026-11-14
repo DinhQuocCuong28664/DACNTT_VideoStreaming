@@ -41,12 +41,14 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   margin-bottom: var(--space-lg);
+}
+
+.auth-logo img {
+  display: block;
   border-radius: 12px;
-  background: var(--brand);
-  color: #ffffff;
 }
 
 .auth-title {

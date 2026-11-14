@@ -15,7 +15,7 @@ export default function AuthLayout({ title, subtitle, children }: { title: strin
     <div className="auth-page">
       <main className="auth-card">
         <div className="auth-card-intro">
-          <span className="auth-logo" aria-hidden="true"><LogoIcon size={22} /></span>
+          <span className="auth-logo" aria-hidden="true"><LogoIcon size={44} /></span>
           <h1 className="auth-title">{title}</h1>
           {subtitle && <p className="auth-subtitle">{subtitle}</p>}
         </div>

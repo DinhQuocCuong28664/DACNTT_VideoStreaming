@@ -13,12 +13,14 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  /* Ô vuông chứ không phải hình chữ nhật dẹt: tránh trùng dáng logo YouTube */
-  width: 26px;
-  height: 26px;
+  /* The mark brings its own dark tile, so there is no background here. */
+  width: 30px;
+  height: 30px;
+}
+
+.brand-logo-tile img {
+  display: block;
   border-radius: 8px;
-  background: var(--brand);
-  color: #ffffff;
 }
 
 .brand-logo-text {
