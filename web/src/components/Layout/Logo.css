@@ -13,9 +13,9 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  /* The mark brings its own dark tile, so there is no background here. */
-  width: 30px;
-  height: 30px;
+  /* The mark is a cut-out emblem; the page colour shows around it in both themes. */
+  width: 36px;
+  height: 36px;
 }
 
 /* The mark is two stacked images: the snake with unlit eyes, and a layer with the glowing eyes.
