@@ -66,8 +66,8 @@ export interface StatusDeps {
   readWork: <T>(key: string) => Promise<T | null>;
   emitPublished: (detail: { videoId: string; ownerId: string; publishedAt: string }) => Promise<void>;
   alert: (subject: string, message: string) => Promise<void>;
-  /** Whether the owner's plan puts their jobs in the priority queues. */
-  priorityLane: (ownerId: string) => Promise<boolean>;
+  /** The owner's plan: priority queues and the longest video the pipeline accepts. */
+  ownerLimits: (ownerId: string) => Promise<OwnerLimits>;
   now: () => Date;
   log: (entry: Record<string, unknown>) => void;
 }
@@ -75,9 +75,18 @@ export interface StatusDeps {
 /** Which Batch queues the workflow uses for this video: the owner's plan decides. */
 export type Lane = 'priority' | 'standard';
 
+/** What the owner's plan allows for one video. */
+export interface OwnerLimits {
+  priority: boolean;
+  maxVideoMinutes: number;
+}
+
+/** Used when the plan cannot be read: a lookup that fails must not stop or fail a video. */
+export const NO_LIMIT_SEC = 48 * 3600;
+
 export type StatusResult =
-  | { found: false; lane?: Lane }
-  | { found: true; status?: string; published?: boolean; lane?: Lane };
+  | { found: false; lane?: Lane; maxDurationSec?: number }
+  | { found: true; status?: string; published?: boolean; lane?: Lane; maxDurationSec?: number };
 
 async function start(input: z.infer<typeof StartInput>, deps: StatusDeps): Promise<StatusResult> {
   const keyRef = keyObject(input.videoId, input.uploadVersion);
@@ -88,12 +97,13 @@ async function start(input: z.infer<typeof StartInput>, deps: StatusDeps): Promi
   if (!doc) {
     deps.log({ level: 'warn', msg: 'video deleted or superseded before processing', videoId: input.videoId });
     // The workflow reads the lane of every start result, so it is present here too.
-    return { found: false, lane: 'standard' };
+    return { found: false, lane: 'standard', maxDurationSec: NO_LIMIT_SEC };
   }
-  // The lane is read at every start, so a plan bought or cancelled meanwhile applies to the next upload.
-  // A lookup that fails must not stop the video: it just takes the standard lane.
-  const lane: Lane = await deps.priorityLane(doc.owner).then((p) => (p ? 'priority' : 'standard'), () => 'standard');
-  return { found: true, status: doc.status, lane };
+  // Read at every start, so a plan bought or cancelled meanwhile applies to the next upload. If the
+  // lookup fails the video takes the standard lane and is not length-checked.
+  const limits = await deps.ownerLimits(doc.owner).catch(() => null);
+  const lane: Lane = limits?.priority ? 'priority' : 'standard';
+  return { found: true, status: doc.status, lane, maxDurationSec: limits ? limits.maxVideoMinutes * 60 : NO_LIMIT_SEC };
 }
 
 async function publish(input: z.infer<typeof PublishInput>, deps: StatusDeps): Promise<StatusResult> {
@@ -134,7 +144,8 @@ async function fail(input: z.infer<typeof FailInput>, deps: StatusDeps): Promise
   // Redacted before it is stored or mailed: a step's error may quote a presigned URL.
   const reason = redactUrlQueries([input.error.Error, input.error.Cause].filter(Boolean).join(': ')).slice(0, 1000) || 'unknown error';
   const doc = await deps.videos.fail(input.videoId, input.uploadVersion, reason);
-  await deps.alert(`Transcode failed: ${input.videoId}`, `Video ${input.videoId} v${input.uploadVersion}\n${reason}`);
+  // A video over the plan's length limit is the owner's matter, not an operator alert.
+  if (input.error.Error !== 'VideoTooLong') await deps.alert(`Transcode failed: ${input.videoId}`, `Video ${input.videoId} v${input.uploadVersion}\n${reason}`);
   return doc ? { found: true, status: 'ERROR' } : { found: false };
 }
 
@@ -176,7 +187,7 @@ export async function handle(event: unknown, deps: StatusDeps): Promise<StatusRe
 let runtime: StatusDeps | undefined;
 
 async function createRuntime(): Promise<StatusDeps> {
-  const [{ S3Client, PutObjectCommand, GetObjectCommand }, { EventBridgeClient, PutEventsCommand }, { SNSClient, PublishCommand }, { SecretsManagerClient, GetSecretValueCommand }, { videosCollection, usersCollection, mongoVideoStore, ownerHasPriority }, { required }] = await Promise.all([
+  const [{ S3Client, PutObjectCommand, GetObjectCommand }, { EventBridgeClient, PutEventsCommand }, { SNSClient, PublishCommand }, { SecretsManagerClient, GetSecretValueCommand }, { videosCollection, usersCollection, mongoVideoStore, ownerLimits }, { required }] = await Promise.all([
     import('@aws-sdk/client-s3'),
     import('@aws-sdk/client-eventbridge'),
     import('@aws-sdk/client-sns'),
@@ -221,7 +232,7 @@ async function createRuntime(): Promise<StatusDeps> {
     async alert(subject, message) {
       await sns.send(new PublishCommand({ TopicArn: topicArn, Subject: subject.slice(0, 100), Message: message }));
     },
-    priorityLane: (ownerId) => ownerHasPriority(users, ownerId, new Date()),
+    ownerLimits: (ownerId) => ownerLimits(users, ownerId, new Date()),
     now: () => new Date(),
     log: (entry) => console.log(JSON.stringify(entry)),
   };

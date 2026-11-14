@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { applyProgress, rawObjectKey, type ProgressState, type TranscodeProgress } from '@zelos/shared';
 import { start, type StarterDeps } from '../src/starter.js';
-import { handle, type StatusDeps, type VideoDoc, type VideoStore } from '../src/status.js';
+import { NO_LIMIT_SEC, handle, type StatusDeps, type VideoDoc, type VideoStore } from '../src/status.js';
 
 const videoId = '6a78c10f1c4541ef615cf01d';
 const ownerId = '6a78c10f1c4541ef615cf01e';
@@ -105,7 +105,7 @@ function memoryStore(initial: VideoDoc & Record<string, unknown>) {
   return { store, doc };
 }
 
-function statusDeps(store: VideoStore, work: Record<string, unknown> = {}, priorityLane: StatusDeps['priorityLane'] = async () => false) {
+function statusDeps(store: VideoStore, work: Record<string, unknown> = {}, ownerLimits: StatusDeps['ownerLimits'] = async () => ({ priority: false, maxVideoMinutes: 60 })) {
   const keys = new Map<string, string>();
   const published: unknown[] = [];
   const alerts: string[] = [];
@@ -119,7 +119,7 @@ function statusDeps(store: VideoStore, work: Record<string, unknown> = {}, prior
     readWork: async <T>(k: string) => ((new Map(Object.entries(work)).get(k) ?? null) as T | null),
     emitPublished: async (d) => { published.push(d); },
     alert: async (s) => { alerts.push(s); },
-    priorityLane,
+    ownerLimits,
     now: () => new Date('2026-11-01T00:00:00Z'),
     log: () => undefined,
   };
@@ -138,7 +138,7 @@ describe('status', () => {
   it('start creates one key, keeps it on a retry, and moves the video to PROCESSING', async () => {
     const { store, doc } = memoryStore(base);
     const { deps, keys } = statusDeps(store);
-    expect(await handle({ action: 'start', videoId, uploadVersion: 1 }, deps)).toEqual({ found: true, status: 'PROCESSING', lane: 'standard' });
+    expect(await handle({ action: 'start', videoId, uploadVersion: 1 }, deps)).toEqual({ found: true, status: 'PROCESSING', lane: 'standard', maxDurationSec: 3600 });
     const first = keys.get(`keys/${videoId}/v1.json`);
     await handle({ action: 'start', videoId, uploadVersion: 1 }, deps);
     expect(keys.get(`keys/${videoId}/v1.json`)).toBe(first);
@@ -146,16 +146,16 @@ describe('status', () => {
   });
 
   it('start puts a paid owner in the priority lane and falls back to standard when the lookup fails', async () => {
-    const paid = statusDeps(memoryStore(base).store, {}, async (owner) => owner === ownerId);
-    expect(await handle({ action: 'start', videoId, uploadVersion: 1 }, paid.deps)).toMatchObject({ found: true, lane: 'priority' });
+    const paid = statusDeps(memoryStore(base).store, {}, async (owner) => ({ priority: owner === ownerId, maxVideoMinutes: 180 }));
+    expect(await handle({ action: 'start', videoId, uploadVersion: 1 }, paid.deps)).toMatchObject({ found: true, lane: 'priority', maxDurationSec: 10_800 });
     const broken = statusDeps(memoryStore(base).store, {}, async () => { throw new Error('mongo down'); });
-    expect(await handle({ action: 'start', videoId, uploadVersion: 1 }, broken.deps)).toMatchObject({ found: true, lane: 'standard' });
+    expect(await handle({ action: 'start', videoId, uploadVersion: 1 }, broken.deps)).toMatchObject({ found: true, lane: 'standard', maxDurationSec: NO_LIMIT_SEC });
   });
 
   it('start reports a deleted or newer video as not found', async () => {
     const { store } = memoryStore({ ...base, uploadVersion: 2 });
     const { deps } = statusDeps(store);
-    expect(await handle({ action: 'start', videoId, uploadVersion: 1 }, deps)).toEqual({ found: false, lane: 'standard' });
+    expect(await handle({ action: 'start', videoId, uploadVersion: 1 }, deps)).toEqual({ found: false, lane: 'standard', maxDurationSec: NO_LIMIT_SEC });
   });
 
   it('folds progress events from both branches and ignores events of an old version', async () => {

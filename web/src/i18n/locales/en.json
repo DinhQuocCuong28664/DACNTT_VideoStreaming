@@ -753,6 +753,7 @@
     "featureTiers": "Up to {{count}} channel membership tiers",
     "featureAnalytics": "{{days}} days of Studio analytics",
     "featureCaptions": "Automatic captions: {{minutes}} min a month, videos up to {{max}} min",
+    "featureLength": "Videos up to {{hours}} h long",
     "featurePriority": "Priority processing: your videos go first when many are uploaded at once",
     "choose": "Get {{plan}}",
     "current": "Your current plan",

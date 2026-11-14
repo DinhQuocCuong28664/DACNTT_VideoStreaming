@@ -418,7 +418,7 @@ locals {
             "uploadVersion.$" = "$.uploadVersion"
           }
         }
-        ResultSelector = { "found.$" = "$.Payload.found", "lane.$" = "$.Payload.lane" }
+        ResultSelector = { "found.$" = "$.Payload.found", "lane.$" = "$.Payload.lane", "maxDurationSec.$" = "$.Payload.maxDurationSec" }
         ResultPath     = "$.start"
         Retry          = local.lambda_retry
         Catch          = local.to_failed
@@ -456,15 +456,38 @@ locals {
           "Payload.$"  = "$"
         }
         ResultSelector = {
-          "mode.$"       = "$.Payload.mode"
-          "chunkCount.$" = "$.Payload.chunkCount"
-          "hasAudio.$"   = "$.Payload.hasAudio"
-          "encode.$"     = "$.Payload.encode"
+          "mode.$"        = "$.Payload.mode"
+          "chunkCount.$"  = "$.Payload.chunkCount"
+          "hasAudio.$"    = "$.Payload.hasAudio"
+          "durationSec.$" = "$.Payload.durationSec"
+          "encode.$"      = "$.Payload.encode"
         }
         ResultPath = "$.probe"
         Retry      = local.lambda_retry
         Catch      = local.to_failed
-        Next       = "Process"
+        Next       = "CheckLength"
+      }
+      # The plan of the owner caps the length of a video. The probe is the first step that knows it,
+      # so a video over the cap fails here, before any Batch job is paid for.
+      CheckLength = {
+        Type = "Choice"
+        Choices = [{
+          And = [
+            { Variable = "$.probe.durationSec", IsNumeric = true },
+            { Variable = "$.probe.durationSec", NumericGreaterThanPath = "$.start.maxDurationSec" },
+          ]
+          Next = "TooLong"
+        }]
+        Default = "Process"
+      }
+      TooLong = {
+        Type = "Pass"
+        Parameters = {
+          Error     = "VideoTooLong"
+          "Cause.$" = "States.Format('The video is {} seconds long; the limit of the plan is {} seconds', $.probe.durationSec, $.start.maxDurationSec)"
+        }
+        ResultPath = "$.error"
+        Next       = "MarkFailed"
       }
       Process = {
         Type = "Parallel"

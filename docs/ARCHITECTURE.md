@@ -226,6 +226,11 @@ The API creates, moves or deletes one EventBridge Scheduler one-time schedule wh
   job of that video to the priority pair for owners on a paid plan (`priorityTranscode` in
   `shared/src/plans.ts`) and to the standard pair for the rest. Priority only decides who is served
   first when capacity is short; with free capacity every job starts at once.
+- Video length by plan: `start` also returns `maxDurationSec` (`maxVideoMinutes` of the plan: Free 60,
+  Plus 180, Pro 360, Max 720 minutes). The state `CheckLength` compares it with the probed duration
+  and sends a longer video to `MarkFailed` with the error `VideoTooLong` before any Batch job runs;
+  the owner sees the reason on the video and operators get no alert. A plan lookup that fails
+  lets the video through.
 - Network: tasks run in public subnets with a public IP, so there is no NAT gateway to pay for
   while idle; S3 traffic goes through a free gateway endpoint.
 - Containers only read from S3 raw and keys, and write to S3 processed and work. They have **no
