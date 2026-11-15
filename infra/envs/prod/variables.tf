@@ -32,3 +32,9 @@ variable "web_transition_reader_arns" {
   type        = list(string)
   default     = []
 }
+
+variable "auto_captions_enabled" {
+  description = "Automatic captions switch (false stops new Transcribe jobs); see infra/modules/app"
+  type        = bool
+  default     = true
+}

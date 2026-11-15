@@ -85,3 +85,9 @@ variable "log_retention_days" {
   type    = number
   default = 30
 }
+
+variable "auto_captions_enabled" {
+  description = "Start automatic captions (Amazon Transcribe) when a video is published; false stops new jobs"
+  type        = bool
+  default     = true
+}
