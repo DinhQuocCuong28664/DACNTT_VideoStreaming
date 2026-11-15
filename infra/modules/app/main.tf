@@ -440,7 +440,11 @@ resource "aws_lambda_permission" "published" {
 }
 
 # Automatic captions: the same VideoPublished event, plus Transcribe's own job events (default bus).
+#
+# var.auto_captions_enabled = false removes the trigger: no new Transcribe job starts, while jobs
+# already running still finish through the transcribe rule below.
 resource "aws_cloudwatch_event_target" "published_captions" {
+  count          = var.auto_captions_enabled ? 1 : 0
   rule           = aws_cloudwatch_event_rule.published.name
   event_bus_name = var.event_bus_name
   arn            = aws_lambda_function.background["captions"].arn
@@ -451,6 +455,7 @@ resource "aws_cloudwatch_event_target" "published_captions" {
 }
 
 resource "aws_lambda_permission" "published_captions" {
+  count         = var.auto_captions_enabled ? 1 : 0
   statement_id  = "AllowVideoPublished"
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.background["captions"].function_name
