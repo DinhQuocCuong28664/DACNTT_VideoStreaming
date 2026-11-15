@@ -24,11 +24,11 @@ that answer those needs.
 \midrule
 Anonymous visitor & Find and watch public videos at once, without an account, on any connection, in their language and a light or dark theme & FR-05, FR-06, FR-09, FR-17, NFR-01 \\
 Viewer (registered user) & Take part: react, comment, subscribe, join memberships, keep a library, receive notifications & FR-01, FR-02, FR-10 to FR-14 \\
-Creator (registered user) & Upload large files without waiting, decide who sees each video, edit and schedule it, earn members, read analytics & FR-03, FR-04, FR-06 to FR-08, FR-13, FR-15, FR-16, NFR-02, NFR-03 \\
+Creator (registered user) & Upload large files without waiting, decide who sees each video, edit and schedule it, earn members, read analytics; on a paid plan, larger and longer videos, automatic captions and faster processing & FR-03, FR-04, FR-06 to FR-08, FR-13, FR-15, FR-16, FR-24 to FR-26, NFR-02, NFR-03, NFR-11 \\
 Operator & A queue of what the screening held back or viewers reported, and a way to decide with a reason and resolve appeals & FR-18 to FR-21 \\
 Auditor & The error rates of the screening with their uncertainty, and a decision log that cannot be altered & FR-22 \\
 Administrator & Assign staff roles and draw random audit samples & FR-22, FR-23 \\
-Development team & A system that costs almost nothing while idle, is reproducible from code, observable and safe to change & NFR-04 to NFR-10 \\
+Development team & A system that costs almost nothing while idle, is reproducible from code, observable and safe to change & NFR-04 to NFR-11 \\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -64,13 +64,13 @@ an identifier so that it can be traced through the use cases, the design and the
 \toprule
 \textbf{ID} & \textbf{REQUIREMENT} & \textbf{DESCRIPTION} \\
 \midrule
-FR-01 & Accounts & Register with a display name, an e-mail address and a password, or sign in with Google, which also links to an existing account. A password must have at least eight characters and is refused when it is common, contains the user's own details or appears in a known breach. A new account must confirm its address before it may upload. Signing out ends every session of the account. \\
+FR-01 & Accounts & Register with a display name, an e-mail address, a password and a date of birth, after accepting the terms of use and the privacy policy, or sign in with Google, which also links to an existing account. A person under twelve cannot register. A password must have at least eight characters and is refused when it is common, contains the user's own details or appears in a known breach. A new account must confirm its address before it may upload. Signing out ends every session of the account. \\
 FR-02 & Password recovery and change & A reset link by e-mail, valid for one hour and usable once; a change from the settings page that requires the current password. \\
-FR-03 & Direct upload & The browser sends the file straight to Amazon S3: in one request up to 5~GiB, and in parts of 32~MiB up to 20~GiB, with progress, speed, remaining time and cancel. \\
+FR-03 & Direct upload & The browser sends the file straight to Amazon S3: in one request up to 5~GiB, and in parts of 32~MiB up to 20~GiB, with progress, speed, remaining time and cancel. The plan of the creator may set a lower size limit (FR-24). \\
 FR-04 & Automatic processing & Without any manual step, the source becomes an encrypted HLS package with up to six renditions from 144p to 1080p bounded by the source, a thumbnail and seek-preview images; long videos are split into chunks encoded in parallel, and the owner sees the progress of each step. \\
 FR-05 & Playback and sharing & An adaptive player with manual quality, speed, picture-in-picture, full screen, captions, chapters, seek preview and resume from the last position. A link can be shared with a start time, and public and unlisted videos can be embedded in another site. \\
 FR-06 & Visibility and audience & Each video is public, unlisted, private or password-protected, and may be limited to channel members from a chosen tier upward. A stranger learns nothing about a private video, not even that it exists. \\
-FR-07 & Creator studio & The owner edits the title, description, tags, category and thumbnail, uploads WebVTT captions, defines chapters and deletes a video with all its files. \\
+FR-07 & Creator studio & The owner edits the title, description, tags, category and thumbnail, uploads WebVTT captions or keeps the automatic ones (FR-25), defines chapters and deletes a video with all its files. \\
 FR-08 & Scheduled publishing & The owner chooses a publication time between five minutes and one year ahead; the video becomes public at that time. \\
 FR-09 & Discovery & A home feed of the newest videos, full-text search over videos and channels that tolerates typing errors and missing diacritics, suggestions while typing, categories, related videos, and a page per channel that lists its videos. \\
 \bottomrule
@@ -92,9 +92,9 @@ the library and the creator's channel.
 FR-10 & Community & Likes and dislikes, comments of up to 1000 characters with one level of replies; the creator pins one comment; authors and the creator delete comments. \\
 FR-11 & View counting & A view counts after thirty seconds of playback, or the whole of a shorter video, at most once per viewer and video in thirty minutes, and never for the owner. \\
 FR-12 & Subscriptions & Subscribe to a channel, see a feed of subscribed channels, and receive an in-app notification, and an e-mail unless turned off, when a subscribed channel publishes. \\
-FR-13 & Memberships & A channel offers up to five tiers; a viewer joins one for thirty days through a sandbox payment and may cancel; members get a badge and the videos limited to their tier. \\
+FR-13 & Memberships & A channel offers as many tiers as its owner's plan allows, from two to ten; a viewer joins one for thirty days through a sandbox payment and may cancel; members get a badge and the videos limited to their tier. \\
 FR-14 & Library & Watch history that can be cleared, a watch-later list, and ordered playlists that are public, unlisted or private. \\
-FR-15 & Analytics & Views per day, watch time and audience retention per video and per channel. \\
+FR-15 & Analytics & Views per day, watch time and audience retention per video and per channel, over the last 7, 28, 90 or 365 days as far as the plan allows. \\
 FR-16 & Channel profile & A unique handle, a description, an avatar and a banner, both screened before they are shown. \\
 FR-17 & Interface & Light and dark themes, Vietnamese and English, and dedicated pages for errors such as not found or forbidden. \\
 \bottomrule
@@ -119,6 +119,25 @@ FR-20 & Staff review & Operators approve or remove held and reported videos, and
 FR-21 & Appeals & The owner of a removed or held video appeals with a message; an operator upholds or rejects the appeal with a note. \\
 FR-22 & Accountability & Each decision is logged with the verdict the machine had reached, so that the error rates of the screening can be estimated: the share of automatic removals reversed on review, and the share of machine approvals that fail a random audit, each with a confidence interval; an auditor reads them but cannot decide. \\
 FR-23 & Role management & An administrator assigns the roles user, operator, auditor and administrator; the last administrator cannot be demoted, and every change is logged. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Table~\ref{tab:functional-requirements-plans} ends the list with the platform plans, which set how
+far each creator may use the costly parts of the system.
+
+\begin{table}[H]
+\centering
+\caption{Functional requirements of platform plans}
+\label{tab:functional-requirements-plans}
+\small
+\begin{tabularx}{\textwidth}{p{0.07\textwidth} p{0.2\textwidth} X}
+\toprule
+\textbf{ID} & \textbf{REQUIREMENT} & \textbf{DESCRIPTION} \\
+\midrule
+FR-24 & Plans and payment & Four plans, Free, Plus, Pro and Max, set the largest upload, the longest video, the number of membership tiers, the analytics window, the minutes of automatic captions and the processing priority. A user buys a paid plan monthly on a hosted checkout page, and changes or cancels it on a hosted portal; a paid plan stays until the end of the paid period. Accounts created before the plans existed keep the limits they had. \\
+FR-25 & Automatic captions & On a plan that includes them, a published video with sound gets captions in Vietnamese or English without any action of the owner, within the monthly minutes of the plan; a caption the owner uploads replaces the automatic one. \\
+FR-26 & Priority and length limits & When processing capacity is short, the videos of paid plans are served before those of the free plan; a video longer than the plan allows is refused after its duration is read, with the reason shown to the owner. \\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -157,6 +176,7 @@ NFR-07 & API security & Sign-in and other sensitive routes are rate-limited, onl
 NFR-08 & Reliability & A failed processing step is retried when a retry can succeed; otherwise the video is marked failed with a reason and an alert is sent. No video stays in processing for more than a day. \\
 NFR-09 & Reproducibility & Every environment is created from the same infrastructure code, with no manual changes. \\
 NFR-10 & Maintainability & A change reaches the main branch only after linting, type checks, tests and security scans pass. \\
+NFR-11 & Bounded paid services & A service billed per use beyond compute, such as speech recognition, cannot spend more than the plans allow: each user has a monthly cap that two simultaneous requests cannot both exceed, and work that fails gives its share back. Payments run in a test mode until real payments are allowed. \\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -192,7 +212,9 @@ viewer.
 Figure~\ref{fig:use-case-creator} shows the creator, who is the same registered user acting on their
 own channel, and the processing system. The processing system is drawn as an actor because events
 start its use cases, not a person: the upload reaching storage starts transcoding, the scheduled
-time starts publication, and a published video starts the notifications to subscribers.
+time starts publication, and a published video starts the notifications to subscribers and the
+automatic captions. Buying a plan is a use case of the creator; the payment itself happens on the
+page of the payment provider.
 
 \begin{figure}[htbp]
 \centering
@@ -215,9 +237,9 @@ owner of a removed video. Each staff use case is drawn once, at the role that ow
 \subsection{Use Case Specifications}
 \label{sec:use-case-specs}
 
-The use cases are specified in Tables~\ref{tab:uc-register} to \ref{tab:uc-role}. Closely related
+The use cases are specified in Tables~\ref{tab:uc-register} to \ref{tab:uc-auto-captions}. Closely related
 use cases of the diagrams are specified together, for example liking, commenting and replying, so
-that twenty specifications cover the diagrams. Each lists its actor, the requirements it serves, the
+that twenty-two specifications cover the diagrams. Each lists its actor, the requirements it serves, the
 main flow and the alternative flows, numbered after the step they branch from.
 
 \begin{table}[H]
@@ -233,13 +255,14 @@ Actor & Anonymous visitor \\
 Requirements & FR-01 \\
 Precondition & No account uses the chosen e-mail address. \\
 Main flow &
-  1. The visitor enters a display name, an e-mail address, a password and optionally a handle. \newline
+  1. The visitor enters a display name, an e-mail address, a password, a date of birth and optionally a handle, and accepts the terms of use and the privacy policy. \newline
   2. The server checks the password against the length rule, a list of common passwords, the visitor's own details and a breach service. \newline
   3. The server creates an unverified account, generating a handle from the address when none was given, and returns a session token. \newline
   4. The server e-mails a link carrying a token valid for 24 hours, of which only the hash is stored. \newline
   5. The visitor opens the link, and the server marks the address verified and spends the token. \\
 Alternative flows &
   1a. Five registrations from the same network address within an hour: the server answers 429. \newline
+  1b. The date of birth is invalid, or the visitor is under twelve: the server answers 400 or 403 and creates nothing. \newline
   2a. The password is refused: the server answers 400 with the reason, which the form shows. \newline
   3a. The address or the requested handle is taken: the server answers 409. \newline
   4a. Three links already went to the address this hour: the account is created and the mail is skipped. \newline
@@ -516,7 +539,7 @@ Table~\ref{tab:usecase-upload}, and the other work of a creator in Tables~\ref{t
 \textbf{FIELD} & \textbf{CONTENT} \\
 \midrule
 Actor & Creator \\
-Requirements & FR-03, FR-04, FR-06 \\
+Requirements & FR-03, FR-04, FR-06, FR-24, FR-26 \\
 Precondition & The creator is signed in with a verified address. \\
 Main flow &
   1. The creator selects a file and chooses the title, description and visibility. \newline
@@ -527,9 +550,11 @@ Main flow &
 Alternative flows &
   2a. The address is not verified: the server answers 403, and the page offers to send the link again. \newline
   2b. The file is larger than 20~GiB or not a supported video type: the server answers 400 before creating anything. \newline
+  2d. The file is larger than the plan of the creator allows: the server answers 403 with the limit, and the page links to the plans. \newline
   2c. More than twenty uploads in an hour: the server answers 429. \newline
   3a. The file is larger than 5~GiB: the server opens a multipart upload, the browser asks for grants for parts of 32~MiB and sends them, and the completion call assembles the parts from the list that S3 itself keeps, refusing missing or wrong-sized parts. \newline
-  3b. The creator cancels: the multipart upload, the stored data and the draft are removed. \\
+  3b. The creator cancels: the multipart upload, the stored data and the draft are removed. \newline
+  5a. The video is longer than the plan allows: processing stops after the duration is read, before any encoding, and the studio shows the video as failed with the reason. \\
 Postcondition & The video is being processed. \\
 \bottomrule
 \end{tabularx}
@@ -545,19 +570,20 @@ Postcondition & The video is being processed. \\
 \textbf{FIELD} & \textbf{CONTENT} \\
 \midrule
 Actor & Creator \\
-Requirements & FR-06, FR-07, FR-15 \\
+Requirements & FR-06, FR-07, FR-15, FR-25 \\
 Precondition & The creator is signed in and owns the video. \\
 Main flow &
   1. The studio lists the creator's videos with status, views and visibility, including those still processing. \newline
   2. The creator edits the title, description, tags, category, visibility, audience and minimum tier, and uploads a custom thumbnail. \newline
   3. The creator uploads WebVTT captions per language and defines chapters. \newline
-  4. The creator reads the analytics: views per day, watch time and retention. \newline
+  4. The creator reads the analytics, views per day, watch time and retention, over a period of 7, 28, 90 or 365 days. \newline
   5. The creator deletes a video; the server removes the record first, then its comments, reactions and playlist entries, and finally the source, the renditions and the key. \\
 Alternative flows &
   2a. Switching to password protection without a password: the server answers 400. \newline
   2b. Limiting to members without any tier: the server answers 400. \newline
   2c. The custom thumbnail is not a JPEG or PNG image of at most 2~MiB, or fails screening: the server refuses it. \newline
   3a. The chapters break the rules, which ask for at least three, the first at 0:00 and each at least ten seconds long: the server answers 400. \newline
+  4a. The period is longer than the plan allows: the longer choices are shown locked with a link to the plans. \newline
   5a. The video is still uploading: the upload is aborted instead. \\
 Postcondition & The watch page and the listings reflect the change. \\
 \bottomrule
@@ -612,7 +638,7 @@ Alternative flows &
   1a. The handle is reserved or already taken: the server answers 409. \newline
   2a. The image is too large or of another type: the server answers 400. \newline
   2b. The image breaks the content rules: the server answers 403 and the current image stays. \newline
-  3a. The channel already has five tiers: the server answers 409. \\
+  3a. The channel already has as many tiers as the plan allows: the server answers 409. \\
 Postcondition & The channel page shows the profile and offers the tiers. \\
 \bottomrule
 \end{tabularx}
@@ -631,16 +657,17 @@ starts.
 \textbf{FIELD} & \textbf{CONTENT} \\
 \midrule
 Actor & Processing system \\
-Requirements & FR-04, FR-18, NFR-02, NFR-03, NFR-08 \\
+Requirements & FR-04, FR-18, FR-26, NFR-02, NFR-03, NFR-08 \\
 Precondition & A source file has arrived in the raw bucket. \\
 Main flow &
   1. Amazon S3 emits an event, which Amazon SQS buffers. \newline
   2. A function reads the metadata of the object and starts a workflow execution named after the video and its upload version. \newline
-  3. The workflow marks the video as processing, creates its encryption key and probes the source. \newline
+  3. The workflow marks the video as processing, reads the plan of the owner, which chooses the priority or the standard queues and the longest duration allowed, creates the encryption key and probes the source. \newline
   4. In parallel, one job screens sampled frames and makes the thumbnail and seek-preview images, while the encoding runs as one job for a video of up to five minutes, or as an audio job and parallel chunk jobs followed by a stitching step for a longer one. \newline
   5. The workflow publishes the video as ready, or as scheduled, with the result of the screening, and the subscribers are notified. \\
 Alternative flows &
   2a. The same event arrives twice: the second execution is refused by name, and nothing more happens. \newline
+  3a. The probed duration is longer than the plan allows: the video becomes \status{error} with the reason, no job is submitted and no alert is sent. \newline
   4a. A job fails for a reason that may pass, such as a reclaimed Spot task: it is retried, up to three attempts. \newline
   4b. A job fails for a reason that another attempt cannot fix, such as an unreadable source: the video becomes \status{error} with the reason, the owner is told once, and an alert is sent. \newline
   4c. The screening cannot run: the video is held for review. \newline
@@ -779,6 +806,68 @@ Main flow &
 Alternative flows &
   2a. The change would demote the last administrator: the server answers 409. \\
 Postcondition & The role is changed, and the change is logged. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+The last two use cases come from the platform plans: buying a plan (Table~\ref{tab:uc-plan}) and
+the automatic captions that a paid plan brings (Table~\ref{tab:uc-auto-captions}).
+
+\begin{table}[H]
+\centering
+\caption{Use case UC-21: buy, change or cancel a plan}
+\label{tab:uc-plan}
+\small
+\begin{tabularx}{\textwidth}{p{0.2\textwidth} X}
+\toprule
+\textbf{FIELD} & \textbf{CONTENT} \\
+\midrule
+Actors & Registered user; payment provider \\
+Requirements & FR-24, NFR-11 \\
+Precondition & The user is signed in with a verified address and is on the free plan. \\
+Main flow &
+  1. The user compares the four plans with their prices and limits and chooses Plus, Pro or Max. \newline
+  2. The server opens a checkout session for that plan and returns its address; the browser goes to the hosted payment page. \newline
+  3. The user pays, and the payment provider returns the browser to the settings page. \newline
+  4. The payment provider sends a signed event to the server, which checks the signature, applies the event once and sets the plan of the user. \newline
+  5. The new limits apply to the next upload, video and caption. \\
+Alternative flows &
+  2a. The address is not verified: the server answers 403. \newline
+  2b. The user already has a paid plan: the server answers 409, and the page offers the billing portal. \newline
+  3a. The user leaves the payment page: nothing changes. \newline
+  4a. The same event arrives twice, or an older event after a newer one: it changes nothing. \newline
+  4b. A renewal payment fails: the plan is marked past due and stays until the paid period ends. \newline
+  5a. The user changes or cancels the plan on the hosted portal: the change arrives as an event, and a cancelled plan lasts until the end of the period. \\
+Postcondition & The plan of the user is the one the payment provider reports. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Use case UC-22: caption a video automatically}
+\label{tab:uc-auto-captions}
+\small
+\begin{tabularx}{\textwidth}{p{0.2\textwidth} X}
+\toprule
+\textbf{FIELD} & \textbf{CONTENT} \\
+\midrule
+Actor & Processing system \\
+Requirements & FR-25, NFR-11 \\
+Precondition & A video has been published, and the plan of its owner includes automatic captions. \\
+Main flow &
+  1. The publication event reaches the caption function. \newline
+  2. The function checks the plan, the length of the video and the minutes left this month, and reserves the minutes of the video. \newline
+  3. It starts one speech recognition job on the source, which picks Vietnamese or English. \newline
+  4. When the job ends, the function copies the WebVTT file next to the video as a caption track marked automatic. \newline
+  5. The player offers the new track the next time the video is opened. \\
+Alternative flows &
+  2a. The video has no sound, is longer than the plan allows for captions, is larger than 2~GB or already has a caption from the owner: nothing is started and nothing is spent. \newline
+  2b. The minutes left are not enough: nothing is started. \newline
+  2c. The same event arrives twice: the second job is refused by name. \newline
+  4a. The job fails: the reserved minutes are given back. \newline
+  4b. The owner uploads a caption in the same language later: it replaces the automatic one. \\
+Postcondition & The video has an automatic caption track, or nothing was spent. \\
 \bottomrule
 \end{tabularx}
 \end{table}
