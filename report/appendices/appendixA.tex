@@ -106,6 +106,13 @@ the global one of 300 requests a minute.
 \texttt{/videos/:id/analytics} & GET & Signed in & Daily views and watch time of one video \\
 \texttt{/me/analytics} & GET & Signed in & Totals of the channel \\
 \midrule
+\multicolumn{4}{l}{\textit{Plans and billing}} \\
+\texttt{/plans} & GET & Public & The four plans with their VND prices and limits \\
+\texttt{/billing} & GET & Signed in & Current plan, renewal date and the limits in force \\
+\texttt{/billing/checkout} & POST & Signed in, verified, limited & Open a Stripe Checkout session for a paid plan \\
+\texttt{/billing/portal} & POST & Signed in, limited & Open the Stripe customer portal \\
+\texttt{/billing/webhook} & POST & Stripe signature & Apply a subscription event once and in order \\
+\midrule
 \multicolumn{4}{l}{\textit{Discovery and notifications}} \\
 \texttt{/search} & GET & Public, limited & Full-text search with filters \\
 \texttt{/search/suggest} & GET & Public, limited & Title suggestions after two characters \\

@@ -25,9 +25,9 @@ a single file with esbuild, so a Lambda package or the container image carries n
 \toprule
 \textbf{WORKSPACE} & \textbf{CONTENT} & \textbf{RUNS ON} \\
 \midrule
-\name{shared} & Contracts between producer and consumer (zod schemas of events, job inputs and object metadata), video states and their allowed transitions, the bitrate ladder, the chunk planner, playlist writing and stitching, the moderation label policy & Imported by every other part; never deployed alone \\
+\name{shared} & Contracts between producer and consumer (zod schemas of events, job inputs and object metadata), video states and their allowed transitions, the bitrate ladder, the chunk planner, playlist writing and stitching, the moderation label policy, the plans and their entitlements & Imported by every other part; never deployed alone \\
 \name{transcoder} & The four container roles \name{analyse}, \name{encode}, \name{audio} and \name{chunk}, the FFmpeg argument builder, the process runner and the encode guard & AWS Batch on Fargate \\
-\name{functions} & \name{starter}, \name{probe}, \name{status}, \name{stitch}, \name{notifier}, \name{rollup} and \name{reconciler} & AWS Lambda \\
+\name{functions} & \name{starter}, \name{probe}, \name{status}, \name{stitch}, \name{notifier}, \name{captions}, \name{rollup} and \name{reconciler} & AWS Lambda \\
 \name{api} & The REST API: Express~5 application, features, services and models & AWS Lambda behind a Function URL \\
 \name{web} & React~19 single-page application built with Vite, the hls.js player, vanilla CSS & S3 and CloudFront \\
 \name{e2e} & Playwright tests of the web application against a running environment & The developer's machine \\
@@ -48,20 +48,22 @@ it can fail in production.
 \subsection{Workflow Functions}
 \label{sec:functions-impl}
 
-The seven functions are small and each has its own role with only the permissions it needs. The
+The eight functions are small and each has its own role with only the permissions it needs. The
 starter turns each record of an SQS batch into one Step Functions execution named after the video and
 its upload version, and reports only the failed records back to SQS, so one bad message does not make
 the whole batch return to the queue. The probe function runs \name{ffprobe} from a Lambda layer
 that holds a static build of the tool, plans the job with the functions of \name{shared} and stores
 the plan in the work bucket; the state machine receives only a summary, which keeps the execution
-history small. The status function is the only writer of processing state: it moves a video through
+history small. The status function is the only writer of processing state: at the start it reads the
+plan of the owner and returns the lane and the longest duration allowed, it moves a video through
 \status{processing}, \status{ready} or \status{error}, folds progress events from the two parallel
 branches into one percentage that never goes backwards, and announces a published video exactly once.
 The stitch function joins the chunk playlists and writes every media playlist before the master
-playlist, as Section~\ref{sec:hls-output} requires. The last three functions serve the API: the
-notifier writes a notification for each subscriber and mails those who opted in, the roll-up adds the
-viewing heartbeats of the previous hours into daily analytics, and the reconciler removes drafts whose
-upload never finished.
+playlist, as Section~\ref{sec:hls-output} requires. The last four functions act after publication or
+serve the API: the notifier writes a notification for each subscriber and mails those who opted in,
+the captions function runs the automatic captions of Section~\ref{sec:captions-design}, the roll-up
+adds the viewing heartbeats of the previous hours into daily analytics, and the reconciler removes
+drafts whose upload never finished.
 
 \subsection{Transcoder Image}
 \label{sec:image-impl}
@@ -105,8 +107,8 @@ healthy job.
 
 The API is one Express~5 application adapted to Lambda with \name{serverless-express}. It is
 organised by feature: authentication, uploads, videos, community, channels, library, studio,
-discovery and moderation each register their own routes, and reach storage, the CDN signer, mail, the
-scheduler, image screening and search through service interfaces. In production these interfaces are
+discovery, moderation and billing each register their own routes, and reach storage, the CDN signer,
+mail, the scheduler, image screening, search and Stripe through service interfaces. In production these interfaces are
 backed by AWS and Atlas; in the tests they are backed by in-memory implementations, which lets a test
 run a whole route without the network. Every request body is validated with a zod schema, and every
 error leaves the API in the shape \mbox{\texttt{\{error:\{code,message\}\}}} of Section~\ref{sec:api-design}.
@@ -157,9 +159,9 @@ Every resource carries the tags \name{Project}, \name{Stack}, \name{Environment}
 \name{ingest}   & The S3 event notification, the ingest queue and its dead letter queue with an alarm on the first message \\
 \name{events}   & The EventBridge bus for pipeline events and the SNS topic for operator alerts \\
 \name{kv}       & The five DynamoDB on-demand tables of Table~\ref{tab:kv-tables}, with time-to-live \\
-\name{batch}    & The Fargate Spot and On-Demand compute environments, the \name{main} and \name{bulk} queues and the four job definitions \\
+\name{batch}    & The Fargate Spot and On-Demand compute environments, the standard queues \name{main} and \name{bulk}, the priority queues \name{priority} and \name{priority-bulk}, the four job definitions, and a switch that turns screening off for tests \\
 \name{workflow} & The state machine, the starter, probe, status and stitch functions, the ffprobe layer and one role per function \\
-\name{app}      & The API function and its Function URL, the notifier, roll-up and reconciler, and the scheduler group for scheduled publishing \\
+\name{app}      & The API function and its Function URL, the notifier, captions, roll-up and reconciler, the scheduler group for scheduled publishing, and a switch that turns automatic captions off for tests \\
 \name{cdn}      & The media distribution, its Origin Access Control, signing key group, cache and header policies, certificate and DNS record \\
 \name{web}      & The private bucket and distribution that host the web application, with the rewrite that serves the single-page routes \\
 \bottomrule
@@ -255,6 +257,9 @@ packets \\
 Plan replaced the CloudFront signing key &
 Git on Windows checked the public key out with CRLF line ends, which Terraform saw as a new key &
 \path{.gitattributes} keeps LF for key files, shell scripts and the CloudFront function \\
+Every video failed at the new length check on staging &
+The state after \name{Probe} kept only selected fields of its result, and the duration was not among them, so \name{CheckLength} read a path that did not exist &
+The probe result passes the duration on; a smoke upload on staging after each apply that changes the state machine catches what unit tests of the functions cannot \\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -300,7 +305,7 @@ lists the edge cases each part must handle, and each line of it is covered by at
 \toprule
 \textbf{LEVEL} & \textbf{SIZE} & \textbf{WHAT IT CHECKS AND WHERE} \\
 \midrule
-Unit & 305 tests in 32 files & Logic of every workspace with Vitest, on every push; the API runs against a real MongoDB server started in memory, with AWS services replaced by in-memory implementations \\
+Unit & 346 tests in 36 files & Logic of every workspace with Vitest, on every push; the API runs against a real MongoDB server started in memory, with AWS services replaced by in-memory implementations \\
 Image smoke & 13 checks & Real FFmpeg inside the built image: both encoding paths encrypted, packaged, decrypted and decoded, on every push \\
 End-to-end & 27 tests in 6 files & The deployed web application and API through Chromium with Playwright, against staging and then production after each deployment \\
 \bottomrule
@@ -314,7 +319,7 @@ joined.
 
 \begin{table}[H]
 \centering
-\caption{Unit tests by workspace, 305 tests in 32 files}
+\caption{Unit tests by workspace, 346 tests in 36 files}
 \label{tab:test-coverage}
 \footnotesize
 \begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{0.16\textwidth} >{\raggedright\arraybackslash}p{0.08\textwidth} >{\raggedright\arraybackslash}X}
@@ -323,9 +328,9 @@ joined.
 \midrule
 \name{shared} & 104 & The ladder bounded by the source, with portrait and very small sources, and the reduced ladder for long single jobs; frame rates, rotation and sample aspect ratio read from probe data, and the conditions that keep a video on the single path; chunk plans whose windows meet exactly, including 48 chunks for a 4-hour video at 30~fps and a 48-hour video under the array limit; playlists with the peak bandwidth rounded up and codec strings read from the stream; the stitch checks of Section~\ref{sec:chunked-design}; the check that an output covers the probed duration; the label policy; progress folding; the event contracts \\
 \name{transcoder} & 27 & FFmpeg arguments: one decode, the same key frame rules on every rung, capped CRF with the rung's buffer, chunk seeks half a frame early and audio without repeated packets; the exit codes that Batch retries or not; the encode guard; preview sprites \\
-\name{functions} & 37 & One execution per upload version and none for a duplicate event; state changes of the status function, including publishing once, scheduled publishing and failure alerts whose reason holds no presigned query; the order of playlist writes; notifications within the daily mail cap; the hourly roll-up and the draft clean-up \\
-\name{api} & 109 & Registration, sign-in, password rules and the Google account rule; the origin secret, client addresses and rate limits; uploads by pre-signed POST and multipart, with exact part sizes; the access rule for every visibility and moderation state; the key returned as 16 raw bytes; views after 30~seconds; comments, reactions, subscriptions and memberships with recounted counters; playlists and history; captions, chapters and schedules; search folding Vietnamese letters; reports, decisions, appeals, audit samples and roles \\
-\name{web} & 28 & Retries with back-off and \texttt{Retry-After}; multipart upload with part retries and cancel; the 30-second view rule on real playback only; the signed policy added to CDN addresses and never to API calls; chapters, timestamps and preview thumbnails \\
+\name{functions} & 50 & One execution per upload version and none for a duplicate event; state changes of the status function, including the lane and length limit read from the plan, publishing once, scheduled publishing and failure alerts whose reason holds no presigned query; the order of playlist writes; notifications within the daily mail cap; automatic captions in twelve tests: the reservation of billed seconds with its 15-second minimum, the refusal when the month is used up, the refund of a failed job, the skipped videos and the owner track that is kept; the hourly roll-up and the draft clean-up \\
+\name{api} & 134 & Registration with the minimum age, sign-in, password rules and the Google account rule; plans and payment: the Stripe signature, a repeated or older event applied once or ignored, the plan kept to the end of the period, and the limits by plan on uploads, tiers and analytics; the origin secret, client addresses and rate limits; uploads by pre-signed POST and multipart, with exact part sizes; the access rule for every visibility and moderation state; the key returned as 16 raw bytes; views after 30~seconds; comments, reactions, subscriptions and memberships with recounted counters; playlists and history; captions, chapters and schedules; search folding Vietnamese letters; reports, decisions, appeals, audit samples and roles \\
+\name{web} & 31 & Retries with back-off and \texttt{Retry-After}; the age check of the sign-up form; multipart upload with part retries and cancel; the 30-second view rule on real playback only; the signed policy added to CDN addresses and never to API calls; chapters, timestamps and preview thumbnails \\
 \bottomrule
 \end{tabularx}
 \end{table}

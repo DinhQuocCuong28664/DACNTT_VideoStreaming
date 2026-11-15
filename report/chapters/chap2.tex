@@ -206,6 +206,9 @@ API & Express 5 on one AWS Lambda function & API Gateway with one function per r
 API edge & Cloudflare Worker & Amazon API Gateway & The domain's Domain Name System (DNS) and Transport Layer Security (TLS) are already on Cloudflare; the Worker rewrites the host and adds an origin secret \\
 Orchestration & AWS Step Functions & Containers that chain jobs themselves & One place for state, retries and failure handling, with a visible history \\
 Encoding & FFmpeg on AWS Batch with Fargate & AWS Elemental MediaConvert & Full control of the encoder, billed per vCPU-second \\
+Job priority & Two pairs of AWS Batch queues on the same compute & A separate compute environment for paid plans & Paid videos are served first when capacity is short, with no capacity reserved while idle \\
+Captions & Amazon Transcribe & Whisper run on Fargate & Billed per second of audio with no image or model to maintain; outputs WebVTT directly \\
+Payment & Stripe Checkout and webhooks & Integrating a card gateway directly & Card data never reaches the platform; hosted checkout, portal and a test mode \\
 Documents & MongoDB Atlas & Relational database & Document-shaped data whose schema grows with features; managed service \\
 Search & Atlas Search & OpenSearch cluster & Full-text search inside the same database, no cluster to run \\
 Hot counters & Amazon DynamoDB & MongoDB & Pay per request, built-in expiry; keeps frequent writes off the free database tier \\
@@ -230,6 +233,14 @@ which avoids running a separate search cluster. The project uses the free tier o
 of one hundred operations per second would be reached by data written on every few seconds of
 playback, such as watch progress, view marks and rate-limit counters. These are therefore kept in
 Amazon DynamoDB, billed per request and able to expire entries on its own.
+
+The services behind the platform plans are chosen so that they cost nothing while unused. Automatic
+captions could run an open speech recognition model such as Whisper in a Fargate task, which would
+keep the processing on the same compute, but the model would have to be packaged, its image pulled for
+every job and its accuracy on Vietnamese checked by the team; Amazon Transcribe identifies the
+language, writes WebVTT subtitles and bills per second of audio~\cite{awstranscribe}. Payments use
+Stripe Checkout, a payment page hosted by Stripe, so card data never passes through the platform and
+the plan is set only by signed events~\cite{stripecheckout}.
 
 Playback uses hls.js rather than the browser's native HLS support even in browsers that have it.
 Access to the processed files is granted by a signed policy that must be appended to every playlist

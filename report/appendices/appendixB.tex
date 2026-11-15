@@ -51,6 +51,8 @@ the part that reads them, and Table~\ref{tab:env-secret} the fields of the secre
 \texttt{WEB\_BASE\_URL} & Yes & \name{notifier}: address used in e-mail links \\
 \texttt{TABLE\_HEARTBEATS} & Yes & \name{rollup}: table of viewing heartbeats \\
 \texttt{RAW\_BUCKET} & Yes & \name{reconciler}: bucket whose abandoned drafts are removed \\
+\texttt{API\_SECRET\_ARN}, \texttt{DB\_NAME} & Yes & \name{captions}: database access for the plan, the video and \name{captionUsage} \\
+\texttt{RAW\_BUCKET}, \texttt{WORK\_BUCKET}, \texttt{PROCESSED\_BUCKET} & Yes & \name{captions}: source given to Transcribe, its WebVTT output, and the caption track next to the video \\
 \midrule
 \multicolumn{3}{l}{\textit{Transcoder jobs}} \\
 \texttt{VIDEO\_ID}, \texttt{UPLOAD\_VERSION} & Yes & Video and upload version the job works on \\
@@ -70,6 +72,7 @@ the part that reads them, and Table~\ref{tab:env-secret} the fields of the secre
 \texttt{transcoder\_image\_tag} & Yes & Commit of the transcoder image; no default in production \\
 \texttt{attach\_hosts} & No & Puts the hosts on the distributions; false only while hosts move \\
 \texttt{moderation\_enabled} & No & False only during measurement runs \\
+\texttt{auto\_captions\_enabled} & No & False stops the events that start automatic captions, for tests \\
 \texttt{alert\_emails} & No & Addresses subscribed to the alert topic \\
 \texttt{cdn\_transition\_reader\_arns}, \texttt{web\_transition\_reader\_arns} & No & Distributions that may still read the buckets while hosts move \\
 \end{longtable}
@@ -90,6 +93,7 @@ the part that reads them, and Table~\ref{tab:env-secret} the fields of the secre
 \texttt{cloudfrontKeyPairId}, \texttt{cloudfrontPrivateKey} & No & Key pair that signs playback policies; without it listings carry no images and nothing plays \\
 \texttt{googleClientId} & No & Audience checked on Google identity tokens \\
 \texttt{smtpUser}, \texttt{smtpPassword} & No & Mail account for verification, reset and notification e-mail \\
+\texttt{stripeSecretKey}, \texttt{stripeWebhookSecret} & No & Stripe secret or restricted key, test or live, and the signing secret of the webhook endpoint; without both, plans are listed but cannot be bought \\
 \bottomrule
 \end{tabularx}
 \end{table}

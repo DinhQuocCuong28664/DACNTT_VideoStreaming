@@ -799,8 +799,8 @@ allows before it creates anything; the studio refuses a tier beyond the plan and
 analytics window to the longest the plan allows; the workflow reads the plan when it starts, which decides the queues and the longest duration
 of Section~\ref{sec:state-machine}; and the caption function reads it before it spends anything. The
 length is checked after the probe rather than at upload because only the probe reads the real
-duration of the file, and it is cheap: a video over the limit costs two short function calls and no
-container.
+duration of the file, and it is cheap: a video over the limit costs three short function calls and
+no container.
 
 \subsection{Payment with Stripe}
 \label{sec:payment-design}
@@ -888,8 +888,8 @@ the client retries. Chapter~\ref{chap:evaluation} measures the effect.
 
 On the compute side, the ceilings are those of Batch and Fargate: 24 vCPUs of Spot and 24 of
 On-Demand in production, set by Terraform below the account quota of 64 of each kind so that staging
-can run beside production. The two queues keep short videos ahead of chunks: the scheduler starts a
-waiting job of \name{main} before any waiting chunk, so a new upload waits at most for one running
+can run beside production. The queue priorities keep short videos ahead of chunks: the scheduler starts a
+waiting job of \name{main} or \name{priority} before any waiting chunk, so a new upload waits at most for one running
 chunk to end, a few minutes, and is never queued behind all the chunks of a long video. On the delivery side, the CDN
 caches segments for every viewer, because the signed policy is not part of the cache key, so the
 number of viewers adds load at the edge rather than at the origin.

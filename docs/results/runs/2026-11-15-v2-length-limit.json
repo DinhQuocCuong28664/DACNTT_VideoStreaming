@@ -51,7 +51,7 @@
       "provenance": "measured",
       "source": "aws stepfunctions get-execution-history",
       "image": "9f43f641e61687d21c32736a88ae96af5f20d7dc",
-      "notes": "The Probe Lambda reads the duration, CheckLength compares it with the plan limit that MarkProcessing passed in, and the workflow marks the video failed without submitting a Batch job, so the only compute spent is two short Lambda calls. Upload limits by size still apply before this step."
+      "notes": "The Probe Lambda reads the duration, CheckLength compares it with the plan limit that MarkProcessing passed in, and the workflow marks the video failed without submitting a Batch job, so the only compute spent is three short Lambda calls (MarkProcessing, Probe, MarkFailed). Upload limits by size still apply before this step."
     }
   ]
 }

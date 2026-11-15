@@ -21,7 +21,10 @@ with a capped constant rate factor and key frames aligned across rungs; videos l
 minutes are cut into chunks that are encoded in parallel and stitched into ordinary playlists. The
 segments are encrypted with AES-128 and served by Amazon CloudFront only to requests that carry a
 policy signed for that video. Uploads are screened with Amazon Rekognition, and staff decisions are
-recorded so that the error rates of the screening can be measured. Eleven Terraform modules describe
+recorded so that the error rates of the screening can be measured. Four plans, bought through Stripe
+Checkout in test mode, set the upload size and video length of each creator; the paid ones add
+automatic captions from Amazon Transcribe within a monthly cap and priority Batch queues that serve
+their videos first when capacity is short. Eleven Terraform modules describe
 the infrastructure, and two GitHub Actions workflows lint, test and scan every change.
 
 Measured on the production system, a four-hour video was ready 38.3~minutes after its upload, and of one

@@ -10,7 +10,8 @@ the strengths and the limitations of the delivered system and the work that woul
 The project set out to build a video sharing platform whose transcoding runs on serverless
 containers driven by events, and to measure what that choice costs and delivers.
 Table~\ref{tab:objective-results} sets each of the five objectives against its result and the part
-of the report that holds the evidence. All five were reached on the production system.
+of the report that holds the evidence. All five were reached on the production system, with the
+priority queues measured on staging.
 
 \begin{table}[H]
 \centering
@@ -21,11 +22,11 @@ of the report that holds the evidence. All five were reached on the production s
 \toprule
 \textbf{OBJECTIVE} & \textbf{RESULT} & \textbf{EVIDENCE} \\
 \midrule
-1. Web platform & Users register with a verified e-mail address or Google, upload files of up to 20~GiB straight to Amazon S3 and watch every video at up to six quality levels. Each video is public, unlisted, private, protected by a password or reserved for members. Channels, subscriptions, comments, playlists, memberships, a search that ignores diacritics and a staff console complete the platform. & Sections~\ref{sec:interface-design}, \ref{sec:content-protection}, \ref{sec:ui-showcase} \\
+1. Web platform & Users register with a verified e-mail address or Google, upload files of up to 20~GiB, as far as their plan allows, straight to Amazon S3 and watch every video at up to six quality levels. Each video is public, unlisted, private, protected by a password or reserved for members. Channels, subscriptions, comments, playlists, memberships, a search that ignores diacritics and a staff console complete the platform. Four plans, bought through Stripe in test mode, set the limits of each creator and bring automatic captions and priority processing. & Sections~\ref{sec:interface-design}, \ref{sec:content-protection}, \ref{sec:ui-showcase} \\
 2. Event-driven pipeline & The creation of the source object alone starts a Step Functions execution, named after the video and its upload version so that a duplicate event never starts a second one. The execution ends with an HLS package encrypted with AES-128 and served through CloudFront with a signed policy. In a burst of 100 uploads, every upload whose file reached Amazon S3 became \status{ready}. & Sections~\ref{sec:workflow-design}, \ref{sec:media-design}, \ref{sec:pipeline-evaluation} \\
-3. On-demand containers & Every FFmpeg job runs in a Fargate task that exists only while the job runs; with nothing to process, both compute environments hold zero vCPUs. Spot capacity is used first and On-Demand as overflow, which a burst of 100 uploads used. A four-hour video was ready in 38.3~minutes. & Sections~\ref{sec:compute-design}, \ref{sec:chunked-evaluation}, \ref{sec:burst-evaluation} \\
-4. Infrastructure as Code and CI & Eleven Terraform modules build three environments on AWS and Cloudflare. Two workflows lint, type-check, test, scan for secrets and vulnerable dependencies, and run FFmpeg in the image on every change; 305 unit tests, 13 image checks and 27 end-to-end tests pass. & Sections~\ref{sec:iac}, \ref{sec:cicd}, \ref{sec:testing} \\
-5. Empirical evaluation & Playback start, playback under limited bandwidth, declared against delivered bit rate, transcoding time from a 36-second clip to a four-hour video, 100 simultaneous uploads, API load and monthly cost were measured on production. Nine of the ten non-functional requirements are met and the tenth at its median. & Chapter~\ref{chap:evaluation}, Table~\ref{tab:nfr-evidence} \\
+3. On-demand containers & Every FFmpeg job runs in a Fargate task that exists only while the job runs; with nothing to process, both compute environments hold zero vCPUs. Spot capacity is used first and On-Demand as overflow, which a burst of 100 uploads used. A four-hour video was ready in 38.3~minutes. Priority queues let the videos of paid plans wait less when capacity is short. & Sections~\ref{sec:compute-design}, \ref{sec:chunked-evaluation}, \ref{sec:burst-evaluation} \\
+4. Infrastructure as Code and CI & Eleven Terraform modules build three environments on AWS and Cloudflare. Two workflows lint, type-check, test, scan for secrets and vulnerable dependencies, and run FFmpeg in the image on every change; 346 unit tests, 13 image checks and 27 end-to-end tests pass. & Sections~\ref{sec:iac}, \ref{sec:cicd}, \ref{sec:testing} \\
+5. Empirical evaluation & Playback start, playback under limited bandwidth, declared against delivered bit rate, transcoding time from a 36-second clip to a four-hour video, 100 simultaneous uploads, the length limit, API load and monthly cost were measured on production, and the priority queues on staging. Of the eleven non-functional requirements, nine are met, NFR-01 at its median, and NFR-11 in tests but not yet with real users. & Chapter~\ref{chap:evaluation}, Table~\ref{tab:nfr-evidence} \\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -88,6 +89,13 @@ calibration on this platform's content. The console measures the error rates fro
 but too few decisions exist yet for a rate to mean anything, so this report makes no claim about the
 accuracy of the screening.
 
+\textbf{Plans.} Payments run only in the test mode of Stripe, so no real payment has been taken and
+the webhook has not met the delays and disputes of real cards. The priority queues were measured once,
+on staging, with fourteen short videos; they move paid videos ahead but do not guarantee their order
+(Section~\ref{sec:priority-evaluation}), and the three paid plans share one lane, so Max is served no
+sooner than Plus. The length limits of the plans are set by judgement, not from the use of real
+creators.
+
 \textbf{Operation.} Deployment is run by the operator rather than by the pipeline, so a change
 reaches production only as often as someone runs the steps, and a step left out is noticed only by
 the checks that follow it. The whole platform also runs in a single AWS region. CloudFront serves the
@@ -116,7 +124,13 @@ The fourth concerns load. A longer back-off with jitter on the client, or a clie
 uploads, would let a refused upload wait instead of failing, and a paid database tier would remove
 the limit of 100 operations per second.
 
-The fifth is calibrating the screening from evidence. The console already records the reason codes of
+The fifth concerns the plans. Taking real payments needs a Stripe account in live mode and the
+legal steps that go with it; the code does not change, only the key and the signing secret. The
+priority queues should be measured on production under real load, and, if one lane proves too
+coarse, given one queue per paid plan. The length limits should be tuned from the lengths that real
+creators upload.
+
+The sixth is calibrating the screening from evidence. The console already records the reason codes of
 reversed decisions and an unbiased audit sample; after a few hundred decisions, the thresholds and the
 label policy can be adjusted and the effect measured again. Further ahead, a deployment workflow that
 assumes a role in the account would make releases routine, and serverless encoding on graphics processing units
