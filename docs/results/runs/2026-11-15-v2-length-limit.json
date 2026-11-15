@@ -1,0 +1,57 @@
+{
+  "schema": 1,
+  "title": "v2 video length limit by plan: a video over the limit stops after the probe, before any Batch job",
+  "runs": [
+    {
+      "id": "2026-11-15-prod-v2-length-limit-61min",
+      "date": "2026-11-15",
+      "account": "B",
+      "region": "ap-southeast-1",
+      "environment": "prod",
+      "stack": "v2",
+      "path": "fault",
+      "input": {
+        "label": "61min-360p-5fps",
+        "size_bytes": 9607149,
+        "duration_s": 3660,
+        "description": "61-minute synthetic clip at 5 frames per second without audio, uploaded by a new free account (limit 60 minutes)"
+      },
+      "plan": {
+        "id": "free",
+        "max_video_minutes": 60,
+        "max_duration_s_passed_to_workflow": 3600
+      },
+      "measured_from": "execution_start",
+      "timings_s": {
+        "mark_processing": 2.1,
+        "probe": 2.2,
+        "to_mark_failed": 4.2,
+        "end_to_end": 4.4
+      },
+      "execution": {
+        "name": "zelos-prod-transcode:6af9af7708873e2bc7a9d812-1",
+        "status": "FAILED",
+        "error": "TranscodeFailed",
+        "states": [
+          { "name": "MarkProcessing", "seconds": 2.1 },
+          { "name": "StillThere", "seconds": 0 },
+          { "name": "PickLane", "seconds": 0, "branch": "LaneStandard" },
+          { "name": "Probe", "seconds": 2.2, "output": { "mode": "single", "durationSec": 3660 } },
+          { "name": "CheckLength", "seconds": 0, "branch": "TooLong" },
+          { "name": "TooLong", "seconds": 0 },
+          { "name": "MarkFailed", "seconds": 0.2 },
+          { "name": "Failed", "seconds": null }
+        ]
+      },
+      "batch_jobs": 0,
+      "result": {
+        "final_status": "ERROR",
+        "error": "VideoTooLong"
+      },
+      "provenance": "measured",
+      "source": "aws stepfunctions get-execution-history",
+      "image": "9f43f641e61687d21c32736a88ae96af5f20d7dc",
+      "notes": "The Probe Lambda reads the duration, CheckLength compares it with the plan limit that MarkProcessing passed in, and the workflow marks the video failed without submitting a Batch job, so the only compute spent is two short Lambda calls. Upload limits by size still apply before this step."
+    }
+  ]
+}

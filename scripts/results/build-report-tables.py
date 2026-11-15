@@ -43,12 +43,29 @@ LEGACY_LABELS = {"100mb": "100 MB", "500mb": "500 MB", "1gb": "1 GB"}
 def load_runs():
     runs = []
     for path in sorted(RUNS_DIR.glob("*.json")):
+        # Final-configuration (v2) records have their own schema and builders; see v2_files().
+        if "-v2-" in path.name:
+            continue
         data = json.loads(path.read_text(encoding="utf-8"))
         for run in data.get("runs", []):
             run = dict(run)
             run["_file"] = path.relative_to(ROOT).as_posix()
             runs.append(run)
     return runs
+
+
+V2_BUILDERS = [ROOT / "docs" / "diagrams" / "svg" / n for n in ("build-v2-appendix-tables.mjs", "build-v2-chart-data.mjs")]
+
+
+def v2_files():
+    """Final-configuration records: (file name, title, builders that read the file)."""
+    sources = {b.name: b.read_text(encoding="utf-8") for b in V2_BUILDERS if b.exists()}
+    out = []
+    for path in sorted(RUNS_DIR.glob("*-v2-*.json")):
+        data = json.loads(path.read_text(encoding="utf-8"))
+        readers = sorted(name for name, text in sources.items() if path.name in text)
+        out.append((path.name, data.get("title") or "Playback (QoE) runs", readers))
+    return out
 
 
 def minutes(seconds, digits=1):
@@ -407,6 +424,17 @@ def build_index(runs, outputs, used_by):
             f"| `{r['id']}` | {r['date']} | {r['environment']} | {r['path']} | {r['video']['label']} | {r['concurrency']} | "
             f"{minutes(e2e) if e2e else '-'} | {r['provenance']} | `{r['source']}` |"
         )
+    lines += [
+        "",
+        "## Lượt đo cấu hình cuối (v2)",
+        "",
+        "Các tệp `*-v2-*.json` có schema riêng; bảng `tab-v2-*.tex` và dữ liệu biểu đồ `chart-v2-*.json` do các script dưới đây sinh ra.",
+        "",
+        "| Tệp | Nội dung | Script đọc tệp |",
+        "|---|---|---|",
+    ]
+    for name, title, readers in v2_files():
+        lines.append(f"| `{name}` | {title} | {', '.join(f'`{r}`' for r in readers) or '-'} |")
     lines += [
         "",
         "Mức chắc chắn: `measured` đo trực tiếp, `derived` tính từ số đo (ví dụ đổi phút ra giây), `estimated` suy ra bằng tỉ lệ và chưa đo; "

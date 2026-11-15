@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "title": "Amazon Transcribe list price used by the automatic-caption cost",
+  "runs": [
+    {
+      "id": "2026-11-15-aws-transcribe-price-singapore",
+      "date": "2026-11-15",
+      "path": "prices",
+      "region": "ap-southeast-1",
+      "currency": "USD",
+      "transcribe": {
+        "api": "StartTranscriptionJob (batch)",
+        "usagetype": "APS1-TranscribeAudio",
+        "usd_per_second": 0.0001,
+        "usd_per_minute": 0.006,
+        "billing": "per second of audio, no minimum"
+      },
+      "provenance": "aws-price-list-api",
+      "source": "aws pricing get-products --region us-east-1 --service-code transcribe --filters Type=TERM_MATCH,Field=regionCode,Value=ap-southeast-1"
+    }
+  ]
+}
