@@ -638,7 +638,7 @@ Alternative flows &
   1a. The handle is reserved or already taken: the server answers 409. \newline
   2a. The image is too large or of another type: the server answers 400. \newline
   2b. The image breaks the content rules: the server answers 403 and the current image stays. \newline
-  3a. The channel already has as many tiers as the plan allows: the server answers 409. \\
+  3a. The channel already has as many tiers as the plan allows: the server answers 403 with the limit. \\
 Postcondition & The channel page shows the profile and offers the tiers. \\
 \bottomrule
 \end{tabularx}

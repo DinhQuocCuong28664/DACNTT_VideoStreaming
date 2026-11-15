@@ -1,7 +1,7 @@
 /**
  * Hình 4.9 — Các collection nghiệp vụ của MongoDB (api/src/model, api/src/db.ts).
  *
- * Chín collection không vẽ cạnh nối: mười mấy đường quan hệ giữa ba cột sẽ cắt nhau và đè lên
+ * Mười một collection không vẽ cạnh nối: mười mấy đường quan hệ giữa ba cột sẽ cắt nhau và đè lên
  * bảng. Thay vào đó cột ghi chú của mỗi khoá ngoại ghi collection mà nó trỏ tới ("→ users"),
  * và khoá duy nhất ghi đúng tên index trong db.ts. Chỉ liệt kê các trường mà thiết kế bàn tới.
  */
@@ -11,7 +11,7 @@ enableLayoutCheck();
 Object.assign(TYPE, { entityKey: 14.5, entityRow: 14.5, entityName: 17 });
 
 const W = 1620;
-const H = 940;
+const H = 990;
 const p = [];
 const COL_W = 500;
 const OPTS = { w: COL_W, colType: 100, colName: 160, colKey: 40 };
@@ -28,6 +28,7 @@ const user = entity({ ...OPTS, x: X[0], y: 44, name: 'users', tone: 'storage', r
   { type: 'number', name: 'tokenVersion', note: 'bump revokes sessions' },
   { type: 'string', name: 'avatar, banner', note: 'screened images' },
   { type: 'object', name: 'counters', note: 'subscribers, videos' },
+  { type: 'object', name: 'billing', note: 'plan; set by the webhook' },
 ] });
 const sub = entity({ ...OPTS, x: X[0], y: user.box.b + 40, name: 'subscriptions', tone: 'network', rows: [
   { type: 'ObjectId', name: 'subscriber', key: 'FK', note: '→ users' },
@@ -54,7 +55,7 @@ const video = entity({ ...OPTS, x: X[1], y: 44, name: 'videos', tone: 'compute',
   { type: 'number', name: 'minTierLevel', note: 'members-only threshold' },
   { type: 'Date', name: 'publishAt', note: 'scheduled publication' },
   { type: 'string', name: 'hlsPath', note: 'master playlist' },
-  { type: 'object[]', name: 'captions, chapters' },
+  { type: 'object[]', name: 'captions, chapters', note: 'captions[].auto: Transcribe' },
   { type: 'object', name: 'moderation', note: 'status, source, labels' },
   { type: 'object', name: 'counters', note: 'views, likes, comments' },
 ] });
@@ -92,7 +93,17 @@ const daily = entity({ ...OPTS, x: X[2], y: member.box.b + 40, name: 'analyticsD
   { type: 'number[]', name: 'retention', note: 'twenty buckets' },
 ] });
 
-p.push(user.svg, sub.svg, playlist.svg, video.svg, comment.svg, reaction.svg, tier.svg, member.svg, daily.svg);
+const billingEvents = entity({ ...OPTS, x: X[0], y: playlist.box.b + 40, name: 'billingEvents', tone: 'secret', rows: [
+  { type: 'string', name: '_id', key: 'PK', note: 'Stripe event id' },
+  { type: 'Date', name: 'at' },
+] });
+const captionUsage = entity({ ...OPTS, x: X[1], y: comment.box.b + 40, name: 'captionUsage', tone: 'storage', rows: [
+  { type: 'string', name: '_id', key: 'PK', note: 'user and month' },
+  { type: 'ObjectId', name: 'owner', key: 'FK', note: '→ users' },
+  { type: 'number', name: 'seconds', note: 'conditional $inc' },
+] });
+
+p.push(user.svg, sub.svg, playlist.svg, video.svg, comment.svg, reaction.svg, tier.svg, member.svg, daily.svg, billingEvents.svg, captionUsage.svg);
 p.push(text('PK primary key  ·  UK unique index  ·  FK reference; the note names the referenced collection',
   40, H - 24, { size: 15, anchor: 'start', fill: PALETTE.muted }));
 

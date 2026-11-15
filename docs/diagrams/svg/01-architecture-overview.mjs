@@ -1,7 +1,7 @@
 /**
  * Hình 4.1 — Kiến trúc tổng thể v2 và ranh giới triển khai.
  *
- * Hai vùng thật: dịch vụ ngoài AWS (trình duyệt, Cloudflare, MongoDB Atlas) và một tài khoản AWS
+ * Hai vùng thật: dịch vụ ngoài AWS (trình duyệt, Cloudflare, MongoDB Atlas, Stripe) và một tài khoản AWS
  * giữ mọi thứ (CloudFront dời về đây ngày 2026-11-05, docs/ops/cdn-to-b.md). Tài khoản chia
  * bốn tầng theo đường đi của một video: API và dữ liệu, nhận và điều phối, tính toán serverless,
  * sự kiện; cột bên phải là tầng phân phối.
@@ -24,21 +24,22 @@ Object.assign(TYPE, {
 });
 
 const W = 1740;
-const H = 1200;
+const H = 1320;
 const p = [];
 
 /** Làn dọc trong hành lang giữa cột ngoài AWS và tài khoản B. */
-const LANE = { api: 290, atlas: 316, status: 342, upload: 362 };
+const LANE = { stripe: 270, api: 290, atlas: 316, status: 342, upload: 362 };
 /** Làn dọc giữa tài khoản B và tài khoản A. */
 const LANE_AB = 1400;
 
 // ── Ngoài AWS ───────────────────────────────────────────────────────────────
-const outside = group({ x: 40, y: 96, w: 216, h: 560, label: 'Outside AWS', stroke: '#98a2b3', fill: '#fafbfc', dash: '5 4' });
+const outside = group({ x: 40, y: 96, w: 216, h: 640, label: 'Outside AWS', stroke: '#98a2b3', fill: '#fafbfc', dash: '5 4' });
 p.push(outside.svg);
-const browser = card({ x: 62, y: 136, w: 172, h: 120, iconName: 'react', iconSize: 34, title: 'Browser', sub: ['React SPA + hls.js'], tone: 'network' });
-const cloudflare = card({ x: 62, y: 300, w: 172, h: 140, iconName: 'cloudflare', iconSize: 34, title: 'Cloudflare', sub: ['DNS, TLS and', 'the API Worker'], tone: 'plain' });
-const atlas = card({ x: 62, y: 484, w: 172, h: 150, iconName: 'mongodb', iconSize: 34, title: 'MongoDB Atlas', sub: ['documents and', 'Atlas Search'], tone: 'storage' });
-p.push(browser.svg, cloudflare.svg, atlas.svg);
+const browser = card({ x: 62, y: 132, w: 172, h: 112, iconName: 'react', iconSize: 34, title: 'Browser', sub: ['React SPA + hls.js'], tone: 'network' });
+const cloudflare = card({ x: 62, y: 280, w: 172, h: 130, iconName: 'cloudflare', iconSize: 34, title: 'Cloudflare', sub: ['DNS, TLS and', 'the API Worker'], tone: 'plain' });
+const atlas = card({ x: 62, y: 446, w: 172, h: 130, iconName: 'mongodb', iconSize: 34, title: 'MongoDB Atlas', sub: ['documents and', 'Atlas Search'], tone: 'storage' });
+const stripe = card({ x: 62, y: 600, w: 172, h: 120, iconName: 'stripe', iconSize: 30, title: 'Stripe', sub: ['plan checkout,', 'test mode'], tone: 'plain' });
+p.push(browser.svg, cloudflare.svg, atlas.svg, stripe.svg);
 
 // ── Tài khoản B ─────────────────────────────────────────────────────────────
 const acctB = group({ x: 380, y: 64, w: 1328, h: 1014, label: 'AWS account (ap-southeast-1): compute, storage and delivery', iconName: 'aws' });
@@ -64,14 +65,15 @@ p.push(raw.svg, sqs.svg, starter.svg, sfn.svg);
 
 const proc = card({ x: 430, y: 580, w: 180, h: 150, iconName: 'aws-s3', iconSize: 30, title: 'S3 processed', sub: ['HLS package,', 'previews'], tone: 'storage' });
 const fargate = card({ x: 660, y: 580, w: 180, h: 150, iconName: 'aws-fargate', iconSize: 30, title: 'Fargate', sub: ['Spot 24 vCPU,', 'On-Demand 24'], tone: 'compute' });
-const batch = card({ x: 890, y: 580, w: 180, h: 150, iconName: 'aws-batch', iconSize: 30, title: 'AWS Batch', sub: ['main and', 'bulk queues'], tone: 'compute' });
+const batch = card({ x: 890, y: 580, w: 180, h: 150, iconName: 'aws-batch', iconSize: 30, title: 'AWS Batch', sub: ['priority and', 'standard queues'], tone: 'compute' });
 const steps = card({ x: 1120, y: 580, w: 210, h: 150, iconName: 'aws-lambda', iconSize: 30, title: 'Lambda steps', sub: ['status, probe,', 'stitch'], tone: 'compute' });
 p.push(proc.svg, fargate.svg, batch.svg, steps.svg);
 
 const notifier = card({ x: 430, y: 840, w: 180, h: 132, iconName: 'aws-lambda', iconSize: 30, title: 'notifier', sub: ['subscriber inbox'], tone: 'compute' });
 const eb = card({ x: 660, y: 840, w: 180, h: 132, iconName: 'aws-eventbridge', iconSize: 30, title: 'EventBridge', sub: ['progress,', 'VideoPublished'], tone: 'network' });
 const sns = card({ x: 1120, y: 840, w: 210, h: 132, iconName: 'aws-sns', iconSize: 30, title: 'SNS alerts', sub: ['failed videos'], tone: 'secret' });
-p.push(notifier.svg, eb.svg, sns.svg);
+const captions = card({ x: 890, y: 840, w: 180, h: 132, iconName: 'aws-lambda', iconSize: 30, title: 'captions', sub: ['Amazon', 'Transcribe jobs'], tone: 'compute' });
+p.push(notifier.svg, eb.svg, captions.svg, sns.svg);
 
 // ── Tầng phân phối ──────────────────────────────────────────────────────────
 const acctA = group({ x: 1424, y: 250, w: 268, h: 470, label: 'Delivery (global)', stroke: '#8e6bb3', fill: '#faf7fd' });
@@ -84,7 +86,7 @@ p.push(cfWeb.svg, cfMedia.svg);
 // Người dùng tới API
 p.push(edge([[browser.box.cx, browser.box.b], [browser.box.cx, cloudflare.box.y]], { badge: 1 }));
 p.push(edge([[cloudflare.box.r, 344], [LANE.api, 344], [LANE.api, 182], [api.box.x, 182]], { badge: 2, badgeAt: 0.78 }));
-p.push(edge([[api.box.x, 236], [LANE.atlas, 236], [LANE.atlas, 554], [atlas.box.r, 554]], { badge: 3, badgeAt: 0.6 }));
+p.push(edge([[api.box.x, 236], [LANE.atlas, 236], [LANE.atlas, 500], [atlas.box.r, 500]], { badge: 3, badgeAt: 0.6 }));
 p.push(edge([[api.box.r, 182], [ddb.box.x, 182]], { badge: 4 }));
 p.push(edge([[api.box.cx + 50, api.box.b], [api.box.cx + 50, 297], [keys.box.cx, 297], [keys.box.cx, keys.box.b]], { badge: 5, badgeAt: 0.5 }));
 
@@ -99,10 +101,12 @@ p.push(edge([[batch.box.x, 655], [fargate.box.r, 655]], { badge: 12 }));
 p.push(edge([[raw.box.cx, raw.box.b], [raw.box.cx, 524], [fargate.box.x + 40, 524], [fargate.box.x + 40, fargate.box.y]], { dashed: true, badge: 13, badgeAt: 0.5 }));
 p.push(edge([[fargate.box.x, 655], [proc.box.r, 655]], { badge: 14 }));
 p.push(edge([[fargate.box.cx, fargate.box.b], [fargate.box.cx, eb.box.y]], { badge: 15 }));
-p.push(edge([[eb.box.r, 884], [1095, 884], [1095, 704], [steps.box.x, 704]], { badge: 16, badgeAt: 0.5 }));
-p.push(edge([[steps.box.cx, steps.box.b], [steps.box.cx, 778], [LANE.status, 778], [LANE.status, 614], [atlas.box.r, 614]], { badge: 17, badgeAt: 0.35 }));
+p.push(edge([[800, eb.box.y], [800, 764], [1095, 764], [1095, 704], [steps.box.x, 704]], { badge: 16, badgeAt: 0.45 }));
+p.push(edge([[steps.box.cx, steps.box.b], [steps.box.cx, 790], [LANE.status, 790], [LANE.status, 550], [atlas.box.r, 550]], { badge: 17, badgeAt: 0.35 }));
 p.push(edge([[eb.box.x, 906], [notifier.box.r, 906]], { badge: 18 }));
 p.push(edge([[steps.box.cx + 70, steps.box.b], [steps.box.cx + 70, sns.box.y]], { badge: 19 }));
+p.push(edge([[api.box.x, 250], [LANE.stripe, 250], [LANE.stripe, 660], [stripe.box.r, 660]], { badge: 24, badgeAt: 0.55 }));
+p.push(edge([[eb.box.r, 930], [captions.box.x, 930]], { badge: 25 }));
 
 // Phân phối
 p.push(edge([[proc.box.x, 710], [392, 710], [392, 1024], [LANE_AB, 1024], [LANE_AB, 654], [cfMedia.box.x, 654]], { badge: 20, badgeAt: 0.55 }));
@@ -116,9 +120,10 @@ const STEPS = [
   'presigned upload', 'ObjectCreated event', 'message batch', 'StartExecution', 'probe, status, stitch',
   'submitJob.sync', 'run on Fargate', 'read the source', 'write the HLS', 'progress events',
   'to the status step', 'write video state', 'VideoPublished', 'failure alert', 'origin through OAC',
-  'signed HLS requests', 'load the web app', 'web origin',
+  'signed HLS requests', 'load the web app', 'web origin', 'checkout, webhook',
+  'automatic captions',
 ];
-const KEY_Y = 680;
+const KEY_Y = 760;
 const KEY_ROW = 19;
 const key = group({ x: 40, y: KEY_Y, w: 216, h: 62 + (STEPS.length - 1) * KEY_ROW + 4, label: 'Numbered steps', stroke: '#98a2b3', fill: '#fafbfc', dash: '5 4' });
 p.push(key.svg);

@@ -25,7 +25,7 @@ const WANTED = [
   // Ngoài AWS
   'mongodb', 'react', 'nodejs', 'docker', 'terraform', 'github-actions',
   'github-octocat', 'ffmpeg', 'cloudflare', 'jest', 'eslint', 'nginx',
-  'javascript', 'vitejs', 'chrome',
+  'javascript', 'vitejs', 'chrome', 'stripe',
 ];
 
 const SOURCES = [
