@@ -41,13 +41,9 @@ failing: in the burst of Section~\ref{sec:burst-evaluation}, no video failed onc
 reached Amazon S3.
 
 The work grows with the content, not with the path. Every measured video needed between 4.6 and
-5.8~vCPU-seconds per second of source, from a 36-second clip to a four-hour video, so both the cost
-and the capacity needed for a given catalogue can be predicted from its length. The range is an
-estimate rather than a constant: the clip had three rungs instead of six, and screening was off for
-the two largest runs. Three of the four
-sources were test patterns, which are easy to encode; the one real 1080p recording measured needed
-5.50~vCPU-seconds per second, at the top of this range, and content that is harder still could sit
-above it.
+5.8~vCPU-seconds per second of source, from a 36-second clip to a four-hour video, so cost and
+capacity can be predicted from the length of a catalogue. The range is an estimate rather than a
+constant, and harder content could sit above it (Section~\ref{sec:size-evaluation}).
 
 The output is honest to the player. Every segment of a rung starts with a key frame at the same
 instant, and the declared bandwidth of every rung equals the measured peak of its segments
@@ -56,8 +52,8 @@ it can sustain: on a link of 500~kbit/s it settled on the rung that fits and pla
 
 The application tier never handles video bytes. The API issues grants, records metadata and answers
 queries, while video moves directly between the browser, Amazon S3 and CloudFront. The load on the API
-does not depend on the size of the files, and the processing containers hold no database credentials,
-so one function owns every processing state and a fault in a container cannot corrupt a record.
+does not depend on the size of the files, and a fault in a processing container cannot corrupt a
+record (Section~\ref{sec:security-design}).
 
 \section{Limitations}
 \label{sec:limitations}
@@ -76,10 +72,9 @@ synthetic test pattern, which is easier to encode than a recording. Every video 
 19 to 35~seconds for Fargate tasks to start, about a quarter of the time of a short clip
 (Section~\ref{sec:size-evaluation}).
 
-\textbf{Load.} The free MongoDB cluster slows down above 100 operations per second. During the burst
-of 100 uploads, the first requests of new API instances waited up to 8.8~seconds on it, longer than
-the three retries of the client, so 8 uploads were refused at creation although the pipeline had
-capacity to queue them. Start-up on an unthrottled connection met its target of three seconds at the median (2.27~s) but not
+\textbf{Load.} The free MongoDB cluster slows down above 100 operations per second, so 8 uploads of the
+burst were refused at creation although the pipeline had capacity to queue them
+(Section~\ref{sec:burst-evaluation}). Start-up on an unthrottled connection met its target of three seconds at the median (2.27~s) but not
 in two of five runs, which took 3.10 and 3.23~s.
 
 \textbf{Moderation.} Screening samples one frame every five seconds and at most 120 frames, so

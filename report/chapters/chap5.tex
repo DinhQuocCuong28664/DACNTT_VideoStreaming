@@ -48,22 +48,17 @@ it can fail in production.
 \subsection{Workflow Functions}
 \label{sec:functions-impl}
 
-The eight functions are small and each has its own role with only the permissions it needs. The
-starter turns each record of an SQS batch into one Step Functions execution named after the video and
-its upload version, and reports only the failed records back to SQS, so one bad message does not make
-the whole batch return to the queue. The probe function runs \name{ffprobe} from a Lambda layer
-that holds a static build of the tool, plans the job with the functions of \name{shared} and stores
-the plan in the work bucket; the state machine receives only a summary, which keeps the execution
-history small. The status function is the only writer of processing state: at the start it reads the
-plan of the owner and returns the lane and the longest duration allowed, it moves a video through
-\status{processing}, \status{ready} or \status{error}, folds progress events from the two parallel
-branches into one percentage that never goes backwards, and announces a published video exactly once.
-The stitch function joins the chunk playlists and writes every media playlist before the master
-playlist, as Section~\ref{sec:hls-output} requires. The last four functions act after publication or
-serve the API: the notifier writes a notification for each subscriber and mails those who opted in,
-the captions function runs the automatic captions of Section~\ref{sec:captions-design}, the roll-up
-adds the viewing heartbeats of the previous hours into daily analytics, and the reconciler removes
-drafts whose upload never finished.
+The eight functions, whose roles Section~\ref{sec:workflow-design} describes, are small and each
+has only the permissions it needs. The starter reports only the failed records of an SQS batch back
+to SQS (partial batch response), so one bad message does not make the whole batch return to the
+queue. The probe function runs \name{ffprobe} from a Lambda layer that holds a static build of the
+tool, plans the job with the functions of \name{shared} and stores the plan in the work bucket; the
+state machine receives only a summary, which keeps the execution history small. The status function
+folds progress events from the two parallel branches into one percentage that never goes backwards,
+and announces a published video exactly once. The stitch function writes every media playlist before
+the master playlist, as Section~\ref{sec:hls-output} requires. The roll-up adds the viewing
+heartbeats of the previous hours into daily analytics, and the reconciler removes drafts whose
+upload never finished.
 
 \subsection{Transcoder Image}
 \label{sec:image-impl}
