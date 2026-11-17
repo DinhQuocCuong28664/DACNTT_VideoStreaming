@@ -331,8 +331,8 @@ joined.
 \end{table}
 
 The tests of the access rule matter most for security. They assert that a private, unready or
-scheduled video is answered with not-found rather than forbidden to anyone but its owner, because a
-forbidden answer would confirm that a video with that identifier exists; that a members-only video
+scheduled video is answered with not-found to anyone but its owner, as Section~\ref{sec:api-design}
+explains; that a members-only video
 returns no playlist address to a non-member; and that the key endpoint refuses another origin,
 another video, another upload version or a missing token, and stops serving the key once the video is
 removed.

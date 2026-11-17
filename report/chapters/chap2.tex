@@ -229,10 +229,9 @@ as many copies as there are concurrent requests and none when there are none.
 
 MongoDB Atlas holds the documents: users, channels, videos, comments, playlists and moderation
 records. Its search feature provides full-text search embedded in the same database~\cite{mongodbsearch},
-which avoids running a separate search cluster. The project uses the free tier of Atlas, whose limit
-of one hundred operations per second would be reached by data written on every few seconds of
-playback, such as watch progress, view marks and rate-limit counters. These are therefore kept in
-Amazon DynamoDB, billed per request and able to expire entries on its own.
+which avoids running a separate search cluster. The project uses the free tier of Atlas, and keeps
+the data written every few seconds of playback in Amazon DynamoDB, billed per request and able to
+expire entries on its own (Section~\ref{sec:database-design}).
 
 The services behind the platform plans are chosen so that they cost nothing while unused. Automatic
 captions could run an open speech recognition model such as Whisper in a Fargate task, which would

@@ -61,9 +61,9 @@ record (Section~\ref{sec:security-design}).
 \textbf{Playback.} The player relies on Media Source Extensions, because every request for a
 playlist or segment must carry the signed policy as query parameters and the native HLS player of a
 browser cannot add them. A browser without Media Source Extensions, such as Safari on older iPhones,
-therefore cannot play. Signed Cookies would avoid this, but browsers block third-party cookies inside
-an embedded player, which the platform supports. AES-128 keeps the files useless without a grant, but
-it is not digital rights management: a viewer who may play a video can also save it.
+therefore cannot play. Signed Cookies would avoid this, but they fail inside an embedded player
+(Section~\ref{sec:content-protection}). AES-128 keeps the files useless without a grant, but it is
+not digital rights management: a viewer who may play a video can also save it.
 
 \textbf{Transcoding.} The ladder has six fixed rungs whatever the content. On a long video the audio
 job sits on the critical path, 10.8~of the 38.3~minutes of the four-hour run, and the chunks are
