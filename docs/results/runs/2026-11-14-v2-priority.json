@@ -1,0 +1,431 @@
+{
+  "schema": 1,
+  "title": "v2 priority transcoding: paid-plan jobs start before free jobs submitted at the same time",
+  "runs": [
+    {
+      "id": "2026-11-14-staging-v2-priority",
+      "date": "2026-11-14",
+      "account": "B",
+      "region": "ap-southeast-1",
+      "environment": "staging",
+      "stack": "v2",
+      "path": "priority",
+      "input": {
+        "label": "60s-1080p x14",
+        "description": "14 copies of a 60-second 1080p clip; eight from a free account first, then four from a Plus account and two more from the free account about 40 s later"
+      },
+      "capacity": {
+        "fargate_spot_vcpu": 8,
+        "fargate_on_demand_vcpu": 8,
+        "per_video_vcpu": {
+          "analyse": 2,
+          "encode": 4
+        }
+      },
+      "queues": {
+        "priority": 20,
+        "main": 10,
+        "priority-bulk": 5,
+        "bulk": 1
+      },
+      "first_submit_utc": "2026-11-14T07:24:59.663000Z",
+      "measured_from": "first Batch job submitted",
+      "videos": [
+        {
+          "upload_order": 1,
+          "group": "free",
+          "label": "free-2",
+          "video_id": "6af80c97f0282f2bea0df7e8",
+          "queue": "main",
+          "submitted_s": 0.0,
+          "first_start_s": 23.2,
+          "done_s": 67.2,
+          "wait_s": 23.2,
+          "jobs": [
+            {
+              "kind": "analyse",
+              "status": "SUCCEEDED",
+              "wait_s": 23.2,
+              "run_s": 25.4
+            },
+            {
+              "kind": "encode",
+              "status": "SUCCEEDED",
+              "wait_s": 36.8,
+              "run_s": 30.5
+            }
+          ],
+          "start_rank": 1
+        },
+        {
+          "upload_order": 2,
+          "group": "free",
+          "label": "free-3",
+          "video_id": "6af80c97f0282f2bea0df7e9",
+          "queue": "main",
+          "submitted_s": 9.0,
+          "first_start_s": 30.5,
+          "done_s": 59.5,
+          "wait_s": 21.4,
+          "jobs": [
+            {
+              "kind": "analyse",
+              "status": "SUCCEEDED",
+              "wait_s": 22.0,
+              "run_s": 26.1
+            },
+            {
+              "kind": "encode",
+              "status": "SUCCEEDED",
+              "wait_s": 21.4,
+              "run_s": 29.0
+            }
+          ],
+          "start_rank": 2
+        },
+        {
+          "upload_order": 3,
+          "group": "free",
+          "label": "free-5",
+          "video_id": "6af80c97f0282f2bea0df7ea",
+          "queue": "main",
+          "submitted_s": 11.2,
+          "first_start_s": 134.1,
+          "done_s": 181.5,
+          "wait_s": 123.0,
+          "jobs": [
+            {
+              "kind": "analyse",
+              "status": "SUCCEEDED",
+              "wait_s": 129.0,
+              "run_s": 41.3
+            },
+            {
+              "kind": "encode",
+              "status": "SUCCEEDED",
+              "wait_s": 123.0,
+              "run_s": 28.4
+            }
+          ],
+          "start_rank": 7
+        },
+        {
+          "upload_order": 4,
+          "group": "free",
+          "label": "free-8",
+          "video_id": "6af80c991645e717eaed3e25",
+          "queue": "main",
+          "submitted_s": 11.5,
+          "first_start_s": 140.2,
+          "done_s": 226.7,
+          "wait_s": 128.7,
+          "jobs": [
+            {
+              "kind": "analyse",
+              "status": "SUCCEEDED",
+              "wait_s": 128.7,
+              "run_s": 27.4
+            },
+            {
+              "kind": "encode",
+              "status": "SUCCEEDED",
+              "wait_s": 178.1,
+              "run_s": 37.1
+            }
+          ],
+          "start_rank": 8
+        },
+        {
+          "upload_order": 5,
+          "group": "free",
+          "label": "free-4",
+          "video_id": "6af80c9a47b21b398361e8a7",
+          "queue": "main",
+          "submitted_s": 11.6,
+          "first_start_s": 194.4,
+          "done_s": 230.1,
+          "wait_s": 182.8,
+          "jobs": [
+            {
+              "kind": "analyse",
+              "status": "SUCCEEDED",
+              "wait_s": 192.5,
+              "run_s": 25.9
+            },
+            {
+              "kind": "encode",
+              "status": "SUCCEEDED",
+              "wait_s": 182.8,
+              "run_s": 35.1
+            }
+          ],
+          "start_rank": 11
+        },
+        {
+          "upload_order": 6,
+          "group": "free",
+          "label": "free-7",
+          "video_id": "6af80c9938079ee38f219de2",
+          "queue": "main",
+          "submitted_s": 10.1,
+          "first_start_s": 79.0,
+          "done_s": 126.9,
+          "wait_s": 68.9,
+          "jobs": [
+            {
+              "kind": "analyse",
+              "status": "SUCCEEDED",
+              "wait_s": 68.9,
+              "run_s": 26.1
+            },
+            {
+              "kind": "encode",
+              "status": "SUCCEEDED",
+              "wait_s": 81.1,
+              "run_s": 35.7
+            }
+          ],
+          "start_rank": 4
+        },
+        {
+          "upload_order": 7,
+          "group": "free",
+          "label": "free-1",
+          "video_id": "6af80c9971b379ec1b471909",
+          "queue": "main",
+          "submitted_s": 9.7,
+          "first_start_s": 33.7,
+          "done_s": 91.2,
+          "wait_s": 24.0,
+          "jobs": [
+            {
+              "kind": "analyse",
+              "status": "SUCCEEDED",
+              "wait_s": 55.9,
+              "run_s": 25.6
+            },
+            {
+              "kind": "encode",
+              "status": "SUCCEEDED",
+              "wait_s": 24.0,
+              "run_s": 38.8
+            }
+          ],
+          "start_rank": 3
+        },
+        {
+          "upload_order": 8,
+          "group": "free",
+          "label": "free-6",
+          "video_id": "6af80c9a2971cbce53287688",
+          "queue": "main",
+          "submitted_s": 12.0,
+          "first_start_s": 224.4,
+          "done_s": 277.8,
+          "wait_s": 212.5,
+          "jobs": [
+            {
+              "kind": "analyse",
+              "status": "SUCCEEDED",
+              "wait_s": 212.5,
+              "run_s": 27.6
+            },
+            {
+              "kind": "encode",
+              "status": "SUCCEEDED",
+              "wait_s": 236.4,
+              "run_s": 29.4
+            }
+          ],
+          "start_rank": 12
+        },
+        {
+          "upload_order": 9,
+          "group": "plus",
+          "label": "plus-3",
+          "video_id": "6af80cc971b379ec1b47190b",
+          "queue": "priority",
+          "submitted_s": 40.0,
+          "first_start_s": 85.4,
+          "done_s": 124.0,
+          "wait_s": 45.4,
+          "jobs": [
+            {
+              "kind": "analyse",
+              "status": "SUCCEEDED",
+              "wait_s": 57.7,
+              "run_s": 26.3
+            },
+            {
+              "kind": "encode",
+              "status": "SUCCEEDED",
+              "wait_s": 45.4,
+              "run_s": 29.1
+            }
+          ],
+          "start_rank": 5,
+          "start_rank_late_group": 1
+        },
+        {
+          "upload_order": 10,
+          "group": "plus",
+          "label": "plus-2",
+          "video_id": "6af80cca71b379ec1b47190c",
+          "queue": "priority",
+          "submitted_s": 44.5,
+          "first_start_s": 144.5,
+          "done_s": 223.7,
+          "wait_s": 100.0,
+          "jobs": [
+            {
+              "kind": "analyse",
+              "status": "SUCCEEDED",
+              "wait_s": 148.1,
+              "run_s": 31.1
+            },
+            {
+              "kind": "encode",
+              "status": "SUCCEEDED",
+              "wait_s": 100.0,
+              "run_s": 29.1
+            }
+          ],
+          "start_rank": 9,
+          "start_rank_late_group": 3
+        },
+        {
+          "upload_order": 11,
+          "group": "free",
+          "label": "free-10",
+          "video_id": "6af80cc947b21b398361e8a8",
+          "queue": "main",
+          "submitted_s": 44.9,
+          "first_start_s": 289.6,
+          "done_s": 347.5,
+          "wait_s": 244.7,
+          "jobs": [
+            {
+              "kind": "analyse",
+              "status": "SUCCEEDED",
+              "wait_s": 244.7,
+              "run_s": 25.4
+            },
+            {
+              "kind": "encode",
+              "status": "SUCCEEDED",
+              "wait_s": 268.4,
+              "run_s": 34.2
+            }
+          ],
+          "start_rank": 14,
+          "start_rank_late_group": 6
+        },
+        {
+          "upload_order": 12,
+          "group": "plus",
+          "label": "plus-4",
+          "video_id": "6af80cca47b21b398361e8a9",
+          "queue": "priority",
+          "submitted_s": 41.8,
+          "first_start_s": 99.6,
+          "done_s": 171.5,
+          "wait_s": 57.7,
+          "jobs": [
+            {
+              "kind": "analyse",
+              "status": "SUCCEEDED",
+              "wait_s": 57.7,
+              "run_s": 25.3
+            },
+            {
+              "kind": "encode",
+              "status": "SUCCEEDED",
+              "wait_s": 93.7,
+              "run_s": 35.9
+            }
+          ],
+          "start_rank": 6,
+          "start_rank_late_group": 2
+        },
+        {
+          "upload_order": 13,
+          "group": "plus",
+          "label": "plus-1",
+          "video_id": "6af80cc971b379ec1b47190a",
+          "queue": "priority",
+          "submitted_s": 59.3,
+          "first_start_s": 184.2,
+          "done_s": 274.1,
+          "wait_s": 124.8,
+          "jobs": [
+            {
+              "kind": "analyse",
+              "status": "SUCCEEDED",
+              "wait_s": 124.8,
+              "run_s": 27.0
+            },
+            {
+              "kind": "encode",
+              "status": "SUCCEEDED",
+              "wait_s": 185.6,
+              "run_s": 29.2
+            }
+          ],
+          "start_rank": 10,
+          "start_rank_late_group": 4
+        },
+        {
+          "upload_order": 14,
+          "group": "free",
+          "label": "free-9",
+          "video_id": "6af80cc92971cbce53287689",
+          "queue": "main",
+          "submitted_s": 60.2,
+          "first_start_s": 246.8,
+          "done_s": 289.8,
+          "wait_s": 186.6,
+          "jobs": [
+            {
+              "kind": "analyse",
+              "status": "SUCCEEDED",
+              "wait_s": 186.6,
+              "run_s": 25.9
+            },
+            {
+              "kind": "encode",
+              "status": "SUCCEEDED",
+              "wait_s": 188.1,
+              "run_s": 41.5
+            }
+          ],
+          "start_rank": 13,
+          "start_rank_late_group": 5
+        }
+      ],
+      "summary": {
+        "free-early": {
+          "n": 8,
+          "mean_wait_s": 98.1,
+          "max_wait_s": 212.5,
+          "mean_done_s": 157.6
+        },
+        "plus": {
+          "n": 4,
+          "mean_wait_s": 82.0,
+          "max_wait_s": 124.8,
+          "mean_done_s": 198.3
+        },
+        "free-late": {
+          "n": 2,
+          "mean_wait_s": 215.6,
+          "max_wait_s": 244.7,
+          "mean_done_s": 318.6
+        }
+      },
+      "provenance": "measured",
+      "source": "aws batch list-jobs on zelos-staging-main and zelos-staging-priority",
+      "image": "54da21dbfc575a9800658082260a469f14bc49f9",
+      "notes": "Times are seconds from the first job of the run. wait_s is from the first job of a video entering a queue to the first of its jobs starting. The four Plus videos joined the queues after the eight free ones were already waiting; the priority queue is scheduled first, so they started before the free videos still waiting and before the two free videos sent with them."
+    }
+  ]
+}

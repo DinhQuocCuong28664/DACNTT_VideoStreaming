@@ -12,6 +12,7 @@
  *   report/generated/tab-v2-api.tex         API latency by phase
  *   report/generated/tab-v2-lambda.tex      function log of the API run and the burst
  *   report/generated/tab-v2-prices.tex      list prices used by the cost comparison
+ *   report/generated/tab-v2-priority.tex    priority queues: fourteen videos by start order
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -139,6 +140,23 @@ ${body}
     label: 'tab:raw-fault',
     spec: 'l l l l l r',
     head: ['FILE', 'IMAGE', 'FAILED STEP', 'ATTEMPTS', 'RESULT', 'TIME'],
+    rows,
+  });
+}
+
+// ── Priority queues by plan ───────────────────────────────────────────────
+{
+  const r = read('2026-11-14-v2-priority.json').runs[0];
+  const byStart = [...r.videos].sort((a, b) => a.first_start_s - b.first_start_s);
+  const group = (v) => (v.group === 'plus' ? 'Plus' : v.upload_order <= 8 ? 'Free, first batch' : 'Free, second batch');
+  const rows = byStart.map((v) => [
+    v.start_rank, v.upload_order, group(v), v.queue, fix(v.submitted_s), fix(v.first_start_s), fix(v.wait_s), fix(v.done_s),
+  ]);
+  table('tab-v2-priority.tex', {
+    caption: `Fourteen videos of 60 seconds on staging (${r.capacity.fargate_spot_vcpu} + ${r.capacity.fargate_on_demand_vcpu} vCPUs), in the order their first job started; seconds from the first job of the run`,
+    label: 'tab:raw-priority',
+    spec: 'c c l l r r r r',
+    head: ['START', 'UPLOAD', 'ACCOUNT', 'QUEUE', 'QUEUED', 'STARTED', 'WAIT', 'DONE'],
     rows,
   });
 }
@@ -299,6 +317,7 @@ ${body}
 {
   const p = read('2026-11-04-v2-prices.json').runs[0];
   const rk = read('2026-11-05-v2-rekognition-price.json').runs[0].rekognition;
+  const tr = read('2026-11-15-v2-transcribe-price.json').runs[0].transcribe;
   table('tab-v2-prices.tex', {
     caption: `List prices in Singapore, in ${p.currency}`,
     label: 'tab:raw-prices',
@@ -313,6 +332,7 @@ ${body}
       ['Lambda, compute', p.lambda.gb_second, 'per GB-second'],
       ['S3 Standard', p.s3.standard_gb_month, 'per GB-month'],
       ['Rekognition, moderation', rk.usd_per_image, 'per image'],
+      ['Transcribe, batch', tr.usd_per_minute, 'per minute of audio, billed per second'],
     ],
   });
 }

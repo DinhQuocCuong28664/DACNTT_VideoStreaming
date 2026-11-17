@@ -26,10 +26,12 @@ lower ceilings, and changes are checked there before they reach production (Sect
 Web application & S3 bucket behind CloudFront & Hashed assets cached for a year \\
 API & One Lambda function, Node.js 22, 512 MiB, behind a Cloudflare Worker & 80 reserved instances \\
 Workflow & S3 events, SQS, the starter, Step Functions and four Lambda steps & One execution per upload version \\
-Compute & AWS Batch on Fargate Spot and Fargate On-Demand, queues \name{main} and \name{bulk} & 24 + 24 vCPUs, six + six chunk slots \\
+Compute & AWS Batch on Fargate Spot and Fargate On-Demand, standard and priority queues & 24 + 24 vCPUs, six + six chunk slots \\
 Media delivery & CloudFront, Origin Access Control, signed query policy & Edges of price class 200, which include Asia \\
 Documents and search & MongoDB Atlas, free M0 cluster of its own & 500 connections, 100 operations per second \\
 Short-lived data & Five DynamoDB tables on demand & Billed per request \\
+Payment & Stripe Checkout, customer portal and webhook & Test mode, no real money \\
+Automatic captions & The captions function and Amazon Transcribe & Plans with caption minutes; a switch turns it off \\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -68,7 +70,7 @@ with its handle, its subscriber count and its videos.
 \end{figure}
 
 Figure~\ref{fig:ui-upload} shows the upload page before a file is chosen. It states the accepted
-formats and the ceiling of 20~GiB, which the interface writes as GB, and tells the creator that processing starts when the transfer
+formats and the size ceiling of the account's plan, here 20~GiB, which the interface writes as GB, and tells the creator that processing starts when the transfer
 ends. Figure~\ref{fig:ui-console} shows the accuracy tab of the staff console. Every rate is shown
 with the number of decisions behind it, and the console says that there is not enough data rather
 than print a rate computed from no decision at all.
@@ -91,8 +93,9 @@ than print a rate computed from no decision at all.
 \label{sec:measurement-method}
 
 Every measurement was made on the production environment, with the configuration
-described in Chapters~\ref{chap:design} and~\ref{chap:implementation}, and written by its script to
-a result file. Table~\ref{tab:measurements} lists the measurements. The raw values are given in
+described in Chapters~\ref{chap:design} and~\ref{chap:implementation}, and written to a result file,
+except the priority queues, which were measured on staging so that the test did not fill the queues
+of production. Table~\ref{tab:measurements} lists the measurements. The raw values are given in
 Appendix~\ref{app:measurement-tables}, with a map from each table and figure of this chapter to its
 result file.
 
@@ -113,6 +116,8 @@ Transcoding time & Script that uploads through the API and follows the video unt
 Four-hour video & The same script & 1 run \\
 Burst of uploads & The same script, 100 uploads at once over five accounts & 1 run of 100 uploads \\
 Damaged uploads & Script that uploads a damaged file and reads where the workflow stopped & 2 files, 4 runs \\
+Length limit & Upload of a video longer than the plan allows; execution history read back & 1 run \\
+Priority queues & Uploads from a free and a Plus account on staging; Batch job history read back & 1 run of 14 videos \\
 API load & Script that sends read requests in bursts through the Worker, with the function log & 40 sequential, bursts of 10 to 80 \\
 Prices & AWS Price List Query API~\cite{awspricelist} & List prices, Singapore \\
 \bottomrule
@@ -334,6 +339,22 @@ segment or 1\%, fails with the code that Batch does not retry. With that release
 failed after one attempt with exit code~3, before any segment was uploaded, and the video was
 marked \status{error}.
 
+\subsection{Length Limit by Plan}
+\label{sec:length-evaluation}
+
+To check the length limit of FR-26, a new free account, whose plan accepts videos of up to 60~minutes,
+uploaded a synthetic clip of 61~minutes on production; at five frames per second and without sound,
+the file held only 9.6~MB. The execution passed through \name{PickLane} to the standard lane, the
+probe read 3660~seconds in 2.2~seconds, and \name{CheckLength} sent the video through \name{TooLong}
+to \name{MarkFailed}. The video became \status{error} with the reason \name{VideoTooLong} 4.4~seconds
+after the execution started, no Batch job was submitted, and no alert was sent. A video over the limit
+therefore costs three short function calls and no container, which is why the check sits after the
+probe rather than in a container.
+
+The first apply of this check, on staging, failed every video at \name{CheckLength}: the state after
+\name{Probe} did not carry the duration (Table~\ref{tab:challenges}). The smoke upload after the apply
+found it before the change reached production.
+
 \section{Behaviour under Load}
 \label{sec:load-testing}
 
@@ -370,6 +391,31 @@ instances were busy in the first minute, Lambda throttled 56 invocations, and no
 A new instance needs about 1.1~seconds to start, and its first requests waited up to 8.8~seconds on
 the free database cluster, which slows down above 100 operations per second; the 3.5~seconds that
 the three retries of the client wait in total were not always enough.
+
+\subsection{Priority Queues by Plan}
+\label{sec:priority-evaluation}
+
+The priority queues matter only when capacity is short, so they were tested where capacity is small:
+staging, with 8 + 8~vCPUs, where between two and three videos of 60~seconds run at a time. A free account
+uploaded eight videos; about 30~seconds later, while most of them were still waiting, a Plus account
+uploaded four and the free account two more. Table~\ref{tab:raw-priority} lists the fourteen videos in
+the order their first job started.
+
+The four Plus videos started fifth, sixth, ninth and tenth, and the two free videos sent with them
+started last. The Plus videos waited 82~seconds on average from entering their queue to the start of
+their first job, at most 125~seconds, while the two free videos of the same moment waited 187 and
+245~seconds; every Plus video was finished at 274~seconds, before both of them. Five free videos of
+the first batch were still waiting when the Plus videos arrived: one of them started before any Plus
+video, two Plus videos then started before the other four, and the last two Plus videos before two
+of those four.
+
+The order is not strict, and the record shows why. Each video has two jobs, an analysis of two vCPUs
+and an encode of four, and when a task ends, the vCPUs it frees may suit a waiting job of the standard
+queue that is small enough while the next encode of the priority queue still needs four. The
+priority queue is evaluated first~\cite{awsbatchqueues}, but it does not reserve capacity, so a paid
+video moves ahead of the free ones without overtaking every one of them. This is one run of fourteen
+short videos on staging; the priority has not been measured on production, where the ceiling of
+48~vCPUs makes waiting rarer.
 
 \subsection{API}
 \label{sec:backend-evaluation}
@@ -452,6 +498,15 @@ server does not need: Step Functions state transitions, the invocations of the w
 SQS messages and the work bucket. At 300 videos a month they stay well under 0.50~USD at list
 prices, so they do not change the comparison.
 
+The plans add two services that cost nothing while unused. Amazon Transcribe bills 0.006~USD per
+minute of audio in Singapore, by the second (Table~\ref{tab:raw-prices})~\cite{awstranscribepricing}.
+The monthly caption minutes of Table~\ref{tab:plans} therefore bound what one creator can spend: at
+most 0.12~USD a month on Plus, 0.24~USD on Pro and 0.48~USD on Max, whatever they upload, because the
+reservation of Section~\ref{sec:captions-design} refuses a job beyond the cap. Stripe has no fixed
+monthly fee and charges only for successful payments~\cite{stripepricing}; in the test mode in which
+the platform runs, nothing is charged at all. Neither service needs a server, so both keep the idle
+cost of NFR-04 at zero.
+
 \section{Evidence for the Non-Functional Requirements}
 \label{sec:nfr-evidence}
 
@@ -478,6 +533,7 @@ NFR-07 API security & A request to the function that skips the Worker, and a pre
 NFR-08 Reliability & Retries and the 24-hour limit are part of the workflow (Section~\ref{sec:state-machine}). Two damaged files uploaded to production ended in \status{error} without useless retries, after fixes for a truncated file published as ready and an unretried Batch API error (Section~\ref{sec:fault-evaluation}) & Met after two fixes \\
 NFR-09 Reproducibility & Staging and production are built by the same Terraform modules (Section~\ref{sec:iac}); only the values of secrets are written outside the code & Met \\
 NFR-10 Maintainability & The security jobs are required checks of the main branch (Section~\ref{sec:cicd}) & Met \\
+NFR-11 Bounded paid services & Caption minutes are reserved by one conditional update and refunded on failure, covered by twelve unit tests (Section~\ref{sec:testing}); the cap bounds Transcribe at 0.48~USD per creator and month at most (Section~\ref{sec:cost-analysis}); payments run in Stripe test mode & Met in tests; not yet exercised by real users \\
 \bottomrule
 \end{tabularx}
 \end{table}

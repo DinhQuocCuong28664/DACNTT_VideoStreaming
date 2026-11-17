@@ -12,7 +12,7 @@ pdflatex main.tex && bibtex main && pdflatex main.tex && pdflatex main.tex
 
 Lượt `pdflatex` đầu tiên sinh ra tệp `.aux` chứa các tham chiếu; `bibtex` đọc tệp này để dựng danh mục tài liệu tham khảo; hai lượt cuối lần lượt đưa danh mục vào tài liệu rồi cập nhật số trang cho toàn bộ tham chiếu chéo. Bỏ bớt lượt nào cũng sẽ khiến báo cáo xuất hiện dấu `??` thay cho số hình hoặc số trang.
 
-Kết quả là tệp `main.pdf`, hiện dài 76 trang. Bản biên dịch sạch không phát sinh cảnh báo nào: không `Overfull`/`Underfull` box, không tham chiếu hay trích dẫn thiếu. Nếu sửa nội dung mà `main.log` xuất hiện các cảnh báo đó thì cần xử lý trước khi nộp, vì `Overfull hbox` nghĩa là có dòng tràn ra ngoài lề giấy.
+Kết quả là tệp `main.pdf`, hiện dài 147 trang. Bản biên dịch sạch không phát sinh cảnh báo nào: không `Overfull` box, không tham chiếu hay trích dẫn thiếu (còn một số `Underfull` trong các bảng cột hẹp ở chương 2 và 3). Nếu sửa nội dung mà `main.log` xuất hiện các cảnh báo đó thì cần xử lý trước khi nộp, vì `Overfull hbox` nghĩa là có dòng tràn ra ngoài lề giấy.
 
 ## Cấu trúc
 

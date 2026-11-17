@@ -33,7 +33,8 @@ The project builds a complete video sharing platform together with the automated
 pipeline behind it, and has five objectives. The first is a web platform on which users register,
 upload videos, watch them at several quality levels, and take part in a community through
 channels, subscriptions, comments, playlists and memberships, with the visibility of each video
-chosen by its owner. The second is a fully event-driven pipeline: the arrival of a source file in
+chosen by its owner, and in which paid plans raise the limits of a creator and add automatic
+captions and priority processing. The second is a fully event-driven pipeline: the arrival of a source file in
 Amazon Simple Storage Service (S3) alone starts the processing, which is coordinated by AWS Step Functions, the workflow service of Amazon Web Services (AWS), and ends with an
 encrypted HLS package served through a content delivery network (CDN). The third is to run every FFmpeg
 job in a container on AWS Batch with AWS Fargate, created on demand and released when the queue is

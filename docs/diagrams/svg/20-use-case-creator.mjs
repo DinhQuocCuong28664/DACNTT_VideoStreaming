@@ -21,7 +21,7 @@ Object.assign(TYPE, {
 });
 
 const W = 1060;
-const H = 1150;
+const H = 1310;
 const p = [];
 
 const UC_X = 478;
@@ -34,7 +34,7 @@ const LANE_CREATOR = 210;
 const LANE_SYS = 210;
 
 p.push(group({
-  x: 300, y: 40, w: 724, h: 960,
+  x: 300, y: 40, w: 724, h: 1120,
   label: 'Video sharing platform', stroke: '#8a94a6', fill: '#fcfdfe', dash: '7 5',
 }).svg);
 
@@ -56,27 +56,29 @@ place('analytics', 4, ['Read channel and', 'video analytics']);
 place('profile', 5, ['Customise the', 'channel profile']);
 place('tiers', 6, ['Manage membership', 'tiers']);
 place('delete', 7, 'Delete a video');
+place('plan', 8, ['Buy, change or', 'cancel a plan']);
 
 // Hệ thống xử lý, khởi động bằng sự kiện
-place('transcode', 8, ['Transcode to', 'encrypted HLS'], 'compute', 24);
-place('publish', 9, ['Publish at the', 'scheduled time'], 'compute', 24);
-place('notify', 10, ['Notify subscribers', 'of a new video'], 'compute', 24);
+place('transcode', 9, ['Transcode to', 'encrypted HLS'], 'compute', 24);
+place('publish', 10, ['Publish at the', 'scheduled time'], 'compute', 24);
+place('notify', 11, ['Notify subscribers', 'of a new video'], 'compute', 24);
+place('autocap', 12, ['Caption speech', 'automatically'], 'compute', 24);
 
 // Đích của «include», cột lệch phải
 const vis = usecase({ cx: OFF_X, cy: at(0), rx: OFF_RX, ry: RY, label: ['Set visibility', 'and audience'] });
-const screen = usecase({ cx: OFF_X, cy: at(8) + 24, rx: OFF_RX, ry: RY, label: ['Screen frames and', 'make previews'], tone: 'compute' });
+const screen = usecase({ cx: OFF_X, cy: at(9) + 24, rx: OFF_RX, ry: RY, label: ['Screen frames and', 'make previews'], tone: 'compute' });
 p.push(vis.svg, screen.svg);
 
-const creator = actor({ cx: 108, cy: at(3) + 28, label: ['Creator', '(registered user)'] });
-const sys = actor({ cx: 108, cy: at(9) + 12, label: ['Processing', 'system'] });
+const creator = actor({ cx: 108, cy: at(4) - 12, label: ['Creator', '(registered user)'] });
+const sys = actor({ cx: 108, cy: at(10) + 52, label: ['Processing', 'system'] });
 p.push(creator.svg, sys.svg);
 
 function link(a, lane, target) {
   p.push(assoc([[a.box.r, a.box.cy], [lane, a.box.cy], [lane, target.box.cy], [target.box.l, target.box.cy]]));
 }
-['upload', 'edit', 'captions', 'schedule', 'analytics', 'profile', 'tiers', 'delete']
+['upload', 'edit', 'captions', 'schedule', 'analytics', 'profile', 'tiers', 'delete', 'plan']
   .forEach((k) => link(creator, LANE_CREATOR, uc[k]));
-['transcode', 'publish', 'notify'].forEach((k) => link(sys, LANE_SYS, uc[k]));
+['transcode', 'publish', 'notify', 'autocap'].forEach((k) => link(sys, LANE_SYS, uc[k]));
 
 p.push(edge([[uc.upload.box.r, uc.upload.box.cy], [vis.box.l, vis.box.cy]],
   { dashed: true, label: '«include»', labelDy: -8 }));
@@ -88,9 +90,10 @@ p.push(edge([[uc.transcode.box.r, uc.transcode.box.cy], [screen.box.l, screen.bo
 
 p.push(text(
   ['The processing use cases attach to a system actor because events start them:',
-   'the upload reaching storage, the scheduled time, or a video being published.',
+   'the upload reaching storage, the scheduled time, or a video being published;',
+   'a plan is paid on the page of the payment provider.',
    'The creator is the same registered user as in Figure 3.1.'],
-  40, H - 78, { size: 16, anchor: 'start', fill: PALETTE.muted, lineHeight: 20 }));
+  40, H - 98, { size: 16, anchor: 'start', fill: PALETTE.muted, lineHeight: 20 }));
 
 const svg = document_({ width: W, height: H, body: p.join('\n') });
 const out = write('20-use-case-creator', svg, 3);

@@ -160,4 +160,32 @@ Chạy lại: `PYTHONUTF8=1 python scripts/results/build-report-tables.py`.
 | `2026-10-14-staging-s5b-60s-1080p-v98` | 2026-10-14 | staging | single | 60s-1080p | 100 | 33.8 | measured | `transcoder/scripts/staging-burst-test.js (S5b)` |
 | `2026-10-14-staging-s5b-60s-1080p-v99` | 2026-10-14 | staging | single | 60s-1080p | 100 | 32.0 | measured | `transcoder/scripts/staging-burst-test.js (S5b)` |
 
+## Lượt đo cấu hình cuối (v2)
+
+Các tệp `*-v2-*.json` có schema riêng; bảng `tab-v2-*.tex` và dữ liệu biểu đồ `chart-v2-*.json` do các script dưới đây sinh ra.
+
+| Tệp | Nội dung | Script đọc tệp |
+|---|---|---|
+| `2026-11-03-v2-real-recording.json` | Real recording on the single path (prod, configuration before the 2026-11-04 resize) | - |
+| `2026-11-04-v2-api-final.json` | S5-6: API Lambda load, final config (80 instances, no index setup on cold start) | `build-v2-appendix-tables.mjs` |
+| `2026-11-04-v2-api.json` | S5-6: API Lambda load (prod, v2) | - |
+| `2026-11-04-v2-bitrate.json` | S5-5: declared vs delivered bitrate (prod, v2) | `build-v2-appendix-tables.mjs` |
+| `2026-11-04-v2-prices.json` | AWS list prices used by the cost comparison | `build-v2-appendix-tables.mjs` |
+| `2026-11-04-v2-qoe-fast3g.json` | Playback (QoE) runs | - |
+| `2026-11-04-v2-qoe-slow3g.json` | Playback (QoE) runs | - |
+| `2026-11-04-v2-qoe-unthrottled.json` | Playback (QoE) runs | - |
+| `2026-11-04-v2-s2-size.json` | S5-2: transcode time by file size (prod, v2, Spot 24 + On-Demand 24 vCPU) | - |
+| `2026-11-04-v2-s2b-resized.json` | S5-2b: transcode time after resizing (encode 4-8 vCPU, analyse 2 vCPU) | `build-v2-appendix-tables.mjs`, `build-v2-chart-data.mjs` |
+| `2026-11-04-v2-s3-burst.json` | S5-3: 100 concurrent uploads (prod, v2, Spot 24 + On-Demand 24 vCPU) | - |
+| `2026-11-04-v2-s3b-burst.json` | S5-3b: 100 concurrent uploads after raising the API to 80 instances | - |
+| `2026-11-04-v2-s3c-burst.json` | S5-3c: 100 concurrent uploads after moving index setup out of cold starts | `build-v2-appendix-tables.mjs`, `build-v2-chart-data.mjs` |
+| `2026-11-04-v2-s4-long.json` | S5-4: 4-hour video on the chunked path (prod, final config) | `build-v2-appendix-tables.mjs`, `build-v2-chart-data.mjs` |
+| `2026-11-04-v2-ttff.json` | S5-1: time to first frame (prod, v2) | `build-v2-appendix-tables.mjs`, `build-v2-chart-data.mjs` |
+| `2026-11-05-v2-rekognition-price.json` | Amazon Rekognition list price used by the cost comparison | `build-v2-appendix-tables.mjs` |
+| `2026-11-11-v2-fault.json` | v2 fault handling: files that cannot be transcoded (NFR-08) | `build-v2-appendix-tables.mjs` |
+| `2026-11-12-v2-qoe-drop.json` | Playback (QoE) runs | `build-v2-appendix-tables.mjs` |
+| `2026-11-14-v2-priority.json` | v2 priority transcoding: paid-plan jobs start before free jobs submitted at the same time | `build-v2-appendix-tables.mjs` |
+| `2026-11-15-v2-length-limit.json` | v2 video length limit by plan: a video over the limit stops after the probe, before any Batch job | - |
+| `2026-11-15-v2-transcribe-price.json` | Amazon Transcribe list price used by the automatic-caption cost | `build-v2-appendix-tables.mjs` |
+
 Mức chắc chắn: `measured` đo trực tiếp, `derived` tính từ số đo (ví dụ đổi phút ra giây), `estimated` suy ra bằng tỉ lệ và chưa đo; bản ghi `estimated` phải được ghi rõ là ước tính khi đưa vào báo cáo.

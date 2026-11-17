@@ -5,15 +5,16 @@ This chapter describes the design of the system. It starts with the architecture
 analyses in detail the two parts that make the platform a video platform: the event-driven workflow
 that turns an upload into a stream, and the media design of that stream, from the FFmpeg processing
 graph to the way the player chooses a quality. The remaining sections describe the database, the
-API, the interface, security and content moderation.
+API, the interface, security, content moderation, and the platform plans with payment and automatic
+captions.
 
 \section{High-Level Architecture}
 \label{sec:architecture}
 
 Figure~\ref{fig:architecture} shows the deployed architecture with its real boundaries. Two
 regions appear. Outside AWS are the viewer's browser, Cloudflare, which holds the domain's DNS and
-runs the gateway in front of the API, and MongoDB Atlas, which holds the documents and the search
-indexes. One AWS account holds everything else: compute and storage in the Singapore region, and
+runs the gateway in front of the API, MongoDB Atlas, which holds the documents and the search
+indexes, and Stripe, which takes the payments for the platform plans. One AWS account holds everything else: compute and storage in the Singapore region, and
 the two CloudFront distributions that deliver the site and the media from the edge, which read the
 buckets through Origin Access Control.
 
@@ -33,7 +34,8 @@ function refuses requests that bypassed the gateway (steps 1 and 2). The functio
 documents in MongoDB Atlas (step 3) and keeps data that is written every few seconds, such as rate
 limits, view marks, watch progress and notifications, in Amazon DynamoDB (step 4), for the reason
 given in Section~\ref{sec:performance-design}. It also reads the encryption key of a video when a
-player asks for it (step 5).
+player asks for it (step 5), and opens Stripe checkout sessions and receives the signed payment
+events of Stripe (step 24).
 
 The second tier receives uploads and starts the processing. The browser sends the file straight to
 the raw bucket with a grant from the API (step 6). The arrival of the object makes Amazon S3 emit an
@@ -48,7 +50,9 @@ The third tier is the serverless compute. AWS Batch runs every job as a containe
 EventBridge bus (step 15), and a single function, \name{status}, turns workflow states and progress
 events into the processing fields of the video (steps 16 and 17). The fourth tier handles what
 follows publication: when a video is published, the \name{notifier} function writes a notification
-for each subscriber (step 18), and a failed video raises an alert on Amazon Simple Notification Service (SNS) (step 19).
+for each subscriber (step 18), the \name{captions} function asks Amazon Transcribe for automatic
+captions when the plan of the owner includes them (step 25, Section~\ref{sec:plans-design}), and a failed
+video raises an alert on Amazon Simple Notification Service (SNS) (step 19).
 
 Delivery closes the loop. The media distribution reads the processed bucket through Origin Access
 Control (step 20) and serves playlists and segments only to requests that carry a valid signed policy
@@ -92,10 +96,15 @@ events. A message that keeps failing moves to a dead-letter queue after three re
 
 Figure~\ref{fig:state-machine} shows the state machine with the names of its states as defined in
 the infrastructure code. \name{MarkProcessing} sets the video to \status{processing}, creates its
-encryption key and confirms that the video still exists; if the owner deleted it in the meantime,
-the execution ends in \name{Gone} without doing any work. \name{Probe} runs ffprobe in a Lambda
+encryption key, confirms that the video still exists and reads the plan of the owner; if the owner
+deleted the video in the meantime, the execution ends in \name{Gone} without doing any work.
+\name{PickLane} then chooses the pair of queues for every job of the video: \name{LanePriority} for
+an owner on a paid plan and \name{LaneStandard} for the rest. \name{Probe} runs ffprobe in a Lambda
 function and returns the plan: the streams, the display size after rotation, the frame rate, the
-rungs of the ladder, the path and, for a long video, the chunk plan.
+duration, the rungs of the ladder, the path and, for a long video, the chunk plan.
+\name{CheckLength} compares the duration with the longest video the plan allows; a longer video goes
+through \name{TooLong} to \name{MarkFailed} with the error \name{VideoTooLong} before any Batch job is
+submitted, and the owner sees the reason on the video without an alert to the operators.
 
 \begin{figure}[htbp]
 \centering
@@ -129,10 +138,14 @@ also has a timeout of 24 hours, queue time included, so no video can stay in pro
 \label{sec:compute-design}
 
 All jobs use one container image built from a slim Node.js base and a pinned static build of
-FFmpeg, with one job definition per role. Table~\ref{tab:compute-roles} lists the roles. Two queues
-share the Spot and On-Demand environments: \name{main}, with priority 10, for analysis, single
-encodes and audio, and \name{bulk}, with priority 1, for chunks, so that a short video uploaded
-while a long one is being processed does not wait behind dozens of chunks.
+FFmpeg, with one job definition per role. Table~\ref{tab:compute-roles} lists the roles. Four queues
+share the Spot and On-Demand environments, in two pairs. The standard pair is \name{main}, with
+priority 10, for analysis, single encodes and audio, and \name{bulk}, with priority 1, for chunks, so
+that a short video uploaded while a long one is being processed does not wait behind dozens of
+chunks. The priority pair, \name{priority} (20) and \name{priority-bulk} (5), takes the same jobs for
+owners on a paid plan. When capacity is short, AWS Batch places jobs from the queue of higher priority
+first~\cite{awsbatchqueues}; when it is free, every job starts at once whatever its queue, so the
+priority costs nothing and only changes the order of waiting.
 
 \begin{table}[H]
 \centering
@@ -143,10 +156,10 @@ while a long one is being processed does not wait behind dozens of chunks.
 \toprule
 \textbf{ROLE} & \textbf{SIZE} & \textbf{QUEUE} & \textbf{WORK} \\
 \midrule
-analyse & 2 vCPU, 4 GiB & main & Moderation frames, thumbnail, seek-preview sprites \\
-encode & 4 vCPU, 8 GiB up to 60~s; 8 vCPU, 16 GiB above & main & Every rung of a video up to five minutes, in one ffmpeg run \\
-audio & 1 vCPU, 2 GiB & main & The AAC tracks of a long video, once per bitrate \\
-chunk & 4 vCPU, 8 GiB per child & bulk & Every rung of one chunk of a long video \\
+analyse & 2 vCPU, 4 GiB & main or priority & Moderation frames, thumbnail, seek-preview sprites \\
+encode & 4 vCPU, 8 GiB up to 60~s; 8 vCPU, 16 GiB above & main or priority & Every rung of a video up to five minutes, in one ffmpeg run \\
+audio & 1 vCPU, 2 GiB & main or priority & The AAC tracks of a long video, once per bitrate \\
+chunk & 4 vCPU, 8 GiB per child & bulk or priority-bulk & Every rung of one chunk of a long video \\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -439,8 +452,12 @@ cluster, so search needs no second system~\cite{mongodbsearch}. The cost of this
 database does not enforce references between collections; the design compensates with unique indexes
 for every rule that must hold, and with counters that are recomputed rather than trusted.
 
-Figure~\ref{fig:erd} shows the nine collections of the product. A channel is not a separate entity:
+Figure~\ref{fig:erd} shows the collections of the product. A channel is not a separate entity:
 it is the user, identified by a unique handle. Each foreign key names the collection it refers to.
+The plan of a user is not a collection either: it is the \name{billing} field of the user, which only
+the payment webhook writes (Section~\ref{sec:plans-design}). Two small collections support the plans:
+\name{billingEvents} remembers the identifier of every payment event already applied, and
+\name{captionUsage} holds the caption minutes used by each user in each month.
 
 % Xoay ngang: đặt vừa bề rộng vùng chữ thì chữ dưới 6,2pt khi in.
 \begin{sidewaysfigure}
@@ -540,6 +557,7 @@ Discovery & \mbox{\texttt{/search}}, \mbox{\texttt{/search/suggest}} & Public, r
 Community & reactions, comments, replies, pin, delete, report a comment & Signed in \\
 Channels & \mbox{\texttt{/channels/:ref}}: profile, videos, subscription, membership & Public; actions signed in \\
 Studio & thumbnail, captions, chapters, schedule, analytics, avatar, banner, tiers, members & The owner \\
+Plans & \mbox{\texttt{/plans}}; \mbox{\texttt{/billing}}: state, checkout, portal, webhook & Plans public; billing signed in; webhook signed by Stripe \\
 Library & \mbox{\texttt{/me}}: history, progress, feed, playlists, notifications, subscriptions & Signed in \\
 Moderation & report and appeal a video; \mbox{\texttt{/admin}}: queue, decisions, comment reports, appeals, audit, metrics, events, users, roles & Viewers; staff by permission \\
 \bottomrule
@@ -642,13 +660,17 @@ that only the Cloudflare Worker adds, so its own address is useless to an attack
 it only from the platform's own origins, and the key endpoint additionally refuses other origins.
 Every request counts against a limit of 300 per minute per caller, and sensitive routes have tighter
 ones, such as ten sign-in attempts per address in fifteen minutes; the counters live in DynamoDB so
-that every copy of the function shares them. Security headers are set on every response.
+that every copy of the function shares them. Security headers are set on every response. The payment
+webhook is the one route that takes no bearer token: it accepts only a body whose Stripe signature
+matches the signing secret of the endpoint~\cite{stripewebhooks}, checked on the raw bytes before the
+body is parsed.
 
 Least privilege governs the infrastructure. The processing containers have no database credentials:
 their role may read the raw and keys buckets, write the processed and work buckets, publish events
 and call Rekognition, and nothing more. Only the \name{status} function writes processing state.
-Secrets, such as the database address and the signing keys, are held in AWS Secrets Manager and read
-by the functions at start-up. The protection of the content itself, private storage, signed CDN
+Secrets, such as the database address, the signing keys and the Stripe key, are held in AWS Secrets
+Manager and read by the functions at start-up. The Stripe key may be a restricted key that holds only
+the permissions the integration needs. The protection of the content itself, private storage, signed CDN
 requests and encryption, is described in Section~\ref{sec:content-protection}.
 
 \section{Content Moderation Design}
@@ -734,6 +756,97 @@ auditors read the rates and the log but hold no permission that changes anything
 manage roles and draw samples, and can act as either. The last administrator cannot be demoted, and
 every change of role is logged with who made it.
 
+\section{Plans, Payment and Automatic Captions}
+\label{sec:plans-design}
+
+Some parts of the system cost money per use: storage and encoding grow with the size and length of
+a video, and speech recognition is billed per second of audio. The platform plans decide how far each
+creator may use these parts, and they pay for the generous ones.
+
+\subsection{Plans and Entitlements}
+\label{sec:entitlements}
+
+Table~\ref{tab:plans} lists the four plans. Their limits are defined in one shared module, and every
+other part of the code asks a single function for the entitlements of a user at a given moment
+instead of testing a plan name, so the API, the workflow and the caption function cannot disagree
+about a limit. Accounts created before the plans existed, on 13~November~2026, keep the limits of Pro
+on the free plan, so that nobody lost a right they already had; the processing priority is new and
+is not part of what they keep.
+
+\begin{table}[H]
+\centering
+\caption{Platform plans and their limits}
+\label{tab:plans}
+\small
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}X r r r r}
+\toprule
+\textbf{LIMIT} & \textbf{FREE} & \textbf{PLUS} & \textbf{PRO} & \textbf{MAX} \\
+\midrule
+Price per month, VND & 0 & 49\,000 & 99\,000 & 199\,000 \\
+Largest upload & 2~GiB & 5~GiB & 20~GiB & 20~GiB \\
+Longest video & 60~min & 180~min & 360~min & 720~min \\
+Membership tiers of the channel & 2 & 3 & 5 & 10 \\
+Analytics window & 28~days & 90~days & 365~days & 365~days \\
+Automatic captions per month & -- & 20~min & 40~min & 80~min \\
+Longest video with automatic captions & -- & 15~min & 30~min & 60~min \\
+Priority queues & no & yes & yes & yes \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Each limit is enforced where the work starts. The upload route refuses a file larger than the plan
+allows before it creates anything; the studio refuses a tier beyond the plan and shortens an
+analytics window to the longest the plan allows; the workflow reads the plan when it starts, which decides the queues and the longest duration
+of Section~\ref{sec:state-machine}; and the caption function reads it before it spends anything. The
+length is checked after the probe rather than at upload because only the probe reads the real
+duration of the file, and it is cheap: a video over the limit costs three short function calls and
+no container.
+
+\subsection{Payment with Stripe}
+\label{sec:payment-design}
+
+The platform does not handle card data. A user who chooses a paid plan asks the API for a Stripe
+Checkout session in subscription mode with a monthly price in VND, a currency without minor units,
+and the reference of the user; the browser is sent to the page that Stripe hosts, and Stripe returns
+it to the settings page after the payment~\cite{stripecheckout}. Changes and cancellations happen on
+the customer portal that Stripe also hosts.
+
+The browser's return proves nothing, so the plan is set only by the webhook. Stripe sends signed
+events for a completed checkout, a created, updated or deleted subscription and a failed payment.
+The API checks the signature, inserts the identifier of the event into \name{billingEvents}, whose
+unique key makes a redelivered event a no-op, and applies the event to the \name{billing} field of the
+user. Every event carries its creation time, and an event older than the last one applied is ignored,
+because Stripe does not promise to deliver events in order~\cite{stripewebhooks}. If applying an
+event fails, its identifier is removed again so that the retry of Stripe is not taken for a
+duplicate. A paid plan counts while Stripe reports the subscription as active, and after a
+cancellation or a failed renewal it lasts until the end of the period already paid.
+
+Payments run in the test mode of Stripe, with test cards and no real money, until real payments are
+allowed; the code is the same in both modes, and only the key and the signing secret change.
+
+\subsection{Automatic Captions}
+\label{sec:captions-design}
+
+Automatic captions are kept outside the transcoding state machine, so that a problem with speech
+recognition can never fail a video. The \name{captions} function listens to two events. When a video
+is published, it checks the plan of the owner, the duration of the video against the longest video
+the plan captions, and the minutes left this month; it then starts one Amazon Transcribe job on the
+source, which identifies the language among Vietnamese and English and writes a WebVTT
+file~\cite{awstranscribe}. When Transcribe reports that the job has finished, the function copies the
+file next to the video as a caption track marked \name{auto}, which the player offers like any other
+track; a caption that the owner uploads in the same language replaces it. The job name is derived
+from the environment, the video and its upload version, so a redelivered event cannot start a second
+job.
+
+The monthly minutes are a budget that two simultaneous videos must not overrun together. The
+function reserves the minutes before it starts the job with a single conditional update of the
+document of the user and month in \name{captionUsage}: the update adds the seconds of the video only
+if the total stays within the plan, so the database itself decides which of two racing reservations
+succeeds. A job that fails gives its seconds back. The reservation counts at least fifteen seconds
+per video, the minimum that Transcribe bills. Videos without sound, sources over the 2~GB that
+Transcribe accepts, and videos that the owner has already captioned are skipped before anything is
+reserved, so they cost nothing.
+
 \section{Performance and Scalability}
 \label{sec:performance-design}
 
@@ -775,8 +888,8 @@ the client retries. Chapter~\ref{chap:evaluation} measures the effect.
 
 On the compute side, the ceilings are those of Batch and Fargate: 24 vCPUs of Spot and 24 of
 On-Demand in production, set by Terraform below the account quota of 64 of each kind so that staging
-can run beside production. The two queues keep short videos ahead of chunks: the scheduler starts a
-waiting job of \name{main} before any waiting chunk, so a new upload waits at most for one running
+can run beside production. The queue priorities keep short videos ahead of chunks: the scheduler starts a
+waiting job of \name{main} or \name{priority} before any waiting chunk, so a new upload waits at most for one running
 chunk to end, a few minutes, and is never queued behind all the chunks of a long video. On the delivery side, the CDN
 caches segments for every viewer, because the signed policy is not part of the cache key, so the
 number of viewers adds load at the edge rather than at the origin.
