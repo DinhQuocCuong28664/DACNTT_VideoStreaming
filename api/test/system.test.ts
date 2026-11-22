@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { ObjectId } from 'mongodb';
 import { median } from '../src/features/system.js';
-import { memoryDb } from './helpers.js';
+import { memoryDb, testConfig } from './helpers.js';
 import { world, type Who, type World } from './world.js';
 
 let mongo: Awaited<ReturnType<typeof memoryDb>>;
@@ -100,5 +100,50 @@ describe('admin overview', () => {
     const month30 = (await w.call('get', '/admin/overview', undefined, { token: admin.token })).body;
     expect(month30.days).toBe(30);
     expect(month30.videos.errors).toBe(3);
+  });
+});
+
+describe('runtime switches', () => {
+  it('are for administrators only and validate their body', async () => {
+    expect((await w.call('get', '/admin/settings', undefined, { token: auditor.token })).status).toBe(403);
+    expect((await w.call('put', '/admin/settings', { moderationEnabled: false }, { token: op.token })).status).toBe(403);
+    expect((await w.call('put', '/admin/settings', {}, { token: admin.token })).status).toBe(400);
+    expect((await w.call('put', '/admin/settings', { moderationEnabled: 'no' }, { token: admin.token })).status).toBe(400);
+    expect((await w.call('put', '/admin/settings', { other: true }, { token: admin.token })).status).toBe(400);
+  });
+
+  it('start from the defaults of the infrastructure and log every change once', async () => {
+    const first = (await w.call('get', '/admin/settings', undefined, { token: admin.token })).body;
+    expect(first.moderation).toEqual({ enabled: true, source: 'default', default: true });
+    expect(first.autoCaptions).toEqual({ enabled: true, source: 'default', infraEnabled: true });
+    expect(first.changes).toEqual([]);
+
+    const off = await w.call('put', '/admin/settings', { moderationEnabled: false }, { token: admin.token });
+    expect(off.status).toBe(200);
+    expect(off.body.moderation).toEqual({ enabled: false, source: 'console', default: true });
+    const handle = (await w.db.collection('users').findOne({ _id: new ObjectId(admin.id) }))?.['handle'];
+    expect(off.body.updatedBy).toBe(handle);
+    // Setting a value it already has stores it but logs nothing new.
+    await w.call('put', '/admin/settings', { moderationEnabled: false, autoCaptionsEnabled: false }, { token: admin.token });
+    const view = (await w.call('get', '/admin/settings', undefined, { token: admin.token })).body;
+    expect(view.autoCaptions).toMatchObject({ enabled: false, source: 'console' });
+    expect(view.changes.map((c: { key: string; from: boolean; to: boolean; by: string }) => [c.key, c.from, c.to, c.by])).toEqual([
+      ['autoCaptionsEnabled', true, false, handle],
+      ['moderationEnabled', true, false, handle],
+    ]);
+    const stored = await w.db.collection('settings').findOne({ _id: 'system' as never });
+    expect(stored).toMatchObject({ moderationEnabled: false, autoCaptionsEnabled: false });
+  });
+
+  it('cannot switch captions on while the infrastructure has removed their trigger', async () => {
+    const locked = world(await mongo.fresh(), testConfig({ AUTO_CAPTIONS_INFRA: 'false', MODERATION_DEFAULT: 'false' }));
+    const boss = await locked.user('boss@example.com', 'admin');
+    const view = (await locked.call('get', '/admin/settings', undefined, { token: boss.token })).body;
+    expect(view.moderation).toEqual({ enabled: false, source: 'default', default: false });
+    expect(view.autoCaptions).toEqual({ enabled: false, source: 'default', infraEnabled: false });
+    const refused = await locked.call('put', '/admin/settings', { autoCaptionsEnabled: true }, { token: boss.token });
+    expect(refused.status).toBe(409);
+    expect(refused.body.error.code).toBe('CAPTIONS_OFF_IN_INFRA');
+    expect((await locked.call('put', '/admin/settings', { moderationEnabled: true }, { token: boss.token })).body.moderation.enabled).toBe(true);
   });
 });

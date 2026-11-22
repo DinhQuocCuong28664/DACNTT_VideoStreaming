@@ -1,12 +1,20 @@
 /**
- * The system side of the staff console, for administrators: one overview of users, plans,
- * content, processing, automatic captions and views over a window of days. Every number is
- * computed from the documents on request; the collections are small enough for that on the
- * free database tier, and nothing here is written.
+ * The system side of the staff console, for administrators:
+ *   - an overview of users, plans, content, processing, automatic captions and views over a window
+ *     of days, computed from the documents on request (the collections are small enough for that
+ *     on the free database tier);
+ *   - the runtime switches of screening and automatic captions (shared/src/settings.ts), whose
+ *     every change is appended to a log that is never updated.
  */
+import { ObjectId } from 'mongodb';
+import type { Request } from 'express';
 import { z } from 'zod';
-import { VIDEO_STATUSES } from '@zelos/shared';
+import {
+  effectiveSetting, SETTINGS_CHANGES_COLLECTION, SETTINGS_COLLECTION, SYSTEM_SETTINGS_ID, VIDEO_STATUSES,
+  type SettingKey, type SystemSettingsDoc,
+} from '@zelos/shared';
 import type { Feature } from '../app.js';
+import { badRequest, conflict } from '../http/errors.js';
 import { requirePermission } from '../http/middleware.js';
 import { activePlan, LEGACY_BEFORE, PLAN_IDS, planDef, type BillingState, type PlanId } from '../billing/plans.js';
 import type { UserDoc } from '../model/user.js';
@@ -31,15 +39,79 @@ export function median(values: readonly number[]): number | null {
   return sorted.length % 2 === 1 ? upper : ((sorted.at(mid - 1) ?? 0) + upper) / 2;
 }
 
+const settingsBody = z.object({ moderationEnabled: z.boolean().optional(), autoCaptionsEnabled: z.boolean().optional() }).strict();
+/** Changes of the switches listed with the settings, newest first. */
+const CHANGES_SHOWN = 20;
+
+interface SettingsChange { key: SettingKey; from: boolean; to: boolean; by: ObjectId; at: Date }
+
 /** Counts per key of an aggregation that grouped on `_id`. */
 const countsOf = (rows: { _id: unknown; n: number }[]): Map<string, number> => new Map(rows.map((r) => [String(r._id), r.n]));
 
 export const systemFeature: Feature = (r, deps) => {
-  const { db, now } = deps;
+  const { db, now, config } = deps;
   const users = db.collection<UserDoc>('users');
   const videos = db.collection<VideoDoc>('videos');
   const daily = db.collection('analyticsDaily');
   const captionUsage = db.collection('captionUsage');
+  const settings = db.collection<SystemSettingsDoc>(SETTINGS_COLLECTION);
+  const changes = db.collection<SettingsChange>(SETTINGS_CHANGES_COLLECTION);
+  const { moderationDefault, autoCaptionsInfra } = config.switches;
+
+  /** Both switches as they apply now: a stored value wins over the default of the infrastructure. */
+  const effective = (s: SystemSettingsDoc | null) => ({
+    moderationEnabled: effectiveSetting(s?.moderationEnabled, moderationDefault),
+    // Without the trigger of the infrastructure no caption job can start, whatever is stored.
+    autoCaptionsEnabled: autoCaptionsInfra && effectiveSetting(s?.autoCaptionsEnabled, true),
+  });
+
+  const settingsView = async () => {
+    const s = await settings.findOne({ _id: SYSTEM_SETTINGS_ID });
+    const current = effective(s);
+    // _id breaks ties between changes of one request, which share their time.
+    const log = await changes.find({}).sort({ at: -1, _id: -1 }).limit(CHANGES_SHOWN).toArray();
+    const ids = [...new Set([s?.updatedBy, ...log.map((c) => c.by.toHexString())].filter((x): x is string => typeof x === 'string'))];
+    const people = await users.find({ _id: { $in: ids.map((x) => new ObjectId(x)) } }, { projection: { handle: 1 } }).toArray();
+    const handle = new Map(people.map((p) => [p._id.toHexString(), p.handle]));
+    return {
+      moderation: { enabled: current.moderationEnabled, source: typeof s?.moderationEnabled === 'boolean' ? 'console' : 'default', default: moderationDefault },
+      autoCaptions: { enabled: current.autoCaptionsEnabled, source: typeof s?.autoCaptionsEnabled === 'boolean' ? 'console' : 'default', infraEnabled: autoCaptionsInfra },
+      updatedAt: s?.updatedAt ?? null,
+      updatedBy: s?.updatedBy ? handle.get(s.updatedBy) ?? null : null,
+      changes: log.map((c) => ({ key: c.key, from: c.from, to: c.to, by: handle.get(c.by.toHexString()) ?? null, at: c.at })),
+    };
+  };
+
+  r.get('/admin/settings', requirePermission('settings:manage'), async (_req, res) => {
+    res.json(await settingsView());
+  });
+
+  r.put('/admin/settings', requirePermission('settings:manage'), async (req: Request, res) => {
+    const parsed = settingsBody.safeParse(req.body);
+    if (!parsed.success) throw badRequest('INVALID_SETTINGS', 'Send moderationEnabled and/or autoCaptionsEnabled as true or false');
+    const body = parsed.data;
+    if (body.moderationEnabled === undefined && body.autoCaptionsEnabled === undefined) throw badRequest('INVALID_SETTINGS', 'Nothing to change');
+    if (body.autoCaptionsEnabled === true && !autoCaptionsInfra) {
+      throw conflict('CAPTIONS_OFF_IN_INFRA', 'Automatic captions are switched off in the infrastructure; an operator must apply auto_captions_enabled=true first');
+    }
+    const at = now();
+    const by = new ObjectId(req.user?.id);
+    const before = effective(await settings.findOne({ _id: SYSTEM_SETTINGS_ID }));
+    const set: Partial<SystemSettingsDoc> = { updatedAt: at, updatedBy: by.toHexString() };
+    const log: SettingsChange[] = [];
+    if (body.moderationEnabled !== undefined) {
+      set.moderationEnabled = body.moderationEnabled;
+      if (before.moderationEnabled !== body.moderationEnabled) log.push({ key: 'moderationEnabled', from: before.moderationEnabled, to: body.moderationEnabled, by, at });
+    }
+    if (body.autoCaptionsEnabled !== undefined) {
+      set.autoCaptionsEnabled = body.autoCaptionsEnabled;
+      if (before.autoCaptionsEnabled !== body.autoCaptionsEnabled) log.push({ key: 'autoCaptionsEnabled', from: before.autoCaptionsEnabled, to: body.autoCaptionsEnabled, by, at });
+    }
+    await settings.updateOne({ _id: SYSTEM_SETTINGS_ID }, { $set: set }, { upsert: true });
+    // Append-only, like the role changes: the API never updates or deletes an entry.
+    if (log.length > 0) await changes.insertMany(log);
+    res.json(await settingsView());
+  });
 
   r.get('/admin/overview', requirePermission('system:read'), async (req, res) => {
     const days = Number(windowQuery.parse(req.query).days);

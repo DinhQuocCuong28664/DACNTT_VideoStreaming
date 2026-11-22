@@ -25,6 +25,7 @@ export const PERMISSIONS = {
   'events:read': ['admin', 'auditor'],
   'users:manage': ['admin'],
   'system:read': ['admin'],
+  'settings:manage': ['admin'],
   'pii:email': ['admin'],
   'content:viewRemoved': ['admin', 'operator'],
 } as const satisfies Record<string, readonly Role[]>;

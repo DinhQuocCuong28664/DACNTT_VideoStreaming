@@ -5,14 +5,15 @@ import { keyObject } from '@zelos/shared';
 import { FEATURES } from '../src/features/index.js';
 import { mongoSessionLookup } from '../src/auth/sessions.js';
 import type { VideoDoc } from '../src/model/video.js';
+import type { Config } from '../src/config.js';
 import { ORIGIN_SECRET, testApp, type TestContext } from './helpers.js';
 
 export interface Who { token: string; id: string }
 type Method = 'get' | 'post' | 'put' | 'patch' | 'delete';
 export interface CallOpts { token?: string; headers?: Record<string, string>; ip?: string }
 
-export function world(db: Db) {
-  const { app, ctx } = testApp(FEATURES, { db, sessions: mongoSessionLookup(db) });
+export function world(db: Db, config?: Config) {
+  const { app, ctx } = testApp(FEATURES, { db, sessions: mongoSessionLookup(db), ...(config ? { config } : {}) });
 
   const call = (method: Method, path: string, body?: object, o: CallOpts = {}) => {
     const agent = request(app);
