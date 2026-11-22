@@ -384,7 +384,30 @@
     "captionAuto": "{{label}} (tự động)",
     "copyEmbed": "Sao chép mã nhúng",
     "embedCopied": "Đã sao chép mã nhúng",
-    "seekSeconds_other": "{{count}} giây"
+    "seekSeconds_other": "{{count}} giây",
+    "volumeLevel": "Âm lượng {{value}}%",
+    "mutedNotice": "Đã tắt tiếng",
+    "unmutedNotice": "Đã bật tiếng",
+    "speedLevel": "Tốc độ: {{value}}",
+    "noCaptions": "Video này không có phụ đề",
+    "captionsOnNotice": "Phụ đề: {{label}}",
+    "captionsOffNotice": "Đã tắt phụ đề",
+    "shortcuts": "Phím tắt",
+    "keys": {
+      "playPause": "Phát hoặc tạm dừng",
+      "seek5": "Lùi hoặc tới 5 giây",
+      "seek10": "Lùi hoặc tới 10 giây",
+      "volume": "Tăng hoặc giảm âm lượng",
+      "mute": "Tắt hoặc bật tiếng",
+      "fullscreen": "Toàn màn hình (hoặc nháy đúp vào video)",
+      "captions": "Bật hoặc tắt phụ đề",
+      "jump": "Nhảy tới 0% đến 90% video",
+      "startEnd": "Về đầu hoặc tới cuối video",
+      "frame": "Lùi hoặc tới một khung hình khi đang dừng",
+      "speed": "Chậm hơn hoặc nhanh hơn",
+      "chapter": "Chương trước hoặc chương sau",
+      "help": "Hiện hoặc ẩn bảng này"
+    }
   },
   "settings": {
     "avatarSection": "Ảnh của bạn",

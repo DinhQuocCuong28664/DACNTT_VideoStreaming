@@ -16,8 +16,9 @@ import {
 import { MdClosedCaption, MdClosedCaptionOff } from 'react-icons/md';
 import type { Playback } from '../../api/types';
 import {
-  addWatched, cueAt, parseSpriteVtt, qualityLabel, reachedView, SEEK_STACK_MS, SEEK_STEP_SEC, signUrl, stackSeek, withStartTime, type SeekFlash, type SpriteCue,
+  addWatched, cueAt, parseSpriteVtt, qualityLabel, reachedView, SEEK_STACK_MS, signUrl, stackSeek, withStartTime, type SeekFlash, type SpriteCue,
 } from '../../lib/playback';
+import { chapterTarget, keyBelongsToTarget, shortcutFor, stepRate, type ShortcutAction } from '../../lib/shortcuts';
 import './VideoPlayer.css';
 
 const PLAYBACK_RATES = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
@@ -29,6 +30,24 @@ const MAX_MEDIA_RECOVERIES = 2;
 const MAX_GRANT_RENEWALS = 2;
 const NETWORK_RETRY_DELAYS_MS = [1000, 3000, 7000];
 export const HEARTBEAT_MS = 60_000;
+/** Frame step of "," and "." while paused; the real rate is not known to the element. */
+const FRAME_STEP_FPS = 30;
+/** Rows of the "?" panel: the keys and the i18n key of what they do. */
+const SHORTCUT_HELP: readonly [string[], string][] = [
+  [['Space', 'K'], 'playPause'],
+  [['←', '→'], 'seek5'],
+  [['J', 'L'], 'seek10'],
+  [['↑', '↓'], 'volume'],
+  [['M'], 'mute'],
+  [['F'], 'fullscreen'],
+  [['C'], 'captions'],
+  [['0–9'], 'jump'],
+  [['Home', 'End'], 'startEnd'],
+  [[',', '.'], 'frame'],
+  [['<', '>'], 'speed'],
+  [['Ctrl + ←', 'Ctrl + →'], 'chapter'],
+  [['?'], 'help'],
+];
 
 const formatTime = (seconds: number) => {
   if (!Number.isFinite(seconds) || seconds < 0) return '0:00';
@@ -138,6 +157,7 @@ export default function VideoPlayer({ grant, renew, poster, previewVtt, chapters
   const [notice, setNotice] = useState<string | null>(null);
   const [sprites, setSprites] = useState<SpriteCue[]>([]);
   const [seekFlash, setSeekFlash] = useState<SeekFlash | null>(null);
+  const [showHelp, setShowHelp] = useState(false);
 
   const cdnOrigin = new URL(grant.masterUrl).origin;
   const signed = useCallback((url: string) => signUrl(url, cdnOrigin, grantRef.current.cdnQuery), [cdnOrigin]);
@@ -423,36 +443,76 @@ export default function VideoPlayer({ grant, renew, poster, previewVtt, chapters
       else await wrapperRef.current?.requestFullscreen();
     } catch { /* denied */ }
   };
-  /** Moves by one step and shows the "5 seconds" badge on that side; nothing happens at either end. */
-  const seekBy = (v: HTMLVideoElement, dir: 1 | -1) => {
+  const showNotice = (message: string) => { clearTimeout(noticeTimer.current); setNotice(message); noticeTimer.current = setTimeout(() => setNotice(null), NOTICE_MS); };
+  /** Moves by `seconds` and shows the badge on that side ("5 seconds"); nothing happens at either end. */
+  const seekBy = (v: HTMLVideoElement, seconds: number) => {
     const end = duration || v.duration;
     if (!Number.isFinite(end) || end <= 0) return;
-    const target = Math.min(Math.max(v.currentTime + dir * SEEK_STEP_SEC, 0), end);
+    const target = Math.min(Math.max(v.currentTime + seconds, 0), end);
     if (target === v.currentTime) return;
     v.currentTime = target;
-    const next = stackSeek(seekFlashRef.current, dir, SEEK_STEP_SEC, performance.now());
+    const next = stackSeek(seekFlashRef.current, seconds > 0 ? 1 : -1, Math.abs(seconds), performance.now());
     seekFlashRef.current = next;
     setSeekFlash(next);
     clearTimeout(seekFlashTimer.current);
     seekFlashTimer.current = setTimeout(() => { seekFlashRef.current = null; setSeekFlash(null); }, SEEK_STACK_MS);
   };
-  const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
-    const v = video();
-    if (!v) return;
-    switch (e.key) {
-      case ' ': case 'k': e.preventDefault(); togglePlay(); break;
-      case 'ArrowRight': e.preventDefault(); seekBy(v, 1); break;
-      case 'ArrowLeft': e.preventDefault(); seekBy(v, -1); break;
-      case 'ArrowUp': e.preventDefault(); v.volume = Math.min(v.volume + 0.1, 1); break;
-      case 'ArrowDown': e.preventDefault(); v.volume = Math.max(v.volume - 0.1, 0); break;
-      case 'm': toggleMute(); break;
-      case 'f': void toggleFullscreen(); break;
-      case 'c': if (grant.captions.length) toggleCaptions(); break;
+  const runShortcut = (action: ShortcutAction, v: HTMLVideoElement) => {
+    const end = duration || v.duration;
+    switch (action.kind) {
+      case 'togglePlay': togglePlay(); break;
+      case 'seekBy': seekBy(v, action.seconds); break;
+      case 'seekToFraction': if (Number.isFinite(end) && end > 0) v.currentTime = action.fraction * end; break;
+      case 'seekToStart': v.currentTime = 0; break;
+      case 'seekToEnd': if (Number.isFinite(end) && end > 0) v.currentTime = end; break;
+      case 'volumeBy': {
+        v.volume = Math.round(Math.min(Math.max(v.volume + action.delta, 0), 1) * 100) / 100;
+        v.muted = v.volume === 0;
+        showNotice(t('player.volumeLevel', { value: Math.round(v.volume * 100) }));
+        break;
+      }
+      case 'toggleMute': toggleMute(); showNotice(v.muted ? t('player.mutedNotice') : t('player.unmutedNotice')); break;
+      case 'toggleFullscreen': void toggleFullscreen(); break;
+      case 'toggleCaptions': {
+        if (grant.captions.length === 0) { showNotice(t('player.noCaptions')); break; }
+        const wasOn = captionLang !== null;
+        toggleCaptions();
+        const lang = wasOn ? null : (grant.captions.find((c) => c.lang === readCaptionPref().lang) ?? grant.captions[0]);
+        showNotice(lang ? t('player.captionsOnNotice', { label: lang.label }) : t('player.captionsOffNotice'));
+        break;
+      }
+      case 'frameStep': if (v.paused) v.currentTime = Math.min(Math.max(v.currentTime + action.dir / FRAME_STEP_FPS, 0), end || v.currentTime); break;
+      case 'rateStep': {
+        const r = stepRate(PLAYBACK_RATES, v.playbackRate, action.dir);
+        v.playbackRate = r;
+        setRate(r);
+        showNotice(t('player.speedLevel', { value: r === 1 ? t('player.speedNormal') : `${r}x` }));
+        break;
+      }
+      case 'chapter': { const at = chapterTarget(chapters, v.currentTime, action.dir); if (at !== null) v.currentTime = at; break; }
+      case 'help': setShowHelp((s) => !s); break;
       default: break;
     }
     handleActivity();
   };
-  const showNotice = (message: string) => { clearTimeout(noticeTimer.current); setNotice(message); noticeTimer.current = setTimeout(() => setNotice(null), NOTICE_MS); };
+  // Shortcuts work anywhere on the page, as on YouTube, unless the key belongs to a field, a
+  // slider, a focused button or an open dialog. The ref keeps the listener on the latest state.
+  const shortcutRef = useRef<(e: globalThis.KeyboardEvent) => void>(() => undefined);
+  shortcutRef.current = (e) => {
+    const v = video();
+    if (!v || e.defaultPrevented || contextMenu) return;
+    if (e.key === 'Escape' && showHelp) { setShowHelp(false); return; }
+    const action = shortcutFor(e);
+    if (!action || keyBelongsToTarget(e.target as Element | null, e.key)) return;
+    if (document.querySelector('[role="dialog"][aria-modal="true"]')) return;
+    e.preventDefault();
+    runShortcut(action, v);
+  };
+  useEffect(() => {
+    const onKey = (e: globalThis.KeyboardEvent) => shortcutRef.current(e);
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, []);
   const onContextMenu = (e: MouseEvent<HTMLDivElement>) => {
     if (contextMenu) { setContextMenu(null); return; }
     e.preventDefault();
@@ -498,11 +558,10 @@ export default function VideoPlayer({ grant, renew, poster, previewVtt, chapters
       className={`video-player-wrapper ${showControls ? '' : 'controls-hidden'}`}
       onMouseMove={handleActivity}
       onMouseLeave={() => { if (isPlaying) setShowControls(false); }}
-      onKeyDown={onKeyDown}
       onContextMenu={onContextMenu}
       tabIndex={0}
     >
-      <video ref={videoRef} className="video-element" poster={poster ?? undefined} playsInline crossOrigin="anonymous" onClick={togglePlay}>
+      <video ref={videoRef} className="video-element" poster={poster ?? undefined} playsInline crossOrigin="anonymous" onClick={togglePlay} onDoubleClick={() => void toggleFullscreen()}>
         {grant.captions.map((c) => <track key={c.lang} kind="subtitles" srcLang={c.lang} label={c.label} src={signed(c.url)} />)}
       </video>
 
@@ -514,6 +573,21 @@ export default function VideoPlayer({ grant, renew, poster, previewVtt, chapters
           {/* A new key per press restarts the arrow animation while the badge stays. */}
           <span key={seekFlash.at} className="player-seek-flash-arrows"><span /><span /><span /></span>
           <span className="player-seek-flash-label">{t('player.seekSeconds', { count: seekFlash.seconds })}</span>
+        </div>
+      )}
+      {showHelp && (
+        <div className="player-shortcuts" role="dialog" aria-label={t('player.shortcuts')} onClick={() => setShowHelp(false)}>
+          <div className="player-shortcuts-panel" onClick={(e) => e.stopPropagation()}>
+            <div className="player-shortcuts-title">{t('player.shortcuts')}</div>
+            <dl>
+              {SHORTCUT_HELP.map(([keys, label]) => (
+                <div key={label} className="player-shortcuts-row">
+                  <dt>{keys.map((k) => <kbd key={k}>{k}</kbd>)}</dt>
+                  <dd>{t(`player.keys.${label}`)}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
         </div>
       )}
 
