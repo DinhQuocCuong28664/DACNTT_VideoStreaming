@@ -16,11 +16,12 @@ import { useToast } from '../components/Common/Toast';
 import { Spinner } from '../components/Common/StatusScreen';
 import { LoadMoreFooter } from '../components/Video/VideoCard';
 import { useInfiniteList } from '../hooks/useInfiniteList';
+import OverviewPanel from '../components/Admin/OverviewPanel';
 import { errorText } from '../lib/errors';
 import { formatDuration, timeAgo } from '../lib/format';
 import './AdminPage.css';
 
-type Permission = 'moderation:review' | 'moderation:appeals' | 'moderation:audit' | 'moderation:sample' | 'metrics:read' | 'events:read' | 'users:manage';
+type Permission = 'moderation:review' | 'moderation:appeals' | 'moderation:audit' | 'moderation:sample' | 'metrics:read' | 'events:read' | 'users:manage' | 'system:read';
 const PERMISSIONS = new Map<Permission, readonly Role[]>([
   ['moderation:review', ['admin', 'operator']],
   ['moderation:appeals', ['admin', 'operator']],
@@ -29,10 +30,12 @@ const PERMISSIONS = new Map<Permission, readonly Role[]>([
   ['metrics:read', ['admin', 'auditor']],
   ['events:read', ['admin', 'auditor']],
   ['users:manage', ['admin']],
+  ['system:read', ['admin']],
 ]);
 export const can = (role: Role | undefined, p: Permission) => role !== undefined && (PERMISSIONS.get(p) ?? []).includes(role);
 
 const TABS = [
+  { key: 'overview', permission: 'system:read' },
   { key: 'review', permission: 'moderation:review' },
   { key: 'blocked', permission: 'moderation:review' },
   { key: 'comments', permission: 'moderation:review' },
@@ -80,6 +83,7 @@ export default function AdminPage() {
           );
         })}
       </div>
+      {tab === 'overview' && <OverviewPanel />}
       {(tab === 'review' || tab === 'blocked') && <QueuePanel key={tab} tab={tab === 'review' ? 'review' : 'removed'} notify={notify} onChange={refreshStats} />}
       {tab === 'comments' && <CommentsPanel notify={notify} onChange={refreshStats} />}
       {tab === 'appeals' && <AppealsPanel notify={notify} onChange={refreshStats} />}

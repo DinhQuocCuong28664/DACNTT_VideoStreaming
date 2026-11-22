@@ -137,6 +137,29 @@ export interface Metrics {
 }
 export interface ModerationEvent { video: string; actorRole: Role; decision: string; action: string; outcome: string; reasonCode: string; note: string; createdAt: string }
 export interface StaffUser { id: string; email: string; handle: string; displayName: string; role: Role; disabled?: boolean; createdAt: string }
+export type OverviewDays = 7 | 30 | 90;
+export interface OverviewDay { date: string; signups: number; uploads: number; views: number }
+/** GET /admin/overview: computed on request from the documents (api/src/features/system.ts). */
+export interface Overview {
+  days: OverviewDays;
+  generatedAt: string;
+  users: { total: number; verified: number; new: number; staff: { operator: number; auditor: number; admin: number } };
+  plans: { free: number; plus: number; pro: number; max: number; paying: number; cancelling: number; pastDue: number; legacy: number; monthlyRevenueVnd: number };
+  videos: {
+    total: number;
+    byStatus: Record<'UPLOADING' | 'PROCESSING' | 'READY' | 'SCHEDULED' | 'ERROR', number>;
+    readySeconds: number;
+    uploads: number;
+    errors: number;
+    topErrors: { reason: string; count: number }[];
+    medianProcessingSec: number | null;
+    processedSample: number;
+  };
+  moderation: { approved: number; review: number; removed: number; pending: number; unscreened: number };
+  captions: { month: string; minutesUsed: number; creators: number };
+  views: { views: number; watchHours: number };
+  daily: OverviewDay[];
+}
 
 export const admin = {
   stats: () => api.get<{ review: number; removed: number; reportedComments: number; openAppeals: number }>('/admin/stats'),
@@ -155,4 +178,5 @@ export const admin = {
   users: (q?: string, role?: Role | null) => api.get<{ items: StaffUser[] }>('/admin/users', { query: { q, role } }),
   setRole: (id: string, role: Role) => api.put<{ user: { id: string; role: Role } }>(`/admin/users/${enc(id)}/role`, { role }),
   roleChanges: () => api.get<{ items: { user: string; from: Role; to: Role; by: string; at: string }[] }>('/admin/role-changes'),
+  overview: (days: OverviewDays) => api.get<Overview>('/admin/overview', { query: { days: String(days) } }),
 };
