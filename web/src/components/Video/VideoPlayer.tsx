@@ -15,7 +15,9 @@ import {
 } from 'react-icons/fi';
 import { MdClosedCaption, MdClosedCaptionOff } from 'react-icons/md';
 import type { Playback } from '../../api/types';
-import { addWatched, cueAt, parseSpriteVtt, qualityLabel, reachedView, signUrl, withStartTime, type SpriteCue } from '../../lib/playback';
+import {
+  addWatched, cueAt, parseSpriteVtt, qualityLabel, reachedView, SEEK_STACK_MS, SEEK_STEP_SEC, signUrl, stackSeek, withStartTime, type SeekFlash, type SpriteCue,
+} from '../../lib/playback';
 import './VideoPlayer.css';
 
 const PLAYBACK_RATES = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
@@ -98,6 +100,8 @@ export default function VideoPlayer({ grant, renew, poster, previewVtt, chapters
   const retryTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const seekFlashTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const seekFlashRef = useRef<SeekFlash | null>(null);
   const swallowClickUntil = useRef(0);
   const contextMenuRef = useRef<HTMLDivElement>(null);
 
@@ -133,6 +137,7 @@ export default function VideoPlayer({ grant, renew, poster, previewVtt, chapters
   const [isLooping, setIsLooping] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [sprites, setSprites] = useState<SpriteCue[]>([]);
+  const [seekFlash, setSeekFlash] = useState<SeekFlash | null>(null);
 
   const cdnOrigin = new URL(grant.masterUrl).origin;
   const signed = useCallback((url: string) => signUrl(url, cdnOrigin, grantRef.current.cdnQuery), [cdnOrigin]);
@@ -381,6 +386,7 @@ export default function VideoPlayer({ grant, renew, poster, previewVtt, chapters
       document.removeEventListener('click', onClickCapture, true);
       document.removeEventListener('fullscreenchange', onFs);
       clearTimeout(noticeTimer.current);
+      clearTimeout(seekFlashTimer.current);
     };
   }, []);
 
@@ -417,13 +423,26 @@ export default function VideoPlayer({ grant, renew, poster, previewVtt, chapters
       else await wrapperRef.current?.requestFullscreen();
     } catch { /* denied */ }
   };
+  /** Moves by one step and shows the "5 seconds" badge on that side; nothing happens at either end. */
+  const seekBy = (v: HTMLVideoElement, dir: 1 | -1) => {
+    const end = duration || v.duration;
+    if (!Number.isFinite(end) || end <= 0) return;
+    const target = Math.min(Math.max(v.currentTime + dir * SEEK_STEP_SEC, 0), end);
+    if (target === v.currentTime) return;
+    v.currentTime = target;
+    const next = stackSeek(seekFlashRef.current, dir, SEEK_STEP_SEC, performance.now());
+    seekFlashRef.current = next;
+    setSeekFlash(next);
+    clearTimeout(seekFlashTimer.current);
+    seekFlashTimer.current = setTimeout(() => { seekFlashRef.current = null; setSeekFlash(null); }, SEEK_STACK_MS);
+  };
   const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     const v = video();
     if (!v) return;
     switch (e.key) {
       case ' ': case 'k': e.preventDefault(); togglePlay(); break;
-      case 'ArrowRight': v.currentTime = Math.min(v.currentTime + 5, duration); break;
-      case 'ArrowLeft': v.currentTime = Math.max(v.currentTime - 5, 0); break;
+      case 'ArrowRight': e.preventDefault(); seekBy(v, 1); break;
+      case 'ArrowLeft': e.preventDefault(); seekBy(v, -1); break;
       case 'ArrowUp': e.preventDefault(); v.volume = Math.min(v.volume + 0.1, 1); break;
       case 'ArrowDown': e.preventDefault(); v.volume = Math.max(v.volume - 0.1, 0); break;
       case 'm': toggleMute(); break;
@@ -490,6 +509,13 @@ export default function VideoPlayer({ grant, renew, poster, previewVtt, chapters
       {!isPlaying && !playbackError && <button className="center-play-btn" onClick={togglePlay} aria-label={t('player.playVideo')}><FiPlay /></button>}
       {playbackError && <div className="video-error-overlay" role="alert"><p>{playbackError}</p></div>}
       <div className="player-notice-region" role="status" aria-live="polite">{notice && <div className="player-notice">{notice}</div>}</div>
+      {seekFlash && (
+        <div className={`player-seek-flash ${seekFlash.dir > 0 ? 'is-forward' : 'is-back'}`} aria-hidden="true">
+          {/* A new key per press restarts the arrow animation while the badge stays. */}
+          <span key={seekFlash.at} className="player-seek-flash-arrows"><span /><span /><span /></span>
+          <span className="player-seek-flash-label">{t('player.seekSeconds', { count: seekFlash.seconds })}</span>
+        </div>
+      )}
 
       {contextMenu && (
         <div ref={contextMenuRef} className="player-context-menu" role="menu" aria-label={t('player.contextMenu')} onKeyDown={onContextMenuKeyDown} onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); }}>

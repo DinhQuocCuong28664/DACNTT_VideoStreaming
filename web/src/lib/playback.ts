@@ -98,6 +98,19 @@ export function qualityLabel(width: number, height: number): string {
   return `${h}p`;
 }
 
+/** Seconds one arrow-key press moves the player. */
+export const SEEK_STEP_SEC = 5;
+/** Presses closer together than this add up into one badge ("10 seconds"), as on YouTube. */
+export const SEEK_STACK_MS = 700;
+
+export interface SeekFlash { dir: 1 | -1; seconds: number; at: number }
+
+/** The badge after one more seek: it stacks onto the shown one when the direction is the same and the press is quick. */
+export function stackSeek(prev: SeekFlash | null, dir: 1 | -1, step: number, now: number, windowMs = SEEK_STACK_MS): SeekFlash {
+  const stacks = prev !== null && prev.dir === dir && now - prev.at < windowMs;
+  return { dir, seconds: (stacks ? prev.seconds : 0) + step, at: now };
+}
+
 const escapeAttr = (s: string) => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 /** The iframe snippet for /embed/:id, sized 16:9 like the usual 560 x 315 default. */

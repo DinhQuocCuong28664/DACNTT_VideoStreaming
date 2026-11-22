@@ -386,7 +386,9 @@
     "captionsOff": "Off",
     "captionAuto": "{{label}} (auto-generated)",
     "copyEmbed": "Copy embed code",
-    "embedCopied": "Embed code copied"
+    "embedCopied": "Embed code copied",
+    "seekSeconds_one": "{{count}} second",
+    "seekSeconds_other": "{{count}} seconds"
   },
   "settings": {
     "avatarSection": "Your picture",
