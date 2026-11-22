@@ -388,7 +388,30 @@
     "copyEmbed": "Copy embed code",
     "embedCopied": "Embed code copied",
     "seekSeconds_one": "{{count}} second",
-    "seekSeconds_other": "{{count}} seconds"
+    "seekSeconds_other": "{{count}} seconds",
+    "volumeLevel": "Volume {{value}}%",
+    "mutedNotice": "Muted",
+    "unmutedNotice": "Sound on",
+    "speedLevel": "Speed: {{value}}",
+    "noCaptions": "This video has no captions",
+    "captionsOnNotice": "Captions: {{label}}",
+    "captionsOffNotice": "Captions off",
+    "shortcuts": "Keyboard shortcuts",
+    "keys": {
+      "playPause": "Play or pause",
+      "seek5": "Back or forward 5 seconds",
+      "seek10": "Back or forward 10 seconds",
+      "volume": "Volume up or down",
+      "mute": "Mute or unmute",
+      "fullscreen": "Full screen (or double-click the video)",
+      "captions": "Captions on or off",
+      "jump": "Jump to 0% to 90% of the video",
+      "startEnd": "Start or end of the video",
+      "frame": "Previous or next frame while paused",
+      "speed": "Slower or faster",
+      "chapter": "Previous or next chapter",
+      "help": "Show or hide this list"
+    }
   },
   "settings": {
     "avatarSection": "Your picture",
