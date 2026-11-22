@@ -83,7 +83,7 @@ URL.
 \label{sec:job-failure-impl}
 
 A failed job ends with one of two exit codes, because the retry rule of
-Section~\ref{sec:compute-design} depends on it. A failure that would repeat with the same input, such
+Section~\ref{sec:state-machine} depends on it. A failure that would repeat with the same input, such
 as a file FFmpeg cannot decode or a plan that fails validation, ends with exit code 3, which Batch
 does not retry; every other failure, including a Spot reclaim or a network error, ends with a code
 that Batch retries. The FFmpeg runner keeps the last lines of the error output in the failure reason
