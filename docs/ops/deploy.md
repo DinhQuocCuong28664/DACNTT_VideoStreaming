@@ -257,7 +257,12 @@ Going live later is a different decision: it needs a legal entity, the e-commerc
 node scripts/seed.mjs role --env <env> --email <account email> --role admin
 node scripts/seed.mjs demo --env <env> --manifest .local-notes/demo-videos.json
 node scripts/seed.mjs e2e  --env <env>
+node scripts/seed.mjs channels --env <env> --manifest .local-notes/community-channels/channels.json
 ```
+
+`channels` creates sample creator channels (avatar, description, videos) through the public API.
+Sign-ups are limited to five an hour from one address, so a larger manifest needs several runs an
+hour apart; each run does only what is left.
 
 Run it only once the API host answers. The transcoder writes the API host into every key URI,
 so videos processed earlier would point at a dead host.

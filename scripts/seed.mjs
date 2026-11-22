@@ -23,6 +23,17 @@
  *     (an account may start 20 uploads an hour) in .local-notes/<env>-bench-accounts.json.
  *     The API allows five sign-ups an hour from one address.
  *
+ *   node scripts/seed.mjs channels --env prod --manifest .local-notes/community-channels/channels.json
+ *     Creates sample creator channels: account (verified e-mail), avatar, channel description and
+ *     videos, all through the public API, so avatars pass the image screening and videos the real
+ *     pipeline. The manifest is a JSON array of
+ *       { "key", "handle", "displayName", "description", "avatar",
+ *         "videos": [{ "file", "title", "description", "tags", "category" }] }
+ *     with paths relative to the manifest. Progress and the generated passwords are kept in
+ *     .local-notes/<env>-channel-accounts.json, so running it again only does what is left. When
+ *     the sign-up limit (five an hour from one address) is reached it stops creating accounts and
+ *     says so; run it again an hour later.
+ *
  * The database is reached with the mongodbUri of Secrets Manager zelos-<env>/api (account B).
  * Run it only after the API host is live: every key URI the transcoder writes contains it.
  */
@@ -81,8 +92,32 @@ async function api(path, { token, body, method = 'POST' } = {}) {
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(`${method} ${path}: ${res.status} ${data?.error?.code ?? ''} ${data?.error?.message ?? ''}`.trim());
+  if (!res.ok) {
+    throw Object.assign(new Error(`${method} ${path}: ${res.status} ${data?.error?.code ?? ''} ${data?.error?.message ?? ''}`.trim()), { status: res.status });
+  }
   return data;
+}
+
+/** Sends a file to a presigned POST of the API (video or image upload). */
+async function postToStorage(upload, path, type) {
+  const form = new FormData();
+  for (const [k, v] of Object.entries(upload.fields)) form.append(k, v);
+  form.append('file', await openAsBlob(path, { type }), basename(path));
+  const res = await fetch(upload.url, { method: 'POST', body: form });
+  if (!res.ok) throw new Error(`${basename(path)}: storage answered ${res.status}`);
+}
+
+/** Uploads one video the way the web app does and returns its id. */
+async function uploadVideo(token, path, { title, description = '' }) {
+  const size = statSync(path).size;
+  const { video, upload } = await api('/uploads', {
+    token,
+    body: { fileName: basename(path), size, contentType: 'video/mp4', title, description, visibility: 'public' },
+  });
+  if (upload.mode !== 'post') throw new Error(`${basename(path)}: multipart uploads are not supported here; use the web app`);
+  await postToStorage(upload, path, 'video/mp4');
+  await api(`/uploads/${video.id}/complete`, { token });
+  return video.id;
 }
 
 async function setRole() {
@@ -131,21 +166,8 @@ async function uploadDemo() {
   const items = JSON.parse(readFileSync(manifestPath, 'utf8'));
   const token = await demoSession();
   for (const item of items) {
-    const path = resolve(dirname(manifestPath), item.file);
-    const size = statSync(path).size;
-    const created = await api('/uploads', {
-      token,
-      body: { fileName: basename(path), size, contentType: 'video/mp4', title: item.title, description: item.description ?? '', visibility: 'public' },
-    });
-    const { video, upload } = created;
-    if (upload.mode !== 'post') fail(`${item.file}: multipart uploads are not supported here; use the web app`);
-    const form = new FormData();
-    for (const [k, v] of Object.entries(upload.fields)) form.append(k, v);
-    form.append('file', await openAsBlob(path, { type: 'video/mp4' }), basename(path));
-    const put = await fetch(upload.url, { method: 'POST', body: form });
-    if (!put.ok) fail(`${item.file}: storage answered ${put.status}`);
-    await api(`/uploads/${video.id}/complete`, { token });
-    console.log(`${item.title}: ${env.web}/watch/${video.id}`);
+    const id = await uploadVideo(token, resolve(dirname(manifestPath), item.file), item);
+    console.log(`${item.title}: ${env.web}/watch/${id}`);
   }
   console.log('Uploaded; the pipeline publishes each video when its renditions are ready.');
 }
@@ -191,8 +213,67 @@ async function benchAccounts() {
   console.log(`${made.length} bench accounts in ${file}`);
 }
 
+const IMAGE_TYPES = { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png' };
+
+async function seedChannels() {
+  if (!values.manifest) fail('channels needs --manifest');
+  const manifestPath = resolve(values.manifest);
+  const base = dirname(manifestPath);
+  const channels = JSON.parse(readFileSync(manifestPath, 'utf8'));
+  const file = join(ROOT, '.local-notes', `${values.env}-channel-accounts.json`);
+  const readState = () => (existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : {});
+  const saveState = (state) => writeFileSync(file, `${JSON.stringify(state, null, 2)}\n`, { mode: 0o600 });
+
+  // 1. Accounts, until the sign-up limit stops us.
+  let limited = false;
+  for (const c of channels) {
+    if (readState()[c.key]) continue;
+    try {
+      await ensureAccount(file, c.key, { email: `${c.handle}@zelostech.site`, handle: c.handle, displayName: c.displayName });
+    } catch (err) {
+      if (err.status !== 429) throw err;
+      limited = true;
+      break;
+    }
+  }
+  const made = channels.filter((c) => readState()[c.key]);
+  await withDb((db) => db.collection('users').updateMany({ email: { $in: made.map((c) => readState()[c.key].email) } }, { $set: { emailVerified: true } }));
+
+  // 2. Avatar, description and videos of every account that exists.
+  for (const c of made) {
+    const state = readState();
+    const account = state[c.key];
+    const { token } = await api('/auth/login', { body: { email: account.email, password: account.password } });
+    if (!account.avatarDone && c.avatar) {
+      const path = resolve(base, c.avatar);
+      const type = IMAGE_TYPES[path.slice(path.lastIndexOf('.')).toLowerCase()];
+      if (!type) fail(`${c.avatar}: use a JPEG or PNG avatar`);
+      const { uploadId, upload } = await api('/images/uploads', { token, body: { contentType: type, size: statSync(path).size } });
+      await postToStorage(upload, path, type);
+      await api('/me/avatar', { token, method: 'PUT', body: { uploadId } });
+      await api('/me/profile', { token, method: 'PATCH', body: { description: c.description ?? '' } });
+      account.avatarDone = true;
+      saveState({ ...readState(), [c.key]: account });
+    }
+    account.videos ??= {};
+    for (const v of c.videos ?? []) {
+      if (account.videos[v.file]) continue;
+      const id = await uploadVideo(token, resolve(base, v.file), v);
+      if (v.tags || v.category) await api(`/videos/${id}`, { token, method: 'PATCH', body: { tags: v.tags ?? [], category: v.category ?? null } });
+      account.videos[v.file] = id;
+      saveState({ ...readState(), [c.key]: account });
+      console.log(`@${c.handle} ${v.title}: ${env.web}/watch/${id}`);
+    }
+  }
+  const left = channels.length - made.length;
+  console.log(left === 0
+    ? `All ${channels.length} channels are seeded; the pipeline publishes each video when it is ready.`
+    : `${made.length}/${channels.length} channels exist${limited ? '; the sign-up limit was reached' : ''}. Run again in an hour for the other ${left}.`);
+}
+
 if (command === 'role') await setRole();
+else if (command === 'channels') await seedChannels();
 else if (command === 'bench') await benchAccounts();
 else if (command === 'e2e') await e2eAccounts();
 else if (command === 'demo') await uploadDemo();
-else fail('usage: seed.mjs role|demo|e2e|bench --env staging|prod ...');
+else fail('usage: seed.mjs role|demo|e2e|bench|channels --env staging|prod ...');
