@@ -663,7 +663,7 @@ Main flow &
   1. Amazon S3 emits an event, which Amazon SQS buffers. \newline
   2. A function reads the metadata of the object and starts a workflow execution named after the video and its upload version. \newline
   3. The workflow marks the video as processing, reads the plan of the owner, which chooses the priority or the standard queues and the longest duration allowed, creates the encryption key and probes the source. \newline
-  4. In parallel, one job screens sampled frames and makes the thumbnail and seek-preview images, while the encoding runs as one job for a video of up to five minutes, or as an audio job and parallel chunk jobs followed by a stitching step for a longer one. \newline
+  4. In parallel, one job screens sampled frames and makes the thumbnail and seek-preview images, while the encoding runs as one job for a video shorter than five minutes, or as an audio job and parallel chunk jobs followed by a stitching step for a longer one. \newline
   5. The workflow publishes the video as ready, or as scheduled, with the result of the screening, and the subscribers are notified. \\
 Alternative flows &
   2a. The same event arrives twice: the second execution is refused by name, and nothing more happens. \newline

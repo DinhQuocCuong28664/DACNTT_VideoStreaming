@@ -157,7 +157,7 @@ priority costs nothing and only changes the order of waiting.
 \textbf{ROLE} & \textbf{SIZE} & \textbf{QUEUE} & \textbf{WORK} \\
 \midrule
 analyse & 2 vCPU, 4 GiB & main or priority & Moderation frames, thumbnail, seek-preview sprites \\
-encode & 4 vCPU, 8 GiB up to 60~s; 8 vCPU, 16 GiB above & main or priority & Every rung of a video up to five minutes, in one ffmpeg run \\
+encode & 4 vCPU, 8 GiB up to 60~s; 8 vCPU, 16 GiB above & main or priority & Every rung of a video shorter than five minutes, in one ffmpeg run \\
 audio & 1 vCPU, 2 GiB & main or priority & The AAC tracks of a long video, once per bitrate \\
 chunk & 4 vCPU, 8 GiB per child & bulk or priority-bulk & Every rung of one chunk of a long video \\
 \bottomrule
