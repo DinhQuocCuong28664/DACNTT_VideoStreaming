@@ -217,8 +217,9 @@ is applied to \name{staging} and checked there before it is applied to \name{pro
 \label{sec:challenges}
 
 Several problems appeared between a design that was correct on paper and a system that behaved
-correctly once deployed. Table~\ref{tab:challenges} lists them with their causes and resolutions; the
-two with the widest effect are described after it.
+correctly once deployed. Table~\ref{tab:challenges} lists them with their causes and resolutions. Two
+problems are then described in more detail: the policy of the processed bucket, which two modules
+need to write, and the creation of indexes at start-up, the problem of the table with the widest effect.
 
 \begin{table}[H]
 \centering
