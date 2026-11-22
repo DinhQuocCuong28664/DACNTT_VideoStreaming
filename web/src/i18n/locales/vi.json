@@ -650,7 +650,71 @@
       "noErrors": "Không có video lỗi trong khoảng thời gian này.",
       "reason": "Lý do"
     },
+    "settings": {
+      "intro": "Bật hoặc tắt các dịch vụ tính phí theo lượt dùng. Thay đổi áp dụng cho video bắt đầu xử lý (kiểm duyệt) hoặc được đăng (phụ đề) sau thời điểm đổi, và được ghi vào lịch sử bên dưới.",
+      "on": "Bật",
+      "off": "Tắt",
+      "turnOn": "Bật",
+      "turnOff": "Tắt",
+      "fromConsole": "Đang theo lựa chọn trong console.",
+      "fromDefault": "Chưa đặt trong console; đang theo mặc định của hạ tầng ({{value}}).",
+      "moderation": {
+        "title": "Kiểm duyệt tự động (Amazon Rekognition)",
+        "body": "Lấy một khung hình mỗi 5 giây của video mới để Rekognition phân loại trước khi đăng. Khi tắt, video mới được đăng ngay và ghi là chưa sàng lọc; người xem vẫn báo cáo được và đội ngũ vẫn duyệt tay. Ảnh đại diện, ảnh bìa và thumbnail vẫn luôn được sàng lọc.",
+        "cost": "Chi phí: khoảng 0,0013 USD mỗi khung hình, tối đa 120 khung một video (video 5 phút khoảng 0,08 USD)."
+      },
+      "captions": {
+        "title": "Phụ đề tự động (Amazon Transcribe)",
+        "body": "Tạo phụ đề tiếng Việt hoặc tiếng Anh cho video vừa đăng của người dùng gói trả phí, trong hạn mức phút của gói. Khi tắt, không có job mới; job đang chạy vẫn hoàn tất.",
+        "cost": "Chi phí: 0,006 USD mỗi phút âm thanh; hạn mức của gói giới hạn tối đa 0,48 USD mỗi người mỗi tháng.",
+        "infraOff": "Đang tắt ở tầng hạ tầng (Terraform auto_captions_enabled=false); cần apply lại hạ tầng trước khi bật được ở đây."
+      },
+      "history": "Lịch sử thay đổi",
+      "noChanges": "Chưa có thay đổi nào.",
+      "when": "Thời điểm",
+      "switch": "Công tắc",
+      "change": "Thay đổi",
+      "by": "Người đổi",
+      "keys": {
+        "moderationEnabled": "Kiểm duyệt tự động",
+        "autoCaptionsEnabled": "Phụ đề tự động"
+      },
+      "saveFailed": "Không lưu được: {{message}}",
+      "saved": {
+        "moderationEnabled": {
+          "on": "Đã bật kiểm duyệt tự động cho video mới",
+          "off": "Đã tắt kiểm duyệt tự động cho video mới"
+        },
+        "autoCaptionsEnabled": {
+          "on": "Đã bật phụ đề tự động",
+          "off": "Đã tắt phụ đề tự động"
+        }
+      },
+      "confirm": {
+        "moderationEnabled": {
+          "on": {
+            "title": "Bật kiểm duyệt tự động?",
+            "message": "Từ giờ mỗi video mới được gửi Rekognition trước khi đăng, khoảng 0,0013 USD mỗi khung hình. Video đã đăng không bị quét lại."
+          },
+          "off": {
+            "title": "Tắt kiểm duyệt tự động?",
+            "message": "Video mới sẽ được đăng ngay mà không qua sàng lọc tự động; chỉ còn báo cáo của người xem và duyệt tay của đội ngũ."
+          }
+        },
+        "autoCaptionsEnabled": {
+          "on": {
+            "title": "Bật phụ đề tự động?",
+            "message": "Video đăng từ giờ của người dùng gói trả phí sẽ được tạo phụ đề, trong hạn mức phút của gói."
+          },
+          "off": {
+            "title": "Tắt phụ đề tự động?",
+            "message": "Không tạo phụ đề cho video đăng từ giờ. Phụ đề đã có vẫn giữ nguyên."
+          }
+        }
+      }
+    },
     "tab": {
+      "settings": "Cài đặt hệ thống",
       "overview": "Tổng quan",
       "review": "Cần rà soát",
       "blocked": "Đã gỡ",

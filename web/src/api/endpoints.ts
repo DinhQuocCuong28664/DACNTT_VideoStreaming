@@ -160,6 +160,14 @@ export interface Overview {
   views: { views: number; watchHours: number };
   daily: OverviewDay[];
 }
+/** GET/PUT /admin/settings: the runtime switches; `source` says whether the console or the infrastructure set the value. */
+export interface SystemSettings {
+  moderation: { enabled: boolean; source: 'console' | 'default'; default: boolean };
+  autoCaptions: { enabled: boolean; source: 'console' | 'default'; infraEnabled: boolean };
+  updatedAt: string | null;
+  updatedBy: string | null;
+  changes: { key: 'moderationEnabled' | 'autoCaptionsEnabled'; from: boolean; to: boolean; by: string | null; at: string }[];
+}
 
 export const admin = {
   stats: () => api.get<{ review: number; removed: number; reportedComments: number; openAppeals: number }>('/admin/stats'),
@@ -179,4 +187,6 @@ export const admin = {
   setRole: (id: string, role: Role) => api.put<{ user: { id: string; role: Role } }>(`/admin/users/${enc(id)}/role`, { role }),
   roleChanges: () => api.get<{ items: { user: string; from: Role; to: Role; by: string; at: string }[] }>('/admin/role-changes'),
   overview: (days: OverviewDays) => api.get<Overview>('/admin/overview', { query: { days: String(days) } }),
+  settings: () => api.get<SystemSettings>('/admin/settings'),
+  setSettings: (b: { moderationEnabled?: boolean; autoCaptionsEnabled?: boolean }) => api.put<SystemSettings>('/admin/settings', b),
 };

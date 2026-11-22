@@ -4,7 +4,7 @@
  * metrics and the decision log; admins see everything and manage roles. The server still
  * checks every request.
  */
-import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { MdBlock, MdCheck, MdExpandLess, MdExpandMore, MdOutlineOpenInNew, MdRestore, MdVisibility, MdVisibilityOff } from 'react-icons/md';
@@ -17,11 +17,12 @@ import { Spinner } from '../components/Common/StatusScreen';
 import { LoadMoreFooter } from '../components/Video/VideoCard';
 import { useInfiniteList } from '../hooks/useInfiniteList';
 import OverviewPanel from '../components/Admin/OverviewPanel';
+import SettingsPanel from '../components/Admin/SettingsPanel';
 import { errorText } from '../lib/errors';
 import { formatDuration, timeAgo } from '../lib/format';
 import './AdminPage.css';
 
-type Permission = 'moderation:review' | 'moderation:appeals' | 'moderation:audit' | 'moderation:sample' | 'metrics:read' | 'events:read' | 'users:manage' | 'system:read';
+type Permission = 'moderation:review' | 'moderation:appeals' | 'moderation:audit' | 'moderation:sample' | 'metrics:read' | 'events:read' | 'users:manage' | 'system:read' | 'settings:manage';
 const PERMISSIONS = new Map<Permission, readonly Role[]>([
   ['moderation:review', ['admin', 'operator']],
   ['moderation:appeals', ['admin', 'operator']],
@@ -31,6 +32,7 @@ const PERMISSIONS = new Map<Permission, readonly Role[]>([
   ['events:read', ['admin', 'auditor']],
   ['users:manage', ['admin']],
   ['system:read', ['admin']],
+  ['settings:manage', ['admin']],
 ]);
 export const can = (role: Role | undefined, p: Permission) => role !== undefined && (PERMISSIONS.get(p) ?? []).includes(role);
 
@@ -44,6 +46,7 @@ const TABS = [
   { key: 'metrics', permission: 'metrics:read' },
   { key: 'events', permission: 'events:read' },
   { key: 'users', permission: 'users:manage' },
+  { key: 'settings', permission: 'settings:manage' },
 ] as const satisfies readonly { key: string; permission: Permission }[];
 type TabKey = (typeof TABS)[number]['key'];
 
@@ -65,6 +68,11 @@ export default function AdminPage() {
   const [toast, notify] = useToast();
   const refreshStats = useCallback(() => { admin.stats().then(setStats).catch(() => undefined); }, []);
   useEffect(refreshStats, [refreshStats]);
+  // On a phone the tab bar scrolls; keep the open tab in view, also when the URL opens a later one.
+  const tabBar = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    tabBar.current?.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }, [tab]);
   const counts = new Map<TabKey, number | undefined>([['review', stats?.review], ['blocked', stats?.removed], ['comments', stats?.reportedComments], ['appeals', stats?.openAppeals]]);
 
   return (
@@ -73,7 +81,7 @@ export default function AdminPage() {
         <h1 className="admin-title">{t('admin.title')}</h1>
         <p className="admin-subtitle">{t('admin.subtitle')} · <span className="admin-role-chip">{t('admin.signedInAs', { role: t(`admin.roles.${user?.role ?? 'user'}`) })}</span></p>
       </header>
-      <div className="admin-tabs" role="tablist">
+      <div className="admin-tabs" role="tablist" ref={tabBar}>
         {visible.map((x) => {
           const n = counts.get(x.key);
           return (
@@ -91,6 +99,7 @@ export default function AdminPage() {
       {tab === 'metrics' && <MetricsPanel />}
       {tab === 'events' && <EventsPanel />}
       {tab === 'users' && <UsersPanel notify={notify} selfId={user?.id ?? ''} />}
+      {tab === 'settings' && <SettingsPanel notify={notify} />}
       {toast}
     </div>
   );

@@ -660,7 +660,71 @@
       "noErrors": "No video failed in this period.",
       "reason": "Reason"
     },
+    "settings": {
+      "intro": "Switch the services billed per use on or off. A change applies to videos that start processing (screening) or are published (captions) after it, and is kept in the history below.",
+      "on": "On",
+      "off": "Off",
+      "turnOn": "Turn on",
+      "turnOff": "Turn off",
+      "fromConsole": "Set in this console.",
+      "fromDefault": "Not set in this console; the infrastructure default applies ({{value}}).",
+      "moderation": {
+        "title": "Automatic screening (Amazon Rekognition)",
+        "body": "Samples one frame every 5 seconds of a new video for Rekognition before it is published. When off, new videos are published at once and recorded as unscreened; viewers can still report them and staff still review. Avatars, banners and thumbnails are always screened.",
+        "cost": "Cost: about 0.0013 USD per frame, at most 120 frames per video (about 0.08 USD for a 5-minute video)."
+      },
+      "captions": {
+        "title": "Automatic captions (Amazon Transcribe)",
+        "body": "Writes Vietnamese or English captions for newly published videos of paid plans, within the minutes of the plan. When off, no new job starts; running jobs still finish.",
+        "cost": "Cost: 0.006 USD per minute of audio; the plan caps it at 0.48 USD per creator and month.",
+        "infraOff": "Switched off in the infrastructure (Terraform auto_captions_enabled=false); apply it again before switching it on here."
+      },
+      "history": "History of changes",
+      "noChanges": "No change yet.",
+      "when": "When",
+      "switch": "Switch",
+      "change": "Change",
+      "by": "By",
+      "keys": {
+        "moderationEnabled": "Automatic screening",
+        "autoCaptionsEnabled": "Automatic captions"
+      },
+      "saveFailed": "Couldn't save: {{message}}",
+      "saved": {
+        "moderationEnabled": {
+          "on": "Automatic screening is on for new videos",
+          "off": "Automatic screening is off for new videos"
+        },
+        "autoCaptionsEnabled": {
+          "on": "Automatic captions are on",
+          "off": "Automatic captions are off"
+        }
+      },
+      "confirm": {
+        "moderationEnabled": {
+          "on": {
+            "title": "Turn automatic screening on?",
+            "message": "Every new video will go to Rekognition before it is published, at about 0.0013 USD per frame. Published videos are not screened again."
+          },
+          "off": {
+            "title": "Turn automatic screening off?",
+            "message": "New videos will be published without automatic screening; only viewer reports and staff review remain."
+          }
+        },
+        "autoCaptionsEnabled": {
+          "on": {
+            "title": "Turn automatic captions on?",
+            "message": "Videos of paid plans published from now on get captions, within the minutes of their plan."
+          },
+          "off": {
+            "title": "Turn automatic captions off?",
+            "message": "Videos published from now on get no automatic captions. Existing captions stay."
+          }
+        }
+      }
+    },
     "tab": {
+      "settings": "Settings",
       "overview": "Overview",
       "review": "To review",
       "blocked": "Removed",
