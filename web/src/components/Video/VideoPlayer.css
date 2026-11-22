@@ -229,6 +229,11 @@
   outline-color: #ffffff;
 }
 
+/* A control with nothing behind it (captions on a video without tracks): dimmed but still clickable for its notice. */
+.control-btn.is-unavailable {
+  opacity: 0.45;
+}
+
 .volume-control {
   display: flex;
   align-items: center;

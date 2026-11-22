@@ -640,9 +640,15 @@ export default function VideoPlayer({ grant, renew, poster, previewVtt, chapters
           </div>
           <span className="time-display">{formatTime(currentTime)} / {formatTime(duration)}</span>
           <div className="spacer" />
-          {grant.captions.length > 0 && (
-            <button className="control-btn" onClick={toggleCaptions} aria-pressed={captionLang !== null} aria-label={t('player.captions')}>
+          {/* Always shown, as on YouTube: without tracks it is dimmed and says why instead of disappearing. */}
+          {grant.captions.length > 0 ? (
+            <button className="control-btn" onClick={toggleCaptions} aria-pressed={captionLang !== null} aria-label={t('player.captions')} title={t('player.captions')}>
               {captionLang ? <MdClosedCaption /> : <MdClosedCaptionOff />}
+            </button>
+          ) : (
+            <button className="control-btn is-unavailable" onClick={() => showNotice(t('player.noCaptions'))} aria-disabled="true"
+              aria-label={t('player.noCaptions')} title={t('player.noCaptions')}>
+              <MdClosedCaptionOff />
             </button>
           )}
           <div className="settings-wrapper">
