@@ -59,6 +59,14 @@
   gap: var(--space-lg);
   margin-bottom: var(--space-md);
   border-bottom: 1px solid var(--border-color);
+  /* Ten tabs are wider than a phone: the bar scrolls instead of widening the page. */
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.admin-tabs .admin-tab {
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .admin-tab {
