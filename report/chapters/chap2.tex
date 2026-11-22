@@ -141,7 +141,7 @@ HLS delivers a video as a master playlist that refers to several media playlists
 segments of one rendition~\cite{rfc8216}. For each rendition the master playlist declares a
 \texttt{BANDWIDTH}, the peak bit rate the client must sustain, and optionally an
 \texttt{AVERAGE-BANDWIDTH}. Apple's authoring specification, which most deployments follow, asks for
-segments of nominally six seconds, for every video segment to start with an IDR frame, and for
+segments of nominally six seconds, for every video segment to start with an instantaneous decoder refresh (IDR) frame, and for
 \texttt{BANDWIDTH} to be the largest peak segment bit rate~\cite{applehlsauthoring}.
 
 Figure~\ref{fig:hls-abr} shows the artefacts produced from one source and the order in which a
@@ -207,7 +207,7 @@ API edge & Cloudflare Worker & Amazon API Gateway & The domain's Domain Name Sys
 Orchestration & AWS Step Functions & Containers that chain jobs themselves & One place for state, retries and failure handling, with a visible history \\
 Encoding & FFmpeg on AWS Batch with Fargate & AWS Elemental MediaConvert & Full control of the encoder, billed per vCPU-second \\
 Job priority & Two pairs of AWS Batch queues on the same compute & A separate compute environment for paid plans & Paid videos are served first when capacity is short, with no capacity reserved while idle \\
-Captions & Amazon Transcribe & Whisper run on Fargate & Billed per second of audio with no image or model to maintain; outputs WebVTT directly \\
+Captions & Amazon Transcribe & Whisper run on Fargate & Billed per second of audio with no image or model to maintain; outputs Web Video Text Tracks (WebVTT) directly \\
 Payment & Stripe Checkout and webhooks & Integrating a card gateway directly & Card data never reaches the platform; hosted checkout, portal and a test mode \\
 Documents & MongoDB Atlas & Relational database & Document-shaped data whose schema grows with features; managed service \\
 Search & Atlas Search & OpenSearch cluster & Full-text search inside the same database, no cluster to run \\
