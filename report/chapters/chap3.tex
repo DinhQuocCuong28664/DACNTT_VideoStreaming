@@ -409,7 +409,7 @@ Main flow &
   3. The server returns an unlock token for this video, and the page continues with UC-05. \\
 Alternative flows &
   2a. The password is wrong: the server answers 403, still without revealing the title. \newline
-  2b. More than ten attempts from one network address in fifteen minutes: the server answers 429. \\
+  2b. More than ten attempts on this video from one network address in fifteen minutes: the server answers 429. \\
 Postcondition & The viewer may watch the video while the unlock token is valid. \\
 \bottomrule
 \end{tabularx}
