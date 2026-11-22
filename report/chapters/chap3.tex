@@ -550,8 +550,8 @@ Main flow &
 Alternative flows &
   2a. The address is not verified: the server answers 403, and the page offers to send the link again. \newline
   2b. The file is larger than 20~GiB or not a supported video type: the server answers 400 before creating anything. \newline
-  2d. The file is larger than the plan of the creator allows: the server answers 403 with the limit, and the page links to the plans. \newline
   2c. More than twenty uploads in an hour: the server answers 429. \newline
+  2d. The file is larger than the plan of the creator allows: the server answers 403 with the limit, and the page links to the plans. \newline
   3a. The file is larger than 5~GiB: the server opens a multipart upload, the browser asks for grants for parts of 32~MiB and sends them, and the completion call assembles the parts from the list that S3 itself keeps, refusing missing or wrong-sized parts. \newline
   3b. The creator cancels: the multipart upload, the stored data and the draft are removed. \newline
   5a. The video is longer than the plan allows: processing stops after the duration is read, before any encoding, and the studio shows the video as failed with the reason. \\
