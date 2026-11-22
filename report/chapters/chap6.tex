@@ -25,7 +25,7 @@ lower ceilings, and changes are checked there before they reach production (Sect
 \midrule
 Web application & S3 bucket behind CloudFront & Hashed assets cached for a year \\
 API & One Lambda function, Node.js 22, 512 MiB, behind a Cloudflare Worker & 80 reserved instances \\
-Workflow & S3 events, SQS, the starter, Step Functions and four Lambda steps & One execution per upload version \\
+Workflow & S3 events, SQS, Step Functions and the functions starter, probe, status and stitch & One execution per upload version \\
 Compute & AWS Batch on Fargate Spot and Fargate On-Demand, standard and priority queues & 24 + 24 vCPUs, six + six chunk slots \\
 Media delivery & CloudFront, Origin Access Control, signed query policy & Edges of price class 200, which include Asia \\
 Documents and search & MongoDB Atlas, free M0 cluster of its own & 500 connections, 100 operations per second \\
