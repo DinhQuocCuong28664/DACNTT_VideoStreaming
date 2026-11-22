@@ -7,7 +7,7 @@
  * A video without an audio track, or longer than the plan allows, is skipped and costs nothing.
  * The job name is derived from the video and upload version, so a redelivered event starts nothing.
  */
-import { entitlements, processedPaths, rawObjectKey, VideoPublished, workPaths, type PlanSubject } from '@zelos/shared';
+import { entitlements, processedPaths, rawObjectKey, SETTINGS_COLLECTION, SYSTEM_SETTINGS_ID, VideoPublished, workPaths, type PlanSubject, type SystemSettingsDoc } from '@zelos/shared';
 
 /** Transcribe bills per second with a 15-second minimum, and refuses sources over 2 GB. */
 export const MIN_BILLED_SECONDS = 15;
@@ -40,6 +40,8 @@ export interface CaptionsDeps {
   /** Prefix of every job this environment starts, e.g. `zelos-staging`. */
   jobPrefix: string;
   buckets: { raw: string; work: string; processed: string };
+  /** The switch an administrator sets in the staff console; false stops new jobs, unset keeps them on. */
+  autoCaptionsEnabled(): Promise<boolean>;
   video(videoId: string): Promise<CaptionVideo | null>;
   hasAudio(videoId: string, uploadVersion: number): Promise<boolean>;
   user(ownerId: string): Promise<PlanSubject | null>;
@@ -80,6 +82,8 @@ export const billedSeconds = (durationSec: number): number => Math.max(MIN_BILLE
 
 async function start(event: unknown, deps: CaptionsDeps): Promise<CaptionsResult> {
   const detail = VideoPublished.parse((event as { detail?: unknown }).detail);
+  // Checked first, so a switched-off platform reads nothing else and spends nothing.
+  if (!(await deps.autoCaptionsEnabled())) return skip('automatic captions switched off');
   const video = await deps.video(detail.videoId);
   if (!video) return skip('video gone');
   const { uploadVersion } = video;
@@ -172,6 +176,10 @@ async function createRuntime(): Promise<CaptionsDeps> {
   return {
     jobPrefix: `zelos-${required('APP_ENV')}`,
     buckets,
+    async autoCaptionsEnabled() {
+      const s = await db.collection<SystemSettingsDoc>(SETTINGS_COLLECTION).findOne({ _id: SYSTEM_SETTINGS_ID });
+      return s?.autoCaptionsEnabled !== false;
+    },
     async video(videoId) {
       const v = await db.collection('videos').findOne({ _id: new ObjectId(videoId) }, { projection: { owner: 1, uploadVersion: 1, durationSec: 1, captions: 1 } });
       if (!v) return null;
