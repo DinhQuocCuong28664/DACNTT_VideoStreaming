@@ -71,7 +71,7 @@ the part that reads them, and Table~\ref{tab:env-secret} the fields of the secre
 \multicolumn{3}{l}{\textit{Terraform variables of an environment}} \\
 \texttt{transcoder\_image\_tag} & Yes & Commit of the transcoder image; no default in production \\
 \texttt{attach\_hosts} & No & Puts the hosts on the distributions; false only while hosts move \\
-\texttt{moderation\_enabled} & No & False only during measurement runs \\
+\texttt{moderation\_enabled} & No & Production only; defaults to false, so screening stays off until an apply sets it to true \\
 \texttt{auto\_captions\_enabled} & No & False stops the events that start automatic captions, for tests \\
 \texttt{alert\_emails} & No & Addresses subscribed to the alert topic \\
 \texttt{cdn\_transition\_reader\_arns}, \texttt{web\_transition\_reader\_arns} & No & Distributions that may still read the buckets while hosts move \\
