@@ -41,6 +41,9 @@ locals {
     SCHEDULE_GROUP       = local.schedule_group
     SCHEDULE_TARGET_ARN  = var.status_function_arn
     SCHEDULE_ROLE_ARN    = aws_iam_role.scheduler.arn
+    # Defaults the staff console shows for the runtime switches (shared/src/settings.ts).
+    MODERATION_DEFAULT  = tostring(var.moderation_enabled)
+    AUTO_CAPTIONS_INFRA = tostring(var.auto_captions_enabled)
   }
 
   background_env = {
