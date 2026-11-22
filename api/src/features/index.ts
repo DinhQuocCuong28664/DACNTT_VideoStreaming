@@ -9,6 +9,7 @@ import { studioFeature } from './studio.js';
 import { moderationFeature } from './moderation.js';
 import { discoveryFeature } from './discovery.js';
 import { billingFeature } from './billing.js';
+import { systemFeature } from './system.js';
 
 /** Every feature module, in the order its routes are registered. */
-export const FEATURES: readonly Feature[] = [authFeature, uploadsFeature, videosFeature, communityFeature, channelsFeature, libraryFeature, studioFeature, moderationFeature, discoveryFeature, billingFeature];
+export const FEATURES: readonly Feature[] = [authFeature, uploadsFeature, videosFeature, communityFeature, channelsFeature, libraryFeature, studioFeature, moderationFeature, discoveryFeature, billingFeature, systemFeature];
