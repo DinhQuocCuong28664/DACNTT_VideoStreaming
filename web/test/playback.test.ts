@@ -1,5 +1,24 @@
 import { describe, expect, it } from 'vitest';
-import { addWatched, cueAt, embedCode, parseSpriteVtt, parseStartTime, qualityLabel, reachedView, signUrl, viewThreshold, withStartTime } from '../src/lib/playback';
+import { addWatched, cueAt, embedCode, parseSpriteVtt, parseStartTime, qualityLabel, reachedView, signUrl, stackSeek, viewThreshold, withStartTime } from '../src/lib/playback';
+
+describe('seek badge', () => {
+  it('starts at one step', () => {
+    expect(stackSeek(null, 1, 5, 1000)).toEqual({ dir: 1, seconds: 5, at: 1000 });
+  });
+
+  it('adds quick presses in the same direction', () => {
+    const first = stackSeek(null, 1, 5, 1000);
+    const second = stackSeek(first, 1, 5, 1500, 700);
+    expect(second).toEqual({ dir: 1, seconds: 10, at: 1500 });
+    expect(stackSeek(second, 1, 5, 2100, 700).seconds).toBe(15);
+  });
+
+  it('starts over after a pause or a change of direction', () => {
+    const first = stackSeek(null, 1, 5, 1000);
+    expect(stackSeek(first, 1, 5, 1700, 700).seconds).toBe(5);
+    expect(stackSeek(first, -1, 5, 1100, 700)).toEqual({ dir: -1, seconds: 5, at: 1100 });
+  });
+});
 
 describe('view rule', () => {
   it('needs 30 seconds, or the whole of a shorter video', () => {

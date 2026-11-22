@@ -383,7 +383,8 @@
     "captionsOff": "Tắt",
     "captionAuto": "{{label}} (tự động)",
     "copyEmbed": "Sao chép mã nhúng",
-    "embedCopied": "Đã sao chép mã nhúng"
+    "embedCopied": "Đã sao chép mã nhúng",
+    "seekSeconds_other": "{{count}} giây"
   },
   "settings": {
     "avatarSection": "Ảnh của bạn",

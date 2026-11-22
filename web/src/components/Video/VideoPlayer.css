@@ -445,6 +445,88 @@
   animation: player-menu-in 150ms var(--ease-out);
 }
 
+/* Arrow-key seek badge, as on YouTube: a dim circle on the left or right with three arrows that
+   light up in turn and the seconds moved. It takes no pointer events, so clicks still reach the video. */
+.player-seek-flash {
+  position: absolute;
+  top: 50%;
+  z-index: 12;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 112px;
+  height: 112px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.45);
+  color: #ffffff;
+  transform: translateY(-50%);
+  pointer-events: none;
+  animation: player-seek-flash-in 120ms var(--ease-out);
+}
+
+.player-seek-flash.is-forward {
+  right: 12%;
+}
+
+.player-seek-flash.is-back {
+  left: 12%;
+}
+
+.player-seek-flash-arrows {
+  display: flex;
+  gap: 2px;
+}
+
+/* Triangles drawn with borders; going back mirrors the whole group. */
+.player-seek-flash-arrows > span {
+  width: 0;
+  height: 0;
+  border-top: 7px solid transparent;
+  border-bottom: 7px solid transparent;
+  border-left: 11px solid currentColor;
+  opacity: 0.25;
+  animation: player-seek-arrow 600ms linear;
+}
+
+.player-seek-flash.is-back .player-seek-flash-arrows {
+  transform: scaleX(-1);
+}
+
+.player-seek-flash-arrows > span:nth-child(2) {
+  animation-delay: 100ms;
+}
+
+.player-seek-flash-arrows > span:nth-child(3) {
+  animation-delay: 200ms;
+}
+
+.player-seek-flash-label {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+@keyframes player-seek-flash-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes player-seek-arrow {
+  0%,
+  100% {
+    opacity: 0.25;
+  }
+  35% {
+    opacity: 1;
+  }
+}
+
 @keyframes player-menu-in {
   from {
     opacity: 0;
