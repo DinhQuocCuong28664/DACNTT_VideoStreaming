@@ -16,9 +16,9 @@ variable "alert_emails" {
 }
 
 variable "moderation_enabled" {
-  description = "Set to false only while a measurement runs (-var moderation_enabled=false); apply again without it afterwards"
+  description = "Rekognition screening of new videos; off by default to save cost, apply with -var moderation_enabled=true to switch it on"
   type        = bool
-  default     = true
+  default     = false
 }
 
 variable "cdn_transition_reader_arns" {

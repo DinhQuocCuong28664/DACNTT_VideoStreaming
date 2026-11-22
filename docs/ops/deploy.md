@@ -50,7 +50,7 @@ outputs of `shared` (VPC, subnets, ECR URL, artifacts bucket).
 | Parallel chunk slots | 4 | 6 |
 | API reserved concurrency | 20 | 80 |
 | `transcoder_image_tag` | defaults to `bootstrap` | **required on every plan/apply** |
-| `moderation_enabled` variable | not present | default `true` |
+| `moderation_enabled` variable | not present | default `false` (screening off) |
 | Buckets `force_destroy` | true | false |
 
 Both environments share the Fargate quota of account B (64 vCPU). Staging and prod together
@@ -271,8 +271,8 @@ so videos processed earlier would point at a dead host.
 2. Open the site. Play an existing video, open the quality menu, and check that the CDN
    requests return 200.
 3. When a change touches the pipeline, upload a short clip and wait for `READY` in Studio.
-   Staging has no moderation switch. In prod, apply with `-var moderation_enabled=false` before
-   test uploads and apply again without it afterwards.
+   Staging has no moderation switch. Prod screening is off by default; when it has been switched
+   on (`-var moderation_enabled=true`), apply without the variable before test uploads.
 4. End-to-end tests:
 
    ```bash
