@@ -93,8 +93,9 @@ request runs linting, type checks, unit tests, a smoke test of the transcoder im
 scans, so each change is reviewed before it is merged.
 
 The evaluation was empirical. Every figure in Chapter~\ref{chap:evaluation} was produced by a
-measurement script kept in the repository and run against the production system in its final
-configuration, and the raw output of each run was stored as a JavaScript Object Notation (JSON) file;
+measurement script kept in the repository and run against the production system, except the
+priority queues, which were measured on staging, an environment built from the same Terraform code
+with smaller ceilings. The raw output of each run was stored as a JavaScript Object Notation (JSON) file;
 Table~\ref{tab:provenance} maps each table and figure to the run that produced it.
 
 \section{Practical Significance}

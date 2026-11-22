@@ -164,7 +164,7 @@ chunk & 4 vCPU, 8 GiB per child & bulk or priority-bulk & Every rung of one chun
 \end{tabularx}
 \end{table}
 
-The sizes follow from measurements on the final configuration. A clip of up to one minute finishes
+The sizes follow from measurements on the production system. A clip of up to one minute finishes
 encoding in about thirty seconds on four vCPUs, while a longer single encode benefits from eight,
 because one ffmpeg run feeds up to six x264 encoders from a single decoder. The threshold of five
 minutes for the chunked path is kept because, below it, one eight-vCPU job avoids starting the extra
