@@ -9,6 +9,7 @@ import {
   TranscodeProgress,
   applyProgress,
   emptyProgress,
+  envFlag,
   keyObject,
   overallPercent,
   workPaths,
@@ -68,6 +69,10 @@ export interface StatusDeps {
   alert: (subject: string, message: string) => Promise<void>;
   /** The owner's plan: priority queues and the longest video the pipeline accepts. */
   ownerLimits: (ownerId: string) => Promise<OwnerLimits>;
+  /** The screening switch of the staff console, or the default of the infrastructure when unset. */
+  moderationEnabled: () => Promise<boolean>;
+  /** Used when the switch cannot be read; set by Terraform (MODERATION_DEFAULT). */
+  moderationDefault: boolean;
   now: () => Date;
   log: (entry: Record<string, unknown>) => void;
 }
@@ -84,9 +89,15 @@ export interface OwnerLimits {
 /** Used when the plan cannot be read: a lookup that fails must not stop or fail a video. */
 export const NO_LIMIT_SEC = 48 * 3600;
 
+/**
+ * The workflow passes `moderation` to the analyse job as MODERATION_ENABLED, so it is the text of
+ * an environment value. Containers never read the switch themselves: they hold no database access.
+ */
+export type ModerationFlag = 'true' | 'false';
+
 export type StatusResult =
-  | { found: false; lane?: Lane; maxDurationSec?: number }
-  | { found: true; status?: string; published?: boolean; lane?: Lane; maxDurationSec?: number };
+  | { found: false; lane?: Lane; maxDurationSec?: number; moderation?: ModerationFlag }
+  | { found: true; status?: string; published?: boolean; lane?: Lane; maxDurationSec?: number; moderation?: ModerationFlag };
 
 async function start(input: z.infer<typeof StartInput>, deps: StatusDeps): Promise<StatusResult> {
   const keyRef = keyObject(input.videoId, input.uploadVersion);
@@ -96,14 +107,16 @@ async function start(input: z.infer<typeof StartInput>, deps: StatusDeps): Promi
   const doc = await deps.videos.startProcessing(input.videoId, input.uploadVersion, emptyProgress(input.chunkCount ?? 0), keyRef);
   if (!doc) {
     deps.log({ level: 'warn', msg: 'video deleted or superseded before processing', videoId: input.videoId });
-    // The workflow reads the lane of every start result, so it is present here too.
-    return { found: false, lane: 'standard', maxDurationSec: NO_LIMIT_SEC };
+    // The workflow reads every field of a start result, so they are present here too.
+    return { found: false, lane: 'standard', maxDurationSec: NO_LIMIT_SEC, moderation: deps.moderationDefault ? 'true' : 'false' };
   }
   // Read at every start, so a plan bought or cancelled meanwhile applies to the next upload. If the
   // lookup fails the video takes the standard lane and is not length-checked.
   const limits = await deps.ownerLimits(doc.owner).catch(() => null);
   const lane: Lane = limits?.priority ? 'priority' : 'standard';
-  return { found: true, status: doc.status, lane, maxDurationSec: limits ? limits.maxVideoMinutes * 60 : NO_LIMIT_SEC };
+  // The switch applies to videos that start processing after it changed; a failed read keeps the default.
+  const screen = await deps.moderationEnabled().catch(() => deps.moderationDefault);
+  return { found: true, status: doc.status, lane, maxDurationSec: limits ? limits.maxVideoMinutes * 60 : NO_LIMIT_SEC, moderation: screen ? 'true' : 'false' };
 }
 
 async function publish(input: z.infer<typeof PublishInput>, deps: StatusDeps): Promise<StatusResult> {
@@ -187,7 +200,7 @@ export async function handle(event: unknown, deps: StatusDeps): Promise<StatusRe
 let runtime: StatusDeps | undefined;
 
 async function createRuntime(): Promise<StatusDeps> {
-  const [{ S3Client, PutObjectCommand, GetObjectCommand }, { EventBridgeClient, PutEventsCommand }, { SNSClient, PublishCommand }, { SecretsManagerClient, GetSecretValueCommand }, { videosCollection, usersCollection, mongoVideoStore, ownerLimits }, { required }] = await Promise.all([
+  const [{ S3Client, PutObjectCommand, GetObjectCommand }, { EventBridgeClient, PutEventsCommand }, { SNSClient, PublishCommand }, { SecretsManagerClient, GetSecretValueCommand }, { videosCollection, usersCollection, settingsCollection, mongoVideoStore, ownerLimits, moderationEnabled }, { required }] = await Promise.all([
     import('@aws-sdk/client-s3'),
     import('@aws-sdk/client-eventbridge'),
     import('@aws-sdk/client-sns'),
@@ -205,6 +218,8 @@ async function createRuntime(): Promise<StatusDeps> {
   const secret = await new SecretsManagerClient({}).send(new GetSecretValueCommand({ SecretId: required('MONGODB_SECRET_ARN') }));
   const videos = mongoVideoStore(await videosCollection(secret.SecretString ?? '', required('DB_NAME')));
   const users = await usersCollection(secret.SecretString ?? '', required('DB_NAME'));
+  const settings = await settingsCollection(secret.SecretString ?? '', required('DB_NAME'));
+  const moderationDefault = envFlag(process.env['MODERATION_DEFAULT'], true);
 
   return {
     videos,
@@ -233,6 +248,8 @@ async function createRuntime(): Promise<StatusDeps> {
       await sns.send(new PublishCommand({ TopicArn: topicArn, Subject: subject.slice(0, 100), Message: message }));
     },
     ownerLimits: (ownerId) => ownerLimits(users, ownerId, new Date()),
+    moderationEnabled: () => moderationEnabled(settings, moderationDefault),
+    moderationDefault,
     now: () => new Date(),
     log: (entry) => console.log(JSON.stringify(entry)),
   };

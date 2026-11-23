@@ -120,6 +120,8 @@ function statusDeps(store: VideoStore, work: Record<string, unknown> = {}, owner
     emitPublished: async (d) => { published.push(d); },
     alert: async (s) => { alerts.push(s); },
     ownerLimits,
+    moderationEnabled: async () => true,
+    moderationDefault: true,
     now: () => new Date('2026-11-01T00:00:00Z'),
     log: () => undefined,
   };
@@ -138,7 +140,7 @@ describe('status', () => {
   it('start creates one key, keeps it on a retry, and moves the video to PROCESSING', async () => {
     const { store, doc } = memoryStore(base);
     const { deps, keys } = statusDeps(store);
-    expect(await handle({ action: 'start', videoId, uploadVersion: 1 }, deps)).toEqual({ found: true, status: 'PROCESSING', lane: 'standard', maxDurationSec: 3600 });
+    expect(await handle({ action: 'start', videoId, uploadVersion: 1 }, deps)).toEqual({ found: true, status: 'PROCESSING', lane: 'standard', maxDurationSec: 3600, moderation: 'true' });
     const first = keys.get(`keys/${videoId}/v1.json`);
     await handle({ action: 'start', videoId, uploadVersion: 1 }, deps);
     expect(keys.get(`keys/${videoId}/v1.json`)).toBe(first);
@@ -155,7 +157,19 @@ describe('status', () => {
   it('start reports a deleted or newer video as not found', async () => {
     const { store } = memoryStore({ ...base, uploadVersion: 2 });
     const { deps } = statusDeps(store);
-    expect(await handle({ action: 'start', videoId, uploadVersion: 1 }, deps)).toEqual({ found: false, lane: 'standard', maxDurationSec: NO_LIMIT_SEC });
+    expect(await handle({ action: 'start', videoId, uploadVersion: 1 }, deps)).toEqual({ found: false, lane: 'standard', maxDurationSec: NO_LIMIT_SEC, moderation: 'true' });
+  });
+
+  it('start hands the screening switch to the workflow and keeps the default when it cannot be read', async () => {
+    const off = statusDeps(memoryStore(base).store);
+    off.deps.moderationEnabled = async () => false;
+    expect(await handle({ action: 'start', videoId, uploadVersion: 1 }, off.deps)).toMatchObject({ found: true, moderation: 'false' });
+    const broken = statusDeps(memoryStore(base).store);
+    broken.deps.moderationEnabled = async () => { throw new Error('mongo down'); };
+    broken.deps.moderationDefault = false;
+    expect(await handle({ action: 'start', videoId, uploadVersion: 1 }, broken.deps)).toMatchObject({ found: true, moderation: 'false' });
+    broken.deps.moderationDefault = true;
+    expect(await handle({ action: 'start', videoId, uploadVersion: 1 }, broken.deps)).toMatchObject({ found: true, moderation: 'true' });
   });
 
   it('folds progress events from both branches and ignores events of an old version', async () => {

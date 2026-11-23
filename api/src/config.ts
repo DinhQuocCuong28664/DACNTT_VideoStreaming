@@ -4,6 +4,7 @@
  * a missing value fails the deploy check instead of a user request.
  */
 import { z } from 'zod';
+import { envFlag } from '@zelos/shared';
 import { HARD_CAP_BYTES } from './model/video.js';
 
 const csv = z.string().transform((s) => s.split(',').map((v) => v.trim()).filter(Boolean));
@@ -35,6 +36,10 @@ export const envSchema = z.object({
   SCHEDULE_GROUP: z.string().optional(),
   SCHEDULE_TARGET_ARN: z.string().optional(),
   SCHEDULE_ROLE_ARN: z.string().optional(),
+  /** Default of the screening switch while no administrator has set it (shared/src/settings.ts). */
+  MODERATION_DEFAULT: z.string().optional(),
+  /** False when Terraform removed the trigger of automatic captions; the console cannot switch them on then. */
+  AUTO_CAPTIONS_INFRA: z.string().optional(),
 });
 
 export const secretSchema = z.object({
@@ -69,6 +74,8 @@ export interface Config {
   mongoPoolSize: number;
   uploadMaxBytes: number;
   schedule: { group: string; targetArn: string; roleArn: string } | null;
+  /** What the infrastructure sets for the runtime switches of the staff console. */
+  switches: { moderationDefault: boolean; autoCaptionsInfra: boolean };
   secrets: Secrets;
 }
 
@@ -99,6 +106,7 @@ export function loadConfig(env: Record<string, string | undefined>, secretJson: 
     schedule: e.SCHEDULE_GROUP && e.SCHEDULE_TARGET_ARN && e.SCHEDULE_ROLE_ARN
       ? { group: e.SCHEDULE_GROUP, targetArn: e.SCHEDULE_TARGET_ARN, roleArn: e.SCHEDULE_ROLE_ARN }
       : null,
+    switches: { moderationDefault: envFlag(e.MODERATION_DEFAULT, true), autoCaptionsInfra: envFlag(e.AUTO_CAPTIONS_INFRA, true) },
     secrets: s,
   };
 }

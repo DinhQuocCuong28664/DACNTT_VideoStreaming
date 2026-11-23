@@ -1,0 +1,116 @@
+/* Overview tab of the staff console. Stat tiles reuse .admin-stat from AdminPage.css. */
+
+.ov-windows {
+  display: flex;
+  flex-wrap: wrap;
+  margin-bottom: var(--space-md);
+}
+
+.admin-stats.ov-stats {
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  margin-bottom: var(--space-sm);
+}
+
+.ov-charts {
+  display: grid;
+  gap: var(--space-lg);
+}
+
+.ov-chart {
+  margin: 0;
+  padding: var(--space-md);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+}
+
+.ov-chart-head {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-md);
+  font-size: var(--font-size-sm);
+}
+
+.ov-chart-title {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.ov-chart-total,
+.ov-readout,
+.ov-axis,
+.ov-max {
+  color: var(--text-secondary);
+  font-size: var(--font-size-xs);
+}
+
+.ov-readout {
+  min-height: 1.4em;
+  margin: var(--space-xs) 0;
+}
+
+.ov-readout strong {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+/* One column per day; the whole column height is the hover target, the bar sits on the baseline. */
+.ov-plot {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 120px;
+  padding-top: var(--space-md);
+  border-bottom: 1px solid var(--border-hover);
+  background-image: linear-gradient(var(--border-color), var(--border-color));
+  background-size: 100% 1px;
+  background-position: 0 var(--space-md);
+  background-repeat: no-repeat;
+}
+
+.ov-max {
+  position: absolute;
+  top: 0;
+  left: 0;
+  line-height: 1;
+}
+
+.ov-col {
+  flex: 1 1 0;
+  min-width: 1px;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+}
+
+.ov-col.is-hover {
+  background: var(--accent-soft);
+}
+
+.ov-bar {
+  display: block;
+  width: 100%;
+  min-height: 2px;
+  border-radius: 4px 4px 0 0;
+  background: var(--accent-primary);
+}
+
+.ov-axis {
+  display: flex;
+  justify-content: space-between;
+  margin-top: var(--space-xs);
+}
+
+.ov-table-view {
+  margin-top: var(--space-md);
+}
+
+.ov-table-view summary {
+  cursor: pointer;
+  color: var(--accent-primary);
+  font-size: var(--font-size-sm);
+}
+
+.ov-reason {
+  overflow-wrap: anywhere;
+}

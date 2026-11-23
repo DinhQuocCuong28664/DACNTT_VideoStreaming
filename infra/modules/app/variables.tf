@@ -91,3 +91,9 @@ variable "auto_captions_enabled" {
   type        = bool
   default     = true
 }
+
+variable "moderation_enabled" {
+  description = "Default of the screening switch that the staff console shows while no administrator has set one"
+  type        = bool
+  default     = true
+}

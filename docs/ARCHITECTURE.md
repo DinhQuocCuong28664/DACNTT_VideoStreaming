@@ -26,7 +26,7 @@ product; none is optional.
 | F9 | Memberships | Tiers per channel, join/cancel (sandbox payment), member roster, members-only videos, member badge |
 | F10 | Library | Watch history, watch later, playlists (ordered, public/unlisted/private) |
 | F11 | Creator studio | Edit metadata, captions (VTT upload, or automatic with Amazon Transcribe on paid plans), chapters, thumbnail, visibility, schedule; analytics: views per day, watch time, audience retention |
-| F12 | Trust & safety | Automatic screening (Rekognition), review queue, decisions with reason codes, appeals, audit sampling with FP/FN metrics, event log, user/role admin; roles `user`, `operator`, `auditor`, `admin` |
+| F12 | Trust & safety | Automatic screening (Rekognition), review queue, decisions with reason codes, appeals, audit sampling with FP/FN metrics, event log, user/role admin; roles `user`, `operator`, `auditor`, `admin`; for admins an overview (users, plans, content, processing, captions, views) and runtime switches of screening and automatic captions |
 | F13 | UI | Light/dark theme, Vietnamese/English, 403/404 pages, design system in vanilla CSS (no Tailwind) |
 | F14 | Platform plans | Free, Plus, Pro and Max (VND per month) bought through Stripe Checkout (test mode until payments go live); the webhook alone sets the plan; limits per plan (upload size, membership tiers, analytics window) come from one `entitlements(user)` function; accounts created before 2026-11-13 keep the Pro limits |
 
@@ -391,6 +391,16 @@ content lowers severity. Avatars, banners and custom thumbnails go through the s
 before they are published. If Rekognition is unavailable, the video goes to `review` (fail
 closed). The same pass writes the seek-preview sprite sheets and the default thumbnail.
 
+Screening can be switched off to save cost. The switch is the `settings/system` document that an
+admin sets in the staff console (`PUT /v1/admin/settings`); without it, the Terraform variable
+`moderation_enabled` is the default. The transcoder holds no database access, so it never reads the
+switch: `MarkProcessing` (the `status` function) reads it and the state machine passes it to the
+`analyse` job as `MODERATION_ENABLED` in the container overrides. A video processed with screening
+off is published as `approved` with `source: disabled`, outside the error-rate metrics. The same
+document holds the automatic-captions switch, which the `captions` function reads before it
+reserves minutes; Terraform `auto_captions_enabled=false` still removes the trigger altogether.
+Every change is appended to `settingsChanges`, which is never updated.
+
 ### 5.8 Concurrency and connection budget
 
 | Function | Reserved concurrency | Mongo pool per instance | Max connections |
@@ -531,7 +541,8 @@ paging `?cursor=&limit=`.
 - `me`: profile, avatar, history (list, delete), watch-later, playlists CRUD + items,
   notifications (list, mark read), subscriptions feed, studio analytics
 - `admin`: moderation queue, decisions, comment reports, appeals, audit samples, metrics,
-  events, users and roles
+  events, users and roles; overview (`system:read`) and runtime switches (`settings:manage`),
+  both admin only
 
 The full reference with request/response schemas becomes Appendix A of the report.
 
