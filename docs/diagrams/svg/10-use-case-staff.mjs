@@ -82,7 +82,7 @@ const placeL = (key, cy, label, tone = 'network') => {
 };
 placeL('screen', 108, ['Screen frames of', 'an uploaded video'], 'compute');
 placeL('report', ry(0), 'Report a video');
-placeL('appealOwn', ry(2), ['Appeal the removal of', "one's own video"]);
+placeL('appealOwn', ry(2), ['Appeal the removal or', "hold of one's own video"]);
 placeL('reportComment', ry(4), 'Report a comment');
 
 // ── Tác nhân ────────────────────────────────────────────────────────────────────
