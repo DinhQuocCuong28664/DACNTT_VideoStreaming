@@ -172,12 +172,15 @@ module "workflow" {
   db_name             = local.db_name
   # Spot ceiling 24 / 4 vCPU per chunk job: the plan cuts a long video into 3 x 6 chunks.
   chunk_parallel_slots = 6
+  # Default of the screening switch until an administrator sets it in the staff console.
+  moderation_enabled = var.moderation_enabled
 }
 
 module "app" {
   source                = "../../modules/app"
   name                  = local.name
   auto_captions_enabled = var.auto_captions_enabled
+  moderation_enabled    = var.moderation_enabled
   environment_name      = local.environment
   api_dist_dir          = "${path.root}/../../../api/dist"
   functions_dist_dir    = "${path.root}/../../../functions/dist"

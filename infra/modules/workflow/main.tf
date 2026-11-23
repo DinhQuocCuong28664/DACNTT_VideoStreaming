@@ -111,6 +111,7 @@ locals {
       ALERT_TOPIC_ARN    = var.alert_topic_arn
       MONGODB_SECRET_ARN = aws_secretsmanager_secret.mongodb_uri.arn
       DB_NAME            = var.db_name
+      MODERATION_DEFAULT = tostring(var.moderation_enabled)
     }
     stitch = {
       WORK_BUCKET      = var.bucket_names.work
@@ -380,6 +381,9 @@ locals {
     { Name = "UPLOAD_VERSION", "Value.$" = "States.Format('{}', $.uploadVersion)" },
     { Name = "RAW_KEY", "Value.$" = "$.key" },
   ]
+  # The screening switch, read by MarkProcessing from the settings of the staff console. It
+  # overrides MODERATION_ENABLED of the job definition, which stays as the fallback.
+  analyse_env = concat(local.job_env, [{ Name = "MODERATION_ENABLED", "Value.$" = "$.start.moderation" }])
 
   batch_job = { for role in ["analyse", "encode", "audio", "chunk"] : role => {
     Type     = "Task"
@@ -389,7 +393,7 @@ locals {
       # Chosen per video by the Lane states: the owner's plan decides between the priority and the standard pair.
       "JobQueue.$"  = role == "chunk" ? "$.queues.bulk" : "$.queues.main"
       JobDefinition = var.job_definition_arns[role]
-      ContainerOverrides = merge({ Environment = local.job_env }, role == "encode" ? {
+      ContainerOverrides = merge({ Environment = role == "analyse" ? local.analyse_env : local.job_env }, role == "encode" ? {
         ResourceRequirements = [
           { Type = "VCPU", "Value.$" = "$.probe.encode.vcpu" },
           { Type = "MEMORY", "Value.$" = "$.probe.encode.memory" },
@@ -418,7 +422,7 @@ locals {
             "uploadVersion.$" = "$.uploadVersion"
           }
         }
-        ResultSelector = { "found.$" = "$.Payload.found", "lane.$" = "$.Payload.lane", "maxDurationSec.$" = "$.Payload.maxDurationSec" }
+        ResultSelector = { "found.$" = "$.Payload.found", "lane.$" = "$.Payload.lane", "maxDurationSec.$" = "$.Payload.maxDurationSec", "moderation.$" = "$.Payload.moderation" }
         ResultPath     = "$.start"
         Retry          = local.lambda_retry
         Catch          = local.to_failed

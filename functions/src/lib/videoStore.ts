@@ -4,7 +4,7 @@
  * The client is created once per Lambda instance with a small pool (§5.8 connection budget).
  */
 import { MongoClient, ObjectId, type Collection, type Document } from 'mongodb';
-import { entitlements, type ProgressState, type TranscodeProgress } from '@zelos/shared';
+import { effectiveSetting, entitlements, SETTINGS_COLLECTION, SYSTEM_SETTINGS_ID, type ProgressState, type SystemSettingsDoc, type TranscodeProgress } from '@zelos/shared';
 import type { OwnerLimits, VideoDoc, VideoStore } from '../status.js';
 
 let client: MongoClient | undefined;
@@ -92,6 +92,18 @@ export async function usersCollection(uri: string, dbName: string): Promise<Coll
   client ??= new MongoClient(uri, { maxPoolSize: 2, maxIdleTimeMS: 60_000, serverSelectionTimeoutMS: 10_000 });
   await client.connect();
   return client.db(dbName).collection('users');
+}
+
+export async function settingsCollection(uri: string, dbName: string): Promise<Collection<SystemSettingsDoc>> {
+  client ??= new MongoClient(uri, { maxPoolSize: 2, maxIdleTimeMS: 60_000, serverSelectionTimeoutMS: 10_000 });
+  await client.connect();
+  return client.db(dbName).collection<SystemSettingsDoc>(SETTINGS_COLLECTION);
+}
+
+/** The screening switch of the staff console; without one, the default of the infrastructure. */
+export async function moderationEnabled(settings: Collection<SystemSettingsDoc>, fallback: boolean): Promise<boolean> {
+  const s = await settings.findOne({ _id: SYSTEM_SETTINGS_ID }, { projection: { moderationEnabled: 1 } });
+  return effectiveSetting(s?.moderationEnabled, fallback);
 }
 
 /** What the owner's current plan allows the pipeline to do with their video. */

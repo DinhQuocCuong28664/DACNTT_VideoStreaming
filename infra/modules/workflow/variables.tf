@@ -90,3 +90,9 @@ variable "log_retention_days" {
   type    = number
   default = 14
 }
+
+variable "moderation_enabled" {
+  description = "Default of the screening switch, used while the staff console has not set one; the status function hands the value to every analyse job"
+  type        = bool
+  default     = true
+}

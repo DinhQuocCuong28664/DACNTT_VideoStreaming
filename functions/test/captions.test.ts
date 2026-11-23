@@ -9,7 +9,7 @@ const published = { source: 'zelos.transcoder', 'detail-type': 'VideoPublished',
 const transcribe = (status: string) => ({ source: 'aws.transcribe', 'detail-type': 'Transcribe Job State Change', detail: { TranscriptionJobName: jobName(PREFIX, videoId, 1), TranscriptionJobStatus: status } });
 const PLUS = { createdAt: new Date('2026-11-20T00:00:00Z'), billing: { plan: 'plus' as const, status: 'active', currentPeriodEnd: new Date('2026-12-14T00:00:00Z'), cancelAtPeriodEnd: false, customerId: 'c', subscriptionId: 's', eventAt: 1 } };
 
-function world(opts: { video?: Partial<CaptionVideo>; hasAudio?: boolean; user?: unknown; used?: number; size?: number | null; job?: JobInfo | null; vtt?: string } = {}) {
+function world(opts: { enabled?: boolean; video?: Partial<CaptionVideo>; hasAudio?: boolean; user?: unknown; used?: number; size?: number | null; job?: JobInfo | null; vtt?: string } = {}) {
   const used = new Map<string, number>();
   if (opts.used) used.set(`${ownerId}:2026-11`, opts.used);
   const started: { name: string; mediaUri: string; outputKey: string }[] = [];
@@ -19,6 +19,7 @@ function world(opts: { video?: Partial<CaptionVideo>; hasAudio?: boolean; user?:
   const deps: CaptionsDeps = {
     jobPrefix: PREFIX,
     buckets: { raw: 'raw-b', work: 'work-b', processed: 'proc-b' },
+    autoCaptionsEnabled: async () => opts.enabled ?? true,
     video: async () => ({ owner: ownerId, uploadVersion: 1, durationSec: 60, captions: [], ...opts.video }),
     hasAudio: async () => opts.hasAudio ?? true,
     user: async () => (opts.user === undefined ? PLUS : (opts.user as never)),
@@ -48,6 +49,13 @@ describe('automatic captions: start', () => {
     expect(await handleCaptions(published, w.deps)).toEqual({ action: 'started', seconds: 60 });
     expect(w.started).toEqual([{ name: `${PREFIX}-${videoId}-1`, mediaUri: `s3://raw-b/raw/${videoId}/1/source`, outputBucket: 'work-b', outputKey: `work/${videoId}/v1/captions/` }]);
     expect(w.used.get(`${ownerId}:2026-11`)).toBe(60);
+  });
+
+  it('starts nothing and reserves nothing while an administrator has switched captions off', async () => {
+    const w = world({ enabled: false });
+    expect(await handleCaptions(published, w.deps)).toEqual({ action: 'skipped', reason: 'automatic captions switched off' });
+    expect(w.started).toHaveLength(0);
+    expect(w.used.size).toBe(0);
   });
 
   it('does nothing twice for the same upload version', async () => {
