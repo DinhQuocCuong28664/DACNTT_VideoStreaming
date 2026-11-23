@@ -29,6 +29,8 @@ const user = entity({ ...OPTS, x: X[0], y: 44, name: 'users', tone: 'storage', r
   { type: 'string', name: 'avatar, banner', note: 'screened images' },
   { type: 'object', name: 'counters', note: 'subscribers, videos' },
   { type: 'object', name: 'billing', note: 'plan; set by the webhook' },
+  { type: 'boolean', name: 'historyPaused', note: 'no history while true' },
+  { type: 'ObjectId', name: 'featuredVideo', key: 'FK', note: '→ videos; own public video' },
 ] });
 const sub = entity({ ...OPTS, x: X[0], y: user.box.b + 40, name: 'subscriptions', tone: 'network', rows: [
   { type: 'ObjectId', name: 'subscriber', key: 'FK', note: '→ users' },
@@ -103,7 +105,14 @@ const captionUsage = entity({ ...OPTS, x: X[1], y: comment.box.b + 40, name: 'ca
   { type: 'number', name: 'seconds', note: 'conditional $inc' },
 ] });
 
-p.push(user.svg, sub.svg, playlist.svg, video.svg, comment.svg, reaction.svg, tier.svg, member.svg, daily.svg, billingEvents.svg, captionUsage.svg);
+const dismissal = entity({ ...OPTS, x: X[2], y: daily.box.b + 40, name: 'dismissals', tone: 'network', rows: [
+  { type: 'ObjectId', name: 'user', key: 'FK', note: '→ users' },
+  { type: 'ObjectId', name: 'video', key: 'FK', note: '→ videos; pair unique' },
+  { type: 'Date', name: 'createdAt', note: '"not interested"' },
+] });
+
+p.push(user.svg, sub.svg, playlist.svg, video.svg, comment.svg, reaction.svg, tier.svg, member.svg, daily.svg, billingEvents.svg, captionUsage.svg, dismissal.svg);
+if (Math.max(billingEvents.box.b, captionUsage.box.b, dismissal.box.b) > H - 50) throw new Error('an entity runs into the legend');
 p.push(text('PK primary key  ·  UK unique index  ·  FK reference; the note names the referenced collection',
   40, H - 24, { size: 15, anchor: 'start', fill: PALETTE.muted }));
 

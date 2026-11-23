@@ -53,7 +53,7 @@ the global one of 300 requests a minute.
 \texttt{/uploads/:id/abort} & POST & Signed in & Abort the upload and delete the draft \\
 \midrule
 \multicolumn{4}{l}{\textit{Videos and playback}} \\
-\texttt{/videos} & GET & Public & Public, ready and approved videos, newest first \\
+\texttt{/videos} & GET & Public & Public, ready and approved videos, newest first, optionally of one category or tag; without the viewer's ``not interested'' videos \\
 \texttt{/videos/:id} & GET & Public & Details of a video the requester may see \\
 \texttt{/videos/:id/unlock} & POST & Public, limited & Exchange the password of a video for an unlock token \\
 \texttt{/videos/:id/playback} & GET & Public & Master playlist address, signed query policy and playback token \\
@@ -72,7 +72,7 @@ the global one of 300 requests a minute.
 \texttt{/comments/:id/report} & POST & Signed in, limited & Report a comment with a listed reason \\
 \midrule
 \multicolumn{4}{l}{\textit{Channels and memberships}} \\
-\texttt{/channels/:ref} & GET & Public & Channel by identifier or handle \\
+\texttt{/channels/:ref} & GET & Public & Channel by identifier or handle, with its featured video \\
 \texttt{/channels/:ref/videos} & GET & Public & Public videos of a channel \\
 \texttt{/channels/:ref/subscription} & PUT, DELETE & Signed in, limited & Subscribe or unsubscribe \\
 \texttt{/channels/:ref/membership} & PUT, DELETE & Signed in & Join a membership tier or leave it \\
@@ -80,7 +80,7 @@ the global one of 300 requests a minute.
 \texttt{/me/tiers} & POST & Signed in & Create a membership tier \\
 \texttt{/me/tiers/:id} & PATCH, DELETE & Signed in & Edit or retire a tier \\
 \texttt{/me/members} & GET & Signed in & Members of the requester's channel \\
-\texttt{/me/profile} & PATCH & Signed in & Edit display name, handle, description and the e-mail preference \\
+\texttt{/me/profile} & PATCH & Signed in & Edit display name, handle, description, the e-mail preference, the history pause and the featured video \\
 \midrule
 \multicolumn{4}{l}{\textit{Library}} \\
 \texttt{/videos/:id/heartbeat} & POST & Playback token & Record watch time and the resume position \\
@@ -118,6 +118,8 @@ the global one of 300 requests a minute.
 \texttt{/search} & GET & Public, limited & Full-text search with filters \\
 \texttt{/search/suggest} & GET & Public, limited & Title suggestions after two characters \\
 \texttt{/videos/:id/related} & GET & Public & Related videos \\
+\texttt{/trending} & GET & Public & Fifty videos ranked by views against age \\
+\texttt{/me/not-interested/:videoId} & PUT, DELETE & Signed in & Mark a video ``not interested'' or undo it \\
 \texttt{/me/notifications} & GET & Signed in & Inbox with the unread count \\
 \texttt{/me/notifications/read} & POST & Signed in & Mark notifications as read \\
 \midrule

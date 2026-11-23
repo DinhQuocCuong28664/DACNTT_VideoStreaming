@@ -457,7 +457,12 @@ it is the user, identified by a unique handle. Each foreign key names the collec
 The plan of a user is not a collection either: it is the \name{billing} field of the user, which only
 the payment webhook writes (Section~\ref{sec:plans-design}). Two small collections support the plans:
 \name{billingEvents} remembers the identifier of every payment event already applied, and
-\name{captionUsage} holds the caption minutes used by each user in each month.
+\name{captionUsage} holds the caption minutes used by each user in each month. The collection
+\name{dismissals} keeps one row per viewer and video marked ``not interested''; the home feed,
+related videos and trending leave out the newest thousand of a viewer's rows. Trending needs no
+collection of its own: the API takes the newest 500 public videos and ranks them by
+$v / (h + 2)^{1.5}$, where $v$ is the view count and $h$ the age in hours, the gravity formula
+known from Hacker News, so a recent video gaining views passes an older one with more of them.
 
 % Xoay ngang: đặt vừa bề rộng vùng chữ thì chữ dưới 6,2pt khi in.
 \begin{sidewaysfigure}
@@ -553,13 +558,13 @@ through the API. Table~\ref{tab:api-routes} lists the route groups.
 \midrule
 Accounts & \mbox{\texttt{/auth}}: register, login, google, link-google, verify-email, resend-verification, forgot-password, reset-password, change-password, logout, me & Public or signed in; rate-limited \\
 Uploads & \mbox{\texttt{/uploads}}: create, parts, complete, abort & Signed in, verified address \\
-Videos & \mbox{\texttt{/videos}}: list, get, update, delete, unlock, playback, key, view, heartbeat, related & Public under the access rule; edits by the owner \\
-Discovery & \mbox{\texttt{/search}}, \mbox{\texttt{/search/suggest}} & Public, rate-limited \\
+Videos & \mbox{\texttt{/videos}}: list by category or tag, get, update, delete, unlock, playback, key, view, heartbeat, related & Public under the access rule; edits by the owner \\
+Discovery & \mbox{\texttt{/search}}, \mbox{\texttt{/search/suggest}}, \mbox{\texttt{/trending}}, \mbox{\texttt{/me/not-interested}} & Public, search rate-limited; ``not interested'' signed in \\
 Community & reactions, comments, replies, pin, delete, report a comment & Signed in \\
 Channels & \mbox{\texttt{/channels/:ref}}: profile, videos, subscription, membership & Public; actions signed in \\
 Studio & thumbnail, captions, chapters, schedule, analytics, avatar, banner, tiers, members & The owner \\
 Plans & \mbox{\texttt{/plans}}; \mbox{\texttt{/billing}}: state, checkout, portal, webhook & Plans public; billing signed in; webhook signed by Stripe \\
-Library & \mbox{\texttt{/me}}: history, progress, feed, liked, playlists, notifications, subscriptions & Signed in \\
+Library & \mbox{\texttt{/me}}: history, progress, feed, liked, playlists, notifications, subscriptions; the profile also pauses the history and sets the featured video & Signed in \\
 Moderation & report and appeal a video; \mbox{\texttt{/admin}}: queue, decisions, comment reports, appeals, audit, metrics, events, users, roles, overview, settings & Viewers; staff by permission \\
 \bottomrule
 \end{tabularx}
@@ -591,7 +596,7 @@ has to show a video that exists but cannot yet be played, which is why its state
 \end{figure}
 
 The web application is a single-page application of React components. Its pages are the home feed,
-search results, the watch page, channel pages, the subscriptions feed, the library with history,
+search results, trending, one page per hashtag, the watch page, channel pages, the subscriptions feed, the library with history,
 Watch later, liked videos and playlists, the creator studio with upload, editing, captions, chapters, scheduling,
 tiers and analytics, the settings, the staff console, the embedded player and the pages for errors.
 It is available in Vietnamese and English and in light and dark themes, and its styles are plain Cascading
@@ -609,7 +614,10 @@ player to a row of its own across the page and the related videos below it; the 
 the page grid, so switching only changes the style and never reloads the video. Leaving the watch page
 while a video plays hands its playback grant and position to a miniplayer kept by the page layout,
 which plays on in a corner of every other page until the viewer closes it or expands it back to the
-watch page at the same second. Under the video, the
+watch page at the same second. Opened from a playlist, the page lists the playlist beside the player
+and starts its next video as soon as one ends, in the saved order or a shuffled one, and from the
+start again when looping is on; the order is drawn once per playlist and kept for the browser tab.
+Up to three tags of the video show as hashtags above its title. Under the video, the
 comments can be ordered newest first or with the most replies first, since comments carry no likes
 to rank by, and a time such as 1:23 written in a comment becomes a link that seeks the player, the
 same way a chapter does; a time past the end of the video stays plain text.

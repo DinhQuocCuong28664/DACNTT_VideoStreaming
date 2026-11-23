@@ -72,7 +72,7 @@ FR-05 & Playback and sharing & An adaptive player with manual quality, speed, pi
 FR-06 & Visibility and audience & Each video is public, unlisted, private or password-protected, and may be limited to channel members from a chosen tier upward. A stranger learns nothing about a private video, not even that it exists. \\
 FR-07 & Creator studio & The owner edits the title, description, tags, category and thumbnail, uploads WebVTT captions or keeps the automatic ones (FR-25), defines chapters and deletes a video with all its files. \\
 FR-08 & Scheduled publishing & The owner chooses a publication time between five minutes and one year ahead; the video becomes public at that time. \\
-FR-09 & Discovery & A home feed of the newest videos, full-text search over videos and channels that tolerates typing errors and missing diacritics, suggestions while typing, categories, related videos, and a page per channel that lists its videos. \\
+FR-09 & Discovery & A home feed of the newest videos, full-text search over videos and channels that tolerates typing errors and missing diacritics, suggestions while typing, categories, related videos, a trending list that ranks recent videos by views against their age, a page per hashtag, and a page per channel that lists its videos. A signed-in viewer can mark a video ``not interested'' to keep it out of their home feed, related videos and trending. \\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -93,9 +93,9 @@ FR-10 & Community & Likes and dislikes, comments of up to 1000 characters with o
 FR-11 & View counting & A view counts after thirty seconds of playback, or the whole of a shorter video, at most once per viewer and video in thirty minutes, and never for the owner. \\
 FR-12 & Subscriptions & Subscribe to a channel, see a feed of subscribed channels, and receive an in-app notification, and an e-mail unless turned off, when a subscribed channel publishes. \\
 FR-13 & Memberships & A channel offers as many tiers as its owner's plan allows, from two to ten; a viewer joins one for thirty days through a sandbox payment and may cancel; members get a badge and the videos limited to their tier. \\
-FR-14 & Library & Watch history that can be cleared, a watch-later list, the list of liked videos, and ordered playlists that are public, unlisted or private. \\
+FR-14 & Library & Watch history that can be cleared or paused, a watch-later list, the list of liked videos, and ordered playlists that are public, unlisted or private and play one video after another, in order or shuffled, once or in a loop. \\
 FR-15 & Analytics & Views per day, watch time and audience retention per video and per channel, over the last 7, 28, 90 or 365 days as far as the plan allows. \\
-FR-16 & Channel profile & A unique handle, a description, an avatar and a banner, both screened before they are shown. \\
+FR-16 & Channel profile & A unique handle, a description, an avatar and a banner, both screened before they are shown, and a featured video at the top of the channel page. \\
 FR-17 & Interface & Light and dark themes, Vietnamese and English, and dedicated pages for errors such as not found or forbidden. \\
 \bottomrule
 \end{tabularx}
@@ -367,8 +367,10 @@ Main flow &
   2. As the visitor scrolls, the page loads the next page through a cursor, so the list never repeats or skips a video. \newline
   3. The visitor types in the search box and receives suggestions after two characters. \newline
   4. The visitor submits the query, optionally within a category; the server returns matching videos by relevance and, on the first page, up to three matching channels. \newline
-  5. The visitor opens a channel page, which shows the profile, the subscriber count and the channel's videos, newest first. \\
+  5. The visitor opens a channel page, which shows the profile, the subscriber count, the featured video if the owner chose one, and the channel's videos, newest first. \newline
+  6. The visitor opens Trending, or a hashtag shown above the title of a video, and sees the matching public videos. \\
 Alternative flows &
+  1a. A signed-in user marks a video ``not interested'': a note with an undo takes its place, and the video stays out of that user's home feed, related videos and trending. \newline
   4a. Nothing matches: the page shows an empty result. \newline
   4b. More than sixty searches in a minute: the server answers 429. \\
 Postcondition & None; nothing is changed. \\
@@ -538,9 +540,11 @@ Main flow &
   1. Watching a video adds it to the user's history with the last position. \newline
   2. The user adds a video to Watch later, a playlist that every account has. \newline
   3. The user creates a playlist with a title, a description and a visibility, adds videos and changes their order. \newline
-  4. The user opens the library to see the history, Watch later, the liked videos, latest like first, and the playlists. \\
+  4. The user opens the library to see the history, Watch later, the liked videos, latest like first, and the playlists. \newline
+  5. The user plays a playlist: it shows beside the player, and when a video ends the next one starts, in order or shuffled, and from the start again when looping is on. \\
 Alternative flows &
   1a. The user removes one entry or clears the whole history. \newline
+  1b. The user has paused the history: watching adds no entry and keeps no resume position until it is turned back on. \newline
   3a. A video that becomes private or removed disappears from what others see of a playlist. \newline
   4a. Another person opens a private playlist: the server answers 404. \newline
   4b. A liked video that became private, removed or deleted is left out of the liked videos. \\
@@ -653,13 +657,14 @@ Actor & Creator \\
 Requirements & FR-13, FR-16 \\
 Precondition & The creator is signed in. \\
 Main flow &
-  1. The creator sets the handle and the description of the channel. \newline
+  1. The creator sets the handle and the description of the channel, and picks one of its public videos to feature at the top of the channel page. \newline
   2. The creator uploads an avatar or a banner, a JPEG or PNG image of up to 2~MiB, which the server screens with the policy of the videos before it replaces the current one. \newline
   3. The creator creates a tier with a name, price, level, perks and badge colour. \newline
   4. The creator edits or retires a tier. \newline
   5. The creator reads the list of current members with their tier and end date. \\
 Alternative flows &
   1a. The handle is reserved or already taken: the server answers 409. \newline
+  1b. The video to feature is not a public video of this channel: the server answers 400; a featured video that later stops being public is no longer shown. \newline
   2a. The image is too large or of another type: the server answers 400. \newline
   2b. The image breaks the content rules: the server answers 403 and the current image stays. \newline
   3a. The channel already has as many tiers as the plan allows: the server answers 403 with the limit. \\
