@@ -89,6 +89,7 @@ Danh sách đầy đủ (F1–F13) nằm ở [`docs/ARCHITECTURE.md`](docs/ARCHI
    - Tốc độ phát, PiP, toàn màn hình, phụ đề WebVTT, chương, ảnh xem trước khi tua (sprite).
    - Nhớ vị trí xem dở. Lượt xem chỉ được tính sau 30 giây phát và không tính trùng.
    - Hết video thì tự phát video liên quan tiếp theo sau 8 giây đếm ngược; có thể huỷ hoặc tắt tự động phát.
+   - Chế độ rạp hát (phím T) và trình phát thu nhỏ: rời trang xem khi đang phát thì video phát tiếp ở góc màn hình.
 4. **Khám phá:** trang chủ, danh mục, video liên quan, và tìm kiếm Atlas Search. Tìm kiếm không cần gõ dấu ("xay lang" ra "xây làng"), chịu lỗi gõ và có gợi ý tự động.
 5. **Chia sẻ và quyền xem:**
    - Bốn chế độ: công khai, không liệt kê, riêng tư, có mật khẩu.
