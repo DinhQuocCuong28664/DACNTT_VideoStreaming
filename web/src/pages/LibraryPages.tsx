@@ -8,9 +8,9 @@ import { useTranslation } from 'react-i18next';
 import type { IconType } from 'react-icons';
 import {
   MdArrowDownward, MdArrowUpward, MdClose, MdDeleteOutline, MdErrorOutline, MdHistory, MdLock, MdOutlineNotifications,
-  MdOutlinePlaylistPlay, MdOutlineSubscriptions, MdPlayArrow, MdThumbUpOffAlt,
+  MdOutlinePlaylistPlay, MdOutlineSubscriptions, MdPauseCircleOutline, MdPlayArrow, MdPlayCircleOutline, MdShuffle, MdTag, MdThumbUpOffAlt, MdWhatshot,
 } from 'react-icons/md';
-import { me, playlists } from '../api/endpoints';
+import { me, playlists, videos } from '../api/endpoints';
 import type { Notification, PlaylistItem, PlaylistSummary, VideoCard as Card } from '../api/types';
 import { useAuth } from '../context/auth';
 import VideoCard, { LoadMoreFooter, SkeletonCard } from '../components/Video/VideoCard';
@@ -88,10 +88,54 @@ export function LikedPage() {
   );
 }
 
+/** Trending: public videos ranked by views against their age (the API's trending score). */
+export function TrendingPage() {
+  const { t } = useTranslation();
+  const fetchPage = useCallback(async () => ({ items: (await videos.trending()).items, next: null }), []);
+  const list = useInfiniteList(fetchPage);
+  return (
+    <div className="subscriptions-page">
+      <PageHeader icon={MdWhatshot} title={t('nav.trending')} subtitle={t('explore.trendingSubtitle')} />
+      <ListBody list={list} row empty={<div className="empty-state"><MdWhatshot className="empty-state-icon" aria-hidden="true" /><p className="empty-state-title">{t('explore.trendingEmpty')}</p></div>} />
+    </div>
+  );
+}
+
+/** Every public video with one tag, newest first; tags show as #hashtags on the watch page. */
+export function HashtagPage() {
+  const { t } = useTranslation();
+  const { tag = '' } = useParams();
+  const clean = tag.replace(/^#/, '').toLowerCase();
+  const fetchPage = useCallback(async (cursor: string | null) => { const r = await videos.list({ cursor, tag: clean }); return { items: r.items, next: r.nextCursor }; }, [clean]);
+  const list = useInfiniteList(fetchPage);
+  return (
+    <div className="subscriptions-page">
+      <PageHeader icon={MdTag} title={`#${clean}`} subtitle={t('explore.hashtagSubtitle')} />
+      <ListBody list={list} empty={<div className="empty-state"><MdTag className="empty-state-icon" aria-hidden="true" /><p className="empty-state-title">{t('explore.hashtagEmpty')}</p></div>} />
+    </div>
+  );
+}
+
 export function HistoryPage() {
   const { t } = useTranslation();
+  const { user, updateUser } = useAuth();
   const [toast, showToast] = useToast();
   const [confirmClear, setConfirmClear] = useState(false);
+  const [pausing, setPausing] = useState(false);
+  const paused = user?.historyPaused ?? false;
+  // Pausing keeps what is there; watching then adds nothing and keeps no resume position.
+  const togglePause = async () => {
+    setPausing(true);
+    try {
+      const r = await me.profile({ historyPaused: !paused });
+      updateUser(r.user);
+      showToast(r.user.historyPaused ? t('library.historyPausedToast') : t('library.historyResumedToast'));
+    } catch (err) {
+      showToast(errorText(t, err));
+    } finally {
+      setPausing(false);
+    }
+  };
   const fetchPage = useCallback(async (cursor: string | null) => { const r = await me.history(cursor); return { items: r.items, next: r.nextCursor }; }, []);
   const list = useInfiniteList(fetchPage);
   const remove = async (id: string) => {
@@ -100,7 +144,15 @@ export function HistoryPage() {
   return (
     <div className="subscriptions-page">
       <PageHeader icon={MdHistory} title={t('nav.history')}
-        actions={list.items.length > 0 && <button type="button" className="btn btn-secondary" onClick={() => setConfirmClear(true)}><MdDeleteOutline /><span>{t('library.clearHistory')}</span></button>} />
+        actions={(
+          <>
+            <button type="button" className="btn btn-secondary" onClick={() => void togglePause()} disabled={pausing} aria-pressed={paused}>
+              {paused ? <MdPlayCircleOutline /> : <MdPauseCircleOutline />}<span>{paused ? t('library.resumeHistory') : t('library.pauseHistory')}</span>
+            </button>
+            {list.items.length > 0 && <button type="button" className="btn btn-secondary" onClick={() => setConfirmClear(true)}><MdDeleteOutline /><span>{t('library.clearHistory')}</span></button>}
+          </>
+        )} />
+      {paused && <p className="library-notice" role="status"><MdPauseCircleOutline aria-hidden="true" /> {t('library.historyPausedNotice')}</p>}
       <ListBody list={list} row empty={<div className="empty-state"><MdHistory className="empty-state-icon" aria-hidden="true" /><p className="empty-state-title">{t('library.historyEmpty')}</p></div>}
         extra={(v) => (
           <div className="library-item-side">
@@ -185,6 +237,13 @@ export function PlaylistPage() {
         actions={(
           <>
             {first && <Link to={`/watch/${first.id}?list=${p.id}`} className="btn btn-primary"><MdPlayArrow /><span>{t('library.playAll')}</span></Link>}
+            {first && (
+              <button type="button" className="btn btn-secondary" onClick={() => {
+                const playable = data.items.filter((i) => !i.unavailable);
+                const start = playable[Math.floor(Math.random() * playable.length)] ?? first;
+                navigate(`/watch/${start.id}?list=${p.id}&shuffle=1`);
+              }}><MdShuffle /><span>{t('library.shuffle')}</span></button>
+            )}
             {mine && p.kind === 'custom' && <button type="button" className="btn btn-secondary" onClick={() => setConfirmDelete(true)}><MdDeleteOutline /><span>{t('library.deletePlaylist')}</span></button>}
           </>
         )} />

@@ -11,8 +11,30 @@ import VideoCard, { LoadMoreFooter, SkeletonCard } from '../components/Video/Vid
 import SubscribeButton from '../components/Channel/SubscribeButton';
 import { JoinButton } from '../components/Channel/Membership';
 import { useInfiniteList } from '../hooks/useInfiniteList';
-import { formatDate } from '../lib/format';
+import { formatDate, formatDuration, formatViews } from '../lib/format';
 import './ChannelPage.css';
+
+/** The video the owner chose to lead the channel, large, with the start of its description. */
+function FeaturedVideo({ video }: { video: NonNullable<ChannelData['featured']> }) {
+  const { t, i18n } = useTranslation();
+  return (
+    <Link to={`/watch/${video.id}`} className="channel-featured">
+      <span className="channel-featured-thumb">
+        {video.thumbnail ? <img src={video.thumbnail} alt="" /> : null}
+        {video.durationSec ? <span className="video-duration">{formatDuration(video.durationSec)}</span> : null}
+      </span>
+      <span className="channel-featured-text">
+        <span className="channel-featured-label">{t('channel.featured')}</span>
+        <span className="channel-featured-title">{video.title}</span>
+        <span className="channel-featured-meta">
+          {t('watch.viewsFull', { count: video.views, value: formatViews(video.views) })}
+          {video.publishedAt ? ` · ${formatDate(i18n.resolvedLanguage ?? 'vi', video.publishedAt)}` : ''}
+        </span>
+        {video.description && <span className="channel-featured-desc">{video.description}</span>}
+      </span>
+    </Link>
+  );
+}
 
 /** A channel at /@handle: banner, header, subscribe and join, its public videos and About. */
 export default function ChannelPage({ handle }: { handle: string }) {
@@ -109,7 +131,10 @@ export default function ChannelPage({ handle }: { handle: string }) {
       </div>
 
       {tab === 'videos' ? (
-        <section className="channel-videos" role="tabpanel">{videosBody}</section>
+        <section className="channel-videos" role="tabpanel">
+          {data.featured && <FeaturedVideo video={data.featured} />}
+          {videosBody}
+        </section>
       ) : (
         <section className="channel-about" role="tabpanel">
           <h2 className="channel-about-heading">{t('channel.description')}</h2>

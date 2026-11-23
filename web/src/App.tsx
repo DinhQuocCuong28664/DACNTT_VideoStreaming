@@ -36,6 +36,8 @@ const Library = {
   Playlists: lazy(() => loadLibrary().then((m) => ({ default: m.PlaylistsPage }))),
   Playlist: lazy(() => loadLibrary().then((m) => ({ default: m.PlaylistPage }))),
   Notifications: lazy(() => loadLibrary().then((m) => ({ default: m.NotificationsPage }))),
+  Trending: lazy(() => loadLibrary().then((m) => ({ default: m.TrendingPage }))),
+  Hashtag: lazy(() => loadLibrary().then((m) => ({ default: m.HashtagPage }))),
 };
 
 
@@ -91,6 +93,8 @@ export default function App() {
           <Route path="/privacy" element={<PrivacyPage />} />
           <Route path="/terms" element={<TermsPage />} />
           <Route path="/plans" element={<PlansPage />} />
+          <Route path="/trending" element={<Library.Trending />} />
+          <Route path="/hashtag/:tag" element={<Library.Hashtag />} />
           <Route path="/subscriptions" element={<Protected><Library.Subscriptions /></Protected>} />
           <Route path="/history" element={<Protected><Library.History /></Protected>} />
           <Route path="/liked" element={<Protected><Library.Liked /></Protected>} />

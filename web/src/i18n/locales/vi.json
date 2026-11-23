@@ -6,6 +6,7 @@
     "switchTo": "Chuyển sang {{lang}}"
   },
   "nav": {
+    "trending": "Thịnh hành",
     "searchPlaceholder": "Tìm kiếm",
     "search": "Tìm kiếm",
     "toggleMenu": "Mở hoặc đóng menu",
@@ -68,6 +69,9 @@
     "loadErrorTitle": "Đã có lỗi khi tải danh sách video"
   },
   "videoCard": {
+    "notInterested": "Không quan tâm",
+    "dismissed": "Đã ẩn video. Bạn sẽ ít thấy video này hơn.",
+    "undo": "Hoàn tác",
     "processing": "Đang xử lý",
     "failed": "Xử lý thất bại",
     "unknownChannel": "Không rõ",
@@ -149,6 +153,7 @@
     "passwordDesc": "Người có đường liên kết và mật khẩu mới xem được. Tiêu đề được ẩn cho tới khi mở khoá."
   },
   "channel": {
+    "featured": "Video nổi bật",
     "videos": "Video",
     "empty": "Kênh này chưa có video nào.",
     "confirmDelete": "“{{title}}” và các bình luận của video sẽ bị xoá vĩnh viễn. Không thể hoàn tác.",
@@ -284,6 +289,9 @@
     "mascotLabel": "Linh vật VidShare, bấm để trêu"
   },
   "watch": {
+    "playlistPanel": "Danh sách phát {{name}}",
+    "loopPlaylist": "Lặp lại danh sách phát",
+    "shufflePlaylist": "Trộn danh sách phát",
     "confirmDeleteComment": "Xoá vĩnh viễn bình luận này?",
     "deleteCommentFailed": "Không xoá được bình luận. Vui lòng thử lại.",
     "transcoding": "Video đang được xử lý. Vui lòng quay lại sau vài phút.",
@@ -364,6 +372,12 @@
     "label": "Trình phát thu nhỏ",
     "expand": "Mở rộng",
     "close": "Đóng"
+  },
+  "explore": {
+    "trendingSubtitle": "Video công khai đang tăng lượt xem nhanh nhất so với tuổi của nó",
+    "trendingEmpty": "Chưa có video thịnh hành",
+    "hashtagSubtitle": "Video công khai có thẻ này, mới nhất trước",
+    "hashtagEmpty": "Chưa có video công khai nào có thẻ này"
   },
   "player": {
     "authFailed": "Không xác thực được phiên xem video. Vui lòng tải lại trang.",
@@ -986,6 +1000,12 @@
     }
   },
   "library": {
+    "shuffle": "Trộn bài",
+    "pauseHistory": "Tạm dừng lịch sử xem",
+    "resumeHistory": "Bật lại lịch sử xem",
+    "historyPausedNotice": "Lịch sử xem đang tạm dừng: video bạn xem sẽ không được thêm vào đây và không nhớ vị trí xem dở.",
+    "historyPausedToast": "Đã tạm dừng lịch sử xem",
+    "historyResumedToast": "Đã bật lại lịch sử xem",
     "saveTo": "Lưu vào danh sách phát",
     "saveWatchLater": "Lưu vào Xem sau",
     "savedTo": "Đã lưu vào {{name}}",
@@ -1017,6 +1037,12 @@
     }
   },
   "prefs": {
+    "featuredSection": "Video nổi bật",
+    "featuredHelp": "Hiện đầu tiên trên trang kênh của bạn. Chỉ video công khai mới được chọn.",
+    "featuredLabel": "Video",
+    "featuredOff": "Không có",
+    "featuredCurrent": "Video nổi bật hiện tại",
+    "featuredNone": "Hãy tải lên một video công khai để chọn làm video nổi bật.",
     "tabs": {
       "channel": "Kênh",
       "security": "Bảo mật",

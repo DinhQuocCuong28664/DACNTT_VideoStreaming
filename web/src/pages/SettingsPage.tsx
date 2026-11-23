@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next';
 import { MdCheckCircle, MdDeleteOutline, MdErrorOutline, MdOutlineAccountCircle, MdOutlineCardMembership, MdOutlineLock, MdOutlinePalette, MdOutlineWorkspacePremium } from 'react-icons/md';
 import type { IconType } from 'react-icons';
 import { auth, billing, channels, me } from '../api/endpoints';
-import type { Membership, Tier } from '../api/types';
+import type { Membership, Tier, VideoCard } from '../api/types';
 import { useAuth } from '../context/auth';
 import { useTheme, type ThemePreference } from '../context/theme';
 import Avatar from '../components/Common/Avatar';
@@ -140,12 +140,59 @@ function ChannelTab({ notify }: { notify: (s: string) => void }) {
           </div>
         </form>
       </Section>
+      <FeaturedVideoSection notify={notify} />
       <Section title={t('verify.statusLabel')}>
         {user.emailVerified
           ? <p className="settings-linked-status"><MdCheckCircle aria-hidden="true" /> {t('verify.statusVerified')} · {user.email}</p>
           : <><p className="settings-desc">{t('verify.statusUnverified')}</p><ResendVerificationButton /></>}
       </Section>
     </>
+  );
+}
+
+/** The public video shown first on the channel page; saved as soon as it is picked. */
+function FeaturedVideoSection({ notify }: { notify: (s: string) => void }) {
+  const { t } = useTranslation();
+  const { user, updateUser } = useAuth();
+  const [options, setOptions] = useState<VideoCard[] | null>(null);
+  const [busy, setBusy] = useState(false);
+  const handle = user?.handle;
+  useEffect(() => {
+    if (!handle) return undefined;
+    let live = true;
+    // The channel's public videos are the ones that can be featured; the newest 50 are offered.
+    channels.videos(`@${handle}`, null, 50).then((r) => { if (live) setOptions(r.items); }).catch(() => { if (live) setOptions([]); });
+    return () => { live = false; };
+  }, [handle]);
+  if (!user) return null;
+  const pick = async (id: string) => {
+    setBusy(true);
+    try {
+      const r = await me.profile({ featuredVideoId: id || null });
+      updateUser(r.user);
+      notify(t('prefs.saved'));
+    } catch (err) {
+      notify(errorText(t, err));
+    } finally {
+      setBusy(false);
+    }
+  };
+  const current = user.featuredVideoId ?? '';
+  return (
+    <Section title={t('prefs.featuredSection')}>
+      <p className="settings-desc">{t('prefs.featuredHelp')}</p>
+      {options === null ? <div className="spinner" /> : options.length === 0 ? <p className="settings-desc">{t('prefs.featuredNone')}</p> : (
+        <label className="studio-field">
+          <span className="studio-field-label">{t('prefs.featuredLabel')}</span>
+          <select value={current} disabled={busy} onChange={(e) => void pick(e.target.value)}>
+            <option value="">{t('prefs.featuredOff')}</option>
+            {/* A featured video older than the newest 50 stays selectable. */}
+            {current && !options.some((o) => o.id === current) && <option value={current}>{t('prefs.featuredCurrent')}</option>}
+            {options.map((o) => <option key={o.id} value={o.id}>{o.title}</option>)}
+          </select>
+        </label>
+      )}
+    </Section>
   );
 }
 

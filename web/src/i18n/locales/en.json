@@ -6,6 +6,7 @@
     "switchTo": "Switch to {{lang}}"
   },
   "nav": {
+    "trending": "Trending",
     "searchPlaceholder": "Search",
     "search": "Search",
     "toggleMenu": "Toggle menu",
@@ -68,6 +69,9 @@
     "loadErrorTitle": "Something went wrong while loading videos"
   },
   "videoCard": {
+    "notInterested": "Not interested",
+    "dismissed": "Video removed. You will see it less.",
+    "undo": "Undo",
     "processing": "Processing",
     "failed": "Processing failed",
     "unknownChannel": "Unknown",
@@ -150,6 +154,7 @@
     "passwordDesc": "People with the link and the password can watch. The title stays hidden until unlocked."
   },
   "channel": {
+    "featured": "Featured video",
     "videos": "Videos",
     "empty": "This channel doesn't have any videos yet.",
     "confirmDelete": "“{{title}}” and its comments will be deleted permanently. This cannot be undone.",
@@ -285,6 +290,9 @@
     "mascotLabel": "VidShare mascot, click to boop"
   },
   "watch": {
+    "playlistPanel": "Playlist {{name}}",
+    "loopPlaylist": "Loop playlist",
+    "shufflePlaylist": "Shuffle playlist",
     "confirmDeleteComment": "Delete this comment permanently?",
     "deleteCommentFailed": "Could not delete the comment. Please try again.",
     "transcoding": "This video is being processed. Check back in a few minutes.",
@@ -368,6 +376,12 @@
     "label": "Miniplayer",
     "expand": "Expand",
     "close": "Close"
+  },
+  "explore": {
+    "trendingSubtitle": "Public videos gaining views fastest for their age",
+    "trendingEmpty": "Nothing is trending yet",
+    "hashtagSubtitle": "Public videos with this tag, newest first",
+    "hashtagEmpty": "No public video has this tag yet"
   },
   "player": {
     "authFailed": "Could not authorise this playback session. Please reload the page.",
@@ -997,6 +1011,12 @@
     }
   },
   "library": {
+    "shuffle": "Shuffle",
+    "pauseHistory": "Pause watch history",
+    "resumeHistory": "Turn on watch history",
+    "historyPausedNotice": "Watch history is paused: videos you watch are not added here and do not remember where you stopped.",
+    "historyPausedToast": "Watch history paused",
+    "historyResumedToast": "Watch history turned on",
     "saveTo": "Save to playlist",
     "saveWatchLater": "Save to Watch later",
     "savedTo": "Saved to {{name}}",
@@ -1028,6 +1048,12 @@
     }
   },
   "prefs": {
+    "featuredSection": "Featured video",
+    "featuredHelp": "Shown first on your channel page. Only public videos can be featured.",
+    "featuredLabel": "Video",
+    "featuredOff": "None",
+    "featuredCurrent": "Current featured video",
+    "featuredNone": "Upload a public video to feature it here.",
     "tabs": {
       "channel": "Channel",
       "security": "Security",

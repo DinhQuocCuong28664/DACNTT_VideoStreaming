@@ -266,3 +266,78 @@
   height: 160px;
   border-radius: var(--radius-lg, 12px);
 }
+
+/* Featured video at the top of the Videos tab */
+.channel-featured {
+  display: grid;
+  grid-template-columns: minmax(0, 424px) minmax(0, 1fr);
+  gap: var(--space-lg);
+  align-items: start;
+  margin-bottom: var(--space-xl);
+  padding-bottom: var(--space-xl);
+  border-bottom: 1px solid var(--border-color);
+  color: inherit;
+  text-decoration: none;
+}
+
+.channel-featured-thumb {
+  position: relative;
+  display: block;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--bg-tertiary);
+}
+
+.channel-featured-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.channel-featured-text {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.channel-featured-label {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+}
+
+.channel-featured-title {
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.channel-featured:hover .channel-featured-title {
+  text-decoration: underline;
+}
+
+.channel-featured-meta {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+
+.channel-featured-desc {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  white-space: pre-line;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+@media (max-width: 768px) {
+  .channel-featured {
+    grid-template-columns: 1fr;
+    gap: var(--space-md);
+  }
+}

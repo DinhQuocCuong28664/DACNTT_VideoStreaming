@@ -5,8 +5,8 @@ import {
   MdBlock, MdCheck, MdErrorOutline, MdLock, MdOutlineShare, MdOutlineShield, MdOutlineThumbDown, MdOutlineThumbUp, MdStars,
   MdOutlinedFlag, MdThumbDown, MdThumbUp, MdWarningAmber,
 } from 'react-icons/md';
-import { channels, me, videos } from '../api/endpoints';
-import type { LockedStub, Playback, VideoCard as Card, VideoDetails } from '../api/types';
+import { channels, me, playlists, videos } from '../api/endpoints';
+import type { LockedStub, Playback, PlaylistItem, VideoCard as Card, VideoDetails } from '../api/types';
 import { useAuth } from '../context/auth';
 import { useMiniPlayer, type MiniVideo } from '../context/miniPlayer';
 import Avatar from '../components/Common/Avatar';
@@ -19,6 +19,8 @@ import CommentSection from '../components/Video/CommentSection';
 import ReportDialog from '../components/Video/ReportDialog';
 import AppealBox from '../components/Video/AppealBox';
 import UpNext from '../components/Video/UpNext';
+import PlaylistPanel from '../components/Video/PlaylistPanel';
+import { nextInQueue, shuffleOrder } from '../lib/queue';
 import { errorText, isApiError } from '../lib/errors';
 import { formatDate, formatViews } from '../lib/format';
 import { embedCode, parseStartTime } from '../lib/playback';
@@ -46,6 +48,19 @@ const saveAutoplay = (on: boolean) => { try { localStorage.setItem(AUTOPLAY_KEY,
 const THEATER_KEY = 'vidshare.theater';
 const readTheater = () => { try { return localStorage.getItem(THEATER_KEY) === 'on'; } catch { return false; } };
 const saveTheater = (on: boolean) => { try { localStorage.setItem(THEATER_KEY, on ? 'on' : 'off'); } catch { /* not remembered */ } };
+
+interface QueueMode { shuffle: boolean; loop: boolean; order: string[] | null }
+const DEFAULT_QUEUE_MODE: QueueMode = { shuffle: false, loop: false, order: null };
+const QUEUE_KEY = (listId: string) => `vidshare.queue:${listId}`;
+/** Loop and shuffle of a playlist for this tab; the playlist page's Shuffle button asks for shuffle. */
+function readQueueMode(listId: string, shuffleAsked: boolean): QueueMode {
+  let saved: Partial<QueueMode> | null = null;
+  try { saved = JSON.parse(sessionStorage.getItem(QUEUE_KEY(listId)) ?? 'null') as Partial<QueueMode> | null; } catch { /* none */ }
+  const order = Array.isArray(saved?.order) ? saved.order.filter((x): x is string => typeof x === 'string') : null;
+  if (shuffleAsked) return { shuffle: true, loop: saved?.loop === true, order: null };
+  return { shuffle: saved?.shuffle === true, loop: saved?.loop === true, order: saved?.shuffle === true ? order : null };
+}
+const saveQueueMode = (listId: string, mode: QueueMode) => { try { sessionStorage.setItem(QUEUE_KEY(listId), JSON.stringify(mode)); } catch { /* this page only */ } };
 
 const UNLOCK_KEY = (id: string) => `unlock:${id}`;
 const readUnlock = (id: string) => { try { return sessionStorage.getItem(UNLOCK_KEY(id)); } catch { return null; } };
@@ -105,11 +120,56 @@ export default function WatchPage() {
     openMini({ ...source, startAt: el.currentTime, playing });
   }, [openMini]);
   const toMiniPlayer = useCallback(() => { forceMiniRef.current = true; navigate('/'); }, [navigate]);
+  // A time in the address keeps the rest of it, so seeking inside a playlist stays in the playlist.
+  const searchAt = useCallback((seconds: number) => {
+    const p = new URLSearchParams(location.search);
+    p.set('t', String(seconds));
+    p.delete('shuffle');
+    return `?${p.toString()}`;
+  }, [location.search]);
   // A time in a comment: put it in the address like a chapter link, then bring the player into view.
   const seekFromComment = useCallback((seconds: number) => {
-    navigate({ search: `?t=${seconds}` }, { replace: true });
+    navigate({ search: searchAt(seconds) }, { replace: true });
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [navigate]);
+  }, [navigate, searchAt]);
+
+  // ── Playlist ─────────────────────────────────────────────────────────────────────────
+  // ?list= plays a playlist: its panel sits above the related videos and the next video of it
+  // starts as soon as one ends. Loop and shuffle last for this tab, per playlist.
+  const listId = new URLSearchParams(location.search).get('list');
+  const shuffleAsked = new URLSearchParams(location.search).get('shuffle') === '1';
+  const [queue, setQueue] = useState<{ id: string; title: string; items: PlaylistItem[] } | null>(null);
+  const [queueMode, setQueueMode] = useState<QueueMode>(DEFAULT_QUEUE_MODE);
+  useEffect(() => {
+    setQueue(null);
+    if (!listId) return undefined;
+    setQueueMode(readQueueMode(listId, shuffleAsked));
+    let live = true;
+    playlists.get(listId).then((d) => {
+      if (live) setQueue({ id: d.playlist.id, title: d.playlist.kind === 'watch_later' ? t('nav.watchLater') : d.playlist.title, items: d.items });
+    }).catch(() => undefined);
+    return () => { live = false; };
+    // The list is loaded once per playlist, not again for each of its videos.
+  }, [listId]);
+  const playableIds = useMemo(() => (queue ? queue.items.filter((i) => !i.unavailable).map((i) => i.id) : []), [queue]);
+  // A shuffled order made before keeps its videos that are still in the list; new ones go last.
+  const order = useMemo(() => {
+    if (!queueMode.shuffle || !queueMode.order) return playableIds;
+    const kept = queueMode.order.filter((x) => playableIds.includes(x));
+    return [...kept, ...playableIds.filter((x) => !kept.includes(x))];
+  }, [queueMode, playableIds]);
+  const updateQueueMode = useCallback((next: QueueMode) => {
+    setQueueMode(next);
+    if (listId) saveQueueMode(listId, next);
+  }, [listId]);
+  // Shuffle asked for before the list arrived: draw the order once it is known.
+  useEffect(() => {
+    if (queueMode.shuffle && !queueMode.order && playableIds.length > 0) updateQueueMode({ ...queueMode, order: shuffleOrder(playableIds, id) });
+  }, [queueMode, playableIds, id, updateQueueMode]);
+  const toggleShuffle = () => updateQueueMode(queueMode.shuffle
+    ? { ...queueMode, shuffle: false, order: null }
+    : { ...queueMode, shuffle: true, order: shuffleOrder(playableIds, id) });
+  const toggleLoop = () => updateQueueMode({ ...queueMode, loop: !queueMode.loop });
 
   // ── Load the video, then its playback grant ─────────────────────────────────────────
   useEffect(() => {
@@ -254,7 +314,13 @@ export default function WatchPage() {
   const shownRelated = relatedFilter === 'channel' ? fromChannel : related;
   // The next video is the first one of the list the viewer is looking at.
   const nextVideo = shownRelated.find((r) => r.id !== v.id) ?? null;
-  const onEnded = () => { if (autoplay && nextVideo) setUpNext(nextVideo); };
+  // In a playlist the next video of it starts at once, as on YouTube; after its last video (and
+  // no loop) the related autoplay takes over.
+  const nextInList = queue && listId ? nextInQueue(order, v.id, queueMode.loop) : null;
+  const onEnded = () => {
+    if (nextInList) navigate(`/watch/${nextInList}?list=${listId ?? ''}`, { state: { autoplay: true } });
+    else if (autoplay && nextVideo) setUpNext(nextVideo);
+  };
   const locale = i18n.resolvedLanguage === 'en' ? 'en-US' : 'vi-VN';
 
   let player;
@@ -351,6 +417,12 @@ export default function WatchPage() {
             </div>
           )}
 
+          {/* Up to three tags show as hashtags above the title, as on YouTube. */}
+          {v.tags.length > 0 && (
+            <p className="watch-hashtags">
+              {v.tags.slice(0, 3).map((tag) => <Link key={tag} to={`/hashtag/${encodeURIComponent(tag)}`}>#{tag}</Link>)}
+            </p>
+          )}
           <h1 className="watch-title">
             {v.title}
             {v.hasViolence && <span className="watch-violence-chip" title={t('watch.violenceWarningBadge')}><MdWarningAmber aria-hidden="true" /> {t('watch.violenceWarningBadge')}</span>}
@@ -396,7 +468,7 @@ export default function WatchPage() {
             {description && <div className="watch-description-text">{description}</div>}
             {v.chapters.length > 0 && descExpanded && (
               <ol className="watch-chapters">
-                {v.chapters.map((c) => <li key={c.startSec}><Link to={`/watch/${v.id}?t=${c.startSec}`}>{formatTimestamp(c.startSec)}</Link> {c.title}</li>)}
+                {v.chapters.map((c) => <li key={c.startSec}><Link to={`/watch/${v.id}${searchAt(c.startSec)}`}>{formatTimestamp(c.startSec)}</Link> {c.title}</li>)}
               </ol>
             )}
             {collapsible && (
@@ -412,12 +484,16 @@ export default function WatchPage() {
           )}
         </div>
 
-        {related.length > 0 && (
+        {(related.length > 0 || queue) && (
           <aside className="watch-sidebar" aria-label={t('watch.relatedVideos')}>
-            <label className="autoplay-toggle">
+            {queue && (
+              <PlaylistPanel listId={queue.id} title={queue.title} items={queue.items} order={order} currentId={v.id}
+                shuffle={queueMode.shuffle} loop={queueMode.loop} onShuffle={toggleShuffle} onLoop={toggleLoop} />
+            )}
+            {related.length > 0 && <label className="autoplay-toggle">
               <span>{t('watch.autoplay')}</span>
               <input type="checkbox" role="switch" checked={autoplay} onChange={(e) => setAutoplay(e.target.checked)} />
-            </label>
+            </label>}
             {fromChannel.length > 0 && (
               <div className="watch-sidebar-chips" role="tablist">
                 <button type="button" role="tab" className="chip" aria-selected={relatedFilter === 'all'} onClick={() => setRelatedFilter('all')}>{t('categories.all')}</button>

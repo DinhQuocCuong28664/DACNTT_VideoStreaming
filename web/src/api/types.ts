@@ -20,6 +20,8 @@ export interface User {
   hasPassword: boolean;
   googleLinked: boolean;
   notifyByEmail: boolean;
+  historyPaused: boolean;
+  featuredVideoId: string | null;
   counters: { subscribers: number; videos: number };
   plan: UserPlan;
   createdAt: string;
@@ -112,6 +114,8 @@ export interface ChannelPage {
   channel: Channel;
   viewer: { subscribed: boolean; membership: Membership | null; isOwner: boolean } | null;
   tiers: Tier[];
+  /** The video the owner chose to lead the channel page, while it is public. */
+  featured: (VideoCard & { description: string }) | null;
 }
 
 export interface PlaylistSummary {
