@@ -534,7 +534,7 @@ NFR-07 API security & A request to the function that skips the Worker, and a pre
 NFR-08 Reliability & Retries and the 24-hour limit are part of the workflow (Section~\ref{sec:state-machine}). Two damaged files uploaded to production ended in \status{error} without useless retries, after fixes for a truncated file published as ready and an unretried Batch API error (Section~\ref{sec:fault-evaluation}) & Met after two fixes \\
 NFR-09 Reproducibility & Staging and production are built by the same Terraform modules (Section~\ref{sec:iac}); only the values of secrets are written outside the code & Met \\
 NFR-10 Maintainability & The security jobs are required checks of the main branch (Section~\ref{sec:cicd}) & Met \\
-NFR-11 Bounded paid services & Caption minutes are reserved by one conditional update and refunded on failure, covered by twelve unit tests (Section~\ref{sec:testing}); the cap bounds Transcribe at 0.48~USD per creator and month at most (Section~\ref{sec:cost-analysis}); payments run in Stripe test mode & Met in tests; not yet exercised by real users \\
+NFR-11 Bounded paid services & Caption minutes are reserved by one conditional update and refunded on failure, covered by thirteen unit tests (Section~\ref{sec:testing}); the cap bounds Transcribe at 0.48~USD per creator and month at most (Section~\ref{sec:cost-analysis}); payments run in Stripe test mode & Met in tests; not yet exercised by real users \\
 \bottomrule
 \end{tabularx}
 \end{table}
