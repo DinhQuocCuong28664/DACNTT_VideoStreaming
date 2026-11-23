@@ -18,7 +18,7 @@ const H = 1320 + DY;
 const p = [];
 const RED = PALETTE.secret.stroke;
 
-const mark = card({ x: 300, y: 50, w: 220, h: 100, title: 'MarkProcessing', sub: ['Lambda status: key,', 'plan, PROCESSING'], tone: 'compute' });
+const mark = card({ x: 300, y: 50, w: 220, h: 100, title: 'MarkProcessing', sub: ['Lambda status: key, plan,', 'screening switch'], tone: 'compute' });
 const still = card({ x: 300, y: 190, w: 220, h: 72, title: 'Still there?', tone: 'plain' });
 const gone = card({ x: 590, y: 190, w: 200, h: 72, title: 'Gone', sub: ['succeed, no work'], tone: 'plain' });
 const pick = card({ x: 300, y: 302, w: 220, h: 72, title: 'PickLane', tone: 'plain' });
@@ -31,7 +31,7 @@ p.push(mark.svg, still.svg, gone.svg, pick.svg, lanePrio.svg, laneStd.svg, probe
 
 const par = group({ x: 50, y: 446 + DY, w: 810, h: 474, label: 'Process (Parallel)', stroke: PALETTE.network.stroke, fill: '#f6fbf6' });
 p.push(par.svg);
-const analyse = card({ x: 80, y: 520 + DY, w: 200, h: 124, title: 'Analyse', sub: ['Batch, main or', 'priority, 2 vCPU:', 'screening, previews'], tone: 'compute' });
+const analyse = card({ x: 80, y: 520 + DY, w: 200, h: 124, title: 'Analyse', sub: ['Batch, main or', 'priority, 2 vCPU: previews,', 'screening if on'], tone: 'compute' });
 const path = card({ x: 340, y: 500 + DY, w: 200, h: 72, title: 'Chunked?', tone: 'plain' });
 const encode = card({ x: 340, y: 620 + DY, w: 200, h: 112, title: 'Encode', sub: ['Batch, main or', 'priority, 4 or 8 vCPU'], tone: 'compute' });
 const hasAudio = card({ x: 600, y: 500 + DY, w: 200, h: 72, title: 'Has audio?', tone: 'plain' });

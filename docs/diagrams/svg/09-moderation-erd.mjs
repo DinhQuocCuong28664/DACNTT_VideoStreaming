@@ -9,7 +9,7 @@ enableLayoutCheck();
 Object.assign(TYPE, { entityKey: 14.5, entityRow: 14.5, entityName: 17 });
 
 const W = 1620;
-const H = 700;
+const H = 740;
 const p = [];
 const OPTS = { w: 500, colType: 100, colName: 160, colKey: 40 };
 const X = [40, 560, 1080];
@@ -62,7 +62,20 @@ const sample = entity({ ...OPTS, x: X[2], y: appeal.box.b + 40, name: 'auditSamp
   { type: 'ObjectId', name: 'labelledBy', key: 'FK', note: '→ users (operator)' },
 ] });
 
-p.push(report.svg, creport.svg, event.svg, role.svg, appeal.svg, sample.svg);
+// Runtime switches of the staff console (shared/src/settings.ts): one document and its change log.
+const settings = entity({ ...OPTS, x: X[2], y: sample.box.b + 40, name: 'settings', tone: 'storage', rows: [
+  { type: 'string', name: '_id', key: 'PK', note: 'always "system"' },
+  { type: 'boolean', name: 'moderationEnabled', note: 'unset: Terraform default' },
+  { type: 'boolean', name: 'autoCaptionsEnabled', note: 'unset: on' },
+  { type: 'string', name: 'updatedBy', note: 'last administrator' },
+] });
+const switchLog = entity({ ...OPTS, x: X[1], y: role.box.b + 40, name: 'settingsChanges', tone: 'storage', rows: [
+  { type: 'string', name: 'key', note: 'which switch' },
+  { type: 'boolean', name: 'from, to', note: 'values before and after' },
+  { type: 'ObjectId', name: 'by', key: 'FK', note: '→ users; append only' },
+] });
+
+p.push(report.svg, creport.svg, event.svg, role.svg, appeal.svg, sample.svg, settings.svg, switchLog.svg);
 p.push(text('UK unique index, partial where the note says so  ·  FK reference; the note names the collection',
   40, H - 24, { size: 15, anchor: 'start', fill: PALETTE.muted }));
 

@@ -518,9 +518,10 @@ which Unicode folding leaves alone, so that a query typed without Vietnamese mar
 video. Queries tolerate one or two typing errors and filter on visibility, status and moderation
 inside the index, so private, unready or removed videos never appear in results.
 
-Figure~\ref{fig:moderation-erd} shows the six collections of moderation. Two of them are
-append-only logs, the moderation events and the role changes: the API inserts into them and never
-updates them, which is what lets an auditor trust them.
+Figure~\ref{fig:moderation-erd} shows the eight collections of moderation and operation. Three of
+them are append-only logs, the moderation events, the role changes and the changes of the runtime
+switches: the API inserts into them and never updates them, which is what lets an auditor trust
+them. The switches themselves are one document, \name{settings/system}.
 
 % Xoay ngang: đặt vừa bề rộng vùng chữ thì chữ dưới 6,2pt khi in.
 \begin{sidewaysfigure}
@@ -559,7 +560,7 @@ Channels & \mbox{\texttt{/channels/:ref}}: profile, videos, subscription, member
 Studio & thumbnail, captions, chapters, schedule, analytics, avatar, banner, tiers, members & The owner \\
 Plans & \mbox{\texttt{/plans}}; \mbox{\texttt{/billing}}: state, checkout, portal, webhook & Plans public; billing signed in; webhook signed by Stripe \\
 Library & \mbox{\texttt{/me}}: history, progress, feed, playlists, notifications, subscriptions & Signed in \\
-Moderation & report and appeal a video; \mbox{\texttt{/admin}}: queue, decisions, comment reports, appeals, audit, metrics, events, users, roles & Viewers; staff by permission \\
+Moderation & report and appeal a video; \mbox{\texttt{/admin}}: queue, decisions, comment reports, appeals, audit, metrics, events, users, roles, overview, settings & Viewers; staff by permission \\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -605,7 +606,10 @@ position.
 
 The staff console is part of the same application, and a person sees only the tabs their role's
 permissions allow: the review queue, removed videos, reported comments, appeals, audit samples,
-the rates, the event log and the users. An operator never sees the rates, and an auditor never sees
+the rates, the event log and the users, and for an administrator also an overview of the platform
+and the switches of the services billed per use (FR-27, FR-28). The overview counts users, plans,
+videos, screening outcomes, caption minutes and views from the documents on request, and draws one
+bar chart per day with the same numbers as a table. An operator never sees the rates, and an auditor never sees
 a decision button. Thumbnails of videos under review stay blurred until a reviewer reveals them, so
 that reading the queue does not by itself expose staff to the content.
 
@@ -651,6 +655,8 @@ moderation:sample & Draw audit samples & administrator \\
 metrics:read, events:read & Error rates, decision log, role changes & administrator, auditor \\
 users:manage & Users and roles & administrator \\
 content:viewRemoved & Open removed and held videos & administrator, operator \\
+system:read & Overview of users, plans, content and views & administrator \\
+settings:manage & Switch screening and automatic captions & administrator \\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -703,6 +709,16 @@ video with violence that may stay is published behind a warning that the viewer 
 fails closed: when no frame, or less than 80\% of the planned frames, could be analysed, the video is
 held for review rather than published. Avatars, banners and custom thumbnails pass through the same
 policy and are refused on any relevant label.
+
+Screening is billed per frame, so an administrator can switch it for new videos in the staff
+console, as for automatic captions (Section~\ref{sec:captions-design}). The switch lives in the
+database, and the processing containers hold no database credentials, so they never read it:
+\name{MarkProcessing} reads it when the workflow starts and the state machine passes it to the
+\name{analyse} job as an environment value that overrides the one of the job definition. A change
+therefore applies to the videos that start processing after it, and without a stored value the
+default set by Terraform applies. A video processed with screening off is published as approved
+with the source \name{disabled}, so it never enters the error rates of
+Section~\ref{sec:review-design}; viewers can still report it and operators still decide on it.
 
 \subsection{Review, Appeals and Audit}
 \label{sec:review-design}
@@ -845,7 +861,8 @@ if the total stays within the plan, so the database itself decides which of two 
 succeeds. A job that fails gives its seconds back. The reservation counts at least fifteen seconds
 per video, the minimum that Transcribe bills. Videos without sound, sources over the 2~GB that
 Transcribe accepts, and videos that the owner has already captioned are skipped before anything is
-reserved, so they cost nothing.
+reserved, so they cost nothing. Before any of these checks the function reads the switch that an
+administrator sets in the staff console; when it is off, no job starts and nothing is reserved.
 
 \section{Performance and Scalability}
 \label{sec:performance-design}
