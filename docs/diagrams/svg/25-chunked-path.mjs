@@ -28,9 +28,9 @@ p.push(text([
 // ── 2. Mã hoá ───────────────────────────────────────────────────────────────
 const enc = group({ x: 40, y: 310, w: 1420, h: 330, label: '2. Encode (Batch)', stroke: PALETTE.compute.stroke, fill: '#fffaf3' });
 p.push(enc.svg);
-const audio = card({ x: 70, y: 370, w: 300, h: 220, title: 'Audio job', sub: ['main queue, 1 vCPU', '', 'AAC-LC once per', 'bitrate of the plan', '(64k, 128k) for the', 'whole source, before', 'the chunks start'], tone: 'compute' });
+const audio = card({ x: 70, y: 370, w: 300, h: 220, title: 'Audio job', sub: ['main or priority, 1 vCPU', '', 'AAC-LC once per', 'bitrate of the plan', '(64k, 128k) for the', 'whole source, before', 'the chunks start'], tone: 'compute' });
 p.push(audio.svg);
-const arr = group({ x: 430, y: 356, w: 1000, h: 256, label: 'Chunk array job: N children, bulk queue, 4 vCPU each', stroke: PALETTE.compute.stroke, fill: '#fffdf8', dash: '4 4' });
+const arr = group({ x: 430, y: 356, w: 1000, h: 256, label: 'Chunk array job: N children, bulk or priority-bulk, 4 vCPU each', stroke: PALETTE.compute.stroke, fill: '#fffdf8', dash: '4 4' });
 p.push(arr.svg);
 const kids = [];
 for (let i = 0; i < 6; i += 1) {
