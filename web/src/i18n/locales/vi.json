@@ -360,6 +360,11 @@
     "unlock": "Mở khoá",
     "wrongPassword": "Mật khẩu không đúng."
   },
+  "mini": {
+    "label": "Trình phát thu nhỏ",
+    "expand": "Mở rộng",
+    "close": "Đóng"
+  },
   "player": {
     "authFailed": "Không xác thực được phiên xem video. Vui lòng tải lại trang.",
     "renewing": "Đang gia hạn phiên xem…",
@@ -380,6 +385,9 @@
     "speedNormal": "Chuẩn",
     "quality": "Chất lượng",
     "fullscreen": "Toàn màn hình",
+    "theater": "Chế độ rạp hát (t)",
+    "defaultView": "Chế độ xem mặc định (t)",
+    "miniPlayer": "Trình phát thu nhỏ (i)",
     "contextMenu": "Menu trình phát",
     "loop": "Phát lặp lại",
     "copyUrl": "Sao chép URL của video",
@@ -413,6 +421,8 @@
       "frame": "Lùi hoặc tới một khung hình khi đang dừng",
       "speed": "Chậm hơn hoặc nhanh hơn",
       "chapter": "Chương trước hoặc chương sau",
+      "theater": "Chế độ rạp hát hoặc chế độ xem mặc định",
+      "mini": "Trình phát thu nhỏ: xem tiếp trong khi duyệt trang khác",
       "help": "Hiện hoặc ẩn bảng này"
     }
   },

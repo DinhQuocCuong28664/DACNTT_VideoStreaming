@@ -1,0 +1,104 @@
+/* Corner player kept while browsing other pages (YouTube "miniplayer") */
+.mini-player {
+  position: fixed;
+  right: var(--space-lg);
+  bottom: var(--space-lg);
+  z-index: 950;
+  width: min(400px, calc(100vw - 32px));
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--bg-secondary);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+}
+
+.mini-player-video {
+  position: relative;
+}
+
+.mini-player .video-player-wrapper {
+  border-radius: 0;
+}
+
+/* Only the volume button: the slider does not fit 400 px. */
+.mini-player .volume-slider {
+  display: none;
+}
+
+.mini-player-actions {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 6;
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.mini-player-video:hover .mini-player-actions,
+.mini-player-video:focus-within .mini-player-actions {
+  opacity: 1;
+}
+
+.mini-player-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.mini-player-btn:hover {
+  background: rgba(0, 0, 0, 0.85);
+}
+
+.mini-player-btn:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 1px;
+}
+
+.mini-player-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: 10px 12px;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.mini-player-title {
+  font-weight: 600;
+  font-size: var(--font-size-sm);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.mini-player-channel {
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+}
+
+/* Touch screens have no hover: the two buttons stay visible. */
+@media (hover: none) {
+  .mini-player-actions {
+    opacity: 1;
+  }
+}
+
+@media (max-width: 576px) {
+  .mini-player {
+    right: 16px;
+    bottom: 16px;
+  }
+}

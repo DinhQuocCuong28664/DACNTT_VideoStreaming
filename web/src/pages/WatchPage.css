@@ -15,16 +15,59 @@
 .watch-layout {
   display: grid;
   grid-template-columns: 1fr 360px;
-  gap: var(--space-xl);
+  /* The sidebar spans both rows; a flexible second row takes its extra height, so the
+     player row stays as tall as the player. */
+  grid-template-rows: auto 1fr;
+  grid-template-areas:
+    "player side"
+    "main side";
+  column-gap: var(--space-xl);
   align-items: start;
 }
 
+.watch-player-wrap {
+  grid-area: player;
+  min-width: 0;
+}
+
 .watch-main {
+  grid-area: main;
   min-width: 0;
 }
 
 .watch-sidebar {
+  grid-area: side;
   min-width: 0;
+}
+
+/* ── Theater mode: the player takes the whole row on a black band, the sidebar moves below ── */
+.watch-page.is-theater {
+  padding-top: 0;
+}
+
+.is-theater .watch-layout {
+  grid-template-areas:
+    "player player"
+    "main side";
+}
+
+.is-theater .watch-player-wrap {
+  margin-bottom: var(--space-lg);
+  background: #000;
+  /* Paints the band to both edges of the window without changing the grid width. */
+  box-shadow: 0 0 0 100vmax #000;
+  clip-path: inset(0 -100vmax);
+}
+
+.is-theater .watch-player-wrap .video-player-wrapper,
+.is-theater .watch-player-wrap .player-placeholder,
+.is-theater .watch-player-wrap .player-locked-wrapper {
+  max-height: calc(100vh - var(--navbar-height) - 120px);
+  border-radius: 0;
+}
+
+.is-theater .watch-main {
+  padding-top: 0;
 }
 
 .watch-sidebar-chips {
@@ -42,8 +85,29 @@
 }
 
 @media (max-width: 1024px) {
-  .watch-layout {
+  .watch-layout,
+  .is-theater .watch-layout {
     grid-template-columns: 1fr;
+    grid-template-rows: auto;
+    grid-template-areas:
+      "player"
+      "main"
+      "side";
+  }
+
+  /* One column already gives the player the whole width: no theater button, no band. */
+  .theater-btn {
+    display: none;
+  }
+
+  .is-theater .watch-player-wrap {
+    margin-bottom: 0;
+    box-shadow: none;
+    clip-path: none;
+  }
+
+  .watch-page.is-theater {
+    padding-top: var(--space-lg);
   }
 
   .watch-sidebar {
@@ -535,7 +599,8 @@
 }
 
 @media (max-width: 576px) {
-  .watch-page {
+  .watch-page,
+  .watch-page.is-theater {
     padding-top: 0;
   }
 

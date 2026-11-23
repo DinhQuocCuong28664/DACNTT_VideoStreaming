@@ -364,6 +364,11 @@
     "unlock": "Unlock",
     "wrongPassword": "The password is wrong."
   },
+  "mini": {
+    "label": "Miniplayer",
+    "expand": "Expand",
+    "close": "Close"
+  },
   "player": {
     "authFailed": "Could not authorise this playback session. Please reload the page.",
     "renewing": "Renewing the playback session…",
@@ -384,6 +389,9 @@
     "speedNormal": "Normal",
     "quality": "Quality",
     "fullscreen": "Fullscreen",
+    "theater": "Theater mode (t)",
+    "defaultView": "Default view (t)",
+    "miniPlayer": "Miniplayer (i)",
     "contextMenu": "Player menu",
     "loop": "Loop",
     "copyUrl": "Copy video URL",
@@ -418,6 +426,8 @@
       "frame": "Previous or next frame while paused",
       "speed": "Slower or faster",
       "chapter": "Previous or next chapter",
+      "theater": "Theater mode or default view",
+      "mini": "Miniplayer: keep watching while you browse",
       "help": "Show or hide this list"
     }
   },

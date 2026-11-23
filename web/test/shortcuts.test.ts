@@ -18,6 +18,9 @@ describe('player shortcuts', () => {
     expect(shortcutFor({ key: '>' })).toEqual({ kind: 'rateStep', dir: 1 });
     expect(shortcutFor({ key: ',' })).toEqual({ kind: 'frameStep', dir: -1 });
     expect(shortcutFor({ key: '?' })).toEqual({ kind: 'help' });
+    expect(shortcutFor({ key: 'T' })).toEqual({ kind: 'toggleTheater' });
+    expect(shortcutFor({ key: 'i' })).toEqual({ kind: 'miniPlayer' });
+    expect(shortcutFor({ key: 'i', ctrlKey: true })).toBeNull();
   });
 
   it('leaves browser and system combinations alone', () => {

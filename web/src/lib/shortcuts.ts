@@ -15,6 +15,8 @@ export type ShortcutAction =
   | { kind: 'frameStep'; dir: 1 | -1 }
   | { kind: 'rateStep'; dir: 1 | -1 }
   | { kind: 'chapter'; dir: 1 | -1 }
+  | { kind: 'toggleTheater' }
+  | { kind: 'miniPlayer' }
   | { kind: 'help' };
 
 export interface KeyInput { key: string; ctrlKey?: boolean; altKey?: boolean; metaKey?: boolean }
@@ -43,6 +45,8 @@ export function shortcutFor({ key, ctrlKey = false, altKey = false, metaKey = fa
     case 'm': return { kind: 'toggleMute' };
     case 'f': return { kind: 'toggleFullscreen' };
     case 'c': return { kind: 'toggleCaptions' };
+    case 't': return { kind: 'toggleTheater' };
+    case 'i': return { kind: 'miniPlayer' };
     case 'Home': return { kind: 'seekToStart' };
     case 'End': return { kind: 'seekToEnd' };
     case ',': return { kind: 'frameStep', dir: -1 };
