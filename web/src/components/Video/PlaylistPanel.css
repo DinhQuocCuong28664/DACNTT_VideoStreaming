@@ -1,0 +1,136 @@
+/* Playlist beside the player on the watch page */
+.playlist-panel {
+  margin-bottom: var(--space-md);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--bg-secondary);
+}
+
+.playlist-panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  padding: 12px 12px 8px 16px;
+}
+
+.playlist-panel-heading {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.playlist-panel-title {
+  font-weight: 700;
+  color: var(--text-primary);
+  text-decoration: none;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.playlist-panel-title:hover {
+  text-decoration: underline;
+}
+
+.playlist-panel-position {
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+}
+
+.playlist-panel-actions {
+  display: flex;
+  gap: 2px;
+}
+
+.playlist-panel-actions .btn-icon[aria-pressed='true'] {
+  color: var(--text-primary);
+  background: var(--bg-tertiary);
+}
+
+.playlist-panel-actions .btn-icon[aria-pressed='false'] {
+  color: var(--text-secondary);
+}
+
+.playlist-panel-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 8px;
+  max-height: 400px;
+  overflow-y: auto;
+  position: relative;
+}
+
+.playlist-panel-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px 4px 4px;
+}
+
+.playlist-panel-row.is-current {
+  background: var(--bg-tertiary);
+}
+
+.playlist-panel-index {
+  flex: 0 0 24px;
+  display: inline-flex;
+  justify-content: center;
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+}
+
+.playlist-panel-link {
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+  color: inherit;
+  text-decoration: none;
+}
+
+.playlist-panel-thumb {
+  position: relative;
+  flex: 0 0 100px;
+  aspect-ratio: 16 / 9;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--bg-tertiary);
+}
+
+.playlist-panel-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.playlist-panel-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.playlist-panel-name {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.playlist-panel-channel {
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+}
+
+.playlist-panel-unavailable {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 0;
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}

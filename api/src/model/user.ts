@@ -24,6 +24,10 @@ export interface UserDoc {
   counters: { subscribers: number; videos: number };
   /** Platform plan, kept in step with Stripe by the billing webhook; absent on the free plan. */
   billing?: BillingState | null;
+  /** While true, watching adds nothing to the history and keeps no resume position. */
+  historyPaused?: boolean;
+  /** The video shown at the top of the channel page, chosen by its owner. */
+  featuredVideo?: ObjectId | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -50,6 +54,8 @@ export function selfView(u: UserDoc, now: Date = new Date()) {
     hasPassword: Boolean(u.passwordHash),
     googleLinked: Boolean(u.googleSub),
     notifyByEmail: u.notifyByEmail,
+    historyPaused: u.historyPaused ?? false,
+    featuredVideoId: u.featuredVideo?.toHexString() ?? null,
     counters: u.counters,
     createdAt: u.createdAt.toISOString(),
   };

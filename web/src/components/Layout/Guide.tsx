@@ -5,7 +5,7 @@ import {
   MdAdminPanelSettings, MdChevronRight, MdHistory, MdHome, MdOutlineAccountCircle, MdOutlineAdminPanelSettings,
   MdOutlineComputer, MdOutlineFileUpload, MdOutlineHome, MdOutlineInfo, MdOutlineMusicNote, MdOutlinePlaylistPlay, MdOutlineWorkspacePremium,
   MdOutlineSchool, MdOutlineSettings, MdOutlineSportsEsports, MdOutlineSubscriptions, MdOutlineTheaterComedy,
-  MdOutlineVideoLibrary, MdOutlineWatchLater, MdSettings, MdSubscriptions, MdThumbUpOffAlt, MdVideoLibrary,
+  MdOutlineVideoLibrary, MdOutlineWatchLater, MdSettings, MdSubscriptions, MdThumbUpOffAlt, MdVideoLibrary, MdWhatshot,
 } from 'react-icons/md';
 import { useAuth } from '../../context/auth';
 import type { Category } from '../../api/types';
@@ -92,6 +92,7 @@ export default function Guide({ variant = 'full', onNavigate }: { variant?: 'ful
       </div>
       <div className="guide-section">
         <h2 className="guide-heading">{t('nav.explore')}</h2>
+        {renderItem({ to: '/trending', label: t('nav.trending'), icon: MdWhatshot, active: at('/trending') })}
         {EXPLORE.map((c) => renderItem({ to: `/?category=${c.value}`, label: t(`categories.${c.value}`), icon: c.icon, active: at('/') && category === c.value }))}
       </div>
       <div className="guide-section">

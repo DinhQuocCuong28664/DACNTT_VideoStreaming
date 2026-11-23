@@ -31,7 +31,8 @@ export const billing = {
 const unlockHeader =(unlockToken?: string | null): Record<string, string> => (unlockToken ? { 'X-Unlock-Token': unlockToken } : {});
 
 export const videos = {
-  list: (q: { cursor?: string | null; category?: Category | null; limit?: number } = {}) => api.get<Page<VideoCard>>('/videos', { query: q }),
+  list: (q: { cursor?: string | null; category?: Category | null; tag?: string | null; limit?: number } = {}) => api.get<Page<VideoCard>>('/videos', { query: q }),
+  trending: () => api.get<{ items: VideoCard[] }>('/trending'),
   get: (id: string, unlockToken?: string | null) => api.get<{ video: VideoDetails | LockedStub }>(`/videos/${enc(id)}`, { headers: unlockHeader(unlockToken) }),
   playback: (id: string, unlockToken?: string | null) => api.get<Playback>(`/videos/${enc(id)}/playback`, { headers: unlockHeader(unlockToken) }),
   unlock: (id: string, password: string) => api.post<{ unlockToken: string }>(`/videos/${enc(id)}/unlock`, { password }),
@@ -65,7 +66,7 @@ export const comments = {
 
 export const channels = {
   get: (ref: string) => api.get<ChannelPage>(`/channels/${enc(ref)}`),
-  videos: (ref: string, cursor?: string | null) => api.get<Page<VideoCard>>(`/channels/${enc(ref)}/videos`, { query: { cursor } }),
+  videos: (ref: string, cursor?: string | null, limit?: number) => api.get<Page<VideoCard>>(`/channels/${enc(ref)}/videos`, { query: { cursor, limit } }),
   subscribe: (ref: string) => api.put<{ subscribed: boolean; subscribers: number }>(`/channels/${enc(ref)}/subscription`),
   unsubscribe: (ref: string) => api.del<{ subscribed: boolean; subscribers: number }>(`/channels/${enc(ref)}/subscription`),
   join: (ref: string, tierId: string) => api.put<{ membership: Membership }>(`/channels/${enc(ref)}/membership`, { tierId }),
@@ -73,7 +74,10 @@ export const channels = {
 };
 
 export const me = {
-  profile: (b: Partial<{ displayName: string; handle: string; description: string; notifyByEmail: boolean }>) => api.patch<{ user: User }>('/me/profile', b),
+  profile: (b: Partial<{ displayName: string; handle: string; description: string; notifyByEmail: boolean; historyPaused: boolean; featuredVideoId: string | null }>) =>
+    api.patch<{ user: User }>('/me/profile', b),
+  notInterested: (videoId: string) => api.put<void>(`/me/not-interested/${enc(videoId)}`),
+  undoNotInterested: (videoId: string) => api.del<void>(`/me/not-interested/${enc(videoId)}`),
   subscriptions: () => api.get<{ items: Channel[] }>('/me/subscriptions'),
   feed: (cursor?: string | null) => api.get<Page<VideoCard>>('/me/feed', { query: { cursor } }),
   liked: (cursor?: string | null) => api.get<Page<VideoCard>>('/me/liked', { query: { cursor } }),

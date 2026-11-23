@@ -186,6 +186,23 @@
 }
 
 /* ── Tiêu đề và hàng kênh ── */
+.watch-hashtags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0 -8px;
+  font-size: var(--font-size-sm);
+}
+
+.watch-hashtags a {
+  color: var(--accent-primary);
+  text-decoration: none;
+}
+
+.watch-hashtags a:hover {
+  text-decoration: underline;
+}
+
 .watch-title {
   margin-top: 12px;
   font-size: var(--font-size-xl);

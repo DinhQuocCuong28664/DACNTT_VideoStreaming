@@ -59,7 +59,14 @@ const profileBody = z.object({
   handle: z.string().trim().toLowerCase().regex(HANDLE_RE),
   description: z.string().max(1000),
   notifyByEmail: z.boolean(),
+  historyPaused: z.boolean(),
+  /** One of the owner's public videos, or null to show none. */
+  featuredVideoId: z.string().regex(/^[a-f0-9]{24}$/).nullable(),
 }).partial().strict();
+
+/** A video can lead a channel page only while anyone may see it in a list. */
+const featurable = (v: VideoDoc | null): v is VideoDoc =>
+  v !== null && v.status === 'READY' && v.visibility === 'public' && v.moderation.status === 'approved';
 const joinBody = z.object({ tierId: z.string().regex(/^[a-f0-9]{24}$/) });
 const listQuery = z.object({
   cursor: z.string().max(200).optional(),
@@ -102,14 +109,18 @@ export const channelsFeature: Feature = (r, deps) => {
 
   r.get('/channels/:ref', async (req, res) => {
     const c = await channel(req.params['ref']);
-    const [subscribed, membership, tierList, videoCount] = await Promise.all([
+    const [subscribed, membership, tierList, videoCount, featured] = await Promise.all([
       req.user ? subs.countDocuments({ subscriber: meId(req), channel: c._id }, { limit: 1 }) : Promise.resolve(0),
       req.user ? activeMembership(meId(req), c._id) : Promise.resolve(null),
       tiers.find({ channel: c._id, active: true }).sort({ level: 1 }).toArray(),
       videos.countDocuments({ owner: c._id, status: 'READY', visibility: 'public', 'moderation.status': 'approved' }),
+      c.featuredVideo ? videos.findOne({ _id: c.featuredVideo, owner: c._id }) : Promise.resolve(null),
     ]);
+    // A featured video that later became private or was removed simply stops showing.
+    const featuredCard = featurable(featured) ? (await cards([featured]))[0] ?? null : null;
     res.json({
       channel: { ...publicView(c), videos: videoCount },
+      featured: featuredCard ? { ...featuredCard, description: featured?.description ?? '' } : null,
       viewer: req.user ? { subscribed: subscribed > 0, membership: membershipView(membership), isOwner: req.user.id === c._id.toHexString() } : null,
       tiers: tierList.map(tierView),
     });
@@ -242,6 +253,15 @@ export const channelsFeature: Feature = (r, deps) => {
     if (body.displayName !== undefined) set['displayName'] = body.displayName;
     if (body.description !== undefined) set['description'] = body.description;
     if (body.notifyByEmail !== undefined) set['notifyByEmail'] = body.notifyByEmail;
+    if (body.historyPaused !== undefined) set['historyPaused'] = body.historyPaused;
+    if (body.featuredVideoId !== undefined) {
+      if (body.featuredVideoId === null) set['featuredVideo'] = null;
+      else {
+        const v = await videos.findOne({ _id: new ObjectId(body.featuredVideoId), owner: me._id });
+        if (!featurable(v)) throw badRequest('NOT_FEATURABLE', 'Only a public video of this channel can be featured');
+        set['featuredVideo'] = v._id;
+      }
+    }
     const update: Record<string, unknown> = { $set: set };
     if (body.handle !== undefined && body.handle !== me.handle) {
       if (RESERVED_HANDLES.has(body.handle)) throw conflict('HANDLE_TAKEN', 'This handle is not available');

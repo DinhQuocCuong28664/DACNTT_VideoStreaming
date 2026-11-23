@@ -21,7 +21,7 @@ export async function connect(uri: string, dbName: string, poolSize: number): Pr
 export const COLLECTIONS = [
   'users', 'videos', 'comments', 'reactions', 'subscriptions', 'membershipTiers', 'memberships',
   'playlists', 'analyticsDaily', 'reports', 'appeals', 'auditSamples', 'moderationEvents', 'roleChanges',
-  'emailTokens', 'billingEvents',
+  'emailTokens', 'billingEvents', 'dismissals',
 ] as const;
 
 /**
@@ -44,6 +44,13 @@ export async function ensureIndexes(db: Db): Promise<void> {
       { key: { status: 1, 'upload.startedAt': 1 }, name: 'drafts' },
       { key: { 'moderation.status': 1, createdAt: -1 }, name: 'moderation_queue' },
       { key: { 'moderation.openReports': 1 }, name: 'reported', partialFilterExpression: { 'moderation.openReports': { $gt: 0 } } },
+      // Hashtag pages: the public listing of one tag, newest first.
+      { key: { tags: 1, status: 1, visibility: 1, 'moderation.status': 1, processedAt: -1 }, name: 'by_tag' },
+    ]),
+    // "Not interested": one row per viewer and video, read whole when the feed is built.
+    db.collection('dismissals').createIndexes([
+      { key: { user: 1, video: 1 }, name: 'pair_unique', unique: true },
+      { key: { user: 1, createdAt: -1 }, name: 'by_user' },
     ]),
     db.collection('comments').createIndexes([
       { key: { video: 1, parent: 1, pinned: 1, _id: -1 }, name: 'thread' },

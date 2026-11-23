@@ -9,6 +9,7 @@ import type { Feature } from '../app.js';
 import { badRequest, conflict, forbidden, HttpError, notFound } from '../http/errors.js';
 import { rateLimit, requireUser } from '../http/middleware.js';
 import { RETENTION_BUCKETS } from '../services/activity.js';
+import type { UserDoc } from '../model/user.js';
 import type { VideoDoc } from '../model/video.js';
 import { decodeCursor, encodeCursor, videoViews } from './videos.js';
 
@@ -78,7 +79,11 @@ export const libraryFeature: Feature = (r, deps) => {
         await activity.heartbeats.add(hour, id, Math.min(body.watchedSec, HEARTBEAT_SEC), bucket, new Date(t.getTime() + HEARTBEAT_TTL_DAYS * 86_400_000));
       }
     }
-    if (req.user) {
+    // A paused history keeps no entry and no resume position, as on YouTube.
+    const paused = req.user
+      ? Boolean((await db.collection<UserDoc>('users').findOne({ _id: me(req) }, { projection: { historyPaused: 1 } }))?.historyPaused)
+      : true;
+    if (req.user && !paused) {
       await activity.watch.put(req.user.id, { videoId: id, positionSec: Math.floor(body.positionSec), durationSec: 0, updatedAt: t.toISOString() });
     }
     res.status(202).json({ counted });

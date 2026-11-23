@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { MdErrorOutline, MdOutlineSearchOff, MdOutlineVideoLibrary } from 'react-icons/md';
-import { discovery, videos } from '../api/endpoints';
+import { discovery, me, videos } from '../api/endpoints';
 import { CATEGORIES, type Category, type Channel, type VideoCard as Card } from '../api/types';
 import VideoCard, { LoadMoreFooter, SkeletonCard } from '../components/Video/VideoCard';
 import Avatar from '../components/Common/Avatar';
@@ -41,6 +41,11 @@ export default function HomePage() {
 
   const list = useInfiniteList<Card>(fetchPage);
   useEffect(() => { window.scrollTo({ top: 0 }); }, [fetchPage]);
+  // "Not interested" leaves a note in the card's place with an undo, as on YouTube; the API keeps
+  // the video out of the next feeds.
+  const [dismissed, setDismissed] = useState<ReadonlySet<string>>(new Set());
+  const markDismissed = (id: string, on: boolean) => setDismissed((s) => { const n = new Set(s); if (on) n.add(id); else n.delete(id); return n; });
+  const undoDismiss = async (id: string) => { try { await me.undoNotInterested(id); markDismissed(id, false); } catch { /* the note stays */ } };
 
   const selectCategory = (c: Category | null) => {
     const next = new URLSearchParams(params);
@@ -76,7 +81,15 @@ export default function HomePage() {
     body = (
       <>
         <div className={listClass}>
-          {list.items.map((v) => <VideoCard key={v.id} video={v} variant={isSearch ? 'row' : 'grid'} menu={<VideoCardMenu video={v} />} />)}
+          {list.items.map((v) => (dismissed.has(v.id) ? (
+            <div key={v.id} className={`dismissed-card${isSearch ? ' is-row' : ''}`} role="status">
+              <p>{t('videoCard.dismissed')}</p>
+              <button type="button" className="btn btn-secondary" onClick={() => void undoDismiss(v.id)}>{t('videoCard.undo')}</button>
+            </div>
+          ) : (
+            <VideoCard key={v.id} video={v} variant={isSearch ? 'row' : 'grid'}
+              menu={<VideoCardMenu video={v} onNotInterested={isSearch ? undefined : () => markDismissed(v.id, true)} />} />
+          )))}
           {list.status === 'loadingMore' && Array.from({ length: isSearch ? 2 : 4 }, (_, i) => <SkeletonCard key={`more-${i}`} row={isSearch} />)}
         </div>
         <LoadMoreFooter list={list} />

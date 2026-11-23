@@ -1,12 +1,12 @@
-/** Search, autocomplete, related videos and the notification inbox. */
-import { ObjectId } from 'mongodb';
+/** Search, autocomplete, related videos, trending, "not interested" and the notification inbox. */
+import { MongoServerError, ObjectId } from 'mongodb';
 import { z } from 'zod';
 import type { Feature } from '../app.js';
 import { notFound } from '../http/errors.js';
 import { rateLimit, requireUser } from '../http/middleware.js';
 import { publicView, type UserDoc } from '../model/user.js';
 import type { VideoDoc } from '../model/video.js';
-import { CATEGORIES, videoViews } from './videos.js';
+import { CATEGORIES, dismissedIds, videoViews } from './videos.js';
 
 export const SEARCH_PAGE = 20;
 const MAX_PAGES = 10;
@@ -22,6 +22,18 @@ const pageQuery = z.object({ cursor: z.string().max(500).optional(), limit: z.co
 
 /** Ready, public, approved: the same rule as the search filter, checked again after loading. */
 const listable = (v: VideoDoc) => v.status === 'READY' && v.visibility === 'public' && v.moderation.status === 'approved';
+
+/** Trending ranks among this many of the newest public videos, and shows this many. */
+export const TRENDING_POOL = 500;
+export const TRENDING_SIZE = 50;
+/**
+ * Trending score: views divided by age raised to a gravity, the formula Hacker News made known.
+ * A video gains while views come faster than time passes and sinks as it gets older; two hours
+ * are added so a video minutes old does not divide by almost nothing.
+ */
+export const TRENDING_GRAVITY = 1.5;
+export const trendingScore = (views: number, ageHours: number) => views / (Math.max(ageHours, 0) + 2) ** TRENDING_GRAVITY;
+const videoIdParam = z.string().regex(/^[a-f0-9]{24}$/);
 
 export const discoveryFeature: Feature = (r, deps) => {
   const { db, search, kv, config, now, activity } = deps;
@@ -53,16 +65,50 @@ export const discoveryFeature: Feature = (r, deps) => {
     const id = String(req.params['id'] ?? '');
     const v = /^[a-f0-9]{24}$/.test(id) ? await videos.findOne({ _id: new ObjectId(id) }) : null;
     if (!v || !listable(v)) throw notFound('Video');
-    const base = { _id: { $ne: v._id }, status: 'READY', visibility: 'public', 'moderation.status': 'approved' } as const;
+    const hidden = await dismissedIds(db, req.user?.id);
+    const base = { _id: { $nin: [v._id, ...hidden] }, status: 'READY', visibility: 'public', 'moderation.status': 'approved' } as const;
     const or: Record<string, unknown>[] = [{ owner: v.owner }];
     if (v.category) or.push({ category: v.category });
     if (v.tags.length) or.push({ tags: { $in: v.tags } });
     let list = await videos.find({ ...base, $or: or }).sort({ 'counters.views': -1 }).limit(12).toArray();
     if (list.length < 12) {
-      const more = await videos.find({ ...base, _id: { $nin: [v._id, ...list.map((x) => x._id)] } }).sort({ processedAt: -1 }).limit(12 - list.length).toArray();
+      const more = await videos.find({ ...base, _id: { $nin: [v._id, ...hidden, ...list.map((x) => x._id)] } }).sort({ processedAt: -1 }).limit(12 - list.length).toArray();
       list = [...list, ...more];
     }
     res.json({ items: await cards(list) });
+  });
+
+  r.get('/trending', async (req, res) => {
+    const hidden = await dismissedIds(db, req.user?.id);
+    const pool = await videos.find({ status: 'READY', visibility: 'public', 'moderation.status': 'approved', ...(hidden.length ? { _id: { $nin: hidden } } : {}) })
+      .sort({ processedAt: -1, _id: -1 }).limit(TRENDING_POOL).toArray();
+    const at = now().getTime();
+    const ranked = pool
+      .map((v) => ({ v, score: trendingScore(v.counters.views, (at - (v.processedAt ?? v.createdAt).getTime()) / 3_600_000) }))
+      .filter((x) => x.v.counters.views > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, TRENDING_SIZE)
+      .map((x) => x.v);
+    res.json({ items: await cards(ranked) });
+  });
+
+  // "Not interested": hides a video from the home feed, related videos and trending of this viewer.
+  r.put('/me/not-interested/:videoId', requireUser, async (req, res) => {
+    const id = new ObjectId(videoIdParam.parse(String(req.params['videoId'])));
+    if (!(await videos.countDocuments({ _id: id }, { limit: 1 }))) throw notFound('Video');
+    try {
+      await db.collection('dismissals').insertOne({ user: new ObjectId(req.user?.id), video: id, createdAt: now() });
+    } catch (err) {
+      // Marking twice keeps the first mark.
+      if (!(err instanceof MongoServerError && err.code === 11000)) throw err;
+    }
+    res.status(204).end();
+  });
+
+  r.delete('/me/not-interested/:videoId', requireUser, async (req, res) => {
+    const id = new ObjectId(videoIdParam.parse(String(req.params['videoId'])));
+    await db.collection('dismissals').deleteOne({ user: new ObjectId(req.user?.id), video: id });
+    res.status(204).end();
   });
 
   r.get('/me/notifications', requireUser, async (req, res) => {

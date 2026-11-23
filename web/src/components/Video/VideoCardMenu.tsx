@@ -2,8 +2,8 @@ import { useEffect, useLayoutEffect, useRef, useState, type FormEvent, type Keyb
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { MdAdd, MdCheckBox, MdCheckBoxOutlineBlank, MdClose, MdMoreVert, MdOutlinedFlag, MdOutlinePlaylistAdd, MdOutlineShare, MdOutlineWatchLater } from 'react-icons/md';
-import { playlists } from '../../api/endpoints';
+import { MdAdd, MdBlock, MdCheckBox, MdCheckBoxOutlineBlank, MdClose, MdMoreVert, MdOutlinedFlag, MdOutlinePlaylistAdd, MdOutlineShare, MdOutlineWatchLater } from 'react-icons/md';
+import { me, playlists } from '../../api/endpoints';
 import type { PlaylistSummary, VideoCard } from '../../api/types';
 import { useAuth } from '../../context/auth';
 import { errorText, isApiError } from '../../lib/errors';
@@ -95,7 +95,7 @@ export function SaveToPlaylistDialog({ videoId, onClose, notify }: { videoId: st
  * Three-dot menu of a video card: share, watch later, save to playlist, report. Keyboard: the
  * first item takes focus, arrows move, Esc closes and returns focus to the button.
  */
-export default function VideoCardMenu({ video }: { video: VideoCard }) {
+export default function VideoCardMenu({ video, onNotInterested }: { video: VideoCard; onNotInterested?: () => void }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
@@ -150,6 +150,12 @@ export default function VideoCardMenu({ video }: { video: VideoCard }) {
     catch (err) { showToast(isApiError(err, 'ALREADY_IN_PLAYLIST') ? t('library.alreadyIn') : errorText(t, err)); }
     return undefined;
   };
+  const notInterested = async () => {
+    close(true);
+    if (!isAuthenticated) return needLogin();
+    try { await me.notInterested(video.id); onNotInterested?.(); } catch (err) { showToast(errorText(t, err)); }
+    return undefined;
+  };
   const openDialog = (d: 'report' | 'save') => { close(true); if (!isAuthenticated) needLogin(); else setDialog(d); };
 
   return (
@@ -161,6 +167,9 @@ export default function VideoCardMenu({ video }: { video: VideoCard }) {
           <button type="button" role="menuitem" tabIndex={-1} className="dropdown-item" onClick={() => void watchLater()}><MdOutlineWatchLater aria-hidden="true" /><span>{t('library.saveWatchLater')}</span></button>
           <button type="button" role="menuitem" tabIndex={-1} className="dropdown-item" onClick={() => openDialog('save')}><MdOutlinePlaylistAdd aria-hidden="true" /><span>{t('library.saveTo')}</span></button>
           <button type="button" role="menuitem" tabIndex={-1} className="dropdown-item" onClick={() => void share()}><MdOutlineShare aria-hidden="true" /><span>{t('videoCard.share')}</span></button>
+          {onNotInterested && user?.id !== video.channel.id && (
+            <button type="button" role="menuitem" tabIndex={-1} className="dropdown-item" onClick={() => void notInterested()}><MdBlock aria-hidden="true" /><span>{t('videoCard.notInterested')}</span></button>
+          )}
           {user?.id !== video.channel.id && (
             <button type="button" role="menuitem" tabIndex={-1} className="dropdown-item" onClick={() => openDialog('report')}><MdOutlinedFlag aria-hidden="true" /><span>{t('videoCard.report')}</span></button>
           )}
