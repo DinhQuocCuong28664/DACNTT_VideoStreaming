@@ -49,9 +49,12 @@ export const videos = {
   appealStatus: (id: string) => api.get<{ appeal: { status: string; message: string; resolution: string | null } | null }>(`/videos/${enc(id)}/appeal`),
 };
 
+/** "top" puts the comments with the most replies first; comments have no likes to rank by. */
+export type CommentSort = 'newest' | 'top';
+
 export const comments = {
-  list: (videoId: string, cursor?: string | null, unlockToken?: string | null) =>
-    api.get<Page<Comment> & { total: number }>(`/videos/${enc(videoId)}/comments`, { query: { cursor }, headers: unlockHeader(unlockToken) }),
+  list: (videoId: string, cursor?: string | null, unlockToken?: string | null, sort: CommentSort = 'newest') =>
+    api.get<Page<Comment> & { total: number }>(`/videos/${enc(videoId)}/comments`, { query: { cursor, sort }, headers: unlockHeader(unlockToken) }),
   replies: (id: string, cursor?: string | null) => api.get<Page<Comment>>(`/comments/${enc(id)}/replies`, { query: { cursor } }),
   create: (videoId: string, body: string, parentId?: string) => api.post<{ comment: Comment }>(`/videos/${enc(videoId)}/comments`, { body, ...(parentId ? { parentId } : {}) }),
   remove: (id: string) => api.del<void>(`/comments/${enc(id)}`),
@@ -73,6 +76,7 @@ export const me = {
   profile: (b: Partial<{ displayName: string; handle: string; description: string; notifyByEmail: boolean }>) => api.patch<{ user: User }>('/me/profile', b),
   subscriptions: () => api.get<{ items: Channel[] }>('/me/subscriptions'),
   feed: (cursor?: string | null) => api.get<Page<VideoCard>>('/me/feed', { query: { cursor } }),
+  liked: (cursor?: string | null) => api.get<Page<VideoCard>>('/me/liked', { query: { cursor } }),
   history: (cursor?: string | null) => api.get<Page<VideoCard & { positionSec: number; watchedAt: string }>>('/me/history', { query: { cursor } }),
   removeHistory: (videoId: string) => api.del<void>(`/me/history/${enc(videoId)}`),
   clearHistory: () => api.del<{ removed: number }>('/me/history'),

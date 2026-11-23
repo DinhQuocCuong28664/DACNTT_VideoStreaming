@@ -1,0 +1,83 @@
+/* Countdown card over the end of the player, YouTube-style "Up next" */
+.watch-player-wrap {
+  position: relative;
+}
+
+.up-next {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-md);
+  padding: var(--space-lg);
+  border-radius: var(--radius-lg, 12px);
+  background: rgba(0, 0, 0, 0.78);
+  color: #fff;
+  text-align: center;
+}
+
+.up-next-label {
+  font-size: var(--font-size-sm);
+  opacity: 0.85;
+}
+
+.up-next-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  max-width: 420px;
+  text-align: left;
+}
+
+.up-next-thumb {
+  width: 160px;
+  aspect-ratio: 16 / 9;
+  flex-shrink: 0;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.up-next-title {
+  font-weight: 600;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.up-next-channel {
+  margin-top: 4px;
+  font-size: var(--font-size-sm);
+  opacity: 0.8;
+}
+
+.up-next-actions {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+@media (max-width: 600px) {
+  .up-next-thumb {
+    display: none;
+  }
+}
+
+/* Autoplay switch above the related videos */
+.autoplay-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-sm);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+}
+
+.autoplay-toggle input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent-primary);
+}
