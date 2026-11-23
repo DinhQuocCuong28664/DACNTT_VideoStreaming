@@ -145,3 +145,19 @@ describe('subscriptions feed', () => {
     expect((await w.call('get', '/me/feed', undefined, { token: fan.token })).body.items.map((v: { id: string }) => v.id)).toEqual([mine]);
   });
 });
+
+describe('paused history', () => {
+  it('records nothing while paused and starts again when turned back on', async () => {
+    const id = await w.video(owner.id);
+    const as = { token: fan.token };
+    expect((await w.call('patch', '/me/profile', { historyPaused: true }, as)).body.user.historyPaused).toBe(true);
+    await beat(id, await grant(id, fan), { positionSec: 30, watchedSec: 30 }, fan);
+    expect((await w.call('get', '/me/history', undefined, as)).body.items).toEqual([]);
+    expect((await w.call('get', `/me/progress/${id}`, undefined, as)).body.positionSec).toBe(0);
+
+    await w.call('patch', '/me/profile', { historyPaused: false }, as);
+    w.tick(60_000);
+    await beat(id, await grant(id, fan), { positionSec: 45, watchedSec: 30 }, fan);
+    expect((await w.call('get', '/me/history', undefined, as)).body.items.map((i: { id: string }) => i.id)).toEqual([id]);
+  });
+});

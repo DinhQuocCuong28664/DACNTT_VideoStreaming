@@ -2,7 +2,7 @@
  * Watch page, owner edits, deletion and playback: the access rule (access.ts), the CloudFront
  * policy, the AES-128 key, password unlock and the 30-second view rule.
  */
-import { ObjectId, type Collection } from 'mongodb';
+import { ObjectId, type Collection, type Db } from 'mongodb';
 import { z } from 'zod';
 import type { Request } from 'express';
 import { VISIBILITIES, AUDIENCES, KeyMaterial, keyObject } from '@zelos/shared';
@@ -40,7 +40,20 @@ const listQuery = z.object({
   cursor: z.string().max(200).optional(),
   limit: z.coerce.number().int().min(1).max(50).default(PAGE),
   category: z.enum(CATEGORIES).optional(),
+  // Tags are stored lowercase without "#", so "#Travel" and "travel" find the same videos.
+  tag: z.string().trim().toLowerCase().transform((t) => t.replace(/^#/, '')).pipe(z.string().min(1).max(30)).optional(),
 });
+
+/** Most "not interested" marks a feed reads; older ones stop hiding their video. */
+export const MAX_DISMISSALS = 1000;
+
+/** Videos the viewer marked "not interested", newest first; none for a guest. */
+export async function dismissedIds(db: Db, userId: string | undefined): Promise<ObjectId[]> {
+  if (!userId) return [];
+  const rows = await db.collection('dismissals').find({ user: new ObjectId(userId) }, { projection: { video: 1 } })
+    .sort({ createdAt: -1 }).limit(MAX_DISMISSALS).toArray();
+  return rows.map((d) => d['video'] as ObjectId);
+}
 
 const parseId = (raw: unknown): ObjectId => {
   const id = String(raw ?? '');
@@ -133,6 +146,9 @@ export const videosFeature: Feature = (r, deps) => {
     const cursor = decodeCursor(q.cursor);
     const filter: Record<string, unknown> = { status: 'READY', visibility: 'public', 'moderation.status': 'approved' };
     if (q.category) filter['category'] = q.category;
+    if (q.tag) filter['tags'] = q.tag;
+    const hidden = await dismissedIds(deps.db, req.user?.id);
+    if (hidden.length) filter['_id'] = { $nin: hidden };
     if (cursor) filter['$or'] = [{ processedAt: { $lt: cursor.at } }, { processedAt: cursor.at, _id: { $lt: cursor.id } }];
     const list = await videos.find(filter).sort({ processedAt: -1, _id: -1 }).limit(q.limit + 1).toArray();
     const page = list.slice(0, q.limit);

@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { SEARCH_INDEXES } from '../src/services/search.js';
-import { SEARCH_PAGE } from '../src/features/discovery.js';
+import { SEARCH_PAGE, trendingScore } from '../src/features/discovery.js';
 import { memoryDb } from './helpers.js';
 import { world, type Who, type World } from './world.js';
 
@@ -86,5 +86,58 @@ describe('notifications', () => {
     expect(res.body.unread).toBe(2);
     expect((await w.call('post', '/me/notifications/read', { ids: ['2026-11-02T00:00:00Z#b'] }, { token: fan.token })).body.unread).toBe(1);
     expect((await w.call('get', '/me/notifications')).status).toBe(401);
+  });
+});
+
+describe('trending', () => {
+  it('ranks views against age and leaves out unwatched and hidden videos', () => {
+    // Twice the views at twice the age is not enough: age weighs more than linearly.
+    expect(trendingScore(100, 10)).toBeGreaterThan(trendingScore(200, 20));
+    expect(trendingScore(0, 1)).toBe(0);
+  });
+
+  it('puts a fresh popular video above an old more viewed one', async () => {
+    const old = await w.video(owner.id, { counters: { views: 500, likes: 0, dislikes: 0, comments: 0 } });
+    w.tick(30 * 86_400_000);
+    const fresh = await w.video(owner.id, { counters: { views: 50, likes: 0, dislikes: 0, comments: 0 } });
+    await w.video(owner.id);
+    await w.video(owner.id, { visibility: 'unlisted', counters: { views: 9000, likes: 0, dislikes: 0, comments: 0 } });
+    w.tick(3_600_000);
+    const res = await w.call('get', '/trending');
+    expect(res.body.items.map((v: { id: string }) => v.id)).toEqual([fresh, old]);
+  });
+});
+
+describe('not interested', () => {
+  it('hides the video from the feed, related videos and trending of that viewer only, and can be undone', async () => {
+    const base = await w.video(owner.id, { tags: ['rock'] });
+    const target = await w.video(owner.id, { tags: ['rock'], counters: { views: 5, likes: 0, dislikes: 0, comments: 0 } });
+    const ids = (r: { body: { items: { id: string }[] } }) => r.body.items.map((v) => v.id);
+    const as = { token: fan.token };
+
+    expect((await w.call('put', `/me/not-interested/${target}`, undefined, as)).status).toBe(204);
+    expect((await w.call('put', `/me/not-interested/${target}`, undefined, as)).status).toBe(204);
+    expect(ids(await w.call('get', '/videos', undefined, as))).toEqual([base]);
+    expect(ids(await w.call('get', `/videos/${base}/related`, undefined, as))).toEqual([]);
+    expect(ids(await w.call('get', '/trending', undefined, as))).toEqual([]);
+    // Other viewers still see it.
+    expect(ids(await w.call('get', '/videos'))).toContain(target);
+
+    await w.call('delete', `/me/not-interested/${target}`, undefined, as);
+    expect(ids(await w.call('get', '/videos', undefined, as))).toContain(target);
+    expect((await w.call('put', '/me/not-interested/aaaaaaaaaaaaaaaaaaaaaaaa', undefined, as)).status).toBe(404);
+    expect((await w.call('put', `/me/not-interested/${target}`)).status).toBe(401);
+  });
+});
+
+describe('hashtags', () => {
+  it('lists the public videos of one tag, with or without the # sign', async () => {
+    const a = await w.video(owner.id, { tags: ['travel', 'food'] });
+    await w.video(owner.id, { tags: ['food'] });
+    await w.video(owner.id, { tags: ['travel'], visibility: 'private' });
+    for (const tag of ['travel', '%23Travel']) {
+      const res = await w.call('get', `/videos?tag=${tag}`);
+      expect(res.body.items.map((v: { id: string }) => v.id)).toEqual([a]);
+    }
   });
 });

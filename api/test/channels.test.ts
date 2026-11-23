@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { ObjectId } from 'mongodb';
 import { memoryDb } from './helpers.js';
 import { world, type Who, type World } from './world.js';
 
@@ -101,5 +102,25 @@ describe('profile', () => {
     expect(v.body.video.channel.name).toBe('Nhạc Việt');
     const doc = await w.db.collection('videos').findOne({});
     expect(doc?.['channelName']).toBe('Nhạc Việt');
+  });
+});
+
+describe('featured video', () => {
+  it('shows one public video of the channel first, and drops it once it is no longer public', async () => {
+    const id = await w.video(owner.id, { description: 'Welcome' });
+    const fansVideo = await w.video(fan.id);
+    const priv = await w.video(owner.id, { visibility: 'private' });
+    const set = (featuredVideoId: string | null) => w.call('patch', '/me/profile', { featuredVideoId }, { token: owner.token });
+
+    expect((await set(fansVideo)).body.error.code).toBe('NOT_FEATURABLE');
+    expect((await set(priv)).body.error.code).toBe('NOT_FEATURABLE');
+    const ok = await set(id);
+    expect(ok.body.user.featuredVideoId).toBe(id);
+    const page = await w.call('get', `/channels/${owner.id}`);
+    expect(page.body.featured).toMatchObject({ id, description: 'Welcome' });
+
+    await w.db.collection('videos').updateOne({ _id: new ObjectId(id) }, { $set: { visibility: 'private' } });
+    expect((await w.call('get', `/channels/${owner.id}`)).body.featured).toBeNull();
+    expect((await set(null)).body.user.featuredVideoId).toBeNull();
   });
 });
