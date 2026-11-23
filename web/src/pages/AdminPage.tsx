@@ -184,7 +184,10 @@ function QueuePanel({ tab, notify, onChange }: PanelProps & { tab: 'review' | 'r
     <>
       <ul className="admin-queue">
         {list.items.map((v) => {
+          // The machine checked the video; it flagged it only when it did not approve it
+          // (an approved video is in the queue because viewers reported it).
           const auto = v.moderation.source === 'auto';
+          const flagged = auto && v.moderation.status !== 'approved';
           const labels = topLabels(v);
           const reportsOpen = v.moderation.openReports ?? 0;
           return (
@@ -194,7 +197,7 @@ function QueuePanel({ tab, notify, onChange }: PanelProps & { tab: 'review' | 'r
                 <h2 className="admin-item-title"><Link to={`/watch/${v.id}`} target="_blank" rel="noopener">{v.title} <MdOutlineOpenInNew aria-hidden="true" /></Link></h2>
                 <p className="admin-muted">{t('admin.uploadedBy', { name: v.channel.name })}{v.ownerEmail ? ` · ${v.ownerEmail}` : ''} · {timeAgo(t, v.publishedAt)}</p>
                 <div className="admin-chips">
-                  {auto && <span className={`admin-chip${tab === 'removed' ? ' is-danger' : ''}`}>{tab === 'removed' ? t('admin.blockedAuto') : t('admin.flaggedAuto')}</span>}
+                  {flagged && <span className={`admin-chip${tab === 'removed' ? ' is-danger' : ''}`}>{tab === 'removed' ? t('admin.blockedAuto') : t('admin.flaggedAuto')}</span>}
                   {reportsOpen > 0 && <span className="admin-chip is-danger">{t('admin.reportCount', { count: reportsOpen })}</span>}
                   {v.moderation.reasonCode && <span className="admin-chip">{t(`admin.decisionReasons.${v.moderation.reasonCode}`, { defaultValue: v.moderation.reasonCode })}</span>}
                 </div>
