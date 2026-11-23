@@ -90,6 +90,56 @@ than print a rate computed from no decision at all.
 \label{fig:ui-console}
 \end{figure}
 
+The other tabs of the console carry the moderation work of Section~\ref{sec:screening-design}.
+The activity they show was produced on production with the sample accounts: comments and reports
+from viewers, two removals of benchmark clips, one appeal upheld and one still open.
+Figure~\ref{fig:ui-review} shows the review queue. A video enters it when screening holds it or when
+viewers report it; its image stays blurred until the reviewer asks to see it, and the open reports
+can be expanded before the video is kept or removed. Figure~\ref{fig:ui-comments} lists the reported
+comments, most reported first: keeping one closes its reports, and removing it deletes it with its
+replies. An appeal against a removal appears in the tab of Figure~\ref{fig:ui-appeals} with the
+creator's message, a field for the reply and the choice between restoring the video and keeping it
+removed. Figure~\ref{fig:ui-audit} shows the spot check, a random sample of videos that screening
+approved, each marked pass or fail; the share that fails is the estimate of missed violations in
+Figure~\ref{fig:ui-console}. Every decision joins the log of Figure~\ref{fig:ui-events} with the
+person, the reason and the outcome measured against the verdict of the machine, and a second view of
+the same tab lists the changes of role.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{images/ui-admin-review.png}
+\caption{\textit{Review queue of the staff console with videos reported by viewers}}
+\label{fig:ui-review}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{images/ui-admin-comments.png}
+\caption{\textit{Reported comments in the staff console}}
+\label{fig:ui-comments}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{images/ui-admin-appeals.png}
+\caption{\textit{Open appeal of a creator against a removal}}
+\label{fig:ui-appeals}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{images/ui-admin-audit.png}
+\caption{\textit{Spot check of videos approved by screening}}
+\label{fig:ui-audit}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{images/ui-admin-events.png}
+\caption{\textit{Decision log of the staff console}}
+\label{fig:ui-events}
+\end{figure}
+
 Figure~\ref{fig:ui-overview} shows the overview tab that only an administrator sees. The tiles count
 users and plans, content and processing, screening outcomes, caption minutes and views over the
 chosen window, here 30 days, and every account counts, the sample channels and the test accounts
