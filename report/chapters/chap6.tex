@@ -345,7 +345,7 @@ while Batch starts Fargate tasks. This is the price of having no transcoding cap
 is the same for a clip and for a long video. Second, the chunked path makes time grow far more slowly
 than the source: the 10-minute file is ready 25~seconds after the 2-minute one, and the 26.7-minute
 file needs about twice as long as the 10-minute one for nearly three times the content. Third, the
-work per second of source is nearly constant, between 4.6 and 5.8 vCPU-seconds, whichever path a
+work per second of source is nearly constant, between 4.5 and 5.8 vCPU-seconds, whichever path a
 video takes. The samples differ in two ways that the ratio does not show: the 36-second clip is a
 360p source and gets three rungs instead of six, and screening was off for the 1~GB file and the
 four-hour run (Section~\ref{sec:chunked-evaluation}), which shortens their analysis job. The range
@@ -374,15 +374,22 @@ reached \status{ready}
 the shorter files. For the 1~GB file and this run, screening was switched off so that test content
 was not sent to Rekognition; its cost is added by calculation in Section~\ref{sec:cost-analysis}.
 
+The same file was uploaded twice more on 24~November, with the same capacity, chunk size and plan
+lane, to check that one run is representative. These two runs were ready after 37.0 and
+38.9~minutes, so the run of Figure~\ref{fig:four-hour} is the median of three
+(Table~\ref{tab:raw-four-hour}). The difference lies almost entirely in the audio job, which took
+7.8 to 10.8~minutes on its single vCPU, while the chunk array took 26.5 to 28.3~minutes in every run.
+The work stayed between 4.54 and 4.67~vCPU-seconds per second of source.
+
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=\textwidth]{images/29-chart-four-hour.png}
-\caption{\textit{Timeline of a four-hour video on the chunked path}}
+\caption{\textit{Timeline of a four-hour video on the chunked path, the median run of three}}
 \label{fig:four-hour}
 \end{figure}
 
-The timeline shows what limits a long video. The audio job is on the critical path for more than a
-quarter of the time, and the chunks are bounded by the twelve slots that the 48~vCPUs of the two
+The timeline shows what limits a long video. The audio job is on the critical path for a fifth to
+more than a quarter of the time, and the chunks are bounded by the twelve slots that the 48~vCPUs of the two
 compute environments allow. Neither is a limit of the design: the audio can be encoded in parallel
 with the chunks, and the slots grow with the capacity granted. The test pattern is also easier to
 encode than a recording, so a real four-hour recording would need more time per chunk.
@@ -598,7 +605,7 @@ Chapter~\ref{chap:implementation}.
 \textbf{NFR} & \textbf{EVIDENCE} & \textbf{RESULT} \\
 \midrule
 NFR-01 Playback start & Once cached, the requests before the first frame take 435~ms at the 95th percentile (Figure~\ref{fig:ttff-steps}). Unthrottled, playback started after 2.27~s at the median, with no stall; two of the five runs took longer than 3~s, 3.10 and 3.23~s (Table~\ref{tab:raw-qoe}) & Met at the median (2.27~s); two runs of five above 3~s \\
-NFR-02 Processing time & A 10-minute video was ready in 147 to 149~s (Table~\ref{tab:transcode-results}); a four-hour video in 38.3~minutes (Figure~\ref{fig:four-hour}) & Met \\
+NFR-02 Processing time & A 10-minute video was ready in 147 to 149~s (Table~\ref{tab:transcode-results}); a four-hour video in 38.3~minutes, the median of three runs from 37.0 to 38.9~minutes (Figure~\ref{fig:four-hour}) & Met \\
 NFR-03 Burst load & Of 100 simultaneous uploads, 92 reached \status{ready}, including 3 whose completion call was refused; the 8 refused at creation received 429 (Section~\ref{sec:burst-evaluation}) & Met \\
 NFR-04 Idle cost & With nothing processing, both compute environments want 0~vCPUs and no task runs; the API, the workflow and the two scheduled functions (an hourly roll-up and a daily reconciler) are billed per invocation & Met \\
 NFR-05 API latency & 156~ms at the median when warm; 80 of 80 simultaneous requests answered (Table~\ref{tab:api-load}) & Met \\
