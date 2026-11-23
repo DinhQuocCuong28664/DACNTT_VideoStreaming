@@ -68,7 +68,7 @@ FR-01 & Accounts & Register with a display name, an e-mail address, a password a
 FR-02 & Password recovery and change & A reset link by e-mail, valid for one hour and usable once; a change from the settings page that requires the current password. \\
 FR-03 & Direct upload & The browser sends the file straight to Amazon S3: in one request up to 5~GiB, and in parts of 32~MiB up to 20~GiB, with progress, speed, remaining time and cancel. The plan of the creator may set a lower size limit (FR-24). \\
 FR-04 & Automatic processing & Without any manual step, the source becomes an encrypted HLS package with up to six renditions from 144p to 1080p bounded by the source, a thumbnail and seek-preview images; long videos are split into chunks encoded in parallel, and the owner sees the progress of each step. \\
-FR-05 & Playback and sharing & An adaptive player with manual quality, speed, picture-in-picture, full screen, captions, chapters, seek preview and resume from the last position. A link can be shared with a start time, and public and unlisted videos can be embedded in another site. \\
+FR-05 & Playback and sharing & An adaptive player with manual quality, speed, picture-in-picture, full screen, captions, chapters, seek preview and resume from the last position. When a video ends, the next related video starts after a short countdown unless the viewer cancels it or turns autoplay off. A link can be shared with a start time, and public and unlisted videos can be embedded in another site. \\
 FR-06 & Visibility and audience & Each video is public, unlisted, private or password-protected, and may be limited to channel members from a chosen tier upward. A stranger learns nothing about a private video, not even that it exists. \\
 FR-07 & Creator studio & The owner edits the title, description, tags, category and thumbnail, uploads WebVTT captions or keeps the automatic ones (FR-25), defines chapters and deletes a video with all its files. \\
 FR-08 & Scheduled publishing & The owner chooses a publication time between five minutes and one year ahead; the video becomes public at that time. \\
@@ -89,11 +89,11 @@ the library and the creator's channel.
 \toprule
 \textbf{ID} & \textbf{REQUIREMENT} & \textbf{DESCRIPTION} \\
 \midrule
-FR-10 & Community & Likes and dislikes, comments of up to 1000 characters with one level of replies; the creator pins one comment; authors and the creator delete comments. \\
+FR-10 & Community & Likes and dislikes, comments of up to 1000 characters with one level of replies, listed newest first or with the most replies first; a time such as 1:23 in a comment seeks the player; the creator pins one comment; authors and the creator delete comments. \\
 FR-11 & View counting & A view counts after thirty seconds of playback, or the whole of a shorter video, at most once per viewer and video in thirty minutes, and never for the owner. \\
 FR-12 & Subscriptions & Subscribe to a channel, see a feed of subscribed channels, and receive an in-app notification, and an e-mail unless turned off, when a subscribed channel publishes. \\
 FR-13 & Memberships & A channel offers as many tiers as its owner's plan allows, from two to ten; a viewer joins one for thirty days through a sandbox payment and may cancel; members get a badge and the videos limited to their tier. \\
-FR-14 & Library & Watch history that can be cleared, a watch-later list, and ordered playlists that are public, unlisted or private. \\
+FR-14 & Library & Watch history that can be cleared, a watch-later list, the list of liked videos, and ordered playlists that are public, unlisted or private. \\
 FR-15 & Analytics & Views per day, watch time and audience retention per video and per channel, over the last 7, 28, 90 or 365 days as far as the plan allows. \\
 FR-16 & Channel profile & A unique handle, a description, an avatar and a banner, both screened before they are shown. \\
 FR-17 & Interface & Light and dark themes, Vietnamese and English, and dedicated pages for errors such as not found or forbidden. \\
@@ -394,14 +394,16 @@ Main flow &
   3. The player loads the playlists and segments from the CDN with the policy, and fetches the decryption key from the API with the playback token. \newline
   4. The player switches renditions as the bandwidth changes; a signed-in viewer resumes from the last position, which the player saves every minute and on pause. \newline
   5. After thirty seconds of playback, or the whole of a shorter video, the page reports a view with its playback token, which the server counts only if that much time has passed since the token was issued, and not if the same viewer was counted within thirty minutes or the viewer owns the video. \newline
-  6. The viewer copies the link, optionally starting at the current time, or the code that embeds the player in another site. \\
+  6. The viewer copies the link, optionally starting at the current time, or the code that embeds the player in another site. \newline
+  7. When the video ends, a card counts down eight seconds over the player and then opens the first video of the related list. \\
 Alternative flows &
   1a. The video is private or not ready, and the viewer is not its owner: the server answers 404. \newline
   1b. The video was removed or is under review: the server answers 403 with a distinct code, and the page explains it. \newline
   1c. The video is password-protected: the page shows only a password form (UC-06). \newline
   2a. The video is for members and the viewer is not one of a high enough tier: the page shows, instead of the player, a card that leads to the channel's tiers. \newline
   3a. The grant expires during playback: the player asks for a new one and continues. \newline
-  6a. In an embedded player, a private, password-protected or members-only video shows a card that leads to the site instead of playing. \\
+  6a. In an embedded player, a private, password-protected or members-only video shows a card that leads to the site instead of playing. \newline
+  7a. The viewer cancels the countdown or has turned autoplay off, which the browser remembers; the video then simply stops. \\
 Postcondition & The view count may have grown by one. \\
 \bottomrule
 \end{tabularx}
@@ -453,13 +455,15 @@ Main flow &
   1. The user presses like or dislike; the server stores the one reaction of this user and recounts both totals from the stored reactions. \newline
   2. The user writes a comment of at most 1000 characters, or a reply to a comment. \newline
   3. The server stores it, a reply always under the top-level comment, and recounts the comments of the video and the replies of the thread. \newline
-  4. The creator of the video pins one top-level comment, which then appears first. \\
+  4. The creator of the video pins one top-level comment, which then appears first. \newline
+  5. A viewer orders the comments newest first or with the most replies first, and selects a time written in a comment to move the player there. \\
 Alternative flows &
   1a. Pressing the same reaction again removes it. \newline
   2a. More than ten comments in a minute: the server answers 429. \newline
   3a. The comment replied to was deleted: the server answers 400. \newline
   4a. Someone other than the creator tries to pin: the server answers 403. \newline
-  4b. The author, the creator or an operator deletes a comment, and its replies go with it; anyone else receives 403. \\
+  4b. The author, the creator or an operator deletes a comment, and its replies go with it; anyone else receives 403. \newline
+  5a. A time past the end of the video stays plain text. \\
 Postcondition & Reactions, comments and their counts are up to date. \\
 \bottomrule
 \end{tabularx}
@@ -533,11 +537,12 @@ Main flow &
   1. Watching a video adds it to the user's history with the last position. \newline
   2. The user adds a video to Watch later, a playlist that every account has. \newline
   3. The user creates a playlist with a title, a description and a visibility, adds videos and changes their order. \newline
-  4. The user opens the library to see the history, Watch later and the playlists. \\
+  4. The user opens the library to see the history, Watch later, the liked videos, latest like first, and the playlists. \\
 Alternative flows &
   1a. The user removes one entry or clears the whole history. \newline
   3a. A video that becomes private or removed disappears from what others see of a playlist. \newline
-  4a. Another person opens a private playlist: the server answers 404. \\
+  4a. Another person opens a private playlist: the server answers 404. \newline
+  4b. A liked video that became private, removed or deleted is left out of the liked videos. \\
 Postcondition & The library reflects the user's changes. \\
 \bottomrule
 \end{tabularx}
