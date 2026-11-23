@@ -110,7 +110,7 @@ const PRESIGN = node(C2, 606, ['Browser transfers the file', 'directly to Amazon
 // "Video shown as PROCESSING" tràn ra ngoài hộp 200px: chữ hoa rộng hơn ước
 // lượng theo số ký tự, và `chip` căn giữa chứ không xuống dòng nên nó lặng lẽ
 // thò ra hai bên. "is" thay cho "shown as" giữ nguyên nghĩa mà vừa khung.
-const PROC = node(C2, 694, ['Video is PROCESSING', "on the owner's channel"], 'network');
+const PROC = node(C2, 694, ['Video is PROCESSING', 'in the creator studio'], 'network');
 const READY = node(C2, 810, ['Video reaches READY', 'and joins the feed'], 'network');
 
 const RESET = node(C3, 416, ['Reset a forgotten password', 'via e-mailed token'], 'compute');
