@@ -99,7 +99,7 @@ const billingEvents = entity({ ...OPTS, x: X[0], y: playlist.box.b + 40, name: '
 ] });
 const captionUsage = entity({ ...OPTS, x: X[1], y: comment.box.b + 40, name: 'captionUsage', tone: 'storage', rows: [
   { type: 'string', name: '_id', key: 'PK', note: 'user and month' },
-  { type: 'ObjectId', name: 'owner', key: 'FK', note: '→ users' },
+  { type: 'string', name: 'owner', key: 'FK', note: '→ users, as text' },
   { type: 'number', name: 'seconds', note: 'conditional $inc' },
 ] });
 

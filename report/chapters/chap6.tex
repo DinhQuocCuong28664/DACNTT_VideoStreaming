@@ -25,7 +25,7 @@ lower ceilings, and changes are checked there before they reach production (Sect
 \midrule
 Web application & S3 bucket behind CloudFront & Hashed assets cached for a year \\
 API & One Lambda function, Node.js 22, 512 MiB, behind a Cloudflare Worker & 80 reserved instances \\
-Workflow & S3 events, SQS, the starter, Step Functions and four Lambda steps & One execution per upload version \\
+Workflow & S3 events, SQS, Step Functions and the functions starter, probe, status and stitch & One execution per upload version \\
 Compute & AWS Batch on Fargate Spot and Fargate On-Demand, standard and priority queues & 24 + 24 vCPUs, six + six chunk slots \\
 Media delivery & CloudFront, Origin Access Control, signed query policy & Edges of price class 200, which include Asia \\
 Documents and search & MongoDB Atlas, free M0 cluster of its own & 500 connections, 100 operations per second \\
@@ -40,8 +40,9 @@ Automatic captions & The captions function and Amazon Transcribe & Plans with ca
 \label{sec:ui-showcase}
 
 Figure~\ref{fig:ui-watch} shows the watch page with the quality menu of the player open: the
-menu lists the rungs that the source produced, here every rung from 240p to 1080p above the
-\emph{Auto} entry, which leaves the choice to the loop of Section~\ref{sec:abr-design}.
+menu lists \emph{Auto}, which leaves the choice to the loop of Section~\ref{sec:abr-design}, and
+below it the rungs that the source produced, from 1080p down; 144p, the last of the six, is
+further down the list.
 
 \begin{figure}[htbp]
 \centering
@@ -87,6 +88,29 @@ than print a rate computed from no decision at all.
 \includegraphics[width=\textwidth]{images/ui-console-accuracy.png}
 \caption{\textit{Accuracy tab of the staff console}}
 \label{fig:ui-console}
+\end{figure}
+
+Figure~\ref{fig:ui-overview} shows the overview tab that only an administrator sees. The tiles count
+users and plans, content and processing, screening outcomes, caption minutes and views over the
+chosen window, here 30 days, and every account counts, the sample channels and the test accounts
+included. Below the tiles, one bar chart per day shows sign-ups, uploads and views, and the same
+numbers are available as a table. Figure~\ref{fig:ui-settings} shows the settings tab with the two
+switches of Section~\ref{sec:screening-design}: each card states what the service does, what it
+costs and whether its value was set in the console or comes from the default of the
+infrastructure, and every change asks for confirmation and joins the history below the cards.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.8\textwidth]{images/ui-admin-overview.png}
+\caption{\textit{Overview tab of the staff console, for administrators}}
+\label{fig:ui-overview}
+\end{figure}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{images/ui-admin-settings.png}
+\caption{\textit{Settings tab of the staff console with the switches of screening and automatic captions}}
+\label{fig:ui-settings}
 \end{figure}
 
 \section{Measurement Method}
@@ -533,7 +557,7 @@ NFR-07 API security & A request to the function that skips the Worker, and a pre
 NFR-08 Reliability & Retries and the 24-hour limit are part of the workflow (Section~\ref{sec:state-machine}). Two damaged files uploaded to production ended in \status{error} without useless retries, after fixes for a truncated file published as ready and an unretried Batch API error (Section~\ref{sec:fault-evaluation}) & Met after two fixes \\
 NFR-09 Reproducibility & Staging and production are built by the same Terraform modules (Section~\ref{sec:iac}); only the values of secrets are written outside the code & Met \\
 NFR-10 Maintainability & The security jobs are required checks of the main branch (Section~\ref{sec:cicd}) & Met \\
-NFR-11 Bounded paid services & Caption minutes are reserved by one conditional update and refunded on failure, covered by twelve unit tests (Section~\ref{sec:testing}); the cap bounds Transcribe at 0.48~USD per creator and month at most (Section~\ref{sec:cost-analysis}); payments run in Stripe test mode & Met in tests; not yet exercised by real users \\
+NFR-11 Bounded paid services & Caption minutes are reserved by one conditional update and refunded on failure, covered by thirteen unit tests (Section~\ref{sec:testing}); the cap bounds Transcribe at 0.48~USD per creator and month at most (Section~\ref{sec:cost-analysis}); payments run in Stripe test mode & Met in tests; not yet exercised by real users \\
 \bottomrule
 \end{tabularx}
 \end{table}

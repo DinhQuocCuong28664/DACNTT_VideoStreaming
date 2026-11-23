@@ -24,7 +24,7 @@ const estimate = card({ x: 700, y: 390, w: 250, h: 170, title: 'Estimate', sub: 
 const choose = card({ x: 380, y: 390, w: 250, h: 170, title: 'Choose a rung', sub: ['highest BANDWIDTH', 'under the estimate;', 'switch at the next', 'segment boundary'], tone: 'network' });
 p.push(load.svg, measure.svg, estimate.svg, choose.svg);
 
-const limits = card({ x: 1030, y: 380, w: 260, h: 190, title: 'Limits', sub: ['capLevelToPlayerSize:', 'no rung larger than', 'the video element;', 'a manual choice in the', 'menu turns ABR off'], tone: 'plain' });
+const limits = card({ x: 1030, y: 380, w: 260, h: 190, title: 'Limits', sub: ['capLevelToPlayerSize:', 'smallest rung that', 'covers the video element;', 'a manual choice in the', 'menu turns ABR off'], tone: 'plain' });
 const buffer = card({ x: 1030, y: 100, w: 260, h: 170, title: 'Buffer running low', sub: ['a slow download is', 'abandoned and a', 'lower rung is loaded', 'at once'], tone: 'secret' });
 p.push(limits.svg, buffer.svg);
 

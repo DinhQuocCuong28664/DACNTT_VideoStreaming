@@ -31,7 +31,7 @@ Object.assign(TYPE, {
 });
 
 const W = 1180;
-const H = 1102;
+const H = 1286;
 const p = [];
 
 const LX = 330;            // tâm cột trái
@@ -46,7 +46,7 @@ const LANE_L = 150;        // làn dọc của tác nhân bên trái, ngoài ran
 const LANE_R = 990;        // làn dọc của tác nhân bên phải, ngoài ranh giới
 
 p.push(group({
-  x: BOUND_X, y: 40, w: BOUND_W, h: 952,
+  x: BOUND_X, y: 40, w: BOUND_W, h: 1136,
   label: 'Moderation and operation', stroke: '#8a94a6', fill: '#fcfdfe', dash: '7 5',
 }).svg);
 
@@ -73,6 +73,8 @@ placeR('log', 6, 'Read the decision log');
 // Administrator
 placeR('sample', 7, ['Draw a random', 'audit sample']);
 placeR('roles', 8, ['Assign or change', "a user's role"]);
+placeR('overview', 9, ['Read the system', 'overview']);
+placeR('switches', 10, ['Switch screening or', 'automatic captions']);
 
 // ── Cột trái: việc do người dùng hoặc hệ thống khởi động ────────────────────────
 const left = {};
@@ -82,7 +84,7 @@ const placeL = (key, cy, label, tone = 'network') => {
 };
 placeL('screen', 108, ['Screen frames of', 'an uploaded video'], 'compute');
 placeL('report', ry(0), 'Report a video');
-placeL('appealOwn', ry(2), ['Appeal the removal of', "one's own video"]);
+placeL('appealOwn', ry(2), ['Appeal the removal or', "hold of one's own video"]);
 placeL('reportComment', ry(4), 'Report a comment');
 
 // ── Tác nhân ────────────────────────────────────────────────────────────────────
@@ -90,7 +92,7 @@ const sys = actor({ cx: 78, cy: 108, label: ['Processing', 'system'] });
 const user = actor({ cx: 78, cy: ry(2) + 18, label: ['Registered', 'user'] });
 const operator = actor({ cx: 1090, cy: ry(2), label: 'Operator' });
 const auditor = actor({ cx: 1090, cy: Math.round((ry(5) + ry(6)) / 2), label: 'Auditor' });
-const admin = actor({ cx: 1090, cy: Math.round((ry(7) + ry(8)) / 2), label: ['Administrator'] });
+const admin = actor({ cx: 1090, cy: Math.round((ry(7) + ry(10)) / 2), label: ['Administrator'] });
 p.push(sys.svg, user.svg, operator.svg, auditor.svg, admin.svg);
 
 /** Liên kết tác nhân bên trái với use case ở cột trái, qua làn dọc riêng. */
@@ -108,7 +110,7 @@ linkLeft(user, left.appealOwn);
 linkLeft(user, left.reportComment);
 ['decide', 'confirm', 'appeal', 'label', 'comment'].forEach((k) => linkRight(operator, right[k]));
 ['rates', 'log'].forEach((k) => linkRight(auditor, right[k]));
-['sample', 'roles'].forEach((k) => linkRight(admin, right[k]));
+['sample', 'roles', 'overview', 'switches'].forEach((k) => linkRight(admin, right[k]));
 
 // No arrows between use cases here: UML 2.5 only has «include», «extend» and generalisation
 // between use cases, and none of them means "this one puts work in the other's queue". That link

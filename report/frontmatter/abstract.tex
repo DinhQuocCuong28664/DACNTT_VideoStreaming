@@ -17,8 +17,8 @@ serverless containers driven by events. The arrival of a file in Amazon S3 is qu
 starts one AWS Step Functions execution per upload, which runs FFmpeg as AWS Batch jobs on AWS Fargate,
 Spot capacity first and On-Demand capacity as overflow, so no transcoding capacity exists while nothing
 is processed. FFmpeg decodes the source once and writes up to six renditions from 144p to 1080p, each
-with a capped constant rate factor and key frames aligned across rungs; videos longer than five
-minutes are cut into chunks that are encoded in parallel and stitched into ordinary playlists. The
+with a capped constant rate factor and key frames aligned across rungs; videos of five
+minutes or more are cut into chunks that are encoded in parallel and stitched into ordinary playlists. The
 segments are encrypted with AES-128 and served by Amazon CloudFront only to requests that carry a
 policy signed for that video. Uploads are screened with Amazon Rekognition, and staff decisions are
 recorded so that the error rates of the screening can be measured. Four plans, bought through Stripe

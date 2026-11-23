@@ -34,6 +34,8 @@ the part that reads them, and Table~\ref{tab:env-secret} the fields of the secre
 \texttt{MONGO\_POOL\_SIZE} & No & Connections per instance, 1 to 10; defaults to 3 \\
 \texttt{UPLOAD\_MAX\_BYTES} & No & Upload ceiling; an invalid value falls back to 20~GiB and never raises it \\
 \texttt{SCHEDULE\_GROUP}, \texttt{SCHEDULE\_TARGET\_ARN}, \texttt{SCHEDULE\_ROLE\_ARN} & No & EventBridge Scheduler group, target and role of scheduled publishing; unset disables scheduling \\
+\texttt{MODERATION\_DEFAULT} & No & Screening switch shown by the console while no administrator has set it; true when unset \\
+\texttt{AUTO\_CAPTIONS\_INFRA} & No & False when Terraform removed the caption trigger; the console then cannot switch captions on \\
 \midrule
 \multicolumn{3}{l}{\textit{Workflow functions}} \\
 \texttt{STATE\_MACHINE\_ARN} & Yes & \name{starter}: the state machine it starts \\
@@ -42,6 +44,7 @@ the part that reads them, and Table~\ref{tab:env-secret} the fields of the secre
 \texttt{FFPROBE\_PATH} & Yes & \name{probe}: path of \name{ffprobe} in the Lambda layer \\
 \texttt{MONGODB\_SECRET\_ARN}, \texttt{DB\_NAME} & Yes & \name{status}: connection string secret and database \\
 \texttt{KEYS\_BUCKET} & Yes & \name{status}, \name{stitch}: bucket of the AES keys \\
+\texttt{MODERATION\_DEFAULT} & No & \name{status}: screening switch used when none is stored or it cannot be read \\
 \texttt{EVENT\_BUS\_NAME} & Yes & \name{status}: bus on which the published event is sent \\
 \texttt{ALERT\_TOPIC\_ARN} & Yes & \name{status}: topic of failure alerts \\
 \texttt{PROCESSED\_BUCKET}, \texttt{API\_BASE\_URL} & Yes & \name{stitch}: bucket of the packages and base of the key address \\
@@ -61,7 +64,7 @@ the part that reads them, and Table~\ref{tab:env-secret} the fields of the secre
 \texttt{EVENT\_BUS\_NAME} & Yes & Bus that receives progress events \\
 \texttt{API\_BASE\_URL} & Yes & \name{encode}, \name{chunk}: base of the key address written into playlists \\
 \texttt{JOB\_TIMEOUT\_SECONDS} & Yes & \name{encode}: budget the encode guard projects against \\
-\texttt{MODERATION\_ENABLED} & No & \name{analyse}: screening runs unless this is false \\
+\texttt{MODERATION\_ENABLED} & No & \name{analyse}: screening runs unless this is false; the workflow overrides it with the switch of the console \\
 \texttt{AWS\_BATCH\_JOB\_ARRAY\_INDEX}, \texttt{AWS\_BATCH\_JOB\_ATTEMPT} & Set by Batch & \name{chunk}: index of the chunk and number of the attempt \\
 \midrule
 \multicolumn{3}{l}{\textit{Web application, at build time}} \\
@@ -71,7 +74,7 @@ the part that reads them, and Table~\ref{tab:env-secret} the fields of the secre
 \multicolumn{3}{l}{\textit{Terraform variables of an environment}} \\
 \texttt{transcoder\_image\_tag} & Yes & Commit of the transcoder image; no default in production \\
 \texttt{attach\_hosts} & No & Puts the hosts on the distributions; false only while hosts move \\
-\texttt{moderation\_enabled} & No & Production only; defaults to false, so screening stays off until an apply sets it to true \\
+\texttt{moderation\_enabled} & No & Production only; default of the screening switch until an administrator sets it in the console \\
 \texttt{auto\_captions\_enabled} & No & False stops the events that start automatic captions, for tests \\
 \texttt{alert\_emails} & No & Addresses subscribed to the alert topic \\
 \texttt{cdn\_transition\_reader\_arns}, \texttt{web\_transition\_reader\_arns} & No & Distributions that may still read the buckets while hosts move \\

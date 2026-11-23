@@ -27,7 +27,7 @@ const secYml = group({ x: 270, y: 290, w: 650, h: 180, label: 'security-scan.yml
 p.push(ciYml.svg, secYml.svg);
 
 const CX = [290, 500, 710];
-const check = card({ x: CX[0], y: 110, w: 196, h: 140, title: 'Check', sub: ['lint, typecheck,', '294 unit tests,', 'build'], tone: 'compute' });
+const check = card({ x: CX[0], y: 110, w: 196, h: 140, title: 'Check', sub: ['lint, typecheck,', '365 unit tests,', 'build'], tone: 'compute' });
 const smoke = card({ x: CX[1], y: 110, w: 196, h: 140, title: 'Image smoke', sub: ['real FFmpeg in', 'the image,', '13 checks'], tone: 'compute' });
 const tf = card({ x: CX[2], y: 110, w: 196, h: 140, title: 'Terraform', sub: ['fmt, validate,', 'Trivy config', 'scan'], tone: 'compute' });
 const leaks = card({ x: CX[0], y: 330, w: 196, h: 125, title: 'Gitleaks', sub: ['secrets in the', 'whole history'], tone: 'secret' });
