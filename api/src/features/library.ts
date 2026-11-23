@@ -107,6 +107,22 @@ export const libraryFeature: Feature = (r, deps) => {
     res.json({ removed: await activity.watch.clear(req.user?.id ?? '') });
   });
 
+  // Liked videos ------------------------------------------------------------------------------
+
+  r.get('/me/liked', requireUser, async (req, res) => {
+    const q = pageQuery.parse(req.query);
+    const cursor = decodeCursor(q.cursor);
+    const filter: Record<string, unknown> = { user: me(req), kind: 'like' };
+    if (cursor) filter['$or'] = [{ updatedAt: { $lt: cursor.at } }, { updatedAt: cursor.at, _id: { $lt: cursor.id } }];
+    const list = await db.collection('reactions').find(filter).sort({ updatedAt: -1, _id: -1 }).limit(q.limit + 1).toArray();
+    const page = list.slice(0, q.limit);
+    const last = page.at(-1);
+    // Videos that became private, were removed or deleted drop out of the list but keep their like.
+    const byId = await videosById(page.map((x) => x['video'] as ObjectId));
+    const visible = page.flatMap((x) => { const v = byId.get(String(x['video'])); return v && listable(v) ? [v] : []; });
+    res.json({ items: await views.cards(visible), nextCursor: list.length > q.limit && last ? encodeCursor(last['updatedAt'] as Date, last['_id'] as ObjectId) : null });
+  });
+
   // Subscriptions feed ------------------------------------------------------------------------
 
   r.get('/me/feed', requireUser, async (req, res) => {
