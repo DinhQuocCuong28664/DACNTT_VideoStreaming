@@ -367,6 +367,7 @@ button, input, select, textarea {
 
 .chip[aria-selected='true'],
 .chip[aria-checked='true'],
+.chip[aria-pressed='true'],
 .chip.active {
   background: var(--inverse-bg);
   color: var(--inverse-fg);

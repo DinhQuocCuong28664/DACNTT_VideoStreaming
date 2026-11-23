@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next';
 import type { IconType } from 'react-icons';
 import {
   MdArrowDownward, MdArrowUpward, MdClose, MdDeleteOutline, MdErrorOutline, MdHistory, MdLock, MdOutlineNotifications,
-  MdOutlinePlaylistPlay, MdOutlineSubscriptions, MdPlayArrow,
+  MdOutlinePlaylistPlay, MdOutlineSubscriptions, MdPlayArrow, MdThumbUpOffAlt,
 } from 'react-icons/md';
 import { me, playlists } from '../api/endpoints';
 import type { Notification, PlaylistItem, PlaylistSummary, VideoCard as Card } from '../api/types';
@@ -72,6 +72,18 @@ export function SubscriptionsPage() {
           <Link to="/" className="btn btn-primary">{t('subscription.feedExplore')}</Link>
         </div>
       )} />
+    </div>
+  );
+}
+
+export function LikedPage() {
+  const { t } = useTranslation();
+  const fetchPage = useCallback(async (cursor: string | null) => { const r = await me.liked(cursor); return { items: r.items, next: r.nextCursor }; }, []);
+  const list = useInfiniteList(fetchPage);
+  return (
+    <div className="subscriptions-page">
+      <PageHeader icon={MdThumbUpOffAlt} title={t('nav.liked')} subtitle={t('library.likedSubtitle')} />
+      <ListBody list={list} row empty={<div className="empty-state"><MdThumbUpOffAlt className="empty-state-icon" aria-hidden="true" /><p className="empty-state-title">{t('library.likedEmpty')}</p></div>} />
     </div>
   );
 }

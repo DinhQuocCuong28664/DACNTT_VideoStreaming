@@ -17,6 +17,7 @@ import SubscribeButton from '../components/Channel/SubscribeButton';
 import CommentSection from '../components/Video/CommentSection';
 import ReportDialog from '../components/Video/ReportDialog';
 import AppealBox from '../components/Video/AppealBox';
+import UpNext from '../components/Video/UpNext';
 import { errorText, isApiError } from '../lib/errors';
 import { formatDate, formatViews } from '../lib/format';
 import { embedCode, parseStartTime } from '../lib/playback';
@@ -35,6 +36,11 @@ const STAGE_KEY: Record<ProcessingStage, string> = {
   transcoding: 'watch.stageTranscoding',
   finalizing: 'watch.stageFinalizing',
 };
+
+const AUTOPLAY_KEY = 'vidshare.autoplay';
+/** Autoplay is on unless the viewer switched it off on this browser. */
+const readAutoplay = () => { try { return localStorage.getItem(AUTOPLAY_KEY) !== 'off'; } catch { return true; } };
+const saveAutoplay = (on: boolean) => { try { localStorage.setItem(AUTOPLAY_KEY, on ? 'on' : 'off'); } catch { /* not remembered */ } };
 
 const UNLOCK_KEY = (id: string) => `unlock:${id}`;
 const readUnlock = (id: string) => { try { return sessionStorage.getItem(UNLOCK_KEY(id)); } catch { return null; } };
@@ -68,6 +74,14 @@ export default function WatchPage() {
   const [descExpanded, setDescExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
+  const [autoplay, setAutoplayState] = useState(readAutoplay);
+  const [upNext, setUpNext] = useState<Card | null>(null);
+  const setAutoplay = (on: boolean) => { setAutoplayState(on); if (!on) setUpNext(null); saveAutoplay(on); };
+  // A time in a comment: put it in the address like a chapter link, then bring the player into view.
+  const seekFromComment = useCallback((seconds: number) => {
+    navigate({ search: `?t=${seconds}` }, { replace: true });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [navigate]);
 
   // ── Load the video, then its playback grant ─────────────────────────────────────────
   useEffect(() => {
@@ -134,6 +148,7 @@ export default function WatchPage() {
     && (video.moderation?.status ?? 'approved') === 'approved';
   useEffect(() => {
     setRelated([]);
+    setUpNext(null);
     if (!listed) return undefined;
     let live = true;
     videos.related(id).then((r) => { if (live) setRelated(r.items); }).catch(() => undefined);
@@ -207,6 +222,9 @@ export default function WatchPage() {
   const collapsible = description.length > 220 || description.split('\n').length > 3;
   const fromChannel = related.filter((r) => r.channel.id === v.channel.id);
   const shownRelated = relatedFilter === 'channel' ? fromChannel : related;
+  // The next video is the first one of the list the viewer is looking at.
+  const nextVideo = shownRelated.find((r) => r.id !== v.id) ?? null;
+  const onEnded = () => { if (autoplay && nextVideo) setUpNext(nextVideo); };
   const locale = i18n.resolvedLanguage === 'en' ? 'en-US' : 'vi-VN';
 
   let player;
@@ -271,6 +289,7 @@ export default function WatchPage() {
     player = (
       <VideoPlayer
         grant={grant} renew={renew} poster={v.thumbnail} previewVtt={v.previewVtt} chapters={v.chapters} startTime={startTime}
+        seekKey={location.key} onEnded={onEnded}
         shareUrl={`${window.location.origin}/watch/${v.id}`} embedCode={embedCodeFor(v)} onView={onView} onHeartbeat={onHeartbeat}
       />
     );
@@ -280,7 +299,10 @@ export default function WatchPage() {
     <div className="container watch-page">
       <div className="watch-layout">
         <div className="watch-main">
-          {player}
+          <div className="watch-player-wrap">
+            {player}
+            {upNext && <UpNext key={upNext.id} video={upNext} onPlay={() => navigate(`/watch/${upNext.id}`)} onCancel={() => setUpNext(null)} />}
+          </div>
 
           {(moderation === 'review' || moderation === 'removed') && (
             <div className={`watch-moderation-notice${moderation === 'removed' ? ' is-removed' : ''}`} role="status">
@@ -347,11 +369,18 @@ export default function WatchPage() {
             )}
           </div>
 
-          {(v.locked === null || isOwner) && <CommentSection videoId={v.id} creatorId={v.channel.id} creatorHandle={v.channel.handle} unlockToken={unlockToken} />}
+          {(v.locked === null || isOwner) && (
+            <CommentSection videoId={v.id} creatorId={v.channel.id} creatorHandle={v.channel.handle} unlockToken={unlockToken}
+              durationSec={v.durationSec} onSeek={v.locked === null ? seekFromComment : undefined} />
+          )}
         </div>
 
         {related.length > 0 && (
           <aside className="watch-sidebar" aria-label={t('watch.relatedVideos')}>
+            <label className="autoplay-toggle">
+              <span>{t('watch.autoplay')}</span>
+              <input type="checkbox" role="switch" checked={autoplay} onChange={(e) => setAutoplay(e.target.checked)} />
+            </label>
             {fromChannel.length > 0 && (
               <div className="watch-sidebar-chips" role="tablist">
                 <button type="button" role="tab" className="chip" aria-selected={relatedFilter === 'all'} onClick={() => setRelatedFilter('all')}>{t('categories.all')}</button>

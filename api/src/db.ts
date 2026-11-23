@@ -47,12 +47,14 @@ export async function ensureIndexes(db: Db): Promise<void> {
     ]),
     db.collection('comments').createIndexes([
       { key: { video: 1, parent: 1, pinned: 1, _id: -1 }, name: 'thread' },
+      { key: { video: 1, parent: 1, pinned: 1, replyCount: -1, _id: -1 }, name: 'thread_top' },
       { key: { parent: 1, _id: 1 }, name: 'replies' },
       { key: { openReports: -1, _id: -1 }, name: 'reported', partialFilterExpression: { openReports: { $gt: 0 } } },
     ]),
     db.collection('reactions').createIndexes([
       { key: { video: 1, user: 1 }, name: 'one_per_user', unique: true },
       { key: { video: 1, kind: 1 }, name: 'count' },
+      { key: { user: 1, kind: 1, updatedAt: -1, _id: -1 }, name: 'liked' },
     ]),
     db.collection('commentReports').createIndexes([
       { key: { comment: 1, reporter: 1 }, name: 'one_open_per_reporter', unique: true, partialFilterExpression: { status: 'open' } },

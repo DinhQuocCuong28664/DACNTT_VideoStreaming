@@ -59,6 +59,25 @@ describe('comments', () => {
     expect(again.body.items.filter((c: { pinned: boolean }) => c.pinned).map((c: { body: string }) => c.body)).toEqual(['c3']);
   });
 
+  it('sorts by replies with sort=top and pages through equal counts', async () => {
+    const id = await w.video(owner.id);
+    const ids: string[] = [];
+    for (let i = 0; i < 4; i += 1) ids.push((await comment(id, viewer, `c${i}`)).body.comment.id);
+    await comment(id, other, 'r', ids[1]);
+    await comment(id, other, 'r', ids[1]);
+    await comment(id, other, 'r', ids[2]);
+    const bodies = (r: { body: { items: { body: string }[] } }) => r.body.items.map((c) => c.body);
+
+    const first = await w.call('get', `/videos/${id}/comments?sort=top&limit=2`);
+    expect(bodies(first)).toEqual(['c1', 'c2']);
+    const second = await w.call('get', `/videos/${id}/comments?sort=top&limit=2&cursor=${first.body.nextCursor}`);
+    expect(bodies(second)).toEqual(['c3', 'c0']);
+    expect(second.body.nextCursor).toBeNull();
+    // The default stays newest first; an unknown order is refused.
+    expect(bodies(await w.call('get', `/videos/${id}/comments`))).toEqual(['c3', 'c2', 'c1', 'c0']);
+    expect((await w.call('get', `/videos/${id}/comments?sort=old`)).status).toBe(400);
+  });
+
   it('keeps replies one level deep and reconciles counts on delete', async () => {
     const id = await w.video(owner.id);
     const top = (await comment(id, viewer, 'top')).body.comment.id as string;

@@ -5,7 +5,7 @@ import {
   MdAdminPanelSettings, MdChevronRight, MdHistory, MdHome, MdOutlineAccountCircle, MdOutlineAdminPanelSettings,
   MdOutlineComputer, MdOutlineFileUpload, MdOutlineHome, MdOutlineInfo, MdOutlineMusicNote, MdOutlinePlaylistPlay, MdOutlineWorkspacePremium,
   MdOutlineSchool, MdOutlineSettings, MdOutlineSportsEsports, MdOutlineSubscriptions, MdOutlineTheaterComedy,
-  MdOutlineVideoLibrary, MdOutlineWatchLater, MdSettings, MdSubscriptions, MdVideoLibrary,
+  MdOutlineVideoLibrary, MdOutlineWatchLater, MdSettings, MdSubscriptions, MdThumbUpOffAlt, MdVideoLibrary,
 } from 'react-icons/md';
 import { useAuth } from '../../context/auth';
 import type { Category } from '../../api/types';
@@ -46,6 +46,7 @@ export default function Guide({ variant = 'full', onNavigate }: { variant?: 'ful
     { to: channelPath, label: t('nav.yourChannel'), icon: MdOutlineVideoLibrary, activeIcon: MdVideoLibrary, active: at(channelPath) },
     { to: '/history', label: t('nav.history'), icon: MdHistory, active: at('/history') },
     { to: '/playlist/watch-later', label: t('nav.watchLater'), icon: MdOutlineWatchLater, active: at('/playlist/watch-later') },
+    { to: '/liked', label: t('nav.liked'), icon: MdThumbUpOffAlt, active: at('/liked') },
     { to: '/playlists', label: t('nav.playlists'), icon: MdOutlinePlaylistPlay, active: at('/playlists') },
     { to: '/studio', label: t('nav.studio'), icon: MdOutlineVideoLibrary, active: location.pathname.startsWith('/studio') },
     { to: '/settings', label: t('nav.settings'), icon: MdOutlineSettings, activeIcon: MdSettings, active: at('/settings') },

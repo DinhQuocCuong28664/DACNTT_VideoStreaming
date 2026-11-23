@@ -1,17 +1,19 @@
 /**
- * Comments under a video: newest first with the creator's pinned comment on top, replies one
- * level deep (a reply to a reply mentions its author), delete for the author or the creator,
- * pin for the creator, report for everyone else. Counts come from the API.
+ * Comments under a video: newest or top (most replies) first with the creator's pinned comment on
+ * top, replies one level deep (a reply to a reply mentions its author), delete for the author or the
+ * creator, pin for the creator, report for everyone else. Times such as "1:23" seek the player.
+ * Counts come from the API.
  */
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import type { IconType } from 'react-icons';
 import { MdExpandLess, MdExpandMore, MdMoreVert, MdOutlineDelete, MdOutlinedFlag, MdOutlinePushPin, MdPushPin } from 'react-icons/md';
-import { comments as api } from '../../api/endpoints';
+import { comments as api, type CommentSort } from '../../api/endpoints';
 import type { Comment, User } from '../../api/types';
 import { useAuth } from '../../context/auth';
 import { timeAgo } from '../../lib/format';
+import { splitTimestamps } from '../../lib/timestamps';
 import Avatar from '../Common/Avatar';
 import { ConfirmDialog } from '../Common/Dialogs';
 import { useToast } from '../Common/Toast';
@@ -61,8 +63,22 @@ function Composer({ user, initialText = '', placeholder, ariaLabel, submitLabel,
 
 interface Action { key: string; icon: IconType; label: string; onSelect: () => void }
 
-function Item({ comment, creatorName, actions, menuOpen, onToggleMenu, onReply, children }: {
-  comment: Comment; creatorName: string; actions: Action[]; menuOpen: boolean; onToggleMenu: () => void; onReply: () => void; children?: ReactNode;
+/** Comment text with its times as buttons that seek the player. */
+function CommentText({ body, durationSec, onSeek }: { body: string; durationSec?: number | null; onSeek?: (seconds: number) => void }) {
+  const { t } = useTranslation();
+  if (!onSeek) return <p className="comment-text">{body}</p>;
+  return (
+    <p className="comment-text">
+      {splitTimestamps(body, durationSec).map((part, i) => (part.kind === 'time'
+        ? <button key={i} type="button" className="comment-timestamp" onClick={() => onSeek(part.seconds)} aria-label={t('watch.jumpTo', { time: part.text })}>{part.text}</button>
+        : part.text))}
+    </p>
+  );
+}
+
+function Item({ comment, creatorName, actions, menuOpen, onToggleMenu, onReply, durationSec, onSeek, children }: {
+  comment: Comment; creatorName: string; actions: Action[]; menuOpen: boolean; onToggleMenu: () => void; onReply: () => void;
+  durationSec?: number | null; onSeek?: (seconds: number) => void; children?: ReactNode;
 }) {
   const { t } = useTranslation();
   const isReply = comment.parentId !== null;
@@ -79,7 +95,7 @@ function Item({ comment, creatorName, actions, menuOpen, onToggleMenu, onReply, 
             : <span className="comment-author">{comment.author.name}</span>}
           <span className="comment-time">{timeAgo(t, comment.createdAt)}</span>
         </p>
-        <p className="comment-text">{comment.body}</p>
+        <CommentText body={comment.body} durationSec={durationSec} onSeek={onSeek} />
         <div className="comment-actions"><button type="button" className="btn btn-plain comment-reply-btn" onClick={onReply}>{t('watch.reply')}</button></div>
         {children}
       </div>
@@ -99,7 +115,10 @@ function Item({ comment, creatorName, actions, menuOpen, onToggleMenu, onReply, 
   );
 }
 
-export default function CommentSection({ videoId, creatorId, creatorHandle, unlockToken }: { videoId: string; creatorId: string; creatorHandle: string | null; unlockToken?: string | null }) {
+export default function CommentSection({ videoId, creatorId, creatorHandle, unlockToken, durationSec, onSeek }: {
+  videoId: string; creatorId: string; creatorHandle: string | null; unlockToken?: string | null;
+  durationSec?: number | null; onSeek?: (seconds: number) => void;
+}) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
@@ -114,6 +133,7 @@ export default function CommentSection({ videoId, creatorId, creatorHandle, unlo
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Comment | null>(null);
   const [reporting, setReporting] = useState<Comment | null>(null);
+  const [sort, setSort] = useState<CommentSort>('newest');
 
   const isCreator = user?.id === creatorId;
   const creatorName = creatorHandle ? `@${creatorHandle}` : '';
@@ -122,11 +142,11 @@ export default function CommentSection({ videoId, creatorId, creatorHandle, unlo
   const patchThread = (id: string, patch: Partial<Thread>) => setThreads((prev) => new Map(prev).set(id, { ...(prev.get(id) ?? empty), ...patch }));
 
   const loadPage = useCallback(async (cursor: string | null) => {
-    const r = await api.list(videoId, cursor, unlockToken);
+    const r = await api.list(videoId, cursor, unlockToken, sort);
     setList((prev) => (cursor ? mergeById(prev, r.items) : r.items));
     setTotal(r.total);
     setNext(r.nextCursor);
-  }, [videoId, unlockToken]);
+  }, [videoId, unlockToken, sort]);
 
   useEffect(() => {
     setList([]); setThreads(new Map()); setReplying(null); setNext(null);
@@ -254,7 +274,7 @@ export default function CommentSection({ videoId, creatorId, creatorHandle, unlo
   };
 
   const render = (c: Comment, extra?: ReactNode) => (
-    <Item key={c.id} comment={c} creatorName={creatorName} actions={actionsFor(c)} menuOpen={openMenu === c.id}
+    <Item key={c.id} comment={c} creatorName={creatorName} actions={actionsFor(c)} menuOpen={openMenu === c.id} durationSec={durationSec} onSeek={onSeek}
       onToggleMenu={() => setOpenMenu(openMenu === c.id ? null : c.id)} onReply={() => startReply(c)}>
       {replying?.targetId === c.id && (
         <Composer key={replying.key} user={user} initialText={replying.mention} placeholder={t('watch.replyPlaceholder')} ariaLabel={t('watch.replyAriaLabel')}
@@ -266,7 +286,14 @@ export default function CommentSection({ videoId, creatorId, creatorHandle, unlo
 
   return (
     <section className="comments-section" aria-labelledby="comments-heading">
-      <h2 id="comments-heading" className="comments-heading">{t('watch.commentsHeading', { count: total })}</h2>
+      <div className="comments-header">
+        <h2 id="comments-heading" className="comments-heading">{t('watch.commentsHeading', { count: total })}</h2>
+        <div className="comments-sort" role="group" aria-label={t('watch.sortComments')}>
+          {(['top', 'newest'] as const).map((s) => (
+            <button key={s} type="button" className="chip" aria-pressed={sort === s} onClick={() => setSort(s)}>{t(`watch.sort.${s}`)}</button>
+          ))}
+        </div>
+      </div>
       {isAuthenticated
         ? <Composer user={user} placeholder={t('watch.commentPlaceholder')} ariaLabel={t('watch.commentAriaLabel')} submitLabel={t('watch.commentSubmit')} onSubmit={post} />
         : <p className="comment-login-hint"><Link to="/login" state={{ from: location.pathname }}>{t('nav.login')}</Link> {t('watch.loginPrompt')}</p>}

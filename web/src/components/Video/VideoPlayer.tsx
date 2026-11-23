@@ -72,6 +72,10 @@ export interface VideoPlayerProps {
   previewVtt?: string | null;
   chapters?: { startSec: number; title: string }[];
   startTime?: number | null;
+  /** Changes on every seek request, so asking twice for the same time seeks twice. */
+  seekKey?: string;
+  /** The video played to its end (never fires while looping). */
+  onEnded?: () => void;
   shareUrl?: string | null;
   /** The iframe snippet offered as "Copy embed code"; null hides the item. */
   embedCode?: string | null;
@@ -97,7 +101,9 @@ function saveCaptionPref(lang: string | null): void {
   } catch { /* storage blocked: the choice just is not remembered */ }
 }
 
-export default function VideoPlayer({ grant, renew, poster, previewVtt, chapters = [], startTime = null, shareUrl = null, embedCode = null, onView, onHeartbeat }: VideoPlayerProps) {
+export default function VideoPlayer({ grant, renew, poster, previewVtt, chapters = [], startTime = null, seekKey, onEnded, shareUrl = null, embedCode = null, onView, onHeartbeat }: VideoPlayerProps) {
+  const onEndedRef = useRef(onEnded);
+  onEndedRef.current = onEnded;
   const { t } = useTranslation();
   const tRef = useRef(t);
   tRef.current = t;
@@ -294,7 +300,7 @@ export default function VideoPlayer({ grant, renew, poster, previewVtt, chapters
       lastTimeRef.current = video.currentTime;
       if (reachedView(watchedRef.current, video.duration)) report();
     };
-    const onEnded = () => { setIsPlaying(false); if (reachedView(watchedRef.current, video.duration)) report(); beat(); };
+    const onEnded = () => { setIsPlaying(false); if (reachedView(watchedRef.current, video.duration)) report(); beat(); onEndedRef.current?.(); };
     const onPause = () => { setIsPlaying(false); beat(); };
     const handlers: [string, () => void][] = [
       ['timeupdate', onTimeUpdate],
@@ -332,7 +338,7 @@ export default function VideoPlayer({ grant, renew, poster, previewVtt, chapters
     if (video.readyState >= 1) { seek(); return undefined; }
     video.addEventListener('loadedmetadata', seek, { once: true });
     return () => video.removeEventListener('loadedmetadata', seek);
-  }, [masterUrl, startTime]);
+  }, [masterUrl, startTime, seekKey]);
 
   // ── Captions: one track shown at a time ───────────────────────────────────────────────
   // A viewer who had captions on sees them on the next video too, in the same language when it exists.

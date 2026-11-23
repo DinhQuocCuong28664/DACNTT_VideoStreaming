@@ -112,6 +112,28 @@ describe('playlists', () => {
   });
 });
 
+describe('liked videos', () => {
+  it('lists liked videos newest like first, pages, and hides videos that are no longer listable', async () => {
+    const a = await w.video(owner.id);
+    const b = await w.video(owner.id);
+    const c = await w.video(owner.id);
+    const hidden = await w.video(owner.id);
+    const like = (v: string, kind: 'like' | 'dislike' | null = 'like') => w.call('put', `/videos/${v}/reaction`, { kind }, { token: fan.token });
+    const ids = (r: { body: { items: { id: string }[] } }) => r.body.items.map((v) => v.id);
+    for (const v of [a, b, c, hidden]) { await like(v); w.tick(1000); }
+    await like(b, 'dislike');
+    await w.db.collection('videos').updateOne({ _id: new ObjectId(hidden) }, { $set: { visibility: 'private' } });
+
+    expect((await w.call('get', '/me/liked')).status).toBe(401);
+    const first = await w.call('get', '/me/liked?limit=1', undefined, { token: fan.token });
+    // The private video holds the first slot of the page but is not shown.
+    expect(ids(first)).toEqual([]);
+    const rest = await w.call('get', `/me/liked?cursor=${first.body.nextCursor}`, undefined, { token: fan.token });
+    expect(ids(rest)).toEqual([c, a]);
+    expect(rest.body.nextCursor).toBeNull();
+  });
+});
+
 describe('subscriptions feed', () => {
   it('lists public ready videos of subscribed channels only', async () => {
     const other = await w.user('other@example.com');

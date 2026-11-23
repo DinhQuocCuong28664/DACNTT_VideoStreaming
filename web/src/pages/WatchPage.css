@@ -284,10 +284,37 @@
   margin-top: var(--space-lg);
 }
 
-.comments-heading {
+.comments-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-md) var(--space-lg);
   margin-bottom: var(--space-lg);
+}
+
+.comments-heading {
   font-size: var(--font-size-xl);
   font-weight: 700;
+}
+
+.comments-sort {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+/* A time in a comment: a link-coloured button that seeks the player */
+.comment-timestamp {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent-primary);
+  font: inherit;
+  cursor: pointer;
+}
+
+.comment-timestamp:hover,
+.comment-timestamp:focus-visible {
+  text-decoration: underline;
 }
 
 .comment-form {

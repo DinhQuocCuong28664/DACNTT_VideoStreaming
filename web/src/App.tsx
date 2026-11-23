@@ -32,6 +32,7 @@ const loadLibrary = () => import('./pages/LibraryPages');
 const Library = {
   Subscriptions: lazy(() => loadLibrary().then((m) => ({ default: m.SubscriptionsPage }))),
   History: lazy(() => loadLibrary().then((m) => ({ default: m.HistoryPage }))),
+  Liked: lazy(() => loadLibrary().then((m) => ({ default: m.LikedPage }))),
   Playlists: lazy(() => loadLibrary().then((m) => ({ default: m.PlaylistsPage }))),
   Playlist: lazy(() => loadLibrary().then((m) => ({ default: m.PlaylistPage }))),
   Notifications: lazy(() => loadLibrary().then((m) => ({ default: m.NotificationsPage }))),
@@ -92,6 +93,7 @@ export default function App() {
           <Route path="/plans" element={<PlansPage />} />
           <Route path="/subscriptions" element={<Protected><Library.Subscriptions /></Protected>} />
           <Route path="/history" element={<Protected><Library.History /></Protected>} />
+          <Route path="/liked" element={<Protected><Library.Liked /></Protected>} />
           <Route path="/playlists" element={<Protected><Library.Playlists /></Protected>} />
           <Route path="/playlist/:id" element={<Library.Playlist />} />
           <Route path="/notifications" element={<Protected><Library.Notifications /></Protected>} />
