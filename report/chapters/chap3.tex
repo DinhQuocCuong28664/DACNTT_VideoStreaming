@@ -68,7 +68,7 @@ FR-01 & Accounts & Register with a display name, an e-mail address, a password a
 FR-02 & Password recovery and change & A reset link by e-mail, valid for one hour and usable once; a change from the settings page that requires the current password. \\
 FR-03 & Direct upload & The browser sends the file straight to Amazon S3: in one request up to 5~GiB, and in parts of 32~MiB up to 20~GiB, with progress, speed, remaining time and cancel. The plan of the creator may set a lower size limit (FR-24). \\
 FR-04 & Automatic processing & Without any manual step, the source becomes an encrypted HLS package with up to six renditions from 144p to 1080p bounded by the source, a thumbnail and seek-preview images; long videos are split into chunks encoded in parallel, and the owner sees the progress of each step. \\
-FR-05 & Playback and sharing & An adaptive player with manual quality, speed, picture-in-picture, full screen, captions, chapters, seek preview and resume from the last position. When a video ends, the next related video starts after a short countdown unless the viewer cancels it or turns autoplay off. A link can be shared with a start time, and public and unlisted videos can be embedded in another site. \\
+FR-05 & Playback and sharing & An adaptive player with manual quality, speed, picture-in-picture, full screen, captions, chapters, seek preview and resume from the last position. When a video ends, the next related video starts after a short countdown unless the viewer cancels it or turns autoplay off. A theater mode widens the player to the whole page, and a miniplayer keeps the video playing in a corner while the viewer browses other pages. A link can be shared with a start time, and public and unlisted videos can be embedded in another site. \\
 FR-06 & Visibility and audience & Each video is public, unlisted, private or password-protected, and may be limited to channel members from a chosen tier upward. A stranger learns nothing about a private video, not even that it exists. \\
 FR-07 & Creator studio & The owner edits the title, description, tags, category and thumbnail, uploads WebVTT captions or keeps the automatic ones (FR-25), defines chapters and deletes a video with all its files. \\
 FR-08 & Scheduled publishing & The owner chooses a publication time between five minutes and one year ahead; the video becomes public at that time. \\
@@ -402,6 +402,7 @@ Alternative flows &
   1c. The video is password-protected: the page shows only a password form (UC-06). \newline
   2a. The video is for members and the viewer is not one of a high enough tier: the page shows, instead of the player, a card that leads to the channel's tiers. \newline
   3a. The grant expires during playback: the player asks for a new one and continues. \newline
+  4a. The viewer leaves the watch page while the video plays: the video goes on in a miniplayer in a corner of every page, and expanding it returns to the watch page at the same second. \newline
   6a. In an embedded player, a private, password-protected or members-only video shows a card that leads to the site instead of playing. \newline
   7a. The viewer cancels the countdown or has turned autoplay off, which the browser remembers; the video then simply stops. \\
 Postcondition & The view count may have grown by one. \\

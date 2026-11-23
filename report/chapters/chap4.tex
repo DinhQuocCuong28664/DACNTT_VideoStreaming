@@ -604,7 +604,12 @@ implements play and pause, seeking with the sprite preview, volume, full screen,
 picture-in-picture, captions, chapters and quality in one settings menu, and resumes from the saved
 position. The watch page around it adds what a viewer expects next to the player. When a video
 ends, a card counts down eight seconds and opens the first video of the related list, unless the
-viewer cancels it or has switched autoplay off, a choice kept in the browser. Under the video, the
+viewer cancels it or has switched autoplay off, a choice kept in the browser. Theater mode moves the
+player to a row of its own across the page and the related videos below it; the player is a cell of
+the page grid, so switching only changes the style and never reloads the video. Leaving the watch page
+while a video plays hands its playback grant and position to a miniplayer kept by the page layout,
+which plays on in a corner of every other page until the viewer closes it or expands it back to the
+watch page at the same second. Under the video, the
 comments can be ordered newest first or with the most replies first, since comments carry no likes
 to rank by, and a time such as 1:23 written in a comment becomes a link that seeks the player, the
 same way a chapter does; a time past the end of the video stays plain text.
