@@ -2,7 +2,7 @@
  * Reactions, comments (one reply level, pinned first) and comment reports. Every counter is
  * recomputed with countDocuments after a change, so concurrent writes never drift (§5.8a).
  */
-import { MongoServerError, ObjectId } from 'mongodb';
+import { MongoServerError, ObjectId, type Sort } from 'mongodb';
 import { z } from 'zod';
 import type { Request } from 'express';
 import type { Feature } from '../app.js';
@@ -115,21 +115,27 @@ export const communityFeature: Feature = (r, deps) => {
   // Comments ----------------------------------------------------------------------------------
 
   r.get('/videos/:id/comments', async (req, res) => {
-    const q = pageQuery.parse(req.query);
+    const q = pageQuery.extend({ sort: z.enum(['newest', 'top']).default('newest') }).parse(req.query);
     const v = await playableVideo(req, oid(req.params['id'], 'Video'));
     const cursor = decodeCursor(q.cursor);
     // Pinned comment heads the first page and is skipped afterwards.
     const pinned = cursor ? [] : await comments.find({ video: v._id, parent: null, pinned: true }).limit(1).toArray();
     const filter: Record<string, unknown> = { video: v._id, parent: null, pinned: false };
-    if (cursor) filter['_id'] = { $lt: cursor.id };
-    const list = await comments.find(filter).sort({ _id: -1 }).limit(q.limit + 1).toArray();
+    // "Top" has no likes to rank by: the comments with the most replies come first, newest first
+    // among equals. Its cursor carries the reply count in the time slot of the shared format.
+    const top = q.sort === 'top';
+    if (cursor && top) {
+      const n = cursor.at.getTime();
+      filter['$or'] = [{ replyCount: { $lt: n } }, { replyCount: n, _id: { $lt: cursor.id } }];
+    } else if (cursor) {
+      filter['_id'] = { $lt: cursor.id };
+    }
+    const order: Sort = top ? { replyCount: -1, _id: -1 } : { _id: -1 };
+    const list = await comments.find(filter).sort(order).limit(q.limit + 1).toArray();
     const page = list.slice(0, q.limit);
     const last = page.at(-1);
-    res.json({
-      items: await views([...pinned, ...page], v.owner),
-      nextCursor: list.length > q.limit && last ? encodeCursor(last.createdAt, last._id) : null,
-      total: v.counters.comments,
-    });
+    const nextCursor = list.length > q.limit && last ? encodeCursor(top ? new Date(last.replyCount) : last.createdAt, last._id) : null;
+    res.json({ items: await views([...pinned, ...page], v.owner), nextCursor, total: v.counters.comments });
   });
 
   r.get('/comments/:id/replies', async (req, res) => {
