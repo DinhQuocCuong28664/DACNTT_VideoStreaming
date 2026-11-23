@@ -243,15 +243,19 @@ export default function WatchPage() {
     return () => { live = false; };
   }, [id, listed]);
 
-  const renew = useCallback(() => videos.playback(id, unlockToken).then((g) => { setGrant(g); return g; }), [id, unlockToken]);
+  // The player's calls name the video it is playing, not the one in the address: moving to the
+  // next video renders once with the new address while the old player still holds the old grant,
+  // and its last heartbeat must go to the old video, whose token it carries.
+  const playingId = state.kind === 'video' ? state.video.id : id;
+  const renew = useCallback(() => videos.playback(playingId, unlockToken).then((g) => { setGrant(g); return g; }), [playingId, unlockToken]);
   const onView = useCallback((token: string) => {
-    videos.view(id, token).then((r) => {
-      if (r.counted) setState((s) => (s.kind === 'video' ? { kind: 'video', video: { ...s.video, views: r.views } } : s));
+    videos.view(playingId, token).then((r) => {
+      if (r.counted) setState((s) => (s.kind === 'video' && s.video.id === playingId ? { kind: 'video', video: { ...s.video, views: r.views } } : s));
     }).catch(() => undefined);
-  }, [id]);
+  }, [playingId]);
   const onHeartbeat = useCallback((b: { positionSec: number; watchedSec: number; playbackToken: string }) => {
-    void videos.heartbeat(id, b.playbackToken, { positionSec: b.positionSec, watchedSec: b.watchedSec }).catch(() => undefined);
-  }, [id]);
+    void videos.heartbeat(playingId, b.playbackToken, { positionSec: b.positionSec, watchedSec: b.watchedSec }).catch(() => undefined);
+  }, [playingId]);
 
   const goToLogin = () => navigate('/login', { state: { from: `${location.pathname}${location.search}` } });
   const react = async (kind: 'like' | 'dislike') => {
