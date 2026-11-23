@@ -27,7 +27,7 @@ Viewer (registered user) & Take part: react, comment, subscribe, join membership
 Creator (registered user) & Upload large files without waiting, decide who sees each video, edit and schedule it, earn members, read analytics, appeal a moderation decision; on a paid plan, larger and longer videos, automatic captions and faster processing & FR-03, FR-04, FR-06 to FR-08, FR-13, FR-15, FR-16, FR-21, FR-24 to FR-26, NFR-02, NFR-03, NFR-11 \\
 Operator & A queue of what the screening held back or viewers reported, and a way to decide with a reason and resolve appeals & FR-18 to FR-21 \\
 Auditor & The error rates of the screening with their uncertainty, and a decision log that cannot be altered & FR-22 \\
-Administrator & Assign staff roles and draw random audit samples & FR-22, FR-23 \\
+Administrator & Assign staff roles, draw random audit samples, follow the platform at a glance and switch the services billed per use & FR-22, FR-23, FR-27, FR-28 \\
 Development team & A system that costs almost nothing while idle, is reproducible from code, observable and safe to change & NFR-04 to NFR-11 \\
 \bottomrule
 \end{tabularx}
@@ -123,7 +123,7 @@ FR-23 & Role management & An administrator assigns the roles user, operator, aud
 \end{tabularx}
 \end{table}
 
-Table~\ref{tab:functional-requirements-plans} ends the list with the platform plans, which set how
+Table~\ref{tab:functional-requirements-plans} continues with the platform plans, which set how
 far each creator may use the costly parts of the system.
 
 \begin{table}[H]
@@ -138,6 +138,24 @@ far each creator may use the costly parts of the system.
 FR-24 & Plans and payment & Four plans, Free, Plus, Pro and Max, set the largest upload, the longest video, the number of membership tiers, the analytics window, the minutes of automatic captions and the processing priority. A user buys a paid plan monthly on a hosted checkout page, and changes or cancels it on a hosted portal; a paid plan stays until the end of the paid period. Accounts created before the plans existed keep the limits they had. \\
 FR-25 & Automatic captions & On a plan that includes them, a published video with sound gets captions in Vietnamese or English without any action of the owner, within the monthly minutes of the plan; a caption the owner uploads replaces the automatic one. \\
 FR-26 & Priority and length limits & When processing capacity is short, the videos of paid plans are served before those of the free plan; a video longer than the plan allows is refused after its duration is read, with the reason shown to the owner. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Table~\ref{tab:functional-requirements-admin} ends the list with what an administrator needs to run
+the platform as a whole rather than one video at a time.
+
+\begin{table}[H]
+\centering
+\caption{Functional requirements of platform administration}
+\label{tab:functional-requirements-admin}
+\small
+\begin{tabularx}{\textwidth}{p{0.07\textwidth} p{0.2\textwidth} X}
+\toprule
+\textbf{ID} & \textbf{REQUIREMENT} & \textbf{DESCRIPTION} \\
+\midrule
+FR-27 & System overview & An administrator sees, over the last 7, 30 or 90 days, the users and the new sign-ups, the users of each plan with the monthly revenue, the videos by state with the uploads, failures and median processing time, the screening outcomes, the caption minutes used and the views, with one chart per day. \\
+FR-28 & Runtime switches & An administrator turns automatic screening and automatic captions on or off without a deployment; a change applies to the videos processed or published after it, shows its cost, and is logged with who made it. \\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -237,9 +255,9 @@ owner of a removed video. Each staff use case is drawn once, at the role that ow
 \subsection{Use Case Specifications}
 \label{sec:use-case-specs}
 
-The use cases are specified in Tables~\ref{tab:uc-register} to \ref{tab:uc-auto-captions}. Closely related
+The use cases are specified in Tables~\ref{tab:uc-register} to \ref{tab:uc-switches}. Closely related
 use cases of the diagrams are specified together, for example liking, commenting and replying, so
-that twenty-two specifications cover the diagrams. Each lists its actor, the requirements it serves, the
+that twenty-four specifications cover the diagrams. Each lists its actor, the requirements it serves, the
 main flow and the alternative flows, numbered after the step they branch from.
 
 \begin{table}[H]
@@ -810,7 +828,7 @@ Postcondition & The role is changed, and the change is logged. \\
 \end{tabularx}
 \end{table}
 
-The last two use cases come from the platform plans: buying a plan (Table~\ref{tab:uc-plan}) and
+Two use cases come from the platform plans: buying a plan (Table~\ref{tab:uc-plan}) and
 the automatic captions that a paid plan brings (Table~\ref{tab:uc-auto-captions}).
 
 \begin{table}[H]
@@ -868,6 +886,59 @@ Alternative flows &
   4a. The job fails: the reserved minutes are given back. \newline
   4b. The owner uploads a caption in the same language later: it replaces the automatic one. \\
 Postcondition & The video has an automatic caption track, or nothing was spent. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+The last two use cases belong to the administrator who runs the platform: reading the overview
+(Table~\ref{tab:uc-overview}) and switching the services billed per use (Table~\ref{tab:uc-switches}).
+
+\begin{table}[H]
+\centering
+\caption{Use case UC-23: read the system overview}
+\label{tab:uc-overview}
+\small
+\begin{tabularx}{\textwidth}{p{0.2\textwidth} X}
+\toprule
+\textbf{FIELD} & \textbf{CONTENT} \\
+\midrule
+Actor & Administrator \\
+Requirements & FR-27 \\
+Precondition & The person is signed in as an administrator. \\
+Main flow &
+  1. The administrator opens the overview tab of the staff console, which shows the last 30 days. \newline
+  2. The server counts users, plans, videos, screening outcomes, caption minutes and views from the documents at that moment. \newline
+  3. The page shows the totals, the most common processing errors and one bar chart per day for sign-ups, uploads and views, with the same numbers as a table. \newline
+  4. The administrator switches the window to 7 or 90 days. \\
+Alternative flows &
+  1a. An operator or an auditor asks for the overview: the server answers 403 and the tab is not shown. \newline
+  4a. Another window is asked for: the server answers 400. \\
+Postcondition & None; nothing is changed. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Use case UC-24: switch screening or automatic captions}
+\label{tab:uc-switches}
+\small
+\begin{tabularx}{\textwidth}{p{0.2\textwidth} X}
+\toprule
+\textbf{FIELD} & \textbf{CONTENT} \\
+\midrule
+Actor & Administrator \\
+Requirements & FR-28, NFR-11 \\
+Precondition & The person is signed in as an administrator. \\
+Main flow &
+  1. The administrator opens the settings tab, which shows each switch, whether it comes from the console or from the default of the infrastructure, its cost and the history of changes. \newline
+  2. The administrator turns a switch on or off and confirms. \newline
+  3. The server stores the switch and appends the change, with who made it, to a log that is never updated. \newline
+  4. The next video that starts processing is screened or not accordingly, and the next published video gets automatic captions or not. \\
+Alternative flows &
+  2a. The infrastructure has removed the trigger of automatic captions: the switch is locked, and the server answers 409 if asked to turn it on. \newline
+  3a. The value is already the one in force: it is stored and no change is logged. \\
+Postcondition & The switch is in force for later videos, and the change is logged. \\
 \bottomrule
 \end{tabularx}
 \end{table}
