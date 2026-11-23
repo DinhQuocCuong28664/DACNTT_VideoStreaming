@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
@@ -8,6 +8,7 @@ import {
 import { channels, me, videos } from '../api/endpoints';
 import type { LockedStub, Playback, VideoCard as Card, VideoDetails } from '../api/types';
 import { useAuth } from '../context/auth';
+import { useMiniPlayer, type MiniVideo } from '../context/miniPlayer';
 import Avatar from '../components/Common/Avatar';
 import { useToast } from '../components/Common/Toast';
 import { NotFoundPage } from '../components/Common/StatusScreen';
@@ -41,6 +42,10 @@ const AUTOPLAY_KEY = 'vidshare.autoplay';
 /** Autoplay is on unless the viewer switched it off on this browser. */
 const readAutoplay = () => { try { return localStorage.getItem(AUTOPLAY_KEY) !== 'off'; } catch { return true; } };
 const saveAutoplay = (on: boolean) => { try { localStorage.setItem(AUTOPLAY_KEY, on ? 'on' : 'off'); } catch { /* not remembered */ } };
+
+const THEATER_KEY = 'vidshare.theater';
+const readTheater = () => { try { return localStorage.getItem(THEATER_KEY) === 'on'; } catch { return false; } };
+const saveTheater = (on: boolean) => { try { localStorage.setItem(THEATER_KEY, on ? 'on' : 'off'); } catch { /* not remembered */ } };
 
 const UNLOCK_KEY = (id: string) => `unlock:${id}`;
 const readUnlock = (id: string) => { try { return sessionStorage.getItem(UNLOCK_KEY(id)); } catch { return null; } };
@@ -77,6 +82,29 @@ export default function WatchPage() {
   const [autoplay, setAutoplayState] = useState(readAutoplay);
   const [upNext, setUpNext] = useState<Card | null>(null);
   const setAutoplay = (on: boolean) => { setAutoplayState(on); if (!on) setUpNext(null); saveAutoplay(on); };
+  const [theater, setTheaterState] = useState(readTheater);
+  const toggleTheater = useCallback(() => setTheaterState((on) => { saveTheater(!on); return !on; }), []);
+
+  // ── Miniplayer ───────────────────────────────────────────────────────────────────────
+  // Leaving the page while the video plays hands it to the corner player, as on YouTube; the
+  // miniplayer button (key I) does the same even when paused. A watch page always closes it.
+  const { open: openMini, close: closeMini } = useMiniPlayer();
+  const mediaRef = useRef<HTMLVideoElement | null>(null);
+  const miniSourceRef = useRef<Omit<MiniVideo, 'startAt' | 'playing'> | null>(null);
+  const forceMiniRef = useRef(false);
+  useEffect(() => { closeMini(); }, [closeMini]);
+  // A layout cleanup runs while the element is still in the page, before removal pauses it.
+  useLayoutEffect(() => () => {
+    const el = mediaRef.current;
+    const source = miniSourceRef.current;
+    const force = forceMiniRef.current;
+    forceMiniRef.current = false;
+    if (!el || !source || el.ended || (el.paused && !force)) return;
+    const playing = !el.paused;
+    el.pause();
+    openMini({ ...source, startAt: el.currentTime, playing });
+  }, [openMini]);
+  const toMiniPlayer = useCallback(() => { forceMiniRef.current = true; navigate('/'); }, [navigate]);
   // A time in a comment: put it in the address like a chapter link, then bring the player into view.
   const seekFromComment = useCallback((seconds: number) => {
     navigate({ search: `?t=${seconds}` }, { replace: true });
@@ -185,6 +213,8 @@ export default function WatchPage() {
   };
 
   const startTime = useMemo(() => parseStartTime(new URLSearchParams(location.search).get('t')) ?? resumeAt, [location.search, resumeAt]);
+  // Set again below once a player is on screen; every other state has nothing to hand over.
+  miniSourceRef.current = null;
 
   // ── Screens without a player ────────────────────────────────────────────────────────
   if (state.kind === 'loading') {
@@ -286,23 +316,30 @@ export default function WatchPage() {
   } else if (!grant) {
     player = <div className="player-placeholder"><div className="spinner" /></div>;
   } else {
+    miniSourceRef.current = {
+      videoId: v.id, title: v.title, channelName: v.channel.name, poster: v.thumbnail ?? null, previewVtt: v.previewVtt ?? null,
+      chapters: v.chapters, grant, unlockToken,
+    };
     player = (
       <VideoPlayer
         grant={grant} renew={renew} poster={v.thumbnail} previewVtt={v.previewVtt} chapters={v.chapters} startTime={startTime}
-        seekKey={location.key} onEnded={onEnded}
+        seekKey={location.key} onEnded={onEnded} autoPlay={(location.state as { autoplay?: unknown } | null)?.autoplay === true}
         shareUrl={`${window.location.origin}/watch/${v.id}`} embedCode={embedCodeFor(v)} onView={onView} onHeartbeat={onHeartbeat}
+        mediaRef={mediaRef} theater={theater} onToggleTheater={toggleTheater} onMiniPlayer={toMiniPlayer}
       />
     );
   }
 
   return (
-    <div className="container watch-page">
+    <div className={`container watch-page${theater ? ' is-theater' : ''}`}>
+      {/* The player is a cell of the grid, not of the main column: theater mode only moves it
+          with CSS, so switching never remounts the player or reloads the video. */}
       <div className="watch-layout">
+        <div className="watch-player-wrap">
+          {player}
+          {upNext && <UpNext key={upNext.id} video={upNext} onPlay={() => navigate(`/watch/${upNext.id}`)} onCancel={() => setUpNext(null)} />}
+        </div>
         <div className="watch-main">
-          <div className="watch-player-wrap">
-            {player}
-            {upNext && <UpNext key={upNext.id} video={upNext} onPlay={() => navigate(`/watch/${upNext.id}`)} onCancel={() => setUpNext(null)} />}
-          </div>
 
           {(moderation === 'review' || moderation === 'removed') && (
             <div className={`watch-moderation-notice${moderation === 'removed' ? ' is-removed' : ''}`} role="status">

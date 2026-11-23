@@ -6,7 +6,7 @@
  *  - side-loaded WebVTT captions, chapter marks and the sprite seek preview;
  *  - the 30-second view rule and a heartbeat a minute for resume and analytics.
  */
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent, type MouseEvent, type MutableRefObject } from 'react';
 import { useTranslation } from 'react-i18next';
 import Hls, { type Level } from 'hls.js';
 import {
@@ -41,6 +41,8 @@ const SHORTCUT_HELP: readonly [string[], string][] = [
   [['M'], 'mute'],
   [['F'], 'fullscreen'],
   [['C'], 'captions'],
+  [['T'], 'theater'],
+  [['I'], 'mini'],
   [['0–9'], 'jump'],
   [['Home', 'End'], 'startEnd'],
   [[',', '.'], 'frame'],
@@ -63,6 +65,13 @@ const PiPIcon = () => (
   </svg>
 );
 
+/** A wide frame for theater mode, a narrower one for the default view, as on YouTube. */
+const TheaterIcon = ({ on }: { on: boolean }) => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" aria-hidden="true">
+    {on ? <rect x="5" y="6" width="14" height="12" rx="1.5" /> : <rect x="2" y="7" width="20" height="10" rx="1.5" />}
+  </svg>
+);
+
 export interface VideoPlayerProps {
   grant: Playback;
   /** Asks the API for a new grant (the policy expired or the CDN refused). */
@@ -81,6 +90,17 @@ export interface VideoPlayerProps {
   embedCode?: string | null;
   onView?: (playbackToken: string) => void;
   onHeartbeat?: (b: { positionSec: number; watchedSec: number; playbackToken: string }) => void;
+  /** 'mini' is the corner player: fewer controls, no theater or miniplayer buttons. */
+  variant?: 'full' | 'mini';
+  /** Starts playing as soon as the source loads (the miniplayer carrying on, or coming back from it). */
+  autoPlay?: boolean;
+  /** Receives the video element, so the page can read where playback is when it leaves. */
+  mediaRef?: MutableRefObject<HTMLVideoElement | null>;
+  theater?: boolean;
+  /** Shows the theater button (key T); without it the button and key do nothing. */
+  onToggleTheater?: () => void;
+  /** Shows the miniplayer button (key I). */
+  onMiniPlayer?: () => void;
 }
 
 const CAPTION_PREF_KEY = 'vidshare.captions';
@@ -101,9 +121,15 @@ function saveCaptionPref(lang: string | null): void {
   } catch { /* storage blocked: the choice just is not remembered */ }
 }
 
-export default function VideoPlayer({ grant, renew, poster, previewVtt, chapters = [], startTime = null, seekKey, onEnded, shareUrl = null, embedCode = null, onView, onHeartbeat }: VideoPlayerProps) {
+export default function VideoPlayer({
+  grant, renew, poster, previewVtt, chapters = [], startTime = null, seekKey, onEnded, shareUrl = null, embedCode = null, onView, onHeartbeat,
+  variant = 'full', autoPlay = false, mediaRef, theater = false, onToggleTheater, onMiniPlayer,
+}: VideoPlayerProps) {
+  const mini = variant === 'mini';
   const onEndedRef = useRef(onEnded);
   onEndedRef.current = onEnded;
+  const autoPlayRef = useRef(autoPlay);
+  autoPlayRef.current = autoPlay;
   const { t } = useTranslation();
   const tRef = useRef(t);
   tRef.current = t;
@@ -168,6 +194,13 @@ export default function VideoPlayer({ grant, renew, poster, previewVtt, chapters
   const cdnOrigin = new URL(grant.masterUrl).origin;
   const signed = useCallback((url: string) => signUrl(url, cdnOrigin, grantRef.current.cdnQuery), [cdnOrigin]);
 
+  // The page reads the element in its own cleanup, which React runs before this one.
+  useLayoutEffect(() => {
+    if (!mediaRef) return undefined;
+    mediaRef.current = videoRef.current;
+    return () => { mediaRef.current = null; };
+  }, [mediaRef]);
+
   // ── Source and hls.js ─────────────────────────────────────────────────────────────────
   const masterUrl = grant.masterUrl;
   useEffect(() => {
@@ -204,6 +237,8 @@ export default function VideoPlayer({ grant, renew, poster, previewVtt, chapters
     hls.loadSource(masterUrl);
     hls.attachMedia(video);
     hls.on(Hls.Events.MANIFEST_PARSED, (_e, data) => setLevels(data.levels));
+    // The browser may still refuse to start with sound; the play button then stays.
+    if (autoPlayRef.current) hls.once(Hls.Events.MANIFEST_PARSED, () => { void video.play().catch(() => undefined); });
     hls.on(Hls.Events.LEVEL_SWITCHED, (_e, data) => setCurrentLevel(data.level));
     hls.on(Hls.Events.FRAG_LOADED, () => {
       retries.current.network = 0;
@@ -496,6 +531,8 @@ export default function VideoPlayer({ grant, renew, poster, previewVtt, chapters
         break;
       }
       case 'chapter': { const at = chapterTarget(chapters, v.currentTime, action.dir); if (at !== null) v.currentTime = at; break; }
+      case 'toggleTheater': onToggleTheater?.(); break;
+      case 'miniPlayer': onMiniPlayer?.(); break;
       case 'help': setShowHelp((s) => !s); break;
       default: break;
     }
@@ -510,6 +547,8 @@ export default function VideoPlayer({ grant, renew, poster, previewVtt, chapters
     if (e.key === 'Escape' && showHelp) { setShowHelp(false); return; }
     const action = shortcutFor(e);
     if (!action || keyBelongsToTarget(e.target as Element | null, e.key)) return;
+    // T and I belong to the page only where it offers theater mode or the miniplayer.
+    if ((action.kind === 'toggleTheater' && !onToggleTheater) || (action.kind === 'miniPlayer' && !onMiniPlayer)) return;
     if (document.querySelector('[role="dialog"][aria-modal="true"]')) return;
     e.preventDefault();
     runShortcut(action, v);
@@ -561,7 +600,7 @@ export default function VideoPlayer({ grant, renew, poster, previewVtt, chapters
   return (
     <div
       ref={wrapperRef}
-      className={`video-player-wrapper ${showControls ? '' : 'controls-hidden'}`}
+      className={`video-player-wrapper${showControls ? '' : ' controls-hidden'}${mini ? ' is-mini' : ''}`}
       onMouseMove={handleActivity}
       onMouseLeave={() => { if (isPlaying) setShowControls(false); }}
       onContextMenu={onContextMenu}
@@ -586,7 +625,7 @@ export default function VideoPlayer({ grant, renew, poster, previewVtt, chapters
           <div className="player-shortcuts-panel" onClick={(e) => e.stopPropagation()}>
             <div className="player-shortcuts-title">{t('player.shortcuts')}</div>
             <dl>
-              {SHORTCUT_HELP.map(([keys, label]) => (
+              {SHORTCUT_HELP.filter(([, label]) => (label === 'theater' ? Boolean(onToggleTheater) : label === 'mini' ? Boolean(onMiniPlayer) : true)).map(([keys, label]) => (
                 <div key={label} className="player-shortcuts-row">
                   <dt>{keys.map((k) => <kbd key={k}>{k}</kbd>)}</dt>
                   <dd>{t(`player.keys.${label}`)}</dd>
@@ -657,7 +696,7 @@ export default function VideoPlayer({ grant, renew, poster, previewVtt, chapters
               <MdClosedCaptionOff />
             </button>
           )}
-          <div className="settings-wrapper">
+          {!mini && <div className="settings-wrapper">
             <button className="control-btn" onClick={() => { setShowSettings((s) => !s); setSettingsView('main'); }} aria-label={t('player.settingsAria')} title={t('player.settings')}><FiSettings /></button>
             {showSettings && (
               <div className="settings-menu">
@@ -720,7 +759,16 @@ export default function VideoPlayer({ grant, renew, poster, previewVtt, chapters
                 )}
               </div>
             )}
-          </div>
+          </div>}
+          {onMiniPlayer && (
+            <button className="control-btn" onClick={onMiniPlayer} aria-label={t('player.miniPlayer')} title={t('player.miniPlayer')}><PiPIcon /></button>
+          )}
+          {onToggleTheater && (
+            <button className="control-btn theater-btn" onClick={onToggleTheater} aria-pressed={theater}
+              aria-label={theater ? t('player.defaultView') : t('player.theater')} title={theater ? t('player.defaultView') : t('player.theater')}>
+              <TheaterIcon on={theater} />
+            </button>
+          )}
           <button className="control-btn" onClick={() => void toggleFullscreen()} aria-label={t('player.fullscreen')}>{isFullscreen ? <FiMinimize /> : <FiMaximize />}</button>
         </div>
       </div>

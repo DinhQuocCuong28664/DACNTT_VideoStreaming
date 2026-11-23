@@ -1,4 +1,4 @@
-import { Suspense, useCallback, useEffect, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { MdMenu } from 'react-icons/md';
@@ -7,6 +7,16 @@ import Guide from './Guide';
 import Logo from './Logo';
 import { EmailVerificationBanner } from '../Auth/EmailVerification';
 import { Spinner } from '../Common/StatusScreen';
+import { MiniPlayerProvider, useMiniPlayer } from '../../context/miniPlayer';
+
+// The miniplayer carries hls.js; it loads only when a video first goes to the corner.
+const MiniPlayer = lazy(() => import('../Video/MiniPlayer'));
+
+function CornerPlayer() {
+  const { video, close } = useMiniPlayer();
+  if (!video) return null;
+  return <Suspense fallback={null}><MiniPlayer key={video.videoId} video={video} onClose={close} /></Suspense>;
+}
 
 /** From this width the left menu opens at its full 240 px. */
 const WIDE_QUERY = '(min-width: 1312px)';
@@ -26,6 +36,10 @@ function useMediaQuery(query: string): boolean {
 }
 
 export default function MainLayout() {
+  return <MiniPlayerProvider><Shell /></MiniPlayerProvider>;
+}
+
+function Shell() {
   const { t } = useTranslation();
   const location = useLocation();
   const isWide = useMediaQuery(WIDE_QUERY);
@@ -70,6 +84,7 @@ export default function MainLayout() {
         <EmailVerificationBanner />
         <Suspense fallback={<Spinner />}><Outlet /></Suspense>
       </main>
+      <CornerPlayer />
     </div>
   );
 }
