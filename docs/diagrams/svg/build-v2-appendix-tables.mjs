@@ -7,7 +7,8 @@
  *   report/generated/tab-v2-qoe.tex         playback runs under three network profiles
  *   report/generated/tab-v2-bitrate.tex     declared and delivered bit rate, three videos
  *   report/generated/tab-v2-transcode.tex   the twelve transcoding runs by file size
- *   report/generated/tab-v2-four-hour.tex   steps of the four-hour video
+ *   report/generated/tab-v2-four-hour.tex   steps of the four-hour video, three runs (with the
+ *                                           reruns of 2026-11-24-v2-s4-long-rerun.json)
  *   report/generated/tab-v2-burst.tex       one hundred simultaneous uploads
  *   report/generated/tab-v2-api.tex         API latency by phase
  *   report/generated/tab-v2-lambda.tex      function log of the API run and the burst
@@ -216,27 +217,36 @@ ${body}
 
 // ── Four-hour video ───────────────────────────────────────────────────────
 {
-  const r = read('2026-11-04-v2-s4-long.json').runs[0];
-  const t = r.timings_s;
+  // The run of 4 November (the figure) and the two reruns of 24 November, one column each.
+  const runs = [
+    ...read('2026-11-04-v2-s4-long.json').runs,
+    ...read('2026-11-24-v2-s4-long-rerun.json').runs,
+  ];
+  const r = runs[0];
+  const day = (run) => `${Number(run.date.slice(8, 10))} ${run.date.slice(5, 7) === '11' ? 'Nov' : run.date.slice(5, 7)}`;
+  const heads = runs.map((run, i) => (runs.filter((o) => o.date === run.date).length > 1
+    ? `${day(run)}, ${runs.slice(0, i + 1).filter((o) => o.date === run.date).length}`
+    : day(run)).toUpperCase());
+  const row = (label, f) => [label, ...runs.map(f)];
   table('tab-v2-four-hour.tex', {
-    caption: `Steps of the four-hour video, ${r.video.size_gib} GiB, ${r.chunk.count} chunks of ${r.chunk.vcpu} vCPUs`,
+    caption: `Steps of the four-hour video in three runs, ${r.video.size_gib} GiB, ${r.chunk.count} chunks of ${r.chunk.vcpu} vCPUs, times in seconds`,
     label: 'tab:raw-four-hour',
-    spec: 'l r',
-    head: ['STEP OR QUANTITY', 'VALUE'],
+    spec: `l ${runs.map(() => 'r').join(' ')}`,
+    head: ['STEP OR QUANTITY', ...heads],
     size: '\\small',
     rows: [
-      ['Upload of the source', `${fix(t.upload)} s`],
-      ['Intake: workflow start and probe', `${fix(t.ingest + t.probe)} s`],
-      ['End of upload to the first task', `${fix(t.queue_to_first_job)} s`],
-      ['Analyse, in parallel with the audio', `${fix(t.analyse)} s`],
-      ['Audio of the whole video', `${fix(t.audio)} s`],
-      [`Chunk array, ${r.chunk.count} chunks`, `${fix(t.chunks)} s`],
-      ['Stitch', `${fix(t.stitch)} s`],
-      ['Publish', `${fix(t.publish)} s`],
+      row('Upload of the source', (x) => fix(x.timings_s.upload)),
+      row('Intake: workflow start and probe', (x) => fix(x.timings_s.ingest + x.timings_s.probe)),
+      row('End of upload to the first task', (x) => fix(x.timings_s.queue_to_first_job)),
+      row('Analyse, in parallel with the audio', (x) => fix(x.timings_s.analyse)),
+      row('Audio of the whole video', (x) => fix(x.timings_s.audio)),
+      row(`Chunk array, ${r.chunk.count} chunks`, (x) => fix(x.timings_s.chunks)),
+      row('Stitch', (x) => fix(x.timings_s.stitch)),
+      row('Publish', (x) => fix(x.timings_s.publish)),
       'mid',
-      ['End of upload to ready', `${fix(t.end_to_end)} s`],
-      ['Work of all tasks', `${r.vcpu_seconds} vCPU-s`],
-      ['Tasks on Spot and On-Demand', `${r.capacity_used.spot} and ${r.capacity_used.ondemand}`],
+      row('End of upload to ready', (x) => fix(x.timings_s.end_to_end)),
+      row('Work of all tasks, vCPU-s', (x) => String(x.vcpu_seconds)),
+      row('Tasks on Spot and On-Demand', (x) => `${x.capacity_used.spot} and ${x.capacity_used.ondemand}`),
     ],
   });
 }

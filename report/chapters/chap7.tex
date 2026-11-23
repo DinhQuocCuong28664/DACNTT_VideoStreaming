@@ -24,7 +24,7 @@ priority queues measured on staging.
 \midrule
 1. Web platform & Users register with a verified e-mail address or Google, upload files of up to 20~GiB, as far as their plan allows, straight to Amazon S3 and watch every video at up to six quality levels. Each video is public, unlisted, private, protected by a password or reserved for members. Channels, subscriptions, comments, playlists, memberships, a search that ignores diacritics and a staff console complete the platform. Four plans, bought through Stripe in test mode, set the limits of each creator and bring automatic captions and priority processing. & Sections~\ref{sec:interface-design}, \ref{sec:content-protection}, \ref{sec:ui-showcase} \\
 2. Event-driven pipeline & The creation of the source object alone starts a Step Functions execution, named after the video and its upload version so that a duplicate event never starts a second one. The execution ends with an HLS package encrypted with AES-128 and served through CloudFront with a signed policy. In a burst of 100 uploads, every upload whose file reached Amazon S3 became \status{ready}. & Sections~\ref{sec:workflow-design}, \ref{sec:media-design}, \ref{sec:pipeline-evaluation} \\
-3. On-demand containers & Every FFmpeg job runs in a Fargate task that exists only while the job runs; with nothing to process, both compute environments hold zero vCPUs. Spot capacity is used first and On-Demand as overflow, which a burst of 100 uploads used. A four-hour video was ready in 38.3~minutes. Priority queues let the videos of paid plans wait less when capacity is short. & Sections~\ref{sec:compute-design}, \ref{sec:chunked-evaluation}, \ref{sec:burst-evaluation} \\
+3. On-demand containers & Every FFmpeg job runs in a Fargate task that exists only while the job runs; with nothing to process, both compute environments hold zero vCPUs. Spot capacity is used first and On-Demand as overflow, which a burst of 100 uploads used. A four-hour video was ready in 38.3~minutes, the median of three runs. Priority queues let the videos of paid plans wait less when capacity is short. & Sections~\ref{sec:compute-design}, \ref{sec:chunked-evaluation}, \ref{sec:burst-evaluation} \\
 4. Infrastructure as Code and CI & Eleven Terraform modules build three environments on AWS and Cloudflare. Two workflows lint, type-check, test, scan for secrets and vulnerable dependencies, and run FFmpeg in the image on every change; 380 unit tests, 13 image checks and 27 end-to-end tests pass. & Sections~\ref{sec:iac}, \ref{sec:cicd}, \ref{sec:testing} \\
 5. Empirical evaluation & Playback start, playback under limited bandwidth, declared against delivered bit rate, transcoding time from a 36-second clip to a four-hour video, 100 simultaneous uploads, the length limit, API load and monthly cost were measured on production, and the priority queues on staging. Of the eleven non-functional requirements, nine are met, NFR-01 at its median, and NFR-11 in tests but not yet with real users. & Chapter~\ref{chap:evaluation}, Table~\ref{tab:nfr-evidence} \\
 \bottomrule
@@ -40,7 +40,7 @@ against 309.56~USD for an always-on server, and a burst of uploads is absorbed b
 failing: in the burst of Section~\ref{sec:burst-evaluation}, no video failed once its file had
 reached Amazon S3.
 
-The work grows with the content, not with the path. Every measured video needed between 4.6 and
+The work grows with the content, not with the path. Every measured video needed between 4.5 and
 5.8~vCPU-seconds per second of source, from a 36-second clip to a four-hour video, so cost and
 capacity can be predicted from the length of a catalogue. The range is an estimate rather than a
 constant, and harder content could sit above it (Section~\ref{sec:size-evaluation}).
@@ -66,7 +66,7 @@ therefore cannot play. Signed Cookies would avoid this, but they fail inside an 
 not digital rights management: a viewer who may play a video can also save it.
 
 \textbf{Transcoding.} The ladder has six fixed rungs whatever the content. On a long video the audio
-job sits on the critical path, 10.8~of the 38.3~minutes of the four-hour run, and the chunks are
+job sits on the critical path, 7.8 to 10.8~of the 37.0 to 38.9~minutes of the three four-hour runs, and the chunks are
 bounded by the twelve slots that the capacity of the two compute environments allows. That run used a
 synthetic test pattern, which is easier to encode than a recording. Every video also waits
 19 to 35~seconds for Fargate tasks to start, about a quarter of the time of a short clip
