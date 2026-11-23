@@ -88,16 +88,17 @@ Danh sách đầy đủ (F1–F13) nằm ở [`docs/ARCHITECTURE.md`](docs/ARCHI
    - Trình phát hls.js tự viết với ABR và chọn chất lượng tay.
    - Tốc độ phát, PiP, toàn màn hình, phụ đề WebVTT, chương, ảnh xem trước khi tua (sprite).
    - Nhớ vị trí xem dở. Lượt xem chỉ được tính sau 30 giây phát và không tính trùng.
+   - Hết video thì tự phát video liên quan tiếp theo sau 8 giây đếm ngược; có thể huỷ hoặc tắt tự động phát.
 4. **Khám phá:** trang chủ, danh mục, video liên quan, và tìm kiếm Atlas Search. Tìm kiếm không cần gõ dấu ("xay lang" ra "xây làng"), chịu lỗi gõ và có gợi ý tự động.
 5. **Chia sẻ và quyền xem:**
    - Bốn chế độ: công khai, không liệt kê, riêng tư, có mật khẩu.
    - Video chỉ dành cho hội viên.
    - Trình phát nhúng `/embed/:id`, chia sẻ kèm mốc thời gian, hẹn giờ công khai.
 6. **Cộng đồng và kênh:**
-   - Bình luận, trả lời, ghim, báo cáo.
+   - Bình luận, trả lời, ghim, báo cáo; xếp theo mới nhất hoặc nhiều trả lời nhất; mốc thời gian như 1:23 trong bình luận bấm được để tua.
    - Đăng ký kênh, kèm bảng tin và thông báo khi kênh có video mới.
    - Hội viên theo hạng (thanh toán sandbox).
-   - Lịch sử xem, xem sau, playlist.
+   - Lịch sử xem, xem sau, video đã thích, playlist.
 7. **Creator Studio:**
    - Sửa thông tin video, phụ đề, chương, ảnh bìa, quyền xem, lịch công khai.
    - Theo dõi từng bước xử lý và tiến độ.

@@ -64,7 +64,7 @@ the global one of 300 requests a minute.
 \midrule
 \multicolumn{4}{l}{\textit{Community}} \\
 \texttt{/videos/:id/reaction} & GET, PUT & Signed in & Read or set the like or dislike of the requester \\
-\texttt{/videos/:id/comments} & GET & Public & Comments of a video, pinned first \\
+\texttt{/videos/:id/comments} & GET & Public & Comments of a video, pinned first, then newest or, with \texttt{sort=top}, most replies first \\
 \texttt{/videos/:id/comments} & POST & Signed in, limited & Post a comment or a reply \\
 \texttt{/comments/:id/replies} & GET & Public & Replies to a comment \\
 \texttt{/comments/:id} & DELETE & Signed in & Delete a comment of the requester or on the requester's video \\
@@ -88,6 +88,7 @@ the global one of 300 requests a minute.
 \texttt{/me/history} & GET, DELETE & Signed in & Watch history, or clear it \\
 \texttt{/me/history/:videoId} & DELETE & Signed in & Remove one video from the history \\
 \texttt{/me/feed} & GET & Signed in & New videos of subscribed channels \\
+\texttt{/me/liked} & GET & Signed in & Videos the requester liked, latest like first \\
 \texttt{/me/playlists} & GET, POST & Signed in, limited & List or create playlists \\
 \texttt{/playlists/:id} & GET & Public & A public playlist or one of the requester \\
 \texttt{/playlists/:id} & PATCH, DELETE & Signed in & Rename, change visibility or delete \\

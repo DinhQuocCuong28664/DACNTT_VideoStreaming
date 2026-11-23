@@ -19,19 +19,19 @@ product; none is optional.
 | F2 | Channels | Public profile with subscriber count, `@handle`, avatar (moderated), banner, channel sections, sorted video list |
 | F3 | Upload | Direct-to-S3 upload: presigned POST up to 5 GiB, multipart (32 MiB parts, completed by the API) up to 20 GiB, progress/speed/ETA/cancel, custom thumbnail |
 | F4 | Processing | Event-driven pipeline, six-rung Capped-CRF HLS ladder bounded by the source, 6 s segments, AES-128 per video, thumbnail, seek-preview sprite, long videos split into parallel chunks, moderation and violence labels, per-step progress |
-| F5 | Watching | Home feed, Atlas Search (relevance, typo tolerance, diacritic-insensitive, autocomplete), categories, related videos, custom hls.js player (quality/ABR, speed, PiP, fullscreen, captions, chapters, seek preview), resume position, 30-second view rule with dedupe, like/dislike |
+| F5 | Watching | Home feed, Atlas Search (relevance, typo tolerance, diacritic-insensitive, autocomplete), categories, related videos, custom hls.js player (quality/ABR, speed, PiP, fullscreen, captions, chapters, seek preview), resume position, 30-second view rule with dedupe, like/dislike, autoplay of the next related video after an 8 s countdown (switch kept in the browser) |
 | F6 | Sharing & access | Public, unlisted, private, password-protected; members-only audience; embed player `/embed/:id`; share with timestamp; scheduled publishing |
-| F7 | Community | Comments, replies (cursor paging), pin, delete, report comment, report video |
+| F7 | Community | Comments, replies (cursor paging), newest or most-replied order, times in comments that seek the player, pin, delete, report comment, report video |
 | F8 | Subscriptions | Subscribe/unsubscribe, subscription feed, in-app notifications for new uploads (optional email) |
 | F9 | Memberships | Tiers per channel, join/cancel (sandbox payment), member roster, members-only videos, member badge |
-| F10 | Library | Watch history, watch later, playlists (ordered, public/unlisted/private) |
+| F10 | Library | Watch history, watch later, liked videos, playlists (ordered, public/unlisted/private) |
 | F11 | Creator studio | Edit metadata, captions (VTT upload, or automatic with Amazon Transcribe on paid plans), chapters, thumbnail, visibility, schedule; analytics: views per day, watch time, audience retention |
 | F12 | Trust & safety | Automatic screening (Rekognition), review queue, decisions with reason codes, appeals, audit sampling with FP/FN metrics, event log, user/role admin; roles `user`, `operator`, `auditor`, `admin`; for admins an overview (users, plans, content, processing, captions, views) and runtime switches of screening and automatic captions |
 | F13 | UI | Light/dark theme, Vietnamese/English, 403/404 pages, design system in vanilla CSS (no Tailwind) |
 | F14 | Platform plans | Free, Plus, Pro and Max (VND per month) bought through Stripe Checkout (test mode until payments go live); the webhook alone sets the plan; limits per plan (upload size, membership tiers, analytics window) come from one `entitlements(user)` function; accounts created before 2026-11-13 keep the Pro limits |
 
 Not in scope (owner, 2026-10-28): age restriction, owner download toggle, replace-file-keep-link,
-autoplay/up-next queue.
+an editable up-next queue (autoplay of the next related video was added on 2026-11-23).
 
 ## 2. Constraints
 
@@ -504,8 +504,8 @@ erDiagram
 |---|---|---|
 | users | email (unique), handle (unique), passwordHash, googleId, emailVerified, role, avatar, banner, sections, subscriberCount | Channel = user |
 | videos | owner, title, description, tags, category, status, step, processingProgress, uploadVersion, visibility (`public`/`unlisted`/`private`/`password`), passwordHash, audience (`public`/`members`), publishAt, scheduleName, renditions, duration, hlsPath, keyRef, thumbnail, previewPath, captions[], chapters[], moderation{}, hasViolence, counters | Relationship counters reconciled with `countDocuments`; view totals with `$inc` (§5.8a) |
-| comments | video, author, parent, body, pinned, replyCount | Replies one level deep |
-| reactions | video, user, kind | Unique (video, user) |
+| comments | video, author, parent, body, pinned, replyCount | Replies one level deep; thread indexes by `_id` and by `replyCount` |
+| reactions | video, user, kind, updatedAt | Unique (video, user); (user, kind, updatedAt) for liked videos |
 | subscriptions | subscriber, channel | Unique pair |
 | membershipTiers / memberships | channel, name, price / member, tier, expiresAt | Sandbox payment |
 | playlists | owner, title, visibility, items[{video, addedAt}] | Watch later = system playlist |
@@ -533,12 +533,12 @@ paging `?cursor=&limit=`.
 - `videos`: list/search/suggest, get, related, update, delete, playback, key, view,
   heartbeat (analytics), reactions, report, appeal, captions (upload/delete), chapters,
   thumbnail, unlock (password)
-- `comments`: list, replies, create, delete, pin, report
+- `comments`: list (`sort=newest|top`, top = most replies), replies, create, delete, pin, report
 - `channels`: get by id or `@handle`, videos, sections, banner, subscribe, subscription status
 - `memberships`: tiers CRUD, join, cancel, status, roster (a simulated checkout: no money moves)
 - `billing`: plans (public), billing state, Stripe checkout, customer portal, webhook
   (`POST /v1/billing/webhook`, signed by Stripe, each event applied once)
-- `me`: profile, avatar, history (list, delete), watch-later, playlists CRUD + items,
+- `me`: profile, avatar, history (list, delete), liked videos, watch-later, playlists CRUD + items,
   notifications (list, mark read), subscriptions feed, studio analytics
 - `admin`: moderation queue, decisions, comment reports, appeals, audit samples, metrics,
   events, users and roles; overview (`system:read`) and runtime switches (`settings:manage`),
