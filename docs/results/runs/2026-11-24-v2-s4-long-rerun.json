@@ -1,0 +1,123 @@
+{
+  "schema": 1,
+  "title": "S5-4 rerun: 4-hour video on the chunked path (prod, 2 runs)",
+  "runs": [
+    {
+      "id": "2026-11-24-prod-v2-4h-1080p30-r1",
+      "date": "2026-11-24",
+      "account": "B",
+      "region": "ap-southeast-1",
+      "environment": "prod",
+      "stack": "v2",
+      "path": "chunked",
+      "capacity": {
+        "spot_max_vcpus": 24,
+        "ondemand_max_vcpus": 24
+      },
+      "chunk": {
+        "count": 48,
+        "vcpu": 4
+      },
+      "video": {
+        "label": "4h-1080p30",
+        "file": "4h-1080p30.mp4",
+        "size_gib": 5.259,
+        "duration_s": 14400,
+        "resolution": "1920x1080",
+        "fps": 30
+      },
+      "concurrency": 1,
+      "queue_position": 1,
+      "measured_from": "upload_complete",
+      "timings_s": {
+        "upload": 96.6,
+        "ingest": 6.4,
+        "probe": 3.1,
+        "queue_to_first_job": 40.3,
+        "startup_max": 1243,
+        "analyse": 98.9,
+        "encode": null,
+        "audio": 470.7,
+        "chunks": 1681.8,
+        "stitch": 2.1,
+        "publish": 0.3,
+        "end_to_end": 2222.1,
+        "end_to_end_with_upload": 2318.7
+      },
+      "vcpu_seconds": 65631,
+      "vcpu_seconds_scope": "all_jobs",
+      "capacity_used": {
+        "spot": 29,
+        "ondemand": 21
+      },
+      "result": {
+        "final_status": "READY",
+        "hls_verified": true,
+        "variants": 6
+      },
+      "api_retries": 0,
+      "provenance": "measured",
+      "source": "scripts/bench/transcode.mjs",
+      "notes": ""
+    },
+    {
+      "id": "2026-11-24-prod-v2-4h-1080p30-r2",
+      "date": "2026-11-24",
+      "account": "B",
+      "region": "ap-southeast-1",
+      "environment": "prod",
+      "stack": "v2",
+      "path": "chunked",
+      "capacity": {
+        "spot_max_vcpus": 24,
+        "ondemand_max_vcpus": 24
+      },
+      "chunk": {
+        "count": 48,
+        "vcpu": 4
+      },
+      "video": {
+        "label": "4h-1080p30",
+        "file": "4h-1080p30.mp4",
+        "size_gib": 5.259,
+        "duration_s": 14400,
+        "resolution": "1920x1080",
+        "fps": 30
+      },
+      "concurrency": 1,
+      "queue_position": 1,
+      "measured_from": "upload_complete",
+      "timings_s": {
+        "upload": 100.2,
+        "ingest": 23.5,
+        "probe": 2.9,
+        "queue_to_first_job": 48,
+        "startup_max": 1273.8,
+        "analyse": 105,
+        "encode": null,
+        "audio": 557,
+        "chunks": 1697.4,
+        "stitch": 2.1,
+        "publish": 0.2,
+        "end_to_end": 2331.2,
+        "end_to_end_with_upload": 2431.3999999999996
+      },
+      "vcpu_seconds": 65309,
+      "vcpu_seconds_scope": "all_jobs",
+      "capacity_used": {
+        "spot": 28,
+        "ondemand": 22
+      },
+      "result": {
+        "final_status": "READY",
+        "hls_verified": true,
+        "variants": 6
+      },
+      "api_retries": 0,
+      "provenance": "measured",
+      "source": "scripts/bench/transcode.mjs",
+      "notes": ""
+    }
+  ],
+  "failures": []
+}
