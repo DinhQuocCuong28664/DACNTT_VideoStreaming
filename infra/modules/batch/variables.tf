@@ -34,7 +34,7 @@ variable "image_repository_url" {
 }
 
 variable "image_tag" {
-  description = "Commit SHA of the transcoder image; CI sets it when it deploys"
+  description = "Commit SHA of the transcoder image; the deploy workflow sets it"
   type        = string
   default     = "bootstrap"
 }
