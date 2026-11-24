@@ -43,22 +43,28 @@ jobs:
     outputs:
       sha: ${{ steps.diff.outputs.sha }}
       deploy: ${{ steps.diff.outputs.deploy }}
-      image: ${{ steps.diff.outputs.image }}
+      tag: ${{ steps.diff.outputs.tag }}
     steps:
       - name: Checkout code
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
-          fetch-depth: 2
+          fetch-depth: 0
 
       - name: Compare with the previous master commit
         id: diff
         run: |
           echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          # The image tag is the last commit that changed what the Dockerfile copies. It depends
+          # only on the released commit, never on what an environment runs now, so staging and
+          # prod always get the image of the code being released (and a stale environment can
+          # never roll the other one back). A commit without such changes reuses that image.
+          tag=$(git log -1 --format=%H -- transcoder shared package.json package-lock.json tsconfig.base.json functions/package.json)
+          echo "Transcoder image tag: $tag"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
           if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
             echo "Manual run: release everything."
             echo "deploy=true" >> "$GITHUB_OUTPUT"
-            echo "image=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           changed=$(git diff --name-only HEAD^1 HEAD)
@@ -68,12 +74,6 @@ jobs:
             echo "deploy=true" >> "$GITHUB_OUTPUT"
           else
             echo "deploy=false" >> "$GITHUB_OUTPUT"
-          fi
-          # The image is rebuilt only when its inputs change; otherwise the running tag is kept.
-          if echo "$changed" | grep -qE '^(transcoder/|shared/|package\.json$|package-lock\.json$)'; then
-            echo "image=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "image=false" >> "$GITHUB_OUTPUT"
           fi
 
   staging:
@@ -87,8 +87,6 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    outputs:
-      tag: ${{ steps.tag.outputs.tag }}
     env:
       ENVIRONMENT: staging
       SHA: ${{ needs.changes.outputs.sha }}
@@ -119,28 +117,11 @@ jobs:
           npm run build -w @zelos/functions
           npm run layer:ffprobe -w @zelos/functions
 
-      - name: Choose the transcoder image
-        id: tag
-        env:
-          BUILD_IMAGE: ${{ needs.changes.outputs.image }}
-        run: |
-          if [ "$BUILD_IMAGE" = "true" ]; then
-            echo "tag=$SHA" >> "$GITHUB_OUTPUT"
-          else
-            running=$(aws batch describe-job-definitions --status ACTIVE \
-              --query "jobDefinitions[?jobDefinitionName=='zelos-staging-encode'] | [-1].containerProperties.image" \
-              --output text)
-            if [ -z "$running" ] || [ "$running" = "None" ]; then
-              echo "No running image found; building one." >&2
-              echo "tag=$SHA" >> "$GITHUB_OUTPUT"
-            else
-              echo "tag=${running##*:}" >> "$GITHUB_OUTPUT"
-            fi
-          fi
-
+      # The checkout holds the same image inputs as the tag commit (nothing changed them since),
+      # so building here gives the image of that commit.
       - name: Build and push the image (tags are immutable, so only a missing tag is pushed)
         env:
-          TAG: ${{ steps.tag.outputs.tag }}
+          TAG: ${{ needs.changes.outputs.tag }}
         run: |
           if aws ecr describe-images --repository-name "$ECR_REPOSITORY" --image-ids imageTag="$TAG" >/dev/null 2>&1; then
             echo "Image $ECR_REPOSITORY:$TAG already exists."
@@ -159,7 +140,7 @@ jobs:
 
       - name: Terraform plan and apply
         env:
-          TAG: ${{ steps.tag.outputs.tag }}
+          TAG: ${{ needs.changes.outputs.tag }}
         run: |
           CLOUDFLARE_API_TOKEN=$(aws secretsmanager get-secret-value --secret-id dacntt-dev/cloudflare-api-token --query SecretString --output text)
           echo "::add-mask::$CLOUDFLARE_API_TOKEN"
@@ -230,7 +211,7 @@ jobs:
       id-token: write
     env:
       ENVIRONMENT: prod
-      TAG: ${{ needs.staging.outputs.tag }}
+      TAG: ${{ needs.changes.outputs.tag }}
     steps:
       - name: Checkout code
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -258,7 +239,7 @@ jobs:
           npm run build -w @zelos/functions
           npm run layer:ffprobe -w @zelos/functions
 
-      - name: Check that the staging image exists
+      - name: Check that the image exists (pushed by the staging job)
         run: aws ecr describe-images --repository-name "$ECR_REPOSITORY" --image-ids imageTag="$TAG" --query 'imageDetails[0].imagePushedAt' --output text
 
       - name: Setup Terraform
