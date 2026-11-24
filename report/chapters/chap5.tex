@@ -173,7 +173,8 @@ and has no default value, so a production apply cannot fall back to an untested 
 \section{Continuous Integration and Deployment}
 \label{sec:cicd}
 
-Two GitHub Actions workflows check every push and pull request, as shown in the upper part of
+Three GitHub Actions workflows check and release the code. Two of them check every push and pull
+request, as shown in the upper part of
 Figure~\ref{fig:cicd}. The first lints all workspaces, type-checks them, runs the unit tests and builds
 every deployable part; it then builds the \name{smoke} stage of the image and runs real FFmpeg in it,
 and checks the formatting and validity of the Terraform code without access to any account. The second
@@ -185,7 +186,7 @@ the rule that protects the main branch, so a pull request cannot be merged while
 \centering
 \includegraphics[width=\textwidth]{images/03-cicd-pipeline.png}
 \caption{\textit{The checks run by GitHub Actions on every push and pull request, and the deployment
-steps run after a merge}}
+workflow that releases a merge to staging and, after an approval, to production}}
 \label{fig:cicd}
 \end{figure}
 
@@ -204,14 +205,27 @@ durations, the rising bandwidth values and the absence of repeated audio packets
 a third case checks the preview sprites. In thirteen checks it exercises what the unit tests cannot,
 namely the behaviour of FFmpeg itself.
 
-Deployment is deliberately not automated. No workflow holds AWS credentials; the steps in the lower
-part of Figure~\ref{fig:cicd} run from the operator's machine, and each is approved before it runs.
-The API and the functions are bundled; the image is built and pushed to the registry with the commit
-as its tag; Terraform applies the environment with that tag; the maintenance action creates the
-indexes; and the web files are uploaded, hashed assets first and the entry page last, so the new
-entry page never refers to a file that is not there yet, after which the distribution is invalidated.
-The end-to-end tests of Section~\ref{sec:testing} then run against the deployed environment. A change
-is applied to \name{staging} and checked there before it is applied to \name{prod}.
+A third workflow deploys, as shown in the lower part of Figure~\ref{fig:cicd}. It starts only after
+the checks have passed on a push to the main branch, and it releases nothing when a merge changes only
+documents, the report or the slides. It holds no AWS keys: each job trades the short-lived OpenID
+Connect token that GitHub issues for the role of its environment, and the role trusts only this
+repository running in that environment, named by the numeric identifiers of its owner and of the
+repository so that a renamed or re-created repository cannot match. The API and the functions are
+bundled. The transcoder image is tagged with the last commit that changed what the image is built
+from, and it is built and pushed only when the registry does not hold that tag yet, so a change that
+does not touch the transcoder reuses its image and neither environment can fall back to an older one.
+Terraform then plans and applies the environment with that tag and writes the plan summary into the
+run; the maintenance action creates the indexes; and the web files are uploaded, hashed assets first
+and the entry page last, so the new entry page never refers to a file that is not there yet, after
+which the distribution is invalidated. A health check and the end-to-end tests of
+Section~\ref{sec:testing} close the job.
+
+Every change reaches \name{staging} on its own. The \name{prod} job then waits in a protected GitHub
+environment until a team member approves it, and releases the same commit with the same image. The
+roles may manage every service that Terraform uses, but on roles and permissions they may change only
+the roles of their own environment, never the deployment roles themselves. This access is still broad
+within the account, so the trust condition and the approval are the main safeguards. The Cloudflare
+Worker, the secrets and the seed data change rarely and are still applied by hand.
 
 \section{Challenges During Development}
 \label{sec:challenges}

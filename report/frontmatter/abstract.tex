@@ -25,7 +25,8 @@ recorded so that the error rates of the screening can be measured. Four plans, b
 Checkout in test mode, set the upload size and video length of each creator; the paid ones add
 automatic captions from Amazon Transcribe within a monthly cap and priority Batch queues that serve
 their videos first when capacity is short. Eleven Terraform modules describe
-the infrastructure, and two GitHub Actions workflows lint, test and scan every change.
+the infrastructure, and three GitHub Actions workflows lint, test, scan and deploy every change,
+production after an approval.
 
 Measured on the production system, a four-hour video was ready 38.3~minutes after its upload at the median of three runs, and of one
 hundred uploads started at once 92 reached the ready state while the other 8 were refused at creation

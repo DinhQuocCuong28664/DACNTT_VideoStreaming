@@ -39,8 +39,9 @@ Amazon Simple Storage Service (S3) alone starts the processing, which is coordin
 encrypted HLS package served through a content delivery network (CDN). The third is to run every FFmpeg
 job in a container on AWS Batch with AWS Fargate, created on demand and released when the queue is
 empty, using Spot capacity first and On-Demand capacity only as overflow. The fourth is to describe
-the whole environment as Infrastructure as Code and to check every change automatically with a
-continuous integration (CI) pipeline that also runs security scans. The fifth is to evaluate the
+the whole environment as Infrastructure as Code, and to check and deliver every change automatically
+with a continuous integration (CI) pipeline that also runs security scans and a deployment workflow
+that releases to production after an approval. The fifth is to evaluate the
 result on the deployed system: playback start time and quality, transcoding time from a 36-second
 clip to a four-hour video, behaviour under one hundred simultaneous uploads, and operating cost.
 

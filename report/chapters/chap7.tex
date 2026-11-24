@@ -25,7 +25,7 @@ priority queues measured on staging.
 1. Web platform & Users register with a verified e-mail address or Google, upload files of up to 20~GiB, as far as their plan allows, straight to Amazon S3 and watch every video at up to six quality levels. Each video is public, unlisted, private, protected by a password or reserved for members. Channels, subscriptions, comments, playlists, memberships, a search that ignores diacritics and a staff console complete the platform. Four plans, bought through Stripe in test mode, set the limits of each creator and bring automatic captions and priority processing. & Sections~\ref{sec:interface-design}, \ref{sec:content-protection}, \ref{sec:ui-showcase} \\
 2. Event-driven pipeline & The creation of the source object alone starts a Step Functions execution, named after the video and its upload version so that a duplicate event never starts a second one. The execution ends with an HLS package encrypted with AES-128 and served through CloudFront with a signed policy. In a burst of 100 uploads, every upload whose file reached Amazon S3 became \status{ready}. & Sections~\ref{sec:workflow-design}, \ref{sec:media-design}, \ref{sec:pipeline-evaluation} \\
 3. On-demand containers & Every FFmpeg job runs in a Fargate task that exists only while the job runs; with nothing to process, both compute environments hold zero vCPUs. Spot capacity is used first and On-Demand as overflow, which a burst of 100 uploads used. A four-hour video was ready in 38.3~minutes, the median of three runs. Priority queues let the videos of paid plans wait less when capacity is short. & Sections~\ref{sec:compute-design}, \ref{sec:chunked-evaluation}, \ref{sec:burst-evaluation} \\
-4. Infrastructure as Code and CI & Eleven Terraform modules build three environments on AWS and Cloudflare. Two workflows lint, type-check, test, scan for secrets and vulnerable dependencies, and run FFmpeg in the image on every change; 380 unit tests, 13 image checks and 27 end-to-end tests pass. & Sections~\ref{sec:iac}, \ref{sec:cicd}, \ref{sec:testing} \\
+4. Infrastructure as Code and CI/CD & Eleven Terraform modules build three environments on AWS and Cloudflare. Two workflows lint, type-check, test, scan for secrets and vulnerable dependencies, and run FFmpeg in the image on every change; 380 unit tests, 13 image checks and 27 end-to-end tests pass. A third workflow, which holds no stored keys, deploys every merge to staging and, after an approval, to production. & Sections~\ref{sec:iac}, \ref{sec:cicd}, \ref{sec:testing} \\
 5. Empirical evaluation & Playback start, playback under limited bandwidth, declared against delivered bit rate, transcoding time from a 36-second clip to a four-hour video, 100 simultaneous uploads, the length limit, API load and monthly cost were measured on production, and the priority queues on staging. Of the eleven non-functional requirements, nine are met, NFR-01 at its median, and NFR-11 in tests but not yet with real users. & Chapter~\ref{chap:evaluation}, Table~\ref{tab:nfr-evidence} \\
 \bottomrule
 \end{tabularx}
@@ -91,9 +91,9 @@ on staging, with fourteen short videos; they move paid videos ahead but do not g
 sooner than Plus. The length limits of the plans are set by judgement, not from the use of real
 creators.
 
-\textbf{Operation.} Deployment is run by the operator rather than by the pipeline, so a change
-reaches production only as often as someone runs the steps, and a step left out is noticed only by
-the checks that follow it. The whole platform also runs in a single AWS region. CloudFront serves the
+\textbf{Operation.} The deployment workflow releases the application and the infrastructure, but the
+Cloudflare Worker, the secrets and the seed data are still applied by hand, and the deployment roles
+are broad within the account. The whole platform also runs in a single AWS region. CloudFront serves the
 web application from the edge, but an outage of that region stops uploads, processing and playback
 alike, because every playback grant and key comes from the API in that region.
 
@@ -127,8 +127,8 @@ creators upload.
 
 The sixth is calibrating the screening from evidence. The console already records the reason codes of
 reversed decisions and an unbiased audit sample; after a few hundred decisions, the thresholds and the
-label policy can be adjusted and the effect measured again. Further ahead, a deployment workflow that
-assumes a role in the account would make releases routine, and serverless encoding on graphics processing units
+label policy can be adjusted and the effect measured again. Further ahead, the deployment roles could
+be narrowed with a permissions boundary, and serverless encoding on graphics processing units
 (GPU)~\cite{gpuserverless2024} and a codec such as High Efficiency Video Coding (HEVC) or AV1 next to H.264 would raise throughput
 and reduce bandwidth.
 
