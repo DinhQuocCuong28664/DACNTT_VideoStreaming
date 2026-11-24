@@ -1,5 +1,5 @@
-# 🎬 Xây dựng Nền tảng Chia sẻ Video Trực tuyến với Hệ thống Chuyển mã HLS Tự động trên Kiến trúc Serverless Container và Event-Driven
-## Building a Video Sharing Platform with Automated HLS Transcoding Pipeline on Serverless Container and Event-Driven Architecture
+# 🎬 Xây dựng nền tảng chia sẻ video trực tuyến tích hợp hệ thống chuyển mã HLS tự động theo kiến trúc Serverless và hướng sự kiện
+## An Online Video-Sharing Platform with an Automated HLS Transcoding Pipeline on a Serverless, Event-Driven Architecture
 
 > **Môn học:** Dự án Công nghệ Thông tin (DACNTT)  
 > **Sinh viên thực hiện:**
@@ -35,8 +35,8 @@
 
 ## 1. TÊN ĐỀ TÀI
 
-- **Tiếng Việt:** Xây dựng nền tảng chia sẻ video trực tuyến với hệ thống chuyển mã HLS tự động trên kiến trúc Serverless Container và Event-Driven.
-- **Tiếng Anh:** Building a Video Sharing Platform with Automated HLS Transcoding Pipeline on Serverless Container and Event-Driven Architecture.
+- **Tiếng Việt:** Xây dựng nền tảng chia sẻ video trực tuyến tích hợp hệ thống chuyển mã HLS tự động theo kiến trúc Serverless và hướng sự kiện.
+- **Tiếng Anh:** An Online Video-Sharing Platform with an Automated HLS Transcoding Pipeline on a Serverless, Event-Driven Architecture.
 
 ---
 
