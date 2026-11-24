@@ -1,5 +1,6 @@
-# Container registry shared by staging and prod: CI pushes one image per commit, tagged with
-# the commit SHA, and each environment's job definitions pin the SHA they run.
+# Container registry shared by staging and prod: the deploy workflow pushes an image tagged with
+# the commit SHA when the transcoder or shared code changes, and each environment's job
+# definitions pin the SHA they run.
 
 resource "aws_ecr_repository" "this" {
   name                 = var.name

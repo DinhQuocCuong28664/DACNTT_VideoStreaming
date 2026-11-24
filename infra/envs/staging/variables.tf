@@ -1,5 +1,5 @@
 variable "transcoder_image_tag" {
-  description = "Commit SHA of the transcoder image; CI passes it when it deploys"
+  description = "Commit SHA of the transcoder image; the deploy workflow passes it"
   type        = string
   default     = "bootstrap"
 }

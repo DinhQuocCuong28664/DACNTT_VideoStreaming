@@ -1,0 +1,327 @@
+# Continuous deployment of the v2 stack (docs/ops/deploy.md, section 5 as a workflow).
+#
+#   CI green on master ──► staging (automatic) ──► prod (same commit and image, after approval)
+#
+# No AWS keys are stored in GitHub: each job exchanges its OIDC token for the role of its
+# environment (infra/envs/shared/github-deploy.tf). The role trusts only this repository running
+# in that GitHub environment, and the prod environment has a required reviewer.
+# Still run by hand: the shared root, the Cloudflare Worker, secrets and seeding.
+
+name: Deploy
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One release at a time; a release that has started is never cancelled halfway through an apply.
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ap-southeast-1
+  TF_VERSION: 1.14.8
+  ECR_REPOSITORY: zelos-transcoder
+
+jobs:
+  changes:
+    name: "Decide what to release"
+    # Only a green CI run of a push to master in this repository (never a pull request or a fork).
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_branch == 'master' &&
+       github.event.workflow_run.head_repository.full_name == github.repository)
+    runs-on: ubuntu-latest
+    outputs:
+      sha: ${{ steps.diff.outputs.sha }}
+      deploy: ${{ steps.diff.outputs.deploy }}
+      image: ${{ steps.diff.outputs.image }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          fetch-depth: 2
+
+      - name: Compare with the previous master commit
+        id: diff
+        run: |
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            echo "Manual run: release everything."
+            echo "deploy=true" >> "$GITHUB_OUTPUT"
+            echo "image=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          changed=$(git diff --name-only HEAD^1 HEAD)
+          echo "$changed"
+          # Documents, the report and the slides never reach AWS.
+          if echo "$changed" | grep -qvE '^(report/|presentation/|docs/|guild_from_teacher/)|\.md$'; then
+            echo "deploy=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "deploy=false" >> "$GITHUB_OUTPUT"
+          fi
+          # The image is rebuilt only when its inputs change; otherwise the running tag is kept.
+          if echo "$changed" | grep -qE '^(transcoder/|shared/|package\.json$|package-lock\.json$)'; then
+            echo "image=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "image=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  staging:
+    name: "Release to staging"
+    needs: changes
+    if: needs.changes.outputs.deploy == 'true'
+    runs-on: ubuntu-latest
+    environment:
+      name: staging
+      url: https://v2-staging.zelostech.site
+    permissions:
+      contents: read
+      id-token: write
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+    env:
+      ENVIRONMENT: staging
+      SHA: ${{ needs.changes.outputs.sha }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ needs.changes.outputs.sha }}
+
+      - name: Assume the staging deploy role
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_STAGING }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: deploy-staging-${{ github.run_id }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Build the Lambda code
+        run: |
+          npm ci
+          npm run build -w @zelos/shared
+          npm run build -w @zelos/api
+          npm run build -w @zelos/functions
+          npm run layer:ffprobe -w @zelos/functions
+
+      - name: Choose the transcoder image
+        id: tag
+        env:
+          BUILD_IMAGE: ${{ needs.changes.outputs.image }}
+        run: |
+          if [ "$BUILD_IMAGE" = "true" ]; then
+            echo "tag=$SHA" >> "$GITHUB_OUTPUT"
+          else
+            running=$(aws batch describe-job-definitions --status ACTIVE \
+              --query "jobDefinitions[?jobDefinitionName=='zelos-staging-encode'] | [-1].containerProperties.image" \
+              --output text)
+            if [ -z "$running" ] || [ "$running" = "None" ]; then
+              echo "No running image found; building one." >&2
+              echo "tag=$SHA" >> "$GITHUB_OUTPUT"
+            else
+              echo "tag=${running##*:}" >> "$GITHUB_OUTPUT"
+            fi
+          fi
+
+      - name: Build and push the image (tags are immutable, so only a missing tag is pushed)
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          if aws ecr describe-images --repository-name "$ECR_REPOSITORY" --image-ids imageTag="$TAG" >/dev/null 2>&1; then
+            echo "Image $ECR_REPOSITORY:$TAG already exists."
+            exit 0
+          fi
+          repo=$(aws ecr describe-repositories --repository-names "$ECR_REPOSITORY" --query 'repositories[0].repositoryUri' --output text)
+          aws ecr get-login-password | docker login --username AWS --password-stdin "${repo%%/*}"
+          docker build -f transcoder/Dockerfile -t "$repo:$TAG" .
+          docker push "$repo:$TAG"
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+
+      - name: Terraform plan and apply
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          CLOUDFLARE_API_TOKEN=$(aws secretsmanager get-secret-value --secret-id dacntt-dev/cloudflare-api-token --query SecretString --output text)
+          echo "::add-mask::$CLOUDFLARE_API_TOKEN"
+          export CLOUDFLARE_API_TOKEN
+          dir="infra/envs/$ENVIRONMENT"
+          terraform -chdir="$dir" init -input=false
+          terraform -chdir="$dir" plan -input=false -no-color -var "transcoder_image_tag=$TAG" -out release.tfplan | tee "$RUNNER_TEMP/plan.txt"
+          {
+            echo "### Terraform plan ($ENVIRONMENT, image \`$TAG\`)"
+            grep -E '^(Plan:|No changes)' "$RUNNER_TEMP/plan.txt" || true
+            echo '<details><summary>Changed resources</summary>'
+            echo
+            echo '```'
+            grep -E '^  # ' "$RUNNER_TEMP/plan.txt" || true
+            echo '```'
+            echo '</details>'
+          } >> "$GITHUB_STEP_SUMMARY"
+          terraform -chdir="$dir" apply -input=false release.tfplan
+          rm -f "$dir/release.tfplan"
+
+      - name: Database indexes
+        run: scripts/ensure-indexes.sh "$ENVIRONMENT"
+
+      - name: Web
+        env:
+          VITE_GOOGLE_CLIENT_ID: ${{ vars.VITE_GOOGLE_CLIENT_ID }}
+        run: scripts/deploy-web.sh "$ENVIRONMENT"
+
+      - name: Health check
+        run: curl -fsS --retry 5 --retry-delay 5 --retry-all-errors https://api-v2-staging.zelostech.site/health
+
+      - name: End-to-end tests
+        id: e2e
+        env:
+          ACCOUNTS: ${{ secrets.E2E_ACCOUNTS }}
+          E2E_BASE_URL: https://v2-staging.zelostech.site
+          E2E_API_URL: https://api-v2-staging.zelostech.site
+          E2E_SAMPLE_VIDEO: ${{ vars.E2E_SAMPLE_VIDEO }}
+        run: |
+          if [ -z "$ACCOUNTS" ]; then
+            echo "No E2E_ACCOUNTS secret in the staging environment; skipping." | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          [ -n "$E2E_SAMPLE_VIDEO" ] || unset E2E_SAMPLE_VIDEO
+          printf '%s' "$ACCOUNTS" > "$RUNNER_TEMP/e2e-accounts.json"
+          export E2E_ACCOUNTS="$RUNNER_TEMP/e2e-accounts.json"
+          npx -w @zelos/e2e playwright install --with-deps chromium
+          npm run test:e2e -w @zelos/e2e
+
+      - name: Keep the E2E report
+        if: failure() && steps.e2e.outcome == 'failure'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: e2e-staging
+          path: e2e/report
+          retention-days: 7
+
+  prod:
+    name: "Release to prod"
+    needs: [changes, staging]
+    runs-on: ubuntu-latest
+    # The prod environment has a required reviewer: the job waits here for an approval.
+    environment:
+      name: prod
+      url: https://zelostech.site
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      ENVIRONMENT: prod
+      TAG: ${{ needs.staging.outputs.tag }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ needs.changes.outputs.sha }}
+
+      - name: Assume the prod deploy role
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_PROD }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: deploy-prod-${{ github.run_id }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Build the Lambda code
+        run: |
+          npm ci
+          npm run build -w @zelos/shared
+          npm run build -w @zelos/api
+          npm run build -w @zelos/functions
+          npm run layer:ffprobe -w @zelos/functions
+
+      - name: Check that the staging image exists
+        run: aws ecr describe-images --repository-name "$ECR_REPOSITORY" --image-ids imageTag="$TAG" --query 'imageDetails[0].imagePushedAt' --output text
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd # v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+
+      # Moderation and the other prod variables keep their defaults (moderation off).
+      - name: Terraform plan and apply
+        run: |
+          CLOUDFLARE_API_TOKEN=$(aws secretsmanager get-secret-value --secret-id dacntt-dev/cloudflare-api-token --query SecretString --output text)
+          echo "::add-mask::$CLOUDFLARE_API_TOKEN"
+          export CLOUDFLARE_API_TOKEN
+          dir="infra/envs/$ENVIRONMENT"
+          terraform -chdir="$dir" init -input=false
+          terraform -chdir="$dir" plan -input=false -no-color -var "transcoder_image_tag=$TAG" -out release.tfplan | tee "$RUNNER_TEMP/plan.txt"
+          {
+            echo "### Terraform plan ($ENVIRONMENT, image \`$TAG\`)"
+            grep -E '^(Plan:|No changes)' "$RUNNER_TEMP/plan.txt" || true
+            echo '<details><summary>Changed resources</summary>'
+            echo
+            echo '```'
+            grep -E '^  # ' "$RUNNER_TEMP/plan.txt" || true
+            echo '```'
+            echo '</details>'
+          } >> "$GITHUB_STEP_SUMMARY"
+          terraform -chdir="$dir" apply -input=false release.tfplan
+          rm -f "$dir/release.tfplan"
+
+      - name: Database indexes
+        run: scripts/ensure-indexes.sh "$ENVIRONMENT"
+
+      - name: Web
+        env:
+          VITE_GOOGLE_CLIENT_ID: ${{ vars.VITE_GOOGLE_CLIENT_ID }}
+        run: scripts/deploy-web.sh "$ENVIRONMENT"
+
+      - name: Health check
+        run: curl -fsS --retry 5 --retry-delay 5 --retry-all-errors https://api.zelostech.site/health
+
+      - name: End-to-end tests
+        id: e2e
+        env:
+          ACCOUNTS: ${{ secrets.E2E_ACCOUNTS }}
+          E2E_BASE_URL: https://zelostech.site
+          E2E_API_URL: https://api.zelostech.site
+          E2E_SAMPLE_VIDEO: ${{ vars.E2E_SAMPLE_VIDEO }}
+        run: |
+          if [ -z "$ACCOUNTS" ]; then
+            echo "No E2E_ACCOUNTS secret in the prod environment; skipping." | tee -a "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          [ -n "$E2E_SAMPLE_VIDEO" ] || unset E2E_SAMPLE_VIDEO
+          printf '%s' "$ACCOUNTS" > "$RUNNER_TEMP/e2e-accounts.json"
+          export E2E_ACCOUNTS="$RUNNER_TEMP/e2e-accounts.json"
+          npx -w @zelos/e2e playwright install --with-deps chromium
+          npm run test:e2e -w @zelos/e2e
+
+      - name: Keep the E2E report
+        if: failure() && steps.e2e.outcome == 'failure'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: e2e-prod
+          path: e2e/report
+          retention-days: 7

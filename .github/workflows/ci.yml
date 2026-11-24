@@ -1,5 +1,5 @@
 # CI for the v2 monorepo: lint (with the security rules), typecheck, unit tests and build
-# for every workspace. Deployment workflows are added per environment in their own files.
+# for every workspace. Releases are in deploy.yml, which runs after this workflow passes on master.
 
 name: CI
 

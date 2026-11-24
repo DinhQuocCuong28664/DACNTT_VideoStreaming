@@ -333,8 +333,11 @@ rm api.zip
 
 ## 9. Known gaps
 
-- There is no CD. Some comments still describe one: `ci.yml:2`, `infra/modules/ecr/main.tf:1`
-  ("CI pushes one image per commit") and `infra/envs/staging/variables.tf:2`.
+- `.github/workflows/deploy.yml` automates section 5 (staging after CI passes on master, prod
+  after an approval). Until its first green run, the manual steps above remain the release path.
+  When two merges land before CI finishes, the earlier CI run is cancelled and only the later
+  merge's diff decides what is released; run the workflow by hand if the earlier one changed
+  code.
 - `cutover.md` still mentions the account A certificate and `--profile dacntt-a`. Since
   `cdn-to-b.md`, certificates are issued in account B.
 - Diagrams in `docs/ARCHITECTURE.md` still draw CloudFront in account A.
