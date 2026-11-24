@@ -4,8 +4,11 @@
 # environment requires an approval before a job can even request the token.
 
 locals {
-  github_repository = "DinhQuocCuong28664/DACNTT_VideoStreaming"
-  deploy_envs       = toset(["staging", "prod"])
+  # The repository uses GitHub's immutable OIDC subject: owner and repository carry their
+  # numeric IDs (owner@id/repo@id), so a renamed or re-created repository with the same name
+  # cannot match. Check with: gh api repos/<owner>/<repo>/actions/oidc/customization/sub
+  github_subject_prefix = "repo:DinhQuocCuong28664@205408576/DACNTT_VideoStreaming@1307254369"
+  deploy_envs           = toset(["staging", "prod"])
 }
 
 resource "aws_iam_openid_connect_provider" "github" {
@@ -33,7 +36,7 @@ data "aws_iam_policy_document" "github_deploy_trust" {
     condition {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:${local.github_repository}:environment:${each.key}"]
+      values   = ["${local.github_subject_prefix}:environment:${each.key}"]
     }
   }
 }
