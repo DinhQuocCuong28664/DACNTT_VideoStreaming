@@ -7,8 +7,8 @@
 ## 🚀 CHI TIẾT TIẾN ĐỘ CHÍNH XÁC THEO 15 MỤC QUY ĐỊNH
 
 ### 1. Tên đề tài
-- [x] Tiếng Việt: *Xây dựng nền tảng chia sẻ video trực tuyến với hệ thống chuyển mã HLS tự động trên kiến trúc Serverless Container và Event-Driven*.
-- [x] Tiếng Anh: *Building a Video Sharing Platform with Automated HLS Transcoding Pipeline on Serverless Container and Event-Driven Architecture*.
+- [x] Tiếng Việt: *Xây dựng nền tảng chia sẻ video trực tuyến tích hợp hệ thống chuyển mã HLS tự động theo kiến trúc Serverless và hướng sự kiện*.
+- [x] Tiếng Anh: *An Online Video-Sharing Platform with an Automated HLS Transcoding Pipeline on a Serverless, Event-Driven Architecture*.
 
 ### 2. Thông tin thực hiện
 - [x] Sinh viên: Đinh Quốc Cường (MSSV: 523H0008) & Võ Huỳnh Minh Đức (MSSV: 523H0014).

@@ -1,7 +1,7 @@
 # 📚 KHẢO SÁT TÀI LIỆU KHOA HỌC (Literature Review)
 
 > Tài liệu nền cho Chương 2 (Cơ sở lý thuyết & Công trình liên quan) và Chương 6 (Hạn chế & Hướng phát triển) của Đồ án
-> **Xây dựng nền tảng chia sẻ video trực tuyến với hệ thống chuyển mã HLS tự động trên kiến trúc Serverless Container và Event-Driven**
+> **Xây dựng nền tảng chia sẻ video trực tuyến tích hợp hệ thống chuyển mã HLS tự động theo kiến trúc Serverless và hướng sự kiện**
 > Cập nhật: 22/08/2026 — bổ sung mục L (Google Sign-In & Account Linking) và liên kết truy cập cho toàn bộ trích dẫn
 > Biên soạn theo chuẩn phân loại nguồn của `docs/RESEARCH_REFERENCES.md` (đồ án tham chiếu)
 
