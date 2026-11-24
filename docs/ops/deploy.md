@@ -5,9 +5,12 @@ How to release `api/`, `functions/`, `transcoder/`, `web/` and the Cloudflare Wo
 one-off runbooks: `cutover.md` (v1 → v2, done 2026-11-04) and `cdn-to-b.md` (CloudFront moved
 from account A to account B).
 
-**CI does not deploy.** `.github/workflows/ci.yml` and `security-scan.yml` only lint, test,
-build, smoke-test the transcoder image, validate Terraform and scan. No workflow holds AWS
-credentials. Every release is run by the operator from their machine with the commands below.
+**Releases are automatic.** `.github/workflows/ci.yml` and `security-scan.yml` lint, test,
+build, smoke-test the transcoder image, validate Terraform and scan every push and pull request.
+When CI passes on `master`, `.github/workflows/deploy.yml` runs section 5 for `staging`, then waits
+for an approval in the GitHub environment `prod` and releases the same commit and image there
+(section 5.0). The commands below are what the workflow runs; use them by hand only as a fallback,
+for the shared root, the Cloudflare Worker, secrets and seeding.
 
 ## 1. What gets deployed where
 
@@ -79,8 +82,9 @@ Configuration:
   export CLOUDFLARE_API_TOKEN="$(aws secretsmanager get-secret-value --secret-id dacntt-dev/cloudflare-api-token --query SecretString --output text)"
   ```
 
-- `web/.env.local` must contain `VITE_GOOGLE_CLIENT_ID`. `deploy-web.sh` only sets
-  `VITE_API_BASE_URL`, so without this file the Google sign-in button disappears from the build.
+- `web/.env.local` must contain `VITE_GOOGLE_CLIENT_ID` for a release by hand (the workflow
+  passes the repository variable). `deploy-web.sh` only sets `VITE_API_BASE_URL`, so without it
+  the Google sign-in button disappears from the build.
 - `infra/envs/<env>/cdn-signing-public.pem` must keep LF line endings (`.gitattributes` has
   `*.pem eol=lf`).
 - Wrangler logged in to the Cloudflare account that owns `zelostech.site` (`npx wrangler login`).
@@ -135,6 +139,36 @@ Run the steps in order and skip those that the change does not touch:
 
 Release to `staging` first, check it (§6), then repeat for `prod` with the same commit and the
 same image tag.
+
+### 5.0 The deploy workflow
+
+`deploy.yml` (Actions tab, workflow "Deploy") runs after a green CI run of a push to `master`, or
+by hand with "Run workflow".
+
+| Job | What it does |
+|---|---|
+| `changes` | Skips the release when the merge touched only `report/`, `presentation/`, `docs/`, `guild_from_teacher/` or `*.md`. Picks the image tag: the last commit that changed what `transcoder/Dockerfile` copies (`transcoder/`, `shared/`, root `package.json` / `package-lock.json`, `tsconfig.base.json`, `functions/package.json`). |
+| `staging` | Assumes `zelos-staging-github-deploy`, builds the Lambda code (§5.1), builds and pushes the image only when ECR lacks the tag (§5.2), plans and applies (§5.3, plan summary in the job summary), runs §5.5 and §5.6, a health check and the E2E suite (§6.4). |
+| `prod` | Waits for a reviewer in the `prod` environment, then the same steps with the same commit and tag, without building the image. |
+
+Access: no AWS keys are stored in GitHub. The roles are defined in
+`infra/envs/shared/github-deploy.tf` and trust only this repository running in the matching
+environment. The repository uses GitHub's immutable OIDC subject, so the trust condition is
+`repo:DinhQuocCuong28664@205408576/DACNTT_VideoStreaming@1307254369:environment:<env>`
+(`gh api repos/DinhQuocCuong28664/DACNTT_VideoStreaming/actions/oidc/customization/sub`).
+
+GitHub settings the workflow reads:
+
+| Where | Name | Value |
+|---|---|---|
+| Repository variables | `AWS_DEPLOY_ROLE_STAGING`, `AWS_DEPLOY_ROLE_PROD` | role ARNs (`terraform -chdir=infra/envs/shared output github_deploy_role_arns`) |
+| Repository variables | `VITE_GOOGLE_CLIENT_ID` | the web client ID from `web/.env.local` |
+| Environment secrets | `E2E_ACCOUNTS` (staging, prod) | contents of `.local-notes/<env>-e2e-accounts.json` |
+| Environment variables | `E2E_SAMPLE_VIDEO` (staging, prod) | a public READY video whose title has a word of four letters or more |
+
+Without `E2E_ACCOUNTS` the E2E step is skipped. A local `terraform plan` after a workflow release
+shows the nine Lambdas changing `source_code_hash` only: zips built on Windows differ from those
+built on Linux. That is not drift.
 
 ### 5.1 Build the Lambda code
 
@@ -333,13 +367,14 @@ rm api.zip
 
 ## 9. Known gaps
 
-- `.github/workflows/deploy.yml` automates section 5 (staging after CI passes on master, prod
-  after an approval). Until its first green run, the manual steps above remain the release path.
-  When two merges land before CI finishes, the earlier CI run is cancelled and only the later
-  merge's diff decides what is released; run the workflow by hand if the earlier one changed
-  code.
+- When two merges land before CI finishes, the earlier CI run is cancelled and only the later
+  merge's diff decides whether anything is released; run the workflow by hand if the earlier one
+  changed code and the later one only documents.
+- The deploy roles have `PowerUserAccess`; IAM is limited to the roles of their own environment.
+  A permissions boundary would narrow them further.
+- The Cloudflare Worker, secrets and seeding are not part of the workflow.
 - `cutover.md` still mentions the account A certificate and `--profile dacntt-a`. Since
   `cdn-to-b.md`, certificates are issued in account B.
 - Diagrams in `docs/ARCHITECTURE.md` still draw CloudFront in account A.
-- Wrangler is not pinned, and `VITE_GOOGLE_CLIENT_ID` exists only in the operator's
-  `web/.env.local`.
+- Wrangler is not pinned. `VITE_GOOGLE_CLIENT_ID` lives in the operator's `web/.env.local` and,
+  for the workflow, in a repository variable; keep the two equal.

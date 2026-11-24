@@ -222,15 +222,14 @@ Mã nguồn là monorepo npm workspaces: `shared`, `transcoder`, `functions`, `a
 
 Quality gate có hai lớp: lớp báo cáo quét `CRITICAL,HIGH` mà không chặn, lớp chặn chỉ dừng khi có `CRITICAL` đã có bản vá. Các job này là check bắt buộc của ruleset bảo vệ `master`.
 
-**Triển khai do người vận hành chạy tay**, không có workflow CD và không workflow nào giữ quyền AWS. Thứ tự:
-1. Build mã Lambda.
-2. Build image transcoder, tag bằng SHA của commit, push lên ECR.
-3. `terraform apply -var transcoder_image_tag=<sha>`.
-4. Deploy Worker nếu Worker thay đổi.
-5. `scripts/ensure-indexes.sh`.
-6. `scripts/deploy-web.sh`.
+**CD** (`deploy.yml`) chạy sau khi CI trên `master` đạt. Không lưu khoá AWS nào trên GitHub: mỗi job đổi token OIDC lấy role của môi trường mình (`infra/envs/shared/github-deploy.tf`). Thứ tự:
+1. Bỏ qua nếu merge chỉ đổi tài liệu, báo cáo hoặc slide.
+2. Build mã Lambda; build và push image transcoder chỉ khi ECR chưa có tag (tag = commit cuối cùng đổi đầu vào của image).
+3. `terraform plan` rồi `apply -var transcoder_image_tag=<tag>`.
+4. `scripts/ensure-indexes.sh`, `scripts/deploy-web.sh`, health check, E2E Playwright.
+5. Staging chạy tự động; prod chờ người duyệt trong GitHub Environment `prod`, rồi chạy lại các bước trên với cùng commit và cùng image.
 
-Mỗi bản phát hành chạy trên staging trước, rồi mới lên prod. Hướng dẫn đầy đủ: [`docs/ops/deploy.md`](docs/ops/deploy.md).
+Worker Cloudflare, secret và seed vẫn chạy tay. Hướng dẫn đầy đủ và đường dự phòng chạy tay: [`docs/ops/deploy.md`](docs/ops/deploy.md).
 
 | Môi trường | Web | API |
 |---|---|---|
@@ -300,7 +299,7 @@ Mọi số đo được thực hiện trên hệ thống thật. Dữ liệu th�
 2. Pipeline chuyển mã HLS tự động trên S3, SQS, Step Functions, AWS Batch và Fargate.
 3. Image Docker chứa FFmpeg và Node.js (multi-stage, ghim theo digest).
 4. Mã Terraform gồm 11 module, ba môi trường gốc.
-5. CI trên GitHub Actions, gồm cả các bước quét bảo mật.
+5. CI/CD trên GitHub Actions: kiểm tra và quét bảo mật mọi thay đổi, tự deploy staging, prod sau khi duyệt (OIDC, không lưu khoá).
 6. Monorepo TypeScript, có test đơn vị và test E2E bằng Playwright.
 7. Báo cáo (`report/`), tài liệu thiết kế (`docs/ARCHITECTURE.md`), hướng dẫn triển khai (`docs/ops/deploy.md`), và dữ liệu đo (`docs/results/`).
 
