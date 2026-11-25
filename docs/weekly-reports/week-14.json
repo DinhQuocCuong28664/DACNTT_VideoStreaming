@@ -1,0 +1,85 @@
+{
+  "tuan": 14,
+  "tuNgay": "07/11/2026",
+  "denNgay": "13/11/2026",
+  "deTai": "Xây dựng nền tảng chia sẻ video trực tuyến tích hợp hệ thống chuyển mã HLS tự động theo kiến trúc Serverless và hướng sự kiện",
+  "sinhVien": ["Đinh Quốc Cường (523H0008)", "Võ Huỳnh Minh Đức (523H0014)"],
+  "giangVien": "ThS. Mai Văn Mạnh",
+  "tyLeHoanThanh": "60%",
+
+  "moDau": "Theo kế hoạch, tuần 14 gửi báo cáo cho giảng viên hướng dẫn và kiểm tra trùng lặp qua Turnitin. Nhóm <b>chưa làm hai việc này</b>. Trước khi gửi, nhóm tự rà soát báo cáo ở vai giảng viên phản biện, và lượt rà soát tìm ra <b>số liệu sai trong chính bản định gửi</b>. Các phép đo bổ sung để làm bằng chứng còn phát hiện <b>ba lỗi thật trên production</b>. Nhóm ưu tiên sửa hết trước, nên hai việc kia dời sang tuần 15. Tỷ lệ 60 % phản ánh đúng điều đó: ba trên năm hạng mục hoàn thành.",
+
+  "doiChieu": [
+    [
+      "Gửi bản báo cáo hoàn chỉnh cho giảng viên hướng dẫn để nhận góp ý.",
+      "<b>Chưa thực hiện.</b> Lượt rà soát trong tuần cho thấy bản định gửi còn sai số liệu (xem phần kết quả), nên nhóm sửa trước. Bản gửi thầy sẽ là bản cuối, đi cùng bộ hồ sơ nộp bài đã đóng gói.",
+      "Dời sang tuần 15"
+    ],
+    [
+      "Nộp bài kiểm tra trùng lặp qua Turnitin và xử lý phần trùng nếu có.",
+      "<b>Chưa thực hiện.</b> Kiểm tra trùng lặp phải chạy trên đúng bản PDF sẽ nộp. Trong tuần báo cáo vẫn còn thay đổi, nên nếu chạy lúc này thì sẽ phải chạy lại.",
+      "Dời sang tuần 15"
+    ],
+    [
+      "Chuẩn bị bản trình bày và kịch bản demo hệ thống cho buổi bảo vệ.",
+      "Đã hoàn thành bản đầu: bộ slide PowerPoint và kịch bản thuyết trình chia phần cho hai thành viên (PR #86).",
+      "Hoàn thành"
+    ],
+    [
+      "Rà soát báo cáo ở vai giảng viên phản biện (việc phát sinh).",
+      "Đã hoàn thành. Nhóm đặt <b>27 câu hỏi phản biện thử</b> cho báo cáo, rồi đối chiếu thêm một bản rà soát độc lập theo từng điểm. Kết quả là <b>33 chỗ sửa báo cáo</b>, mỗi chỗ một commit, qua PR #82 và #84: số liệu, đơn vị, hình 2.2, 3.2, 3.3, 4.6, 5.1, truy vết yêu cầu và trích dẫn. Báo cáo được dựng lại sau mỗi đợt sửa, dày <b>134 trang</b> vào cuối tuần.",
+      "Hoàn thành"
+    ],
+    [
+      "Chạy thêm phép đo làm bằng chứng cho ABR và độ tin cậy (việc phát sinh).",
+      "Đã hoàn thành (PR #85). Có hai phép đo trên production. Thứ nhất, băng thông bị hạ từ 3G nhanh xuống 3G chậm giữa lượt phát, đo 5 lượt. Thứ hai, tải lên hai tệp hỏng, tổng cộng 4 lượt. Cả hai đều có tệp kết quả trong <i>docs/results/runs</i>.",
+      "Hoàn thành"
+    ]
+  ],
+
+  "ketQuaKyThuat": [
+    "<b>Lượt rà soát tìm ra số liệu sai trong báo cáo.</b> Lượt chịu tải 100 video đạt <b>92/100</b>, không phải 89. Ba lượt bị từ chối ở bước hoàn tất tải lên <i>vẫn chạy xong</i>, vì sự kiện S3 tự khởi động xử lý mà không cần API. Đây chính là tính chất hướng sự kiện mà đề tài nhắm tới, chỉ là trước đó báo cáo đếm sai. Hạn mức Fargate của tài khoản là <b>64 vCPU</b>, không phải 30. Lượt video bốn giờ chạy <b>12 chunk cùng lúc</b> trên một nguồn tổng hợp.",
+    "<b>Bậc 480p được giải thích bằng số đo, không phải giả định.</b> Khung phát rộng <b>825 px</b> ở cửa sổ đo 1280×720. Vì hls.js chọn bậc nhỏ nhất đủ phủ khung phát, kết quả là 480p chứ không phải 1080p.",
+    "<b>ABR phản ứng đúng khi băng thông tụt giữa chừng.</b> Trong 5 lượt, trình phát xin bậc thấp hơn sau <b>8,5–8,9 s</b> kể từ lúc hạ băng thông, và bậc mới hiện trên màn hình sau <b>20,2–20,6 s</b>, khi phần đệm cũ đã phát hết. <b>Không lượt nào bị nghẽn.</b>",
+    "<b>Lỗi 1, lộ thông tin trong lý do lỗi.</b> Khi ffprobe thất bại, lý do lỗi ghi vào video và email cảnh báo chứa <i>nguyên URL ký sẵn</i>, kèm token phiên của Lambda. Nay phần truy vấn của URL bị xoá trước khi lưu hay gửi đi, và có kiểm thử riêng cho việc này.",
+    "<b>Lỗi 2, tệp bị cắt cụt vẫn được công bố READY.</b> ffmpeg dừng mà không báo lỗi ở chỗ dữ liệu hỏng bắt đầu, nên video ngắn hơn nguồn vẫn được đánh dấu sẵn sàng. Nay bước đóng gói so độ dài đầu ra với thời lượng đo bởi ffprobe. Nếu thiếu thì job thoát với <b>mã 3</b>, mã mà Batch không thử lại.",
+    "<b>Lỗi 3, lỗi 500 tạm thời của Batch API làm hỏng cả video.</b> Step Functions trước đây không thử lại lỗi <i>Batch.ServerException</i> lúc gửi job. Nay lỗi này được thử lại như các lỗi tạm thời khác. Cả ba bản sửa đã được triển khai lên production. Tệp cắt cụt được tải lên lại sau bản sửa, và lần này kết thúc ở ERROR như mong đợi.",
+    "<b>Tài liệu vận hành cho kiến trúc v2.</b> Hướng dẫn triển khai mới (<i>docs/ops/deploy.md</i>), hướng dẫn dựng lại trên tài khoản AWS khác, và README mô tả v2. Các script của v1 (EC2, Lambda cũ) đã bị xoá.",
+    "<b>Hoàn thiện nền tảng.</b> Có gói Plus, Pro, Max thanh toán qua Stripe Checkout ở <b>chế độ thử nghiệm</b>, cùng trang chính sách quyền riêng tư và điều khoản với ô đồng ý khi đăng ký. Tuổi tối thiểu được kiểm tra ở phía máy chủ, và <b>ngày sinh không được lưu lại</b>."
+  ],
+
+  "minhChung": [
+    ["report/main.pdf", "Báo cáo sau hai lượt rà soát, 134 trang vào cuối tuần."],
+    ["docs/results/runs/2026-11-12-v2-qoe-drop.json", "Năm lượt phát với băng thông tụt từ 3G nhanh xuống 3G chậm."],
+    ["docs/results/runs/2026-11-11-v2-fault.json", "Bốn lượt tải lên tệp hỏng: tệp rác, tệp cắt cụt trước và sau bản sửa."],
+    ["scripts/qoe/collect.js, scripts/qoe/drop.test.js", "Bộ đo nay hạ được băng thông giữa lượt phát và ghi lại thời điểm đổi bậc."],
+    ["scripts/bench/fault.mjs", "Tải lên một tệp hỏng và đọc trạng thái nơi quy trình dừng lại."],
+    ["functions/src/lib/redact.ts", "Xoá phần truy vấn của URL ký sẵn khỏi lý do lỗi và email cảnh báo."],
+    ["shared/src/hls/playlist.ts, transcoder/src/package.ts", "So độ dài đầu ra với thời lượng nguồn trước khi công bố."],
+    ["infra/modules/workflow/main.tf", "Thử lại lỗi Batch.ServerException khi gửi job."],
+    ["docs/ops/deploy.md, docs/REBUILD_ON_NEW_AWS_ACCOUNT.md", "Hướng dẫn triển khai và dựng lại hệ thống v2."],
+    ["presentation/script.md", "Kịch bản thuyết trình bản đầu."]
+  ],
+
+  "lenhKiemTra": [
+    ["npm test", "305 bài kiểm thử đơn vị đạt, gồm kiểm thử xoá URL ký sẵn và kiểm thử độ dài đầu ra"],
+    ["node scripts/bench/fault.mjs --env prod --file garbage.mp4 --label garbage", "Tệp rác dừng ở bước Probe; tệp cắt cụt, sau bản sửa, dừng ở bước Encode; cả hai kết thúc ở trạng thái ERROR"],
+    ["node scripts/qoe/collect.js --profile fast3g --drop-to slow3g --drop-at 20", "Đổi bậc sau 8,5–8,9 s, hiện trên màn hình sau 20,2–20,6 s, 0 lần nghẽn"],
+    ["pdflatex, bibtex, pdflatex ×2 trong report/", "Báo cáo biên dịch lại sau mỗi đợt sửa"]
+  ],
+
+  "gioiHan": [
+    "Giảng viên hướng dẫn <b>chưa góp ý</b>, nên các chỗ sửa trong tuần đều đến từ rà soát nội bộ. Có thể còn những điểm mà chỉ góp ý của thầy mới chỉ ra.",
+    "Phép đo tụt băng thông chỉ có <b>5 lượt trên một video và một kịch bản</b> (3G nhanh xuống 3G chậm). Chưa đo chiều ngược lại, khi băng thông tăng trở lại.",
+    "Phép đo tệp hỏng chỉ dùng <b>hai loại hỏng</b>: tệp rác và tệp bị cắt cụt. Còn nhiều kiểu hỏng khác chưa thử, ví dụ tệp hỏng ở giữa hay sai bộ mã.",
+    "Khi một job Batch thất bại, lý do lỗi hiện là <b>nguyên chuỗi JSON của job</b>. Chuỗi này không chứa bí mật, nhưng chưa dễ đọc với người quản trị.",
+    "Thanh toán vẫn ở <b>chế độ thử nghiệm của Stripe</b>, chưa nhận tiền thật."
+  ],
+
+  "camKet": [
+    "Hoàn tất bộ hồ sơ nộp bài theo cấu trúc của khoa và gửi bản báo cáo cuối cho giảng viên hướng dẫn.",
+    "Kiểm tra trùng lặp qua Turnitin trên đúng bản PDF sẽ nộp và xử lý phần trùng nếu có.",
+    "Báo cáo kết quả cuối với giảng viên hướng dẫn và xin chữ ký vào bản kế hoạch.",
+    "Nộp file nén trên ELIT trước 23h59 ngày 04/12/2026."
+  ]
+}
