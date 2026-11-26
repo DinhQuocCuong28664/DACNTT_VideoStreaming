@@ -81,7 +81,7 @@ running the end-to-end suite against the production origins.
 \toprule
 \textbf{MODULE} & \textbf{RESPONSIBILITY} \\
 \midrule
-\name{network}  & One VPC with public subnets and a free S3 gateway endpoint, so no network address translation (NAT) gateway is billed while idle \\
+\name{network}  & One virtual private cloud with public subnets and a free S3 gateway endpoint, so no network address translation (NAT) gateway is billed while idle \\
 \name{ecr}      & Registry of the transcoder image, with scanning on push \\
 \name{storage}  & The raw, processed, work and keys buckets of one environment, their encryption, lifecycle rules and access blocks \\
 \name{ingest}   & The S3 event notification, the ingest queue and its dead letter queue with an alarm on the first message \\
