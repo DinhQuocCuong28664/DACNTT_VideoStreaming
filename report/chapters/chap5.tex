@@ -16,7 +16,7 @@ Table~\ref{tab:workspaces} lists the workspaces and where each one runs. Every w
 a single file with esbuild, so a Lambda package or the container image carries no
 \name{node\_modules} folder.
 
-\begin{table}[H]
+\begin{table}[htbp]
 \centering
 \caption{Workspaces of the repository and where each one runs}
 \label{tab:workspaces}
@@ -131,37 +131,13 @@ when the viewer cancels.
 \label{sec:iac}
 
 All cloud resources are described with Terraform in eleven modules, listed in
-Table~\ref{tab:terraform-modules}, and three environments. The \name{shared} environment holds what
+Table~\ref{tab:terraform-modules} in Appendix~\ref{app:install}, and three environments. The \name{shared} environment holds what
 every environment uses once: the virtual private cloud (VPC) and the image registry. The \name{staging} and \name{prod}
 environments compose the modules with their own names (prefix \name{zelos-staging} or
 \name{zelos-prod}), capacity ceilings and hosts. Each environment keeps its state in its own key of
 an S3 bucket, with a DynamoDB table as lock, so two applies can never write the same state at once.
 Every resource carries the tags \name{Project}, \name{Stack}, \name{Environment} and
 \name{ManagedBy}.
-
-\begin{table}[H]
-\centering
-\caption{Terraform modules and their responsibilities}
-\label{tab:terraform-modules}
-\small
-\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{0.15\textwidth} >{\raggedright\arraybackslash}X}
-\toprule
-\textbf{MODULE} & \textbf{RESPONSIBILITY} \\
-\midrule
-\name{network}  & One VPC with public subnets and a free S3 gateway endpoint, so no network address translation (NAT) gateway is billed while idle \\
-\name{ecr}      & Registry of the transcoder image, with scanning on push \\
-\name{storage}  & The raw, processed, work and keys buckets of one environment, their encryption, lifecycle rules and access blocks \\
-\name{ingest}   & The S3 event notification, the ingest queue and its dead letter queue with an alarm on the first message \\
-\name{events}   & The EventBridge bus for pipeline events and the SNS topic for operator alerts \\
-\name{kv}       & The five DynamoDB on-demand tables of Table~\ref{tab:kv-tables}, with time-to-live \\
-\name{batch}    & The Fargate Spot and On-Demand compute environments, the standard queues \name{main} and \name{bulk}, the priority queues \name{priority} and \name{priority-bulk}, the four job definitions, and the default of the screening switch \\
-\name{workflow} & The state machine, the starter, probe, status and stitch functions, the ffprobe layer and one role per function \\
-\name{app}      & The API function and its Function URL, the notifier, captions, roll-up and reconciler, the scheduler group for scheduled publishing, and a switch that turns automatic captions off for tests \\
-\name{cdn}      & The media distribution, its Origin Access Control, signing key group, cache and header policies, certificate and DNS record \\
-\name{web}      & The private bucket and distribution that host the web application, with the rewrite that serves the single-page routes \\
-\bottomrule
-\end{tabularx}
-\end{table}
 
 An environment declares three providers: AWS in the Singapore region, which also manages
 CloudFront because CloudFront is a global service, AWS in \name{us-east-1}, the only region where
@@ -190,13 +166,10 @@ workflow that releases a merge to staging and, after an approval, to production}
 \label{fig:cicd}
 \end{figure}
 
-The dependency scan has two tiers. It reports every critical and high finding without failing, and
-fails only on a critical finding that already has a fix. Most high findings come from transitive
-dependencies with no patch yet, so a gate that failed on all of them would fail for reasons the team
-cannot act on and would soon be ignored. The scan of the Terraform code is stricter and fails on any
-high or critical misconfiguration, because every such finding can be fixed in the project's own code.
-Each action that runs Trivy is pinned to a release commit rather than a branch, so
-a change in another repository cannot alter what runs in the pipeline.
+The dependency scan reports every critical and high finding but fails only on a critical one that
+already has a fix, because most high findings come from transitive dependencies with no patch yet; the
+scan of the Terraform code fails on any high or critical misconfiguration, which the project can
+always fix in its own code.
 
 The smoke test runs the encoding commands of the deployed image on generated sources and checks the
 result as a player would. It encodes a 40-second source on the single path and a 75-second source on
@@ -210,15 +183,11 @@ the checks have passed on a push to the main branch, and it releases nothing whe
 documents, the report or the slides. It holds no AWS keys: each job trades the short-lived OpenID
 Connect token that GitHub issues for the role of its environment, and the role trusts only this
 repository running in that environment, named by the numeric identifiers of its owner and of the
-repository so that a renamed or re-created repository cannot match. The API and the functions are
-bundled. The transcoder image is tagged with the last commit that changed what the image is built
-from, and it is built and pushed only when the registry does not hold that tag yet, so a change that
-does not touch the transcoder reuses its image and neither environment can fall back to an older one.
-Terraform then plans and applies the environment with that tag and writes the plan summary into the
-run; the maintenance action creates the indexes; and the web files are uploaded, hashed assets first
-and the entry page last, so the new entry page never refers to a file that is not there yet, after
-which the distribution is invalidated. A health check and the end-to-end tests of
-Section~\ref{sec:testing} close the job.
+repository so that a renamed or re-created repository cannot match. The transcoder image is tagged
+with the last commit that changed its sources and built only when the registry lacks that tag.
+Terraform then applies the environment with that tag, the maintenance action creates the indexes, and
+the web files are uploaded with the entry page last, so it never refers to a file that is not there
+yet. A health check and the end-to-end tests of Section~\ref{sec:testing} close the job.
 
 Every change reaches \name{staging} on its own. The \name{prod} job then waits in a protected GitHub
 environment until a team member approves it, and releases the same commit with the same image. The
@@ -231,11 +200,9 @@ Worker, the secrets and the seed data change rarely and are still applied by han
 \label{sec:challenges}
 
 Several problems appeared between a design that was correct on paper and a system that behaved
-correctly once deployed. Table~\ref{tab:challenges} lists them with their causes and resolutions. Two
-problems are then described in more detail: the policy of the processed bucket, which two modules
-need to write, and the creation of indexes at start-up, the problem of the table with the widest effect.
+correctly once deployed. Table~\ref{tab:challenges} lists them with their causes and resolutions.
 
-\begin{table}[H]
+\begin{table}[htbp]
 \centering
 \caption{Problems met during development, their causes and resolutions}
 \label{tab:challenges}
@@ -274,29 +241,17 @@ The probe result passes the duration on; a smoke upload on staging after each ap
 \end{tabularx}
 \end{table}
 
-\subsection{One Policy for the Processed Bucket}
-
-A bucket has exactly one policy, but two modules need a statement in the policy of the processed
-bucket: \name{storage}, which refuses every request without TLS, and \name{cdn}, which lets its
-distribution read the segments. If both wrote the policy, each apply of one would remove the
-statement of the other, and the bucket would alternate between refusing CloudFront and accepting
-plain HTTP. The \name{cdn} module therefore does not write the policy: it returns the statement that
-grants read access to its distribution, and the \name{storage} module merges it with its own and
-attaches the result. The statement names the CloudFront service with a condition on the Amazon Resource
-Name (ARN) of the distribution, so the processed bucket accepts no other reader and a segment can be fetched only
-through the signed distribution.
-
-\subsection{Index Creation at Start-up}
-
-The free Atlas cluster limits concurrent requests and operations per second
-(Section~\ref{sec:performance-design}). Creating indexes is idempotent and cheap for one instance, so
-it first ran before each instance served its first request. Under a burst of uploads, however, the
-reserved concurrency of the API let dozens of instances start together, each sending its index
-commands to the cluster at the same moment; the cluster refused them as too many concurrent requests,
-start-up passed its timeout and the uploads that reached those instances received 502.
-Indexes change only when the API code changes, so they are now created by a maintenance action that
-deployment invokes directly. The action cannot be reached through the Function URL: the API accepts it
-only from a direct invocation, which needs an AWS Identity and Access Management (IAM) permission that only the operator holds.
+The creation of indexes had the widest effect. It is idempotent and cheap for one instance, so it
+first ran before each instance of the API served its first request; under a burst of uploads, dozens
+of instances started together and sent their index commands to the free cluster at the same moment,
+which refused them, so the uploads that reached those instances received 502. Indexes change only
+with the code of the API, so deployment now creates them through a maintenance action that only a
+direct invocation with an operator's AWS Identity and Access Management (IAM) permission can reach.
+A second problem came from a rule of S3: a bucket has exactly one policy, but the \name{storage}
+module needs a statement that refuses requests without TLS and the \name{cdn} module one that lets
+its distribution read the segments. Had both written the policy, each apply would have removed the
+statement of the other, so \name{cdn} returns its statement and \name{storage} merges it with its own
+before attaching the result.
 
 \section{Testing}
 \label{sec:testing}
@@ -306,7 +261,7 @@ the logic of each workspace without the cloud; the smoke test checks FFmpeg insi
 end-to-end tests check the deployed system through a browser. The acceptance checklist of the design
 lists the edge cases each part must handle, and each line of it is covered by at least one test.
 
-\begin{table}[H]
+\begin{table}[htbp]
 \centering
 \caption{Test levels, their size and where they run}
 \label{tab:test-levels}
@@ -322,28 +277,10 @@ End-to-end & 27 tests in 6 files & The deployed web application and API through 
 \end{tabularx}
 \end{table}
 
-Table~\ref{tab:test-coverage} groups the unit tests by workspace. The \name{shared} workspace holds
+Table~\ref{tab:test-coverage} in Appendix~\ref{app:install} groups the unit tests by workspace. The \name{shared} workspace holds
 the largest share because the decisions that affect every video are made there: which rungs a source
 receives, how a long video is cut into chunks, how playlists are written and when chunks may be
 joined.
-
-\begin{table}[H]
-\centering
-\caption{Unit tests by workspace, 380 tests in 41 files}
-\label{tab:test-coverage}
-\footnotesize
-\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{0.16\textwidth} >{\raggedright\arraybackslash}p{0.08\textwidth} >{\raggedright\arraybackslash}X}
-\toprule
-\textbf{WORKSPACE} & \textbf{TESTS} & \textbf{FOCUS} \\
-\midrule
-\name{shared} & 106 &The ladder bounded by the source, with portrait and very small sources, and the reduced ladder for long single jobs; frame rates, rotation and sample aspect ratio read from probe data, and the conditions that keep a video on the single path; chunk plans whose windows meet exactly, including 48 chunks for a 4-hour video at 30~fps and a 48-hour video under the array limit; playlists with the peak bandwidth rounded up and codec strings read from the stream; the stitch checks of Section~\ref{sec:chunked-design}; the check that an output covers the probed duration; the label policy; progress folding; the event contracts; the runtime switches over their defaults \\
-\name{transcoder} & 27 & FFmpeg arguments: one decode, the same key frame rules on every rung, capped CRF with the rung's buffer, chunk seeks half a frame early and audio without repeated packets; the exit codes that Batch retries or not; the encode guard; preview sprites \\
-\name{functions} & 52 & One execution per upload version and none for a duplicate event; state changes of the status function, including the lane and length limit read from the plan, the screening switch handed to the workflow with its default when the switch cannot be read, publishing once, scheduled publishing and failure alerts whose reason holds no presigned query; the order of playlist writes; notifications within the daily mail cap; automatic captions in thirteen tests: the switch that stops them, the reservation of billed seconds with its 15-second minimum, the refusal when the month is used up, the refund of a failed job, the skipped videos and the owner track that is kept; the hourly roll-up and the draft clean-up \\
-\name{api} & 149 &Registration with the minimum age, sign-in, password rules and the Google account rule; plans and payment: the Stripe signature, a repeated or older event applied once or ignored, the plan kept to the end of the period, and the limits by plan on uploads, tiers and analytics; the origin secret, client addresses and rate limits; uploads by pre-signed POST and multipart, with exact part sizes; the access rule for every visibility and moderation state; the key returned as 16 raw bytes; views after 30~seconds; comments, reactions, subscriptions and memberships with recounted counters; comments ordered by replies across pages; playlists, history, its pause and liked videos; trending, hashtags and ``not interested''; the featured video of a channel; captions, chapters and schedules; search folding Vietnamese letters; reports, decisions, appeals, audit samples and roles; the overview counted by plan and window, and the runtime switches with their log, for administrators only \\
-\name{web} & 46 & Retries with back-off and \texttt{Retry-After}; the age check of the sign-up form; multipart upload with part retries and cancel; the 30-second view rule on real playback only; the signed policy added to CDN addresses and never to API calls; chapters, timestamps and preview thumbnails; the keyboard shortcuts of the player, which never take a key from a text field, and the seek badge that adds up quick presses; the times found in comment text, which ignore ratios and times past the end of the video; the play order of a playlist, shuffled with the current video first, and what follows the last video with and without looping \\
-\bottomrule
-\end{tabularx}
-\end{table}
 
 The tests of the access rule matter most for security. They assert that a private, unready or
 scheduled video is answered with not-found to anyone but its owner, as Section~\ref{sec:api-design}

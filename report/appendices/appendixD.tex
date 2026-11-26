@@ -75,6 +75,27 @@ patterns.
 
 \input{generated/tab-v2-bitrate}
 
+\begin{table}[H]
+\centering
+\caption{Declared and delivered bit rate of a production recording, in kbit/s (47 segments per rung)}
+\label{tab:bitrate-check}
+\small
+\begin{tabular}{l l r r r r}
+\toprule
+ & & \multicolumn{2}{c}{\textbf{PEAK}} & \multicolumn{2}{c}{\textbf{AVERAGE}} \\
+\cmidrule(lr){3-4} \cmidrule(lr){5-6}
+\textbf{RUNG} & \textbf{SIZE} & \textbf{DECLARED} & \textbf{DELIVERED} & \textbf{DECLARED} & \textbf{DELIVERED} \\
+\midrule
+144p  & 256$\times$144   & 201  & 201  & 154  & 154 \\
+240p  & 426$\times$240   & 408  & 408  & 249  & 249 \\
+360p  & 638$\times$360   & 688  & 688  & 420  & 420 \\
+480p  & 850$\times$480   & 1178 & 1178 & 716  & 716 \\
+720p  & 1276$\times$720  & 2443 & 2443 & 1578 & 1578 \\
+1080p & 1912$\times$1080 & 4933 & 4933 & 3562 & 3562 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
 \section{Transcoding}
 
 Table~\ref{tab:raw-transcode} lists the twelve runs behind Figure~\ref{fig:transcode-size}. Intake is
@@ -92,6 +113,30 @@ step the exit codes of its attempts. The first run of the truncated file failed 
 Batch API, not of the file, and the second shows the defect that the release 9f43f64 fixed.
 
 \input{generated/tab-v2-fault}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{images/24-chart-ladder.png}
+\caption{\textit{Cap of each rung against the measured average bit rate of two production videos}}
+\label{fig:ladder}
+\end{figure}
+
+\begin{table}[H]
+\centering
+\caption{Transcoding time by file size, three runs each}
+\label{tab:transcode-results}
+\small
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}p{0.12\textwidth} >{\raggedleft\arraybackslash}p{0.13\textwidth} >{\raggedleft\arraybackslash}p{0.13\textwidth} >{\raggedleft\arraybackslash}p{0.16\textwidth}}
+\toprule
+\textbf{SOURCE} & \textbf{PATH} & \textbf{TO READY, MEDIAN} & \textbf{RANGE} & \textbf{vCPU-s PER SECOND OF SOURCE} \\
+\midrule
+36 s clip, 640$\times$360 & Single & 111 s & 94--112 s & 4.67 \\
+100 MB, 2 min, 1080p & Single & 122 s & 120--148 s & 5.09 \\
+500 MB, 10 min, 1080p & 10 chunks & 147 s & 147--149 s & 5.80 \\
+1 GB, 26.7 min, 1080p & 18 chunks & 287 s & 284--291 s & 4.58 \\
+\bottomrule
+\end{tabularx}
+\end{table}
 
 \section{Load}
 
@@ -113,6 +158,24 @@ the first job of the video entered its queue, started when the first of its two 
 done when the last one ended, all in seconds from the first job of the run.
 
 \input{generated/tab-v2-priority}
+
+\begin{table}[H]
+\centering
+\caption{Latency of read requests through the Worker, in milliseconds}
+\label{tab:api-load}
+\small
+\begin{tabular}{l r r r r}
+\toprule
+\textbf{PHASE} & \textbf{REQUESTS} & \textbf{ANSWERED 200} & \textbf{MEDIAN} & \textbf{95TH PERCENTILE} \\
+\midrule
+Sequential, warm & 40 & 40 & 156  & 263  \\
+Burst of 10      & 10 & 10 & 2730 & 2916 \\
+Burst of 20      & 20 & 20 & 1336 & 2682 \\
+Burst of 40      & 40 & 40 & 2547 & 3382 \\
+Burst of 80      & 80 & 80 & 4395 & 5663 \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \section{Prices}
 

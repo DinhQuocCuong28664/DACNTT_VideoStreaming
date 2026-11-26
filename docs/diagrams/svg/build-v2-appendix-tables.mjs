@@ -1,5 +1,5 @@
 /**
- * Builds the raw-data tables of Appendix D from the final-configuration runs
+ * Builds the raw-data tables of the measurement appendix (appendixD.tex) from the final-configuration runs
  * (docs/results/runs/2026-11-0[45]-v2-*.json), so every number in the appendix comes from the same
  * records as the charts of chapter 6 (see build-v2-chart-data.mjs).
  *
