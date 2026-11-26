@@ -47,7 +47,7 @@ Signing in, with a password or with Google, is specified in Table~\ref{tab:uc-lo
 \toprule
 \textbf{FIELD} & \textbf{CONTENT} \\
 \midrule
-Actor & Anonymous visitor who has, or will get, an account \\
+Actors & Anonymous visitor who has, or will get, an account; Google as a supporting actor of the Google sign-in \\
 Requirements & FR-01, NFR-07 \\
 Precondition & None. \\
 Main flow &
@@ -105,7 +105,7 @@ open to every visitor.
 \toprule
 \textbf{FIELD} & \textbf{CONTENT} \\
 \midrule
-Actor & Anonymous visitor or registered user \\
+Actor & Viewer, signed in or not \\
 Requirements & FR-09, FR-16 \\
 Precondition & None. \\
 Main flow &
@@ -373,7 +373,7 @@ Postcondition & The watch page and the listings reflect the change. \\
 \toprule
 \textbf{FIELD} & \textbf{CONTENT} \\
 \midrule
-Actors & Creator; processing system \\
+Actors & Creator, who chooses the moment; time, which starts the publication \\
 Requirements & FR-08 \\
 Precondition & The creator owns the video, and it is not yet public. \\
 Main flow &
@@ -419,8 +419,8 @@ Postcondition & The channel page shows the profile and offers the tiers. \\
 \end{tabularx}
 \end{table}
 
-Table~\ref{tab:uc-transcode} specifies the use case of the processing system, which no person
-starts.
+Table~\ref{tab:uc-transcode} specifies the transcoding, which every upload includes and which an
+event starts, not a person.
 
 \begin{table}[H]
 \centering
@@ -431,7 +431,7 @@ starts.
 \toprule
 \textbf{FIELD} & \textbf{CONTENT} \\
 \midrule
-Actor & Processing system \\
+Actors & None of its own: it is included in uploading (UC-11). Amazon Rekognition is a supporting actor of the screening \\
 Requirements & FR-04, FR-18, FR-26, NFR-02, NFR-03, NFR-08 \\
 Precondition & A source file has arrived in the raw bucket. \\
 Main flow &
@@ -627,7 +627,7 @@ Postcondition & The plan of the user is the one the payment provider reports. \\
 \toprule
 \textbf{FIELD} & \textbf{CONTENT} \\
 \midrule
-Actor & Processing system \\
+Actors & None of its own: it extends transcoding (UC-15) when a video becomes public. Amazon Transcribe is a supporting actor \\
 Requirements & FR-25, NFR-11 \\
 Precondition & A video has been published, and the plan of its owner includes automatic captions. \\
 Main flow &

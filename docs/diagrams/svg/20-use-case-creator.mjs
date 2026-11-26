@@ -1,100 +1,90 @@
 /**
- * Hình 3.2 — Sơ đồ use case của người tạo nội dung và hệ thống xử lý.
+ * Figure 3.2 - use case diagram of creators.
  *
- * Tách khỏi Hình 3.1 vì gộp lại thì hình cao hơn một trang và chữ nhỏ dưới mức in được.
- * Cùng quy ước với Hình 3.1 và 3.3: ellipse cho use case, người que cho tác nhân, đường liên kết
- * không có đầu mũi tên, «include» và «trigger» là mũi tên nét đứt.
+ * The earlier version had a "Processing system" actor. UML defines an actor as a role played by an
+ * entity outside the subject (UML 2.5.1, 18.1.3), and the transcoding workflow is part of the
+ * platform itself, so it cannot be an actor of the platform. The processing use cases are now tied
+ * to the outside world the way UML allows:
+ * - every upload «include»s the transcoding, which in turn «include»s screening and previews;
+ * - notifying subscribers and automatic captions «extend» the transcoding (only when the video
+ *   becomes public; captions only when the plan has them);
+ * - "Time" is the actor of the scheduled publication, the usual way to model a clock trigger;
+ * - Stripe, Amazon Rekognition and Amazon Transcribe are supporting actors: external systems the
+ *   use cases call.
  *
- * Hai tác nhân đứng bên trái, mỗi tác nhân một khối hàng liền nhau, nên hai chùm đường không gặp
- * nhau. Đích của «include» đặt ở cột lệch phải, cùng hàng với nguồn. Đường «trigger» từ upload
- * xuống chuyển mã chạy trong khe giữa hai cột để không cắt ellipse nào.
+ * Canvas 1180 px printed at about 147 mm: 18 px type prints at 6.3 pt.
  */
-import { usecase, actor, assoc, edge, group, text, document_, write, PALETTE, TYPE } from './render.mjs';
+import { document_, write } from './render.mjs';
+import { defs, boundary, useCase, actor, assoc, rel, note, labels } from './usecase-kit.mjs';
 
-Object.assign(TYPE, {
-  edgeLabel: 16,
-  actorLabel: 16,
-  actorLabelLH: 19,
-  usecaseLabel: 16,
-  usecaseLabelLH: 19,
-  groupLabel: 16,
-});
+const SIZE = 18;
+const W = 1180;
+const H = 1372;
+const p = [defs()];
 
-const W = 1060;
-const H = 1310;
-const p = [];
+const UC_X = 490;
+const OFF_X = 860;
+const RX = 155;
+const OFF_RX = 115;
+const RY = 36;
+const ROW = 84;
+const FIRST = 118;
+const at = (i) => FIRST + i * ROW;
 
-const UC_X = 478;
-const RX = 152;
-const RY = 34;
-const ROW = 80;
-const OFF_X = 880;
-const OFF_RX = 128;
-const LANE_CREATOR = 210;
-const LANE_SYS = 210;
+p.push(boundary({ x: 250, y: 30, w: 760, h: 1227, title: 'Video sharing platform', size: SIZE }));
 
-p.push(group({
-  x: 300, y: 40, w: 724, h: 1120,
-  label: 'Video sharing platform', stroke: '#8a94a6', fill: '#fcfdfe', dash: '7 5',
-}).svg);
-
-const first = 108;
-const at = (i) => first + i * ROW;
 const uc = {};
-const place = (key, i, label, tone = 'network', dy = 0) => {
-  const u = usecase({ cx: UC_X, cy: at(i) + dy, rx: RX, ry: RY, label, tone });
-  p.push(u.svg);
-  uc[key] = u;
+const place = (key, i, label, x = UC_X, rx = RX) => {
+  uc[key] = useCase({ cx: x, cy: at(i), rx, ry: RY, label, size: SIZE });
+  p.push(uc[key].svg);
 };
 
-// Người tạo nội dung
-place('upload', 0, ['Upload a video directly', 'to storage']);
-place('edit', 1, ['Edit details and', 'the thumbnail']);
-place('captions', 2, ['Add captions', 'and chapters']);
-place('schedule', 3, ['Schedule the', 'publication']);
-place('analytics', 4, ['Read channel and', 'video analytics']);
-place('profile', 5, ['Customise the', 'channel profile']);
-place('tiers', 6, ['Manage membership', 'tiers']);
-place('delete', 7, 'Delete a video');
-place('plan', 8, ['Buy, change or', 'cancel a plan']);
+// Creator
+place('edit', 0, ['Edit details and', 'the thumbnail']);
+place('captions', 1, ['Add captions', 'and chapters']);
+place('schedule', 2, ['Schedule the', 'publication']);
+place('analytics', 3, ['Read channel and', 'video analytics']);
+place('profile', 4, ['Customise the', 'channel profile']);
+place('tiers', 5, ['Manage membership', 'tiers']);
+place('delete', 6, 'Delete a video');
+place('plan', 7, ['Buy, change or', 'cancel a plan']);
+place('upload', 8, ['Upload a video directly', 'to storage']);
+place('visibility', 8, ['Set visibility', 'and audience'], OFF_X, OFF_RX);
 
-// Hệ thống xử lý, khởi động bằng sự kiện
-place('transcode', 9, ['Transcode to', 'encrypted HLS'], 'compute', 24);
-place('publish', 10, ['Publish at the', 'scheduled time'], 'compute', 24);
-place('notify', 11, ['Notify subscribers', 'of a new video'], 'compute', 24);
-place('autocap', 12, ['Caption speech', 'automatically'], 'compute', 24);
+// Started by events, not by a person
+place('transcode', 9.6, ['Transcode to', 'encrypted HLS']);
+place('screen', 9.6, ['Screen frames and', 'make previews'], OFF_X, OFF_RX);
+place('notify', 11.2, ['Notify subscribers', 'of a new video']);
+place('autocap', 11.2, ['Caption speech', 'automatically'], OFF_X, OFF_RX);
+place('publish', 12.8, ['Publish at the', 'scheduled time']);
 
-// Đích của «include», cột lệch phải
-const vis = usecase({ cx: OFF_X, cy: at(0), rx: OFF_RX, ry: RY, label: ['Set visibility', 'and audience'] });
-const screen = usecase({ cx: OFF_X, cy: at(9) + 24, rx: OFF_RX, ry: RY, label: ['Screen frames and', 'make previews'], tone: 'compute' });
-p.push(vis.svg, screen.svg);
+const creator = actor({ cx: 100, cy: at(4), label: 'Creator', size: SIZE });
+const time = actor({ cx: 100, cy: at(12.8), label: 'Time', size: SIZE });
+const stripe = actor({ cx: 1100, cy: 690, label: ['Payment', 'provider'], size: SIZE });
+const rekognition = actor({ cx: 1100, cy: 850, label: ['Amazon', 'Rekognition'], size: SIZE });
+const transcribe = actor({ cx: 1100, cy: 1100, label: ['Amazon', 'Transcribe'], size: SIZE });
+p.push(creator.svg, time.svg, stripe.svg, rekognition.svg, transcribe.svg);
 
-const creator = actor({ cx: 108, cy: at(4) - 12, label: ['Creator', '(registered user)'] });
-const sys = actor({ cx: 108, cy: at(10) + 52, label: ['Processing', 'system'] });
-p.push(creator.svg, sys.svg);
+['edit', 'captions', 'schedule', 'analytics', 'profile', 'tiers', 'delete', 'plan', 'upload']
+  .forEach((k) => p.push(assoc(creator.r, uc[k].l)));
+p.push(assoc(time.r, uc.publish.l));
+p.push(assoc(stripe.l, uc.plan.r));
+p.push(assoc(rekognition.l, uc.screen.r));
+p.push(assoc(transcribe.l, uc.autocap.r));
 
-function link(a, lane, target) {
-  p.push(assoc([[a.box.r, a.box.cy], [lane, a.box.cy], [lane, target.box.cy], [target.box.l, target.box.cy]]));
-}
-['upload', 'edit', 'captions', 'schedule', 'analytics', 'profile', 'tiers', 'delete', 'plan']
-  .forEach((k) => link(creator, LANE_CREATOR, uc[k]));
-['transcode', 'publish', 'notify', 'autocap'].forEach((k) => link(sys, LANE_SYS, uc[k]));
+p.push(rel([uc.upload.r, uc.visibility.l], { kind: 'include', size: SIZE, dy: -17 }));
+p.push(rel([uc.upload.b, uc.transcode.t], { kind: 'include', size: SIZE }));
+p.push(rel([uc.transcode.r, uc.screen.l], { kind: 'include', size: SIZE, dy: -17 }));
+p.push(rel([uc.notify.t, uc.transcode.b], { kind: 'extend', size: SIZE }));
+p.push(rel([uc.autocap.l, uc.transcode.r], { kind: 'extend', size: SIZE }));
+p.push(rel([uc.publish.t, uc.notify.b], { kind: 'include', size: SIZE }));
 
-p.push(edge([[uc.upload.box.r, uc.upload.box.cy], [vis.box.l, vis.box.cy]],
-  { dashed: true, label: '«include»', labelDy: -8 }));
-p.push(edge([[uc.transcode.box.r, uc.transcode.box.cy], [screen.box.l, screen.box.cy]],
-  { dashed: true, label: '«include»', labelDy: -8 }));
+p.push(labels());
+p.push(note(
+  ['Transcoding has no actor of its own: every upload includes it, and it starts when the file reaches',
+   'storage. Subscribers are notified, and speech is captioned if the plan allows it, when the video',
+   'becomes public, after transcoding or at the scheduled time. The creator is the registered user of Figure 3.1.'],
+  40, 1300, SIZE));
 
-// The upload starting the transcode is not drawn as an arrow: UML 2.5 has no use-case relation for
-// it. The system actor and the note below say that events start the processing use cases.
-
-p.push(text(
-  ['The processing use cases attach to a system actor because events start them:',
-   'the upload reaching storage, the scheduled time, or a video being published;',
-   'a plan is paid on the page of the payment provider.',
-   'The creator is the same registered user as in Figure 3.1.'],
-  40, H - 98, { size: 16, anchor: 'start', fill: PALETTE.muted, lineHeight: 20 }));
-
-const svg = document_({ width: W, height: H, body: p.join('\n') });
-const out = write('20-use-case-creator', svg, 3);
+const out = write('20-use-case-creator', document_({ width: W, height: H, body: p.join('\n') }), 3);
 console.log(`20-use-case-creator -> ${(out.bytes / 1024).toFixed(0)} KB`);

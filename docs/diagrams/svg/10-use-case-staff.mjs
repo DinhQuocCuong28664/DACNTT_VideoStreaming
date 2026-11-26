@@ -1,66 +1,43 @@
 /**
- * Hình 3.2 — Sơ đồ use case của kiểm duyệt và vận hành.
+ * Figure 3.3 - use case diagram of moderation and operation.
  *
- * Hình 3.1 chỉ có người dùng nền tảng và hệ thống chuyển mã. Các yêu cầu FR-12 đến FR-17 có thêm ba
- * tác nhân nhân sự (operator, auditor, administrator) nhưng nhét vào hình 3.1 thì hình cao hơn trang
- * và chữ nhỏ lại, nên tách thành hình riêng. Hai hình dùng chung quy ước: ellipse cho use case, người
- * que cho tác nhân, đường liên kết không có đầu mũi tên, mũi tên nét đứt «trigger» cho quan hệ
- * "việc này làm xuất hiện việc kia".
+ * Two columns inside the boundary: on the left what users or the screening start, on the right the
+ * work of staff. The actors of each column stand on its side, so no line crosses the other column.
  *
- * Bố cục hai cột trong ranh giới hệ thống. Cột trái là những việc do người dùng thường hoặc hệ thống
- * khởi động (sàng lọc tự động, báo cáo video, khiếu nại), cột phải là việc của nhân sự. Tác nhân của
- * cột trái đứng bên trái, tác nhân nhân sự đứng bên phải, nên không có đường liên kết nào chạy qua
- * cột còn lại. Các use case của một tác nhân nhân sự xếp liền nhau để đường dọc của tác nhân đó
- * không cắt đường của tác nhân khác.
+ * Changes against the earlier version, for UML correctness:
+ * - The "Processing system" actor is gone: the screening is part of the platform (an actor must be
+ *   outside the subject, UML 2.5.1, 18.1.3). Its supporting actor is Amazon Rekognition, the
+ *   external service it calls; the screening itself is included in transcoding (Figure 3.2).
+ * - "An administrator can do everything an operator or an auditor can" was only a note. It is now
+ *   actor generalisation (hollow triangles), which says exactly that in UML. The arrow to the
+ *   operator runs in a lane right of the auditor so it does not cross the auditor's figure.
  *
- * Quan hệ "administrator làm được mọi việc của operator và auditor" KHÔNG vẽ thành mũi tên khái
- * quát hoá: nó phải vắt qua hình người que của auditor, và ghi bằng một dòng chú thích thì đọc nhanh
- * hơn. Mỗi liên kết chỉ vẽ một lần, ở vai trò sở hữu use case đó (xem bảng quyền ở mục 4.5.5).
+ * Canvas 1180 px printed at about 147 mm: 18 px type prints at 6.3 pt.
  */
-import { usecase, actor, assoc, edge, group, text, document_, write, PALETTE, TYPE } from './render.mjs';
+import { document_, write } from './render.mjs';
+import { defs, boundary, useCase, actor, assoc, rel, gen, note, labels } from './usecase-kit.mjs';
 
-// Canvas rộng 1180px, in ra khoảng 147mm: một px là 0,125mm trên giấy. Chữ nhỏ nhất phải từ 17,5px
-// trở lên mới đạt 6,2pt; lấy 18px.
-Object.assign(TYPE, {
-  edgeLabel: 18,
-  actorLabel: 18,
-  actorLabelLH: 21,
-  usecaseLabel: 18,
-  usecaseLabelLH: 21,
-  groupLabel: 18,
-});
-
+const SIZE = 18;
 const W = 1180;
-const H = 1286;
-const p = [];
+const H = 1300;
+const p = [defs()];
 
-const LX = 330;            // tâm cột trái
+const LX = 330;
 const LRX = 125;
-const RX_ = 800;           // tâm cột phải
+const RXC = 800;
 const RRX = 140;
 const RY = 36;
-
-const BOUND_X = 170;
-const BOUND_W = 800;
-const LANE_L = 150;        // làn dọc của tác nhân bên trái, ngoài ranh giới
-const LANE_R = 990;        // làn dọc của tác nhân bên phải, ngoài ranh giới
-
-p.push(group({
-  x: BOUND_X, y: 40, w: BOUND_W, h: 1136,
-  label: 'Moderation and operation', stroke: '#8a94a6', fill: '#fcfdfe', dash: '7 5',
-}).svg);
-
-// ── Cột phải: việc của nhân sự, mỗi tác nhân một khối liền nhau ─────────────────
 const R0 = 190;
 const PITCH = 92;
 const ry = (i) => R0 + i * PITCH;
 
+p.push(boundary({ x: 170, y: 40, w: 800, h: 1136, title: 'Moderation and operation', size: SIZE }));
+
 const right = {};
 const placeR = (key, i, label) => {
-  right[key] = usecase({ cx: RX_, cy: ry(i), rx: RRX, ry: RY, label });
+  right[key] = useCase({ cx: RXC, cy: ry(i), rx: RRX, ry: RY, label, size: SIZE });
   p.push(right[key].svg);
 };
-
 // Operator
 placeR('decide', 0, ['Approve or remove a video,', 'with a reason']);
 placeR('confirm', 1, ['Confirm a removal', 'the machine made']);
@@ -76,52 +53,38 @@ placeR('roles', 8, ['Assign or change', "a user's role"]);
 placeR('overview', 9, ['Read the system', 'overview']);
 placeR('switches', 10, ['Switch screening or', 'automatic captions']);
 
-// ── Cột trái: việc do người dùng hoặc hệ thống khởi động ────────────────────────
 const left = {};
-const placeL = (key, cy, label, tone = 'network') => {
-  left[key] = usecase({ cx: LX, cy, rx: LRX, ry: RY, label, tone });
+const placeL = (key, cy, label) => {
+  left[key] = useCase({ cx: LX, cy, rx: LRX, ry: RY, label, size: SIZE });
   p.push(left[key].svg);
 };
-placeL('screen', 108, ['Screen frames of', 'an uploaded video'], 'compute');
+placeL('screen', 112, ['Screen frames of', 'an uploaded video']);
 placeL('report', ry(0), 'Report a video');
 placeL('appealOwn', ry(2), ['Appeal the removal or', "hold of one's own video"]);
 placeL('reportComment', ry(4), 'Report a comment');
 
-// ── Tác nhân ────────────────────────────────────────────────────────────────────
-const sys = actor({ cx: 78, cy: 108, label: ['Processing', 'system'] });
-const user = actor({ cx: 78, cy: ry(2) + 18, label: ['Registered', 'user'] });
-const operator = actor({ cx: 1090, cy: ry(2), label: 'Operator' });
-const auditor = actor({ cx: 1090, cy: Math.round((ry(5) + ry(6)) / 2), label: 'Auditor' });
-const admin = actor({ cx: 1090, cy: Math.round((ry(7) + ry(10)) / 2), label: ['Administrator'] });
-p.push(sys.svg, user.svg, operator.svg, auditor.svg, admin.svg);
+const rekognition = actor({ cx: 78, cy: 112, label: ['Amazon', 'Rekognition'], size: SIZE });
+const user = actor({ cx: 78, cy: ry(2) + 18, label: ['Registered', 'user'], size: SIZE });
+const operator = actor({ cx: 1090, cy: ry(2), label: 'Operator', size: SIZE });
+const auditor = actor({ cx: 1090, cy: Math.round((ry(5) + ry(6)) / 2), label: 'Auditor', size: SIZE });
+const admin = actor({ cx: 1090, cy: Math.round((ry(7) + ry(10)) / 2), label: 'Administrator', size: SIZE });
+p.push(rekognition.svg, user.svg, operator.svg, auditor.svg, admin.svg);
 
-/** Liên kết tác nhân bên trái với use case ở cột trái, qua làn dọc riêng. */
-function linkLeft(a, target, fromY = a.box.cy) {
-  p.push(assoc([[a.box.r, fromY], [LANE_L, fromY], [LANE_L, target.box.cy], [target.box.l, target.box.cy]]));
-}
-/** Liên kết tác nhân bên phải với use case ở cột phải. */
-function linkRight(a, target) {
-  p.push(assoc([[a.box.l, a.box.cy], [LANE_R, a.box.cy], [LANE_R, target.box.cy], [target.box.r, target.box.cy]]));
-}
+p.push(assoc(rekognition.r, left.screen.l));
+['report', 'appealOwn', 'reportComment'].forEach((k) => p.push(assoc(user.r, left[k].l)));
+['decide', 'confirm', 'appeal', 'label', 'comment'].forEach((k) => p.push(assoc(operator.l, right[k].r)));
+['rates', 'log'].forEach((k) => p.push(assoc(auditor.l, right[k].r)));
+['sample', 'roles', 'overview', 'switches'].forEach((k) => p.push(assoc(admin.l, right[k].r)));
 
-linkLeft(sys, left.screen);
-linkLeft(user, left.report);
-linkLeft(user, left.appealOwn);
-linkLeft(user, left.reportComment);
-['decide', 'confirm', 'appeal', 'label', 'comment'].forEach((k) => linkRight(operator, right[k]));
-['rates', 'log'].forEach((k) => linkRight(auditor, right[k]));
-['sample', 'roles', 'overview', 'switches'].forEach((k) => linkRight(admin, right[k]));
+p.push(gen([1090, admin.top - 6], [1090, auditor.bottom + 4]));
+p.push(gen([admin.r[0] + 4, admin.cy], [1162, admin.cy], [1162, operator.cy], [operator.r[0] + 2, operator.cy]));
 
-// No arrows between use cases here: UML 2.5 only has «include», «extend» and generalisation
-// between use cases, and none of them means "this one puts work in the other's queue". That link
-// is the Precondition row of the specification tables (UC-17, UC-18) and the note below.
+p.push(labels());
+p.push(note(
+  ['Reporting and appealing are open to every signed-in user. An administrator is also an operator and an',
+   'auditor (hollow arrows: generalisation). What screening holds back, what viewers report and what',
+   "owners appeal reaches an operator's queue. Screening is included in transcoding (Figure 3.2)."],
+  40, 1222, SIZE));
 
-p.push(text(
-  ['Reporting and appealing are open to every signed-in user. An administrator can also do everything',
-   'an operator or an auditor can, so each association is drawn once, at the role that owns the use case.',
-   'What screening holds back, what viewers report and what owners appeal reaches an operator\'s queue.'],
-  40, H - 78, { size: 18, anchor: 'start', fill: PALETTE.muted, lineHeight: 23 }));
-
-const svg = document_({ width: W, height: H, body: p.join('\n') });
-const out = write('10-use-case-staff', svg, 3);
+const out = write('10-use-case-staff', document_({ width: W, height: H, body: p.join('\n') }), 3);
 console.log(`10-use-case-staff -> ${(out.bytes / 1024).toFixed(0)} KB`);

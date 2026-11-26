@@ -216,9 +216,11 @@ disappears.
 The use cases are drawn in three diagrams, because one diagram with all of them would be taller
 than a page. Figure~\ref{fig:use-case} shows those of viewers. The anonymous visitor can register,
 sign in, browse, search, watch, unlock a password-protected video, open a channel and share; a
-registered user can do all of this and also take part in the community. Watching includes resuming
-from the last position and counting a view, which the player does without any action from the
-viewer.
+registered user can do all of this and also take part in the community. Both are drawn as
+specialisations of a general viewer, the UML generalisation of actors~\cite{omg-uml}, so the use
+cases open to everyone are linked once. Watching includes resuming from the last position and
+counting a view, which the player does without any action from the viewer. Google takes part in
+signing in as a supporting actor~\cite{cockburn2001}, an outside system that the use case calls.
 
 \begin{figure}[htbp]
 \centering
@@ -228,22 +230,24 @@ viewer.
 \end{figure}
 
 Figure~\ref{fig:use-case-creator} shows the creator, who is the same registered user acting on their
-own channel, and the processing system. The processing system is drawn as an actor because events
-start its use cases, not a person: the upload reaching storage starts transcoding, the scheduled
-time starts publication, and a published video starts the notifications to subscribers and the
-automatic captions. Buying a plan is a use case of the creator; the payment itself happens on the
-page of the payment provider.
+own channel. An actor is a role outside the system~\cite{omg-uml}, so the transcoding workflow,
+which is part of the platform, is not drawn as one. Every upload includes the transcoding, which
+includes the screening and the previews; notifying subscribers and the automatic captions extend
+it when the video becomes public. Time is the actor of the scheduled publication, the usual way to
+model a use case that a clock starts~\cite{pilone2005uml}. The payment provider, Amazon
+Rekognition and Amazon Transcribe are supporting actors.
 
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=0.94\textwidth]{images/20-use-case-creator.png}
-\caption{\textit{Use case diagram of creators and the processing system}}
+\caption{\textit{Use case diagram of creators}}
 \label{fig:use-case-creator}
 \end{figure}
 
 Figure~\ref{fig:use-case-staff} adds moderation and operation. Three things lead to a decision that
 only staff can take: what the screening holds back, a report from a viewer, and an appeal from the
-owner of a removed video. Each staff use case is drawn once, at the role that owns it.
+owner of a removed video. Each staff use case is drawn once, at the role that owns it, and the
+administrator specialises both the operator and the auditor, so it can do their work too.
 
 \begin{figure}[htbp]
 \centering
@@ -273,9 +277,9 @@ the step they branch from. Uploading (Table~\ref{tab:usecase-upload}) and transc
 \textbf{ID} & \textbf{USE CASE} & \textbf{ACTOR} & \textbf{REQUIREMENTS} \\
 \midrule
 UC-01 & Register and verify the e-mail address & Anonymous visitor & FR-01 \\
-UC-02 & Sign in with a password or with Google & Anonymous visitor who has, or will get, an account & FR-01, NFR-07 \\
+UC-02 & Sign in with a password or with Google & Anonymous visitor; Google (supporting) & FR-01, NFR-07 \\
 UC-03 & Reset or change the password & Registered user & FR-02 \\
-UC-04 & Browse and search & Anonymous visitor or registered user & FR-09, FR-16 \\
+UC-04 & Browse and search & Viewer, signed in or not & FR-09, FR-16 \\
 UC-05 & Watch a video & Viewer, signed in or not & FR-05, FR-06, FR-11, NFR-01, NFR-06 \\
 UC-06 & Unlock a password-protected video & Viewer, signed in or not & FR-06 \\
 UC-07 & Like, comment and reply & Registered user & FR-10 \\
@@ -284,16 +288,16 @@ UC-09 & Join a channel membership & Registered user & FR-13 \\
 UC-10 & Keep a library & Registered user & FR-14 \\
 UC-11 & Upload a video & Creator & FR-03, FR-04, FR-06, FR-24, FR-26 \\
 UC-12 & Edit and delete a video in the studio & Creator & FR-06, FR-07, FR-15, FR-25 \\
-UC-13 & Schedule the publication & Creator; processing system & FR-08 \\
+UC-13 & Schedule the publication & Creator; time & FR-08 \\
 UC-14 & Customise the channel and manage membership tiers & Creator & FR-13, FR-16 \\
-UC-15 & Transcode a video automatically & Processing system & FR-04, FR-18, FR-26, NFR-02, NFR-03, NFR-08 \\
+UC-15 & Transcode a video automatically & Included in UC-11; Amazon Rekognition (supporting) & FR-04, FR-18, FR-26, NFR-02, NFR-03, NFR-08 \\
 UC-16 & Report a video or a comment & Registered user & FR-19 \\
 UC-17 & Decide on a video or a comment & Operator or administrator & FR-20, FR-22 \\
 UC-18 & Appeal a decision & Owner of the video; operator & FR-21 \\
 UC-19 & Audit a random sample and read the error rates & Administrator; operator; auditor & FR-22 \\
 UC-20 & Assign a role & Administrator & FR-23 \\
 UC-21 & Buy, change or cancel a plan & Registered user; payment provider & FR-24, NFR-11 \\
-UC-22 & Caption a video automatically & Processing system & FR-25, NFR-11 \\
+UC-22 & Caption a video automatically & Extends UC-15; Amazon Transcribe (supporting) & FR-25, NFR-11 \\
 UC-23 & Read the system overview & Administrator & FR-27 \\
 UC-24 & Switch screening or automatic captions & Administrator & FR-28, NFR-11 \\
 \bottomrule
