@@ -1,0 +1,701 @@
+\chapter{Use Case Specifications}
+\label{app:use-cases}
+
+This appendix specifies the use cases that Section~\ref{sec:use-case-specs} lists in
+Table~\ref{tab:uc-summary}, in the same order, in Tables~\ref{tab:uc-register} to \ref{tab:uc-switches}.
+Each specification lists its actor, the requirements it serves, the main flow and the alternative
+flows, numbered after the step they branch from.
+
+\begin{table}[H]
+\centering
+\caption{Use case UC-01: register and verify the e-mail address}
+\label{tab:uc-register}
+\small
+\begin{tabularx}{\textwidth}{p{0.2\textwidth} X}
+\toprule
+\textbf{FIELD} & \textbf{CONTENT} \\
+\midrule
+Actor & Anonymous visitor \\
+Requirements & FR-01 \\
+Precondition & No account uses the chosen e-mail address. \\
+Main flow &
+  1. The visitor enters a display name, an e-mail address, a password, a date of birth and optionally a handle, and accepts the terms of use and the privacy policy. \newline
+  2. The server checks the password against the length rule, a list of common passwords, the visitor's own details and a breach service. \newline
+  3. The server creates an unverified account, generating a handle from the address when none was given, and returns a session token. \newline
+  4. The server e-mails a link carrying a token valid for 24 hours, of which only the hash is stored. \newline
+  5. The visitor opens the link, and the server marks the address verified and spends the token. \\
+Alternative flows &
+  1a. Five registrations from the same network address within an hour: the server answers 429. \newline
+  1b. The date of birth is invalid, or the visitor is under twelve: the server answers 400 or 403 and creates nothing. \newline
+  2a. The password is refused: the server answers 400 with the reason, which the form shows. \newline
+  3a. The address or the requested handle is taken: the server answers 409. \newline
+  4a. Three links already went to the address this hour: the account is created and the mail is skipped. \newline
+  5a. The link is unknown, used or expired: the server answers 400, and the user can ask for a new link. \\
+Postcondition & The account exists; once the address is verified, it may upload. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Signing in, with a password or with Google, is specified in Table~\ref{tab:uc-login}.
+
+\begin{table}[H]
+\centering
+\caption{Use case UC-02: sign in with a password or with Google}
+\label{tab:uc-login}
+\small
+\begin{tabularx}{\textwidth}{p{0.2\textwidth} X}
+\toprule
+\textbf{FIELD} & \textbf{CONTENT} \\
+\midrule
+Actors & Anonymous visitor who has, or will get, an account; Google as a supporting actor of the Google sign-in \\
+Requirements & FR-01, NFR-07 \\
+Precondition & None. \\
+Main flow &
+  1. The visitor enters the e-mail address and the password. \newline
+  2. The server compares the password with the stored hash. \newline
+  3. The server returns a session token, which the web client sends in the \texttt{Authorization} header of later requests. \\
+Alternative flows &
+  1a. The visitor signs in with Google: the server verifies the Google identity token; a known Google account signs in, an unknown address creates a verified account, an unverified local account with the same address is taken over and its password removed, and a verified local account is refused with 409, so that its owner links Google from the settings instead. \newline
+  1b. More than ten attempts for one address, or twenty from one network address, in fifteen minutes: the server answers 429. \newline
+  2a. The address or the password is wrong: the server answers 401 with the same message for both. \newline
+  2b. The account is disabled: the server answers 403. \\
+Postcondition & The visitor holds a session token. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Table~\ref{tab:uc-reset} covers a forgotten password and a change of password; the reply to a
+reset request never reveals whether an address has an account.
+
+\begin{table}[H]
+\centering
+\caption{Use case UC-03: reset or change the password}
+\label{tab:uc-reset}
+\small
+\begin{tabularx}{\textwidth}{p{0.2\textwidth} X}
+\toprule
+\textbf{FIELD} & \textbf{CONTENT} \\
+\midrule
+Actor & Registered user \\
+Requirements & FR-02 \\
+Precondition & None for a reset; a session for a change. \\
+Main flow &
+  1. The user who forgot the password enters the e-mail address. \newline
+  2. The server gives the same answer whether or not an account exists; if one does, it e-mails a link valid for one hour. \newline
+  3. The user opens the link and enters a new password. \newline
+  4. The server checks the password before spending the token, stores the new hash, marks the address verified, ends every older session and returns a new session token. \\
+Alternative flows &
+  1a. A signed-in user changes the password from the settings page: the server requires the current password, unless the account only signs in with Google, and then continues at step 4. \newline
+  4a. The token is unknown, used or expired: the server answers 400 and the password is unchanged. \newline
+  4b. The new password is refused: the server answers 400 and the link remains usable. \\
+Postcondition & The password is changed, and tokens issued before the change are no longer accepted. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Browsing and searching (Table~\ref{tab:uc-browse}) and watching (Table~\ref{tab:uc-watch}) are
+open to every visitor.
+
+\begin{table}[H]
+\centering
+\caption{Use case UC-04: browse and search}
+\label{tab:uc-browse}
+\small
+\begin{tabularx}{\textwidth}{p{0.2\textwidth} X}
+\toprule
+\textbf{FIELD} & \textbf{CONTENT} \\
+\midrule
+Actor & Viewer, signed in or not \\
+Requirements & FR-09, FR-16 \\
+Precondition & None. \\
+Main flow &
+  1. The visitor opens the home page, which lists, newest first, videos that are ready, public and approved by moderation. \newline
+  2. As the visitor scrolls, the page loads the next page through a cursor, so the list never repeats or skips a video. \newline
+  3. The visitor types in the search box and receives suggestions after two characters. \newline
+  4. The visitor submits the query, optionally within a category; the server returns matching videos by relevance and, on the first page, up to three matching channels. \newline
+  5. The visitor opens a channel page, which shows the profile, the subscriber count, the featured video if the owner chose one, and the channel's videos, newest first. \newline
+  6. The visitor opens Trending, or a hashtag shown above the title of a video, and sees the matching public videos. \\
+Alternative flows &
+  1a. A signed-in user marks a video ``not interested'': a note with an undo takes its place, and the video stays out of that user's home feed, related videos and trending. \newline
+  4a. Nothing matches: the page shows an empty result. \newline
+  4b. More than sixty searches in a minute: the server answers 429. \\
+Postcondition & None; nothing is changed. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Use case UC-05: watch a video}
+\label{tab:uc-watch}
+\small
+\begin{tabularx}{\textwidth}{p{0.2\textwidth} X}
+\toprule
+\textbf{FIELD} & \textbf{CONTENT} \\
+\midrule
+Actor & Viewer, signed in or not \\
+Requirements & FR-05, FR-06, FR-11, NFR-01, NFR-06 \\
+Precondition & The viewer has the link of the video. \\
+Main flow &
+  1. The viewer opens the watch page, and the server returns the video after applying the access rule. \newline
+  2. The page asks for playback and receives the master playlist address, a signed CDN policy for this video and a playback token, both valid for two hours. \newline
+  3. The player loads the playlists and segments from the CDN with the policy, and fetches the decryption key from the API with the playback token. \newline
+  4. The player switches renditions as the bandwidth changes; a signed-in viewer resumes from the last position, which the player saves every minute and on pause. \newline
+  5. After thirty seconds of playback, or the whole of a shorter video, the page reports a view with its playback token, which the server counts only if that much time has passed since the token was issued, and not if the same viewer was counted within thirty minutes or the viewer owns the video. \newline
+  6. The viewer copies the link, optionally starting at the current time, or the code that embeds the player in another site. \newline
+  7. When the video ends, a card counts down eight seconds over the player and then opens the first video of the related list. \\
+Alternative flows &
+  1a. The video is private or not ready, and the viewer is not its owner: the server answers 404. \newline
+  1b. The video was removed or is under review: the server answers 403 with a distinct code, and the page explains it. \newline
+  1c. The video is password-protected: the page shows only a password form (UC-06). \newline
+  2a. The video is for members and the viewer is not one of a high enough tier: the page shows, instead of the player, a card that leads to the channel's tiers. \newline
+  3a. The grant expires during playback: the player asks for a new one and continues. \newline
+  4a. The viewer leaves the watch page while the video plays: the video goes on in a miniplayer in a corner of every page, and expanding it returns to the watch page at the same second. \newline
+  6a. In an embedded player, a private, password-protected or members-only video shows a card that leads to the site instead of playing. \newline
+  7a. The viewer cancels the countdown or has turned autoplay off, which the browser remembers; the video then simply stops. \\
+Postcondition & The view count may have grown by one. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Table~\ref{tab:uc-unlock} specifies how a password-protected video is opened.
+
+\begin{table}[H]
+\centering
+\caption{Use case UC-06: unlock a password-protected video}
+\label{tab:uc-unlock}
+\small
+\begin{tabularx}{\textwidth}{p{0.2\textwidth} X}
+\toprule
+\textbf{FIELD} & \textbf{CONTENT} \\
+\midrule
+Actor & Viewer, signed in or not \\
+Requirements & FR-06 \\
+Precondition & The video is ready and password-protected. \\
+Main flow &
+  1. The page shows a password form, without the title or any other detail of the video. \newline
+  2. The viewer enters the password, and the server compares it with the stored hash. \newline
+  3. The server returns an unlock token for this video, and the page continues with UC-05. \\
+Alternative flows &
+  2a. The password is wrong: the server answers 403, still without revealing the title. \newline
+  2b. More than ten attempts on this video from one network address in fifteen minutes: the server answers 429. \\
+Postcondition & The viewer may watch the video while the unlock token is valid. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+The interactions of a signed-in viewer are specified in Tables~\ref{tab:uc-interact} to
+\ref{tab:uc-library}: reacting and commenting, subscribing (Table~\ref{tab:uc-subscribe}), joining a
+membership (Table~\ref{tab:uc-join}) and keeping a library.
+
+\begin{table}[H]
+\centering
+\caption{Use case UC-07: like, comment and reply}
+\label{tab:uc-interact}
+\small
+\begin{tabularx}{\textwidth}{p{0.2\textwidth} X}
+\toprule
+\textbf{FIELD} & \textbf{CONTENT} \\
+\midrule
+Actor & Registered user \\
+Requirements & FR-10 \\
+Precondition & The user is signed in and may play the video. \\
+Main flow &
+  1. The user presses like or dislike; the server stores the one reaction of this user and recounts both totals from the stored reactions. \newline
+  2. The user writes a comment of at most 1000 characters, or a reply to a comment. \newline
+  3. The server stores it, a reply always under the top-level comment, and recounts the comments of the video and the replies of the thread. \newline
+  4. The creator of the video pins one top-level comment, which then appears first. \newline
+  5. A viewer orders the comments newest first or with the most replies first, and selects a time written in a comment to move the player there. \\
+Alternative flows &
+  1a. Pressing the same reaction again removes it. \newline
+  2a. More than ten comments in a minute: the server answers 429. \newline
+  3a. The comment replied to was deleted: the server answers 400. \newline
+  4a. Someone other than the creator tries to pin: the server answers 403. \newline
+  4b. The author, the creator or an operator deletes a comment, and its replies go with it; anyone else receives 403. \newline
+  5a. A time past the end of the video stays plain text. \\
+Postcondition & Reactions, comments and their counts are up to date. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Use case UC-08: subscribe to a channel and read notifications}
+\label{tab:uc-subscribe}
+\small
+\begin{tabularx}{\textwidth}{p{0.2\textwidth} X}
+\toprule
+\textbf{FIELD} & \textbf{CONTENT} \\
+\midrule
+Actor & Registered user \\
+Requirements & FR-12 \\
+Precondition & The user is signed in. \\
+Main flow &
+  1. The user presses Subscribe on a channel page or below a video. \newline
+  2. The server records the subscription and recounts the subscribers of the channel. \newline
+  3. The subscriptions page lists the newest videos of every subscribed channel. \newline
+  4. When a subscribed channel publishes a video, the user receives an in-app notification, and also an e-mail unless the user has turned e-mails off. \newline
+  5. The user opens the notifications and marks them read. \\
+Alternative flows &
+  1a. The channel is the user's own: the server answers 400. \newline
+  1b. Pressing again unsubscribes, and the count is recomputed. \\
+Postcondition & The subscription and the subscriber count agree. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Use case UC-09: join a channel membership}
+\label{tab:uc-join}
+\small
+\begin{tabularx}{\textwidth}{p{0.2\textwidth} X}
+\toprule
+\textbf{FIELD} & \textbf{CONTENT} \\
+\midrule
+Actor & Registered user \\
+Requirements & FR-13 \\
+Precondition & The user is signed in and the channel offers at least one tier. \\
+Main flow &
+  1. The user opens the channel's tiers, each with a name, price, level and perks. \newline
+  2. The user chooses a tier and confirms the sandbox payment. \newline
+  3. The server records a membership at that tier's level for thirty days. \newline
+  4. The user gets the member badge and the videos limited to that level or below. \\
+Alternative flows &
+  2a. The channel is the user's own: the server answers 400. \newline
+  3a. The user is already a member: the tier changes and the end date stays. \newline
+  4a. The user cancels: the membership stays active until its end date and is not renewed. \\
+Postcondition & The membership is active until its end date. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Use case UC-10: keep a library}
+\label{tab:uc-library}
+\small
+\begin{tabularx}{\textwidth}{p{0.2\textwidth} X}
+\toprule
+\textbf{FIELD} & \textbf{CONTENT} \\
+\midrule
+Actor & Registered user \\
+Requirements & FR-14 \\
+Precondition & The user is signed in. \\
+Main flow &
+  1. Watching a video adds it to the user's history with the last position. \newline
+  2. The user adds a video to Watch later, a playlist that every account has. \newline
+  3. The user creates a playlist with a title, a description and a visibility, adds videos and changes their order. \newline
+  4. The user opens the library to see the history, Watch later, the liked videos, latest like first, and the playlists. \newline
+  5. The user plays a playlist: it shows beside the player, and when a video ends the next one starts, in order or shuffled, and from the start again when looping is on. \\
+Alternative flows &
+  1a. The user removes one entry or clears the whole history. \newline
+  1b. The user has paused the history: watching adds no entry and keeps no resume position until it is turned back on. \newline
+  3a. A video that becomes private or removed disappears from what others see of a playlist. \newline
+  4a. Another person opens a private playlist: the server answers 404. \newline
+  4b. A liked video that became private, removed or deleted is left out of the liked videos. \\
+Postcondition & The library reflects the user's changes. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Uploading, the use case that shapes the architecture most, is specified in
+Table~\ref{tab:usecase-upload}, and the other work of a creator in Tables~\ref{tab:uc-manage} to
+\ref{tab:uc-tiers}, among them scheduled publication (Table~\ref{tab:uc-schedule}).
+
+\begin{table}[H]
+\centering
+\caption{Use case UC-11: upload a video}
+\label{tab:usecase-upload}
+\small
+\begin{tabularx}{\textwidth}{p{0.2\textwidth} X}
+\toprule
+\textbf{FIELD} & \textbf{CONTENT} \\
+\midrule
+Actor & Creator \\
+Requirements & FR-03, FR-04, FR-06, FR-24, FR-26 \\
+Precondition & The creator is signed in with a verified address. \\
+Main flow &
+  1. The creator selects a file and chooses the title, description and visibility. \newline
+  2. The client sends the name, size and type of the file; the server creates the video in state \status{uploading} and returns a grant valid for fifteen minutes that fixes the storage key, the size and the metadata. \newline
+  3. The browser sends the file directly to Amazon S3 and shows progress, speed and remaining time. \newline
+  4. The arrival of the file in S3 starts processing (UC-15); the client's completion call only records when the upload ended. \newline
+  5. The studio shows the video with the current step and progress until it is ready. \\
+Alternative flows &
+  2a. The address is not verified: the server answers 403, and the page offers to send the link again. \newline
+  2b. The file is larger than 20~GiB or not a supported video type: the server answers 400 before creating anything. \newline
+  2c. More than twenty uploads in an hour: the server answers 429. \newline
+  2d. The file is larger than the plan of the creator allows: the server answers 403 with the limit, and the page links to the plans. \newline
+  3a. The file is larger than 5~GiB: the server opens a multipart upload, the browser asks for grants for parts of 32~MiB and sends them, and the completion call assembles the parts from the list that S3 itself keeps, refusing missing or wrong-sized parts. \newline
+  3b. The creator cancels: the multipart upload, the stored data and the draft are removed. \newline
+  5a. The video is longer than the plan allows: processing stops after the duration is read, before any encoding, and the studio shows the video as failed with the reason. \\
+Postcondition & The video is being processed. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Use case UC-12: edit and delete a video in the studio}
+\label{tab:uc-manage}
+\small
+\begin{tabularx}{\textwidth}{p{0.2\textwidth} X}
+\toprule
+\textbf{FIELD} & \textbf{CONTENT} \\
+\midrule
+Actor & Creator \\
+Requirements & FR-06, FR-07, FR-15, FR-25 \\
+Precondition & The creator is signed in and owns the video. \\
+Main flow &
+  1. The studio lists the creator's videos with status, views and visibility, including those still processing. \newline
+  2. The creator edits the title, description, tags, category, visibility, audience and minimum tier, and uploads a custom thumbnail. \newline
+  3. The creator uploads WebVTT captions per language and defines chapters. \newline
+  4. The creator reads the analytics, views per day, watch time and retention, over a period of 7, 28, 90 or 365 days. \newline
+  5. The creator deletes a video; the server removes the record first, then its comments, reactions and playlist entries, and finally the source, the renditions and the key. \\
+Alternative flows &
+  2a. Switching to password protection without a password: the server answers 400. \newline
+  2b. Limiting to members without any tier: the server answers 400. \newline
+  2c. The custom thumbnail is not a JPEG or PNG image of at most 2~MiB, or fails screening: the server refuses it. \newline
+  3a. The chapters break the rules, which ask for at least three, the first at 0:00 and each at least ten seconds long: the server answers 400. \newline
+  4a. The period is longer than the plan allows: the longer choices are shown locked with a link to the plans. \newline
+  5a. The video is still uploading: the upload is aborted instead. \\
+Postcondition & The watch page and the listings reflect the change. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Use case UC-13: schedule the publication}
+\label{tab:uc-schedule}
+\small
+\begin{tabularx}{\textwidth}{p{0.2\textwidth} X}
+\toprule
+\textbf{FIELD} & \textbf{CONTENT} \\
+\midrule
+Actors & Creator, who chooses the moment; time, which starts the publication \\
+Requirements & FR-08 \\
+Precondition & The creator owns the video, and it is not yet public. \\
+Main flow &
+  1. The creator chooses a date and time. \newline
+  2. The server creates a one-time schedule for that moment; a video already processed becomes \status{scheduled}. \newline
+  3. At that moment the schedule fires, and the video becomes public and ready, which notifies the subscribers. \\
+Alternative flows &
+  1a. The time is less than five minutes or more than a year ahead: the server answers 400. \newline
+  2a. The video failed processing or is already public: the server answers 409. \newline
+  3a. The schedule fires before processing ends: nothing happens, and the video is published as soon as it is ready. \newline
+  3b. The creator cancels: the schedule is deleted and the video stays private. \\
+Postcondition & The video is published at the chosen time, or stays private. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Use case UC-14: customise the channel and manage membership tiers}
+\label{tab:uc-tiers}
+\small
+\begin{tabularx}{\textwidth}{p{0.2\textwidth} X}
+\toprule
+\textbf{FIELD} & \textbf{CONTENT} \\
+\midrule
+Actor & Creator \\
+Requirements & FR-13, FR-16 \\
+Precondition & The creator is signed in. \\
+Main flow &
+  1. The creator sets the handle and the description of the channel, and picks one of its public videos to feature at the top of the channel page. \newline
+  2. The creator uploads an avatar or a banner, a JPEG or PNG image of up to 2~MiB, which the server screens with the policy of the videos before it replaces the current one. \newline
+  3. The creator creates a tier with a name, price, level, perks and badge colour. \newline
+  4. The creator edits or retires a tier. \newline
+  5. The creator reads the list of current members with their tier and end date. \\
+Alternative flows &
+  1a. The handle is reserved or already taken: the server answers 409. \newline
+  1b. The video to feature is not a public video of this channel: the server answers 400; a featured video that later stops being public is no longer shown. \newline
+  2a. The image is too large or of another type: the server answers 400. \newline
+  2b. The image breaks the content rules: the server answers 403 and the current image stays. \newline
+  3a. The channel already has as many tiers as the plan allows: the server answers 403 with the limit. \\
+Postcondition & The channel page shows the profile and offers the tiers. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Table~\ref{tab:uc-transcode} specifies the transcoding, which every upload includes and which an
+event starts, not a person.
+
+\begin{table}[H]
+\centering
+\caption{Use case UC-15: transcode a video automatically}
+\label{tab:uc-transcode}
+\small
+\begin{tabularx}{\textwidth}{p{0.2\textwidth} X}
+\toprule
+\textbf{FIELD} & \textbf{CONTENT} \\
+\midrule
+Actors & None of its own: it is included in uploading (UC-11). Amazon Rekognition is a supporting actor of the screening \\
+Requirements & FR-04, FR-18, FR-26, NFR-02, NFR-03, NFR-08 \\
+Precondition & A source file has arrived in the raw bucket. \\
+Main flow &
+  1. Amazon S3 emits an event, which Amazon SQS buffers. \newline
+  2. A function reads the metadata of the object and starts a workflow execution named after the video and its upload version. \newline
+  3. The workflow marks the video as processing, reads the plan of the owner, which chooses the priority or the standard queues and the longest duration allowed, creates the encryption key and probes the source. \newline
+  4. In parallel, one job screens sampled frames and makes the thumbnail and seek-preview images, while the encoding runs as one job for a video shorter than five minutes, or as an audio job and parallel chunk jobs followed by a stitching step for a longer one. \newline
+  5. The workflow publishes the video as ready, or as scheduled, with the result of the screening, and the subscribers are notified. \\
+Alternative flows &
+  2a. The same event arrives twice: the second execution is refused by name, and nothing more happens. \newline
+  3a. The probed duration is longer than the plan allows: the video becomes \status{error} with the reason, no job is submitted and no alert is sent. \newline
+  4a. A job fails for a reason that may pass, such as a reclaimed Spot task: it is retried, up to three attempts. \newline
+  4b. A job fails for a reason that another attempt cannot fix, such as an unreadable source: the video becomes \status{error} with the reason, the owner is told once, and an alert is sent. \newline
+  4c. The screening cannot run: the video is held for review. \newline
+  5a. The screening removes the video or holds it: it is not listed, and its owner may appeal. \\
+Postcondition & The video is \status{ready} or \status{scheduled} with a moderation result, or \status{error}. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+The remaining use cases belong to moderation. A viewer's report (Table~\ref{tab:uc-report}) and
+the screening both lead to an operator's decision (Table~\ref{tab:uc-decide}).
+
+\begin{table}[H]
+\centering
+\caption{Use case UC-16: report a video or a comment}
+\label{tab:uc-report}
+\small
+\begin{tabularx}{\textwidth}{p{0.2\textwidth} X}
+\toprule
+\textbf{FIELD} & \textbf{CONTENT} \\
+\midrule
+Actor & Registered user \\
+Requirements & FR-19 \\
+Precondition & The user is signed in and may see the video. \\
+Main flow &
+  1. The user chooses Report on a video or a comment and one of eight reasons, such as sexual, violent, hateful or spam, with optional details. \newline
+  2. The server records the report and recounts the open reports of the item, which places it in the review queue. \\
+Alternative flows &
+  1a. The item is the user's own: the server answers 400. \newline
+  1b. More than twenty reports in an hour: the server answers 429. \newline
+  2a. The user already has an open report on the item: no second report is created. \\
+Postcondition & An open report waits for an operator. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Use case UC-17: decide on a video or a comment}
+\label{tab:uc-decide}
+\small
+\begin{tabularx}{\textwidth}{p{0.2\textwidth} X}
+\toprule
+\textbf{FIELD} & \textbf{CONTENT} \\
+\midrule
+Actor & Operator or administrator \\
+Requirements & FR-20, FR-22 \\
+Precondition & The person holds the permission to review, and a video was held by the screening, reported by viewers or removed by the machine. \\
+Main flow &
+  1. The operator opens the review queue of held and reported videos, plays a video and reads its reports grouped by reason. \newline
+  2. The operator approves or removes the video with a reason code from the closed list of that decision and an optional note. \newline
+  3. The server keeps the machine's verdict if it was not kept before, applies the decision, closes the open reports and logs the decision with its outcome class. \newline
+  4. For a reported comment, the operator dismisses the reports or removes the comment and its replies. \newline
+  5. In the tab of removed videos, the operator confirms a removal the machine made or restores the video, and the decision is logged as a confirmation or a restoration. \\
+Alternative flows &
+  2a. The reason code does not belong to the decision: the server answers 400. \newline
+  2b. An operator tries to change a decision taken by an administrator: the server answers 403. \\
+Postcondition & The video or comment is shown or hidden accordingly, and the decision is logged. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+The owner of a removed or held video can then appeal (Table~\ref{tab:uc-appeal}).
+
+\begin{table}[H]
+\centering
+\caption{Use case UC-18: appeal a decision}
+\label{tab:uc-appeal}
+\small
+\begin{tabularx}{\textwidth}{p{0.2\textwidth} X}
+\toprule
+\textbf{FIELD} & \textbf{CONTENT} \\
+\midrule
+Actors & Owner of the video; operator \\
+Requirements & FR-21 \\
+Precondition & The video is removed or held for review. \\
+Main flow &
+  1. The owner writes an appeal of 10 to 500 characters on the video. \newline
+  2. The server records it; the owner sees its state on the video. \newline
+  3. An operator reads the appeal, watches the video, and upholds or rejects it with a note. \newline
+  4. Upholding approves the video with the reason ``appeal upheld''; rejecting keeps the decision. \\
+Alternative flows &
+  1a. The requester does not own the video: the server answers 404. \newline
+  1b. The video is neither removed nor held: the server answers 409. \newline
+  2a. An appeal on the video is already open: the server answers 409. \\
+Postcondition & The appeal is resolved, and the owner sees the outcome. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Table~\ref{tab:uc-audit} specifies the random audit that estimates what the screening misses, and
+Table~\ref{tab:uc-role} the assignment of roles.
+
+\begin{table}[H]
+\centering
+\caption{Use case UC-19: audit a random sample and read the error rates}
+\label{tab:uc-audit}
+\small
+\begin{tabularx}{\textwidth}{p{0.2\textwidth} X}
+\toprule
+\textbf{FIELD} & \textbf{CONTENT} \\
+\midrule
+Actors & Administrator; operator; auditor \\
+Requirements & FR-22 \\
+Precondition & Each person holds the permission for their step. \\
+Main flow &
+  1. The administrator draws a random sample of 1 to 200 ready videos that the machine alone approved. \newline
+  2. An operator watches each sampled video and labels it pass or fail. \newline
+  3. A video labelled fail is removed with the reason ``audit failed''. \newline
+  4. The auditor reads the rates of the screening, each with its 95\% Wilson interval and sample size, and the decision log filtered by outcome. \\
+Alternative flows &
+  1a. A video already sampled is not added twice. \newline
+  2a. The sample was already labelled: the server answers 404. \\
+Postcondition & The share of approvals that failed the audit, the false omission rate of the screening, includes the new labels. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Use case UC-20: assign a role}
+\label{tab:uc-role}
+\small
+\begin{tabularx}{\textwidth}{p{0.2\textwidth} X}
+\toprule
+\textbf{FIELD} & \textbf{CONTENT} \\
+\midrule
+Actor & Administrator \\
+Requirements & FR-23 \\
+Precondition & The person is signed in as an administrator. \\
+Main flow &
+  1. The administrator searches users by the start of their e-mail address or handle. \newline
+  2. The administrator chooses user, operator, auditor or administrator. \newline
+  3. The server changes the role, logs who changed whom from which role to which, and forgets the cached session of that user. \newline
+  4. The change takes effect within 30 seconds, when every instance of the API has read the account again. \\
+Alternative flows &
+  2a. The change would demote the last administrator: the server answers 409. \\
+Postcondition & The role is changed, and the change is logged. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Two use cases come from the platform plans: buying a plan (Table~\ref{tab:uc-plan}) and
+the automatic captions that a paid plan brings (Table~\ref{tab:uc-auto-captions}).
+
+\begin{table}[H]
+\centering
+\caption{Use case UC-21: buy, change or cancel a plan}
+\label{tab:uc-plan}
+\small
+\begin{tabularx}{\textwidth}{p{0.2\textwidth} X}
+\toprule
+\textbf{FIELD} & \textbf{CONTENT} \\
+\midrule
+Actors & Registered user; payment provider \\
+Requirements & FR-24, NFR-11 \\
+Precondition & The user is signed in with a verified address and is on the free plan. \\
+Main flow &
+  1. The user compares the four plans with their prices and limits and chooses Plus, Pro or Max. \newline
+  2. The server opens a checkout session for that plan and returns its address; the browser goes to the hosted payment page. \newline
+  3. The user pays, and the payment provider returns the browser to the settings page. \newline
+  4. The payment provider sends a signed event to the server, which checks the signature, applies the event once and sets the plan of the user. \newline
+  5. The new limits apply to the next upload, video and caption. \\
+Alternative flows &
+  2a. The address is not verified: the server answers 403. \newline
+  2b. The user already has a paid plan: the server answers 409, and the page offers the billing portal. \newline
+  3a. The user leaves the payment page: nothing changes. \newline
+  4a. The same event arrives twice, or an older event after a newer one: it changes nothing. \newline
+  4b. A renewal payment fails: the plan is marked past due and stays until the paid period ends. \newline
+  5a. The user changes or cancels the plan on the hosted portal: the change arrives as an event, and a cancelled plan lasts until the end of the period. \\
+Postcondition & The plan of the user is the one the payment provider reports. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Use case UC-22: caption a video automatically}
+\label{tab:uc-auto-captions}
+\small
+\begin{tabularx}{\textwidth}{p{0.2\textwidth} X}
+\toprule
+\textbf{FIELD} & \textbf{CONTENT} \\
+\midrule
+Actors & None of its own: it extends transcoding (UC-15) when a video becomes public. Amazon Transcribe is a supporting actor \\
+Requirements & FR-25, NFR-11 \\
+Precondition & A video has been published, and the plan of its owner includes automatic captions. \\
+Main flow &
+  1. The publication event reaches the caption function. \newline
+  2. The function checks the plan, the length of the video and the minutes left this month, and reserves the minutes of the video. \newline
+  3. It starts one speech recognition job on the source, which picks Vietnamese or English. \newline
+  4. When the job ends, the function copies the WebVTT file next to the video as a caption track marked automatic. \newline
+  5. The player offers the new track the next time the video is opened. \\
+Alternative flows &
+  2a. The video has no sound, is longer than the plan allows for captions, is larger than 2~GB or already has a caption from the owner: nothing is started and nothing is spent. \newline
+  2b. The minutes left are not enough: nothing is started. \newline
+  2c. The same event arrives twice: the second job is refused by name. \newline
+  4a. The job fails: the reserved minutes are given back. \newline
+  4b. The owner uploads a caption in the same language later: it replaces the automatic one. \\
+Postcondition & The video has an automatic caption track, or nothing was spent. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+The last two use cases belong to the administrator who runs the platform: reading the overview
+(Table~\ref{tab:uc-overview}) and switching the services billed per use (Table~\ref{tab:uc-switches}).
+
+\begin{table}[H]
+\centering
+\caption{Use case UC-23: read the system overview}
+\label{tab:uc-overview}
+\small
+\begin{tabularx}{\textwidth}{p{0.2\textwidth} X}
+\toprule
+\textbf{FIELD} & \textbf{CONTENT} \\
+\midrule
+Actor & Administrator \\
+Requirements & FR-27 \\
+Precondition & The person is signed in as an administrator. \\
+Main flow &
+  1. The administrator opens the overview tab of the staff console, which shows the last 30 days. \newline
+  2. The server counts users, plans, videos, screening outcomes, caption minutes and views from the documents at that moment. \newline
+  3. The page shows the totals, the most common processing errors and one bar chart per day for sign-ups, uploads and views, with the same numbers as a table. \newline
+  4. The administrator switches the window to 7 or 90 days. \\
+Alternative flows &
+  1a. An operator or an auditor asks for the overview: the server answers 403 and the tab is not shown. \newline
+  4a. Another window is asked for: the server answers 400. \\
+Postcondition & None; nothing is changed. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Use case UC-24: switch screening or automatic captions}
+\label{tab:uc-switches}
+\small
+\begin{tabularx}{\textwidth}{p{0.2\textwidth} X}
+\toprule
+\textbf{FIELD} & \textbf{CONTENT} \\
+\midrule
+Actor & Administrator \\
+Requirements & FR-28, NFR-11 \\
+Precondition & The person is signed in as an administrator. \\
+Main flow &
+  1. The administrator opens the settings tab, which shows each switch, whether it comes from the console or from the default of the infrastructure, its cost and the history of changes. \newline
+  2. The administrator turns a switch on or off and confirms. \newline
+  3. The server stores the switch and appends the change, with who made it, to a log that is never updated. \newline
+  4. The next video that starts processing is screened or not accordingly, and the next published video gets automatic captions or not. \\
+Alternative flows &
+  2a. The infrastructure has removed the trigger of automatic captions: the switch is locked, and the server answers 409 if asked to turn it on. \newline
+  3a. The value is already the one in force: it is stored and no change is logged. \\
+Postcondition & The switch is in force for later videos, and the change is logged. \\
+\bottomrule
+\end{tabularx}
+\end{table}

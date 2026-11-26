@@ -10,31 +10,9 @@ Chapter~\ref{chap:requirements} against the evidence.
 \label{sec:deployed-environment}
 
 The platform runs in production at the domain of the project, in the Singapore region of AWS.
-Table~\ref{tab:deployed-environment} lists what the production environment consists of and the
+Table~\ref{tab:deployed-environment} in Appendix~\ref{app:install} lists what the production environment consists of and the
 setting that bounds each part. A second environment, \name{staging}, is built from the same code with
 lower ceilings, and changes are checked there before they reach production (Section~\ref{sec:cicd}).
-
-\begin{table}[H]
-\centering
-\caption{The production environment}
-\label{tab:deployed-environment}
-\small
-\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{0.2\textwidth} >{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}p{0.3\textwidth}}
-\toprule
-\textbf{PART} & \textbf{SERVICE} & \textbf{SETTING} \\
-\midrule
-Web application & S3 bucket behind CloudFront & Hashed assets cached for a year \\
-API & One Lambda function, Node.js 22, 512 MiB, behind a Cloudflare Worker & 80 reserved instances \\
-Workflow & S3 events, SQS, Step Functions and the functions starter, probe, status and stitch & One execution per upload version \\
-Compute & AWS Batch on Fargate Spot and Fargate On-Demand, standard and priority queues & 24 + 24 vCPUs, six + six chunk slots \\
-Media delivery & CloudFront, Origin Access Control, signed query policy & Edges of price class 200, which include Asia \\
-Documents and search & MongoDB Atlas, free M0 cluster of its own & 500 connections, 100 operations per second \\
-Short-lived data & Five DynamoDB tables on demand & Billed per request \\
-Payment & Stripe Checkout, customer portal and webhook & Test mode, no real money \\
-Automatic captions & The captions function and Amazon Transcribe & Plans with caption minutes; a switch turns it off \\
-\bottomrule
-\end{tabularx}
-\end{table}
 
 \section{User Interface}
 \label{sec:ui-showcase}
@@ -51,117 +29,8 @@ further down the list.
 \label{fig:ui-watch}
 \end{figure}
 
-Figure~\ref{fig:ui-search} shows a search typed without Vietnamese diacritics. The query
-\emph{xay lang} finds the title \emph{xây làng}, because the search index folds diacritics on both
-sides (Section~\ref{sec:database-design}). Figure~\ref{fig:ui-channel} shows the page of a channel,
-with its handle, its subscriber count and its videos.
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=\textwidth]{images/ui-search.png}
-\caption{\textit{Search results for a query typed without diacritics}}
-\label{fig:ui-search}
-\end{figure}
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=\textwidth]{images/ui-channel.png}
-\caption{\textit{Channel page}}
-\label{fig:ui-channel}
-\end{figure}
-
-Figure~\ref{fig:ui-upload} shows the upload page before a file is chosen. It states the accepted
-formats and the size ceiling of the account's plan, here 20~GiB, which the interface writes as GB, and tells the creator that processing starts when the transfer
-ends. Figure~\ref{fig:ui-console} shows the accuracy tab of the staff console. Every rate is shown
-with the number of decisions behind it, and the console says that there is not enough data rather
-than print a rate computed from no decision at all.
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=\textwidth]{images/ui-upload.png}
-\caption{\textit{Upload page}}
-\label{fig:ui-upload}
-\end{figure}
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=\textwidth]{images/ui-console-accuracy.png}
-\caption{\textit{Accuracy tab of the staff console}}
-\label{fig:ui-console}
-\end{figure}
-
-The other tabs of the console carry the moderation work of Section~\ref{sec:screening-design}.
-The activity they show was produced on production with the sample accounts: comments and reports
-from viewers, two removals of benchmark clips, one appeal upheld and one still open.
-Figure~\ref{fig:ui-review} shows the review queue. A video enters it when screening holds it or when
-viewers report it; its image stays blurred until the reviewer asks to see it, and the open reports
-can be expanded before the video is kept or removed. Figure~\ref{fig:ui-comments} lists the reported
-comments, most reported first: keeping one closes its reports, and removing it deletes it with its
-replies. An appeal against a removal appears in the tab of Figure~\ref{fig:ui-appeals} with the
-creator's message, a field for the reply and the choice between restoring the video and keeping it
-removed. Figure~\ref{fig:ui-audit} shows the spot check, a random sample of videos that screening
-approved, each marked pass or fail; the share that fails is the estimate of missed violations in
-Figure~\ref{fig:ui-console}. Every decision joins the log of Figure~\ref{fig:ui-events} with the
-person, the reason and the outcome measured against the verdict of the machine, and a second view of
-the same tab lists the changes of role.
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=\textwidth]{images/ui-admin-review.png}
-\caption{\textit{Review queue of the staff console with videos reported by viewers}}
-\label{fig:ui-review}
-\end{figure}
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=\textwidth]{images/ui-admin-comments.png}
-\caption{\textit{Reported comments in the staff console}}
-\label{fig:ui-comments}
-\end{figure}
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=\textwidth]{images/ui-admin-appeals.png}
-\caption{\textit{Open appeal of a creator against a removal}}
-\label{fig:ui-appeals}
-\end{figure}
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=\textwidth]{images/ui-admin-audit.png}
-\caption{\textit{Spot check of videos approved by screening}}
-\label{fig:ui-audit}
-\end{figure}
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=\textwidth]{images/ui-admin-events.png}
-\caption{\textit{Decision log of the staff console}}
-\label{fig:ui-events}
-\end{figure}
-
-Figure~\ref{fig:ui-overview} shows the overview tab that only an administrator sees. The tiles count
-users and plans, content and processing, screening outcomes, caption minutes and views over the
-chosen window, here 30 days, and every account counts, the sample channels and the test accounts
-included. Below the tiles, one bar chart per day shows sign-ups, uploads and views, and the same
-numbers are available as a table. Figure~\ref{fig:ui-settings} shows the settings tab with the two
-switches of Section~\ref{sec:screening-design}: each card states what the service does, what it
-costs and whether its value was set in the console or comes from the default of the
-infrastructure, and every change asks for confirmation and joins the history below the cards.
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=0.8\textwidth]{images/ui-admin-overview.png}
-\caption{\textit{Overview tab of the staff console, for administrators}}
-\label{fig:ui-overview}
-\end{figure}
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=\textwidth]{images/ui-admin-settings.png}
-\caption{\textit{Settings tab of the staff console with the switches of screening and automatic captions}}
-\label{fig:ui-settings}
-\end{figure}
+The upload page, the staff console and the other pages of the application are shown in
+Appendix~\ref{app:ui}.
 
 \section{Measurement Method}
 \label{sec:measurement-method}
@@ -173,7 +42,7 @@ of production. Table~\ref{tab:measurements} lists the measurements. The raw valu
 Appendix~\ref{app:measurement-tables}, with a map from each table and figure of this chapter to its
 result file.
 
-\begin{table}[H]
+\begin{table}[htbp]
 \centering
 \caption{Measurements, their tools and their samples}
 \label{tab:measurements}
@@ -270,7 +139,7 @@ the time the player needed to react.
 \subsection{Declared and Delivered Bit Rate}
 \label{sec:bitrate-evaluation}
 
-The player can only choose safely if the playlist is truthful. Table~\ref{tab:bitrate-check} sets
+The player can only choose safely if the playlist is truthful. Table~\ref{tab:bitrate-check} in Appendix~\ref{app:measurement-tables} sets
 what the master playlist of the recording declares against what its segments contain. The peak
 segment bit rate equals the declared \texttt{BANDWIDTH} in every rung, and the average equals
 \texttt{AVERAGE-BANDWIDTH}, because both values are measured from the segments when the playlist is
@@ -280,27 +149,6 @@ the packaging allow (Section~\ref{sec:ladder-design}). Every segment lasts betwe
 6.01~seconds, except the last one of each rung. The two
 other videos measured, both synthetic test patterns, give the same agreement in all six rungs.
 
-\begin{table}[H]
-\centering
-\caption{Declared and delivered bit rate of a production recording, in kbit/s (47 segments per rung)}
-\label{tab:bitrate-check}
-\small
-\begin{tabular}{l l r r r r}
-\toprule
- & & \multicolumn{2}{c}{\textbf{PEAK}} & \multicolumn{2}{c}{\textbf{AVERAGE}} \\
-\cmidrule(lr){3-4} \cmidrule(lr){5-6}
-\textbf{RUNG} & \textbf{SIZE} & \textbf{DECLARED} & \textbf{DELIVERED} & \textbf{DECLARED} & \textbf{DELIVERED} \\
-\midrule
-144p  & 256$\times$144   & 201  & 201  & 154  & 154 \\
-240p  & 426$\times$240   & 408  & 408  & 249  & 249 \\
-360p  & 638$\times$360   & 688  & 688  & 420  & 420 \\
-480p  & 850$\times$480   & 1178 & 1178 & 716  & 716 \\
-720p  & 1276$\times$720  & 2443 & 2443 & 1578 & 1578 \\
-1080p & 1912$\times$1080 & 4933 & 4933 & 3562 & 3562 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
 \section{Transcoding}
 \label{sec:pipeline-evaluation}
 
@@ -308,7 +156,8 @@ other videos measured, both synthetic test patterns, give the same agreement in 
 \label{sec:size-evaluation}
 
 Figure~\ref{fig:transcode-size} shows how long a video took from the end of its upload to
-\status{ready}, for the four file sizes, and Table~\ref{tab:transcode-results} gives the values. The
+\status{ready}, for the four file sizes, and Table~\ref{tab:transcode-results} in
+Appendix~\ref{app:measurement-tables} gives the values. The
 36-second clip has 640 by 360 pixels; the other three are 1080p test patterns at 30 frames per
 second. The two shorter files take the single path, and the two longer ones the chunked path. The
 sizes in MB and GB are the decimal names of the test files; limits and memory are given in binary
@@ -321,23 +170,6 @@ units (MiB, GiB) throughout, and AWS bills memory by the GB-hour, which is a GiB
 three and the line below it the range}}
 \label{fig:transcode-size}
 \end{figure}
-
-\begin{table}[H]
-\centering
-\caption{Transcoding time by file size, three runs each}
-\label{tab:transcode-results}
-\small
-\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}X >{\raggedright\arraybackslash}p{0.12\textwidth} >{\raggedleft\arraybackslash}p{0.13\textwidth} >{\raggedleft\arraybackslash}p{0.13\textwidth} >{\raggedleft\arraybackslash}p{0.16\textwidth}}
-\toprule
-\textbf{SOURCE} & \textbf{PATH} & \textbf{TO READY, MEDIAN} & \textbf{RANGE} & \textbf{vCPU-s PER SECOND OF SOURCE} \\
-\midrule
-36 s clip, 640$\times$360 & Single & 111 s & 94--112 s & 4.67 \\
-100 MB, 2 min, 1080p & Single & 122 s & 120--148 s & 5.09 \\
-500 MB, 10 min, 1080p & 10 chunks & 147 s & 147--149 s & 5.80 \\
-1 GB, 26.7 min, 1080p & 18 chunks & 287 s & 284--291 s & 4.58 \\
-\bottomrule
-\end{tabularx}
-\end{table}
 
 Three observations follow. First, 29 to 57~seconds of every run pass before any encoding starts:
 7 to 25~seconds from the upload to the end of the probe, then 19 to 35~seconds
@@ -501,7 +333,7 @@ short videos on staging; the priority has not been measured on production, where
 \subsection{API}
 \label{sec:backend-evaluation}
 
-Table~\ref{tab:api-load} gives the latency of read requests, home feed, video and search, sent
+Table~\ref{tab:api-load} in Appendix~\ref{app:measurement-tables} gives the latency of read requests, home feed, video and search, sent
 through the Worker from Vietnam. A warm instance answered in 156~ms at the median and 263~ms at the
 95th percentile, network and Worker included. Every burst of up to 80 simultaneous requests was
 answered without an error. The latency of a burst is dominated by start-up: 79 of the 193
@@ -513,24 +345,6 @@ total, not a count per burst, but it explains the order of the medians. Nearly e
 burst of 10 waited for a start, while half of the burst of 20 found a warm instance, so its median
 lies at about the fastest request that waited; in the larger bursts the new instances also queue
 longer on the database.
-
-\begin{table}[H]
-\centering
-\caption{Latency of read requests through the Worker, in milliseconds}
-\label{tab:api-load}
-\small
-\begin{tabular}{l r r r r}
-\toprule
-\textbf{PHASE} & \textbf{REQUESTS} & \textbf{ANSWERED 200} & \textbf{MEDIAN} & \textbf{95TH PERCENTILE} \\
-\midrule
-Sequential, warm & 40 & 40 & 156  & 263  \\
-Burst of 10      & 10 & 10 & 2730 & 2916 \\
-Burst of 20      & 20 & 20 & 1336 & 2682 \\
-Burst of 40      & 40 & 40 & 2547 & 3382 \\
-Burst of 80      & 80 & 80 & 4395 & 5663 \\
-\bottomrule
-\end{tabular}
-\end{table}
 
 \section{Cost}
 \label{sec:cost-analysis}

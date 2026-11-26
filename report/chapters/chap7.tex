@@ -13,7 +13,7 @@ Table~\ref{tab:objective-results} sets each of the five objectives against its r
 of the report that holds the evidence. All five were reached on the production system, with the
 priority queues measured on staging.
 
-\begin{table}[H]
+\begin{table}[htbp]
 \centering
 \caption{Objectives of the project against their results}
 \label{tab:objective-results}
@@ -101,36 +101,23 @@ alike, because every playback grant and key comes from the API in that region.
 \label{sec:future-work}
 
 The first extension is a bitrate ladder chosen per video. Encoding short probes of the source at
-several operating points and keeping those that give the best quality for their bit rate, measured
-with a perceptual metric such as Video Multi-Method Assessment Fusion (VMAF), lowers delivery bandwidth at the same perceived quality;
-streaming services report savings of this kind from per-title and per-shot
-encoding~\cite{netflix2015pertitle,netflix2018dynamic}.
+several operating points and keeping those with the best quality for their bit rate, measured with
+Video Multi-Method Assessment Fusion (VMAF), lowers delivery bandwidth at the same perceived quality,
+as per-title and per-shot encoding did for streaming services~\cite{netflix2015pertitle,netflix2018dynamic}.
+The second is a shorter critical path for long videos: encoding the audio in windows that overlap the
+chunks would remove the wait for the audio job, and a larger capacity grant would raise the number of
+chunk slots without any change to the design. The third is a fallback for browsers without Media
+Source Extensions, with playlists in which every address carries its own signature, which the native
+player of the browser can follow.
 
-The second is a shorter critical path for long videos. Encoding the audio in windows that overlap the
-chunks, with the same packet handling at the boundaries that the chunks already use, would remove the
-wait for the audio job, and a larger capacity grant would raise the number of chunk slots without any
-change to the design.
-
-The third is a fallback for browsers without Media Source Extensions. The API could return playlists
-in which every address carries its own signature, which the native player of the browser can follow
-without adding parameters, while other browsers keep the current path.
-
-The fourth concerns load. A longer back-off with jitter on the client, or a client-side queue for
-uploads, would let a refused upload wait instead of failing, and a paid database tier would remove
-the limit of 100 operations per second.
-
-The fifth concerns the plans. Taking real payments needs a Stripe account in live mode and the
-legal steps that go with it; the code does not change, only the key and the signing secret. The
-priority queues should be measured on production under real load, and, if one lane proves too
-coarse, given one queue per paid plan. The length limits should be tuned from the lengths that real
-creators upload.
-
-The sixth is calibrating the screening from evidence. The console already records the reason codes of
-reversed decisions and an unbiased audit sample; after a few hundred decisions, the thresholds and the
-label policy can be adjusted and the effect measured again. Further ahead, the deployment roles could
-be narrowed with a permissions boundary, and serverless encoding on graphics processing units
-(GPU)~\cite{gpuserverless2024} and a codec such as High Efficiency Video Coding (HEVC) or AV1 next to H.264 would raise throughput
-and reduce bandwidth.
+The rest concerns operation. A client-side queue for uploads would let a refused upload wait
+instead of failing, and a paid database tier would remove the limit of 100 operations per second.
+Real payments need a Stripe account in live mode, while the code stays the same; the priority queues
+should be measured on production, and the length limits tuned from what real creators upload. After a
+few hundred decisions, the thresholds of the screening can be calibrated from the reason codes and the
+audit samples that the console already records. Further ahead, narrower deployment roles, serverless
+encoding on graphics processing units (GPU)~\cite{gpuserverless2024} and a codec such as High
+Efficiency Video Coding (HEVC) or AV1 next to H.264 would raise throughput and reduce bandwidth.
 
 \section{Task Distribution}
 \label{sec:task-distribution}
