@@ -132,7 +132,7 @@ when the viewer cancels.
 
 All cloud resources are described with Terraform in eleven modules, listed in
 Table~\ref{tab:terraform-modules} in Appendix~\ref{app:install}, and three environments. The \name{shared} environment holds what
-every environment uses once: the virtual private cloud (VPC) and the image registry. The \name{staging} and \name{prod}
+every environment uses once: the virtual private cloud and the image registry. The \name{staging} and \name{prod}
 environments compose the modules with their own names (prefix \name{zelos-staging} or
 \name{zelos-prod}), capacity ceilings and hosts. Each environment keeps its state in its own key of
 an S3 bucket, with a DynamoDB table as lock, so two applies can never write the same state at once.
