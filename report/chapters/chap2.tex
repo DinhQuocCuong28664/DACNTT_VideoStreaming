@@ -144,8 +144,8 @@ segments of one rendition~\cite{rfc8216}. For each rendition the master playlist
 segments of nominally six seconds, for every video segment to start with an instantaneous decoder refresh (IDR) frame, and for
 \texttt{BANDWIDTH} to be the largest peak segment bit rate~\cite{applehlsauthoring}.
 
-Figure~\ref{fig:hls-abr} shows the artefacts produced from one source and the order in which a
-player retrieves them. The player first fetches the master playlist, a few hundred bytes, chooses a
+Figure~\ref{fig:hls-abr} shows the renditions produced from one source and an illustrative session
+in which a player moves between them. The player first fetches the master playlist, a few hundred bytes, chooses a
 rendition from the declared bandwidths and its own throughput estimate, and only then requests that
 rendition's playlist and segments. Because every rendition is cut on the same boundaries and each
 segment starts with a key frame, the player can change rendition at any segment boundary without
@@ -158,8 +158,8 @@ only once.
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=0.9\textwidth]{images/06-hls-abr.png}
-\caption{\textit{HLS artefacts produced from one source file and the order in which a player
-retrieves them}}
+\caption{\textit{HLS renditions produced from one source file, and an illustrative session in
+which the player changes rendition at segment boundaries as its measured throughput changes}}
 \label{fig:hls-abr}
 \end{figure}
 

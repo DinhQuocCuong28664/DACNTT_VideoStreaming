@@ -1,99 +1,117 @@
 /**
- * Hình 2.2 — Các tệp HLS sinh ra từ một video nguồn và thứ tự người xem tải.
+ * Figure 2.2 - HLS: what is produced from one source, and how a player moves between renditions.
  *
- * Vẽ lại bản Mermaid vì hai lỗi nội dung do chính bản cũ mang, không phải vì
- * trình bày.
+ * The earlier version was a vertical chain of five cards (source, FFmpeg, ladder, master playlist,
+ * player). It filled a page but showed only the order of the files, while the text beside it is about
+ * adaptive switching: renditions cut on the same boundaries, the master playlist read first, and the
+ * rendition changed only at a segment boundary as the measured throughput moves.
  *
- * Sai số liệu: bản cũ ghi 800 / 2800 / 5000 kbps. Không con số nào trong đó là
- * bitrate thật. Cấu hình ở transcoder/src/config.js đặt 400k, 1500k và 4000k
- * cho video; 800k là `bufsize` của rung 360p còn 5000k là `maxrate` của rung
- * 1080p, hai đại lượng khác hẳn. Phụ lục A vẫn in đúng lệnh FFmpeg, nên bản cũ
- * còn tự mâu thuẫn với phụ lục của chính báo cáo.
+ * This version uses the usual ABR illustration (renditions as rows, 6-second segments as columns, the
+ * player's path through them, and the throughput that drives the path) under a short pipeline strip.
+ * The ladder values are the ones of shared/src/ladder.ts and Table 4.2. The session is illustrative,
+ * not a measurement; each choice is the highest rung whose cap fits 0.95 of the throughput measured
+ * at that boundary, as hls.js does.
  *
- * Sai cơ chế: bản cũ ghi "one encoding pass per rung", trong khi mục 5.2 và
- * phụ lục A đều nói FFmpeg chạy một lần duy nhất, giải mã nguồn
- * đúng một lần rồi mã hoá song song ba rung. Đó chính là lý do chọn cách làm
- * này, nên vẽ sai là làm mất lập luận.
- *
- * Bố cục dọc và hẹp để đặt vừa bề rộng vùng chữ mà nhãn vẫn khoảng 8,7pt, mức
- * lớn nhất trong các hình của báo cáo.
+ * Canvas 1100 px printed at about 135 mm (0.9 of the text width): 18 px type prints at 6.3 pt.
  */
-import { card, edge, text, document_, write, PALETTE } from './render.mjs';
+import { card, edge, document_, write, TYPE, PALETTE } from './render.mjs';
 
-const W = 792;
-const H = 934;
+Object.assign(TYPE, { cardTitle: 19, cardSub: 18, cardSubLH: 21, edgeLabel: 18 });
+
+const SIZE = 18;
+const W = 1100;
+const H = 700;
 const p = [];
 
-const CX = W / 2;
+const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const t = (str, x, y, { anchor = 'start', fill = '#1a1a1a', weight = 'normal', size = SIZE } = {}) =>
+  `<text x="${x}" y="${y}" font-family="Arial, Helvetica, sans-serif" font-size="${size}" ` +
+  `font-weight="${weight}" fill="${fill}" text-anchor="${anchor}">${esc(str)}</text>`;
 
-// ── Nguồn và bộ mã hoá ──────────────────────────────────────────────────────
-const src = card({
-  x: CX - 180, y: 34, w: 360, h: 92,
-  title: 'Uploaded source file', sub: ['any container, codec and resolution'],
-  tone: 'storage',
-});
-// Không đặt `title`: logo FFmpeg vốn đã là chữ "FFmpeg", nên thêm dòng tiêu đề
-// là in cùng một từ hai lần và bắt cả hai phải nhỏ lại để chia chỗ cho nhau. Bỏ
-// dòng chữ đi thì logo đứng một mình được.
-//
-// Cỡ logo chọn theo chiều cao chữ hoa chứ không theo bề rộng ô: chữ trong logo
-// FFmpeg cao bằng 79/138 chiều cao ảnh, nên ở 110px thì chữ hoa cao 17px, tức
-// gấp 1,5 lần chữ hoa của dòng tiêu đề 16px ở các thẻ bên cạnh. Đủ để thấy đây
-// là một logo mà không lấn át những thẻ còn lại.
-const ff = card({
-  x: CX - 180, y: 176, w: 360, h: 98, iconName: 'ffmpeg', iconSize: 110,
-  sub: ['a single invocation, source decoded once'],
-  tone: 'compute',
-});
-p.push(src.svg, ff.svg);
-p.push(edge([[src.box.cx, src.box.b], [ff.box.cx, ff.box.y]]));
+// ── Pipeline strip ────────────────────────────────────────────────────────────
+const src = card({ x: 20, y: 16, w: 250, h: 112, title: 'Source file', sub: ['any container, codec', 'and resolution'], tone: 'storage' });
+const enc = card({ x: 350, y: 16, w: 320, h: 112, title: 'FFmpeg, one run', sub: ['decodes once, encodes', 'up to six renditions'], tone: 'compute' });
+const mst = card({ x: 750, y: 16, w: 330, h: 112, title: 'master.m3u8', sub: ['one entry per rendition', 'with its BANDWIDTH'], tone: 'network' });
+p.push(src.svg, enc.svg, mst.svg);
+p.push(edge([[src.box.r, 72], [enc.box.x, 72]]));
+p.push(edge([[enc.box.r, 72], [mst.box.x, 72]]));
 
-// ── Thang bitrate: tối đa sáu rung ────────────────────────────────────────
-// Một thẻ liệt kê cả thang thay vì sáu thẻ riêng: sáu thẻ xếp hai hàng làm các
-// cạnh toả ra phải chui qua hàng trên, còn một danh sách thì đọc được ngay từ
-// bitrate nào đi với mức nào. Video nguồn chỉ nhận các rung mà độ phân giải của
-// nó lấp được (mục 5.2), nên "tối đa".
-const RY = 372;
-const ladder = card({
-  x: CX - 270, y: RY, w: 540, h: 188,
-  title: 'One output block per rung, up to six',
-  sub: [
-    // Same values as shared/src/ladder.ts and Table 4.2: CRF with a VBV cap, two audio rates.
-    '144p    CRF 28, cap 180 kbps, audio 64 kbps',
-    '240p    CRF 26, cap 350 kbps, audio 64 kbps',
-    '360p    CRF 25, cap 600 kbps, audio 64 kbps',
-    '480p    CRF 24, cap 1100 kbps, audio 64 kbps',
-    '720p    CRF 23, cap 2200 kbps, audio 128 kbps',
-    '1080p  CRF 22, cap 4500 kbps, audio 128 kbps',
-    'each rung has its own index.m3u8 and 6-second .ts segments',
-  ],
-  tone: 'network',
-});
-p.push(ladder.svg);
-p.push(edge([[ff.box.cx, ff.box.b], [ff.box.cx, ladder.box.y]]));
-p.push(text('one input, up to six output blocks', ff.box.cx + 20, 330,
-  { size: 13, anchor: 'start', fill: PALETTE.muted }));
+// ── Grid: renditions x segments ──────────────────────────────────────────────
+const RUNGS = [ // rank 0 = lowest
+  ['144p', 180], ['240p', 350], ['360p', 600], ['480p', 1100], ['720p', 2200], ['1080p', 4500],
+];
+const ROW_TOP = 196;
+const ROW_H = 46;
+const rowY = (rank) => ROW_TOP + (5 - rank) * ROW_H;   // centre of the row
+const X0 = 275;
+const COL = 88;
+const N = 9;
+const colX = (i) => X0 + i * COL;
+const GRID_BOTTOM = rowY(0) + 23;
 
-// ── Master playlist và trình phát ──────────────────────────────────────────
-const master = card({
-  x: CX - 200, y: ladder.box.b + 50, w: 400, h: 96,
-  title: 'master.m3u8',
-  sub: ['lists each rendition with its declared bandwidth'],
-  tone: 'compute',
-});
-p.push(master.svg);
-p.push(edge([[ladder.box.cx, ladder.box.b], [master.box.cx, master.box.y]]));
+// Throughput at each boundary (kbit/s) and the rung chosen for the segment that starts there.
+const TP = [1200, 1500, 2600, 5200, 5500, 1500, 900, 2800, 5600, 5800];
+const pick = (kbps) => RUNGS.reduce((best, [, cap], r) => (cap <= 0.95 * kbps ? r : best), 0);
+const PATH = [2, ...TP.slice(1, N).map(pick)];        // the first segment starts at 360p
 
-const player = card({
-  x: CX - 210, y: master.box.b + 62, w: 420, h: 118, iconName: 'javascript', iconSize: 28,
-  title: 'Player (hls.js)',
-  sub: ['measures throughput and switches rung', 'at a segment boundary'],
-  tone: 'secret',
-});
-p.push(player.svg);
-p.push(edge([[master.box.cx, master.box.b], [player.box.cx, player.box.y]],
-  { label: 'fetch master, then one rendition playlist and its segments', labelDy: -9 }));
+p.push(edge([[enc.box.cx, enc.box.b], [enc.box.cx, ROW_TOP - 30]]));
+p.push(t('writes each rendition', enc.box.cx + 10, 160, { fill: PALETTE.muted }));
+p.push(edge([[mst.box.cx, mst.box.b], [mst.box.cx, ROW_TOP - 30]]));
+p.push(t('read first by the player', mst.box.cx - 10, 160, { anchor: 'end', fill: PALETTE.muted }));
 
-const svg = document_({ width: W, height: H, body: p.join('\n') });
-const out = write('06-hls-abr', svg, 3);
-console.log(`06-hls-abr -> ${(out.bytes / 1024).toFixed(0)} KB`);
+// Segment boundaries, shared by every rendition and by the throughput band.
+for (let i = 0; i <= N; i++) {
+  p.push(`<path d="M ${colX(i)} ${ROW_TOP - 26} L ${colX(i)} 612" stroke="#9aa4b2" stroke-width="1" stroke-dasharray="4 4"/>`);
+}
+
+for (let r = 0; r < RUNGS.length; r++) {
+  const [name, cap] = RUNGS[r];
+  p.push(t(`${name}  cap ${cap} kbit/s`, X0 - 14, rowY(r) + 6, { anchor: 'end' }));
+  for (let i = 0; i < N; i++) {
+    const on = PATH[i] === r;
+    p.push(`<rect x="${colX(i) + 5}" y="${rowY(r) - 16}" width="${COL - 10}" height="32" rx="5" ` +
+      `fill="${on ? '#6cb0ff' : '#f1f4f8'}" stroke="${on ? '#3f86dc' : '#cfd6df'}" stroke-width="${on ? 1.4 : 1}"/>`);
+  }
+}
+
+// The player's path: stays in a row for a whole segment, changes rows only on a boundary.
+const pts = [];
+for (let i = 0; i < N; i++) {
+  pts.push([colX(i) + COL / 2, rowY(PATH[i])]);
+  if (i < N - 1) {
+    pts.push([colX(i + 1), rowY(PATH[i])]);
+    pts.push([colX(i + 1), rowY(PATH[i + 1])]);
+  }
+}
+pts.push([colX(N) - 6, rowY(PATH[N - 1])]);
+p.push(`<path d="${pts.map((q, k) => `${k ? 'L' : 'M'} ${q[0]} ${q[1]}`).join(' ')}" fill="none" stroke="#c2410c" stroke-width="3" stroke-linejoin="round"/>`);
+pts.filter((_, k) => k % 3 === 0).forEach(([x, y]) => p.push(`<circle cx="${x}" cy="${y}" r="5" fill="#c2410c"/>`));
+
+// Time axis
+for (let i = 0; i <= N; i++) {
+  p.push(t(i === 0 ? '0 s' : i === N ? `${6 * i} s` : String(6 * i), colX(i), GRID_BOTTOM + 26, { anchor: 'middle', fill: PALETTE.muted }));
+}
+
+// ── Throughput band ──────────────────────────────────────────────────────────
+const BAND_TOP = 512;
+const BAND_BOTTOM = 604;
+const ty = (k) => BAND_BOTTOM - (k / 6000) * (BAND_BOTTOM - BAND_TOP);
+p.push(`<path d="M ${X0} ${BAND_BOTTOM} L ${colX(N)} ${BAND_BOTTOM}" stroke="#9aa4b2" stroke-width="1"/>`);
+p.push(`<path d="${TP.map((k, i) => `${i ? 'L' : 'M'} ${colX(i)} ${ty(k).toFixed(1)}`).join(' ')}" fill="none" stroke="#2c7a9e" stroke-width="2.6"/>`);
+TP.forEach((k, i) => p.push(`<circle cx="${colX(i)}" cy="${ty(k).toFixed(1)}" r="4" fill="#2c7a9e"/>`));
+p.push(t('Measured', X0 - 14, 548, { anchor: 'end' }));
+p.push(t('throughput', X0 - 14, 570, { anchor: 'end' }));
+p.push(t('(0 to 6 Mbit/s)', X0 - 14, 592, { anchor: 'end', fill: PALETTE.muted }));
+
+// ── Key ──────────────────────────────────────────────────────────────────────
+const KY = 648;
+p.push(`<rect x="20" y="${KY - 14}" width="34" height="20" rx="4" fill="#6cb0ff" stroke="#3f86dc"/>`);
+p.push(t('segment the player fetched', 62, KY + 2));
+p.push(`<path d="M 330 ${KY - 4} L 372 ${KY - 4}" stroke="#c2410c" stroke-width="3"/>`);
+p.push(t('rendition chosen, changed only at a boundary', 380, KY + 2));
+p.push(`<path d="M 800 ${KY - 18} L 800 ${KY + 8}" stroke="#9aa4b2" stroke-dasharray="4 4"/>`);
+p.push(t('same key frames in all', 812, KY + 2));
+p.push(t('An illustrative session: each rendition is chosen from the throughput measured at the boundary before it.', 20, KY + 36, { fill: PALETTE.muted }));
+
+const out = write('06-hls-abr', document_({ width: W, height: H, body: p.join('\n') }), 3);
+console.log(`06-hls-abr -> ${(out.bytes / 1024).toFixed(0)} KB  path=${PATH.join(',')}`);
