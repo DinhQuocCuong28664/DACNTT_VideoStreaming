@@ -452,10 +452,11 @@ the payment webhook writes (Section~\ref{sec:plans-design}). Two small collectio
 \name{billingEvents} remembers the identifier of every payment event already applied, and
 \name{captionUsage} holds the caption minutes used by each user in each month. The collection
 \name{dismissals} keeps one row per viewer and video marked ``not interested''; the home feed,
-related videos and trending leave out the newest thousand of a viewer's rows. Trending needs no
+related videos and trending leave out the newest thousand of a viewer's rows. The figure omits
+\name{emailTokens}, the hashes of e-mailed links until they expire. Trending needs no
 collection of its own: the API takes the newest 500 public videos and ranks them by
 $v / (h + 2)^{1.5}$, where $v$ is the view count and $h$ the age in hours, the gravity formula
-known from Hacker News, so a recent video gaining views passes an older one with more of them.
+known from Hacker News.
 
 % Xoay ngang: đặt vừa bề rộng vùng chữ thì chữ dưới 6,2pt khi in.
 \begin{sidewaysfigure}
