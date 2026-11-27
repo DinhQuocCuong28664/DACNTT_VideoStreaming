@@ -675,7 +675,7 @@ export function document_({ width, height, body, title }) {
 function documentSvg({ width, height, body, title, badgeSvg }) {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
 <defs>
-  <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+  <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
     <path d="M 0 0 L 10 5 L 0 10 z" fill="${PALETTE.line}"/>
   </marker>
 </defs>
