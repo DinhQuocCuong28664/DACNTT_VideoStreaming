@@ -39,7 +39,7 @@ TYPE.chipLabel = 14.5;
 TYPE.chipLabelLH = 17;
 TYPE.edgeLabel = 13.5;
 
-const W = 720;
+const W = 744;
 const H = 1060;
 const p = [];
 
@@ -49,7 +49,9 @@ const C1 = 28;                       // làn công khai
 const C2 = 260;                      // trục chính
 const C3 = 492;                      // nhánh rẽ
 const GUTTER_L = 240;                // rãnh dọc giữa cột 1 và cột 2
-const GUTTER_R = 704;                // rãnh dọc sát mép phải
+// The last leg into a box must be longer than the arrowhead (about 13 px), or
+// the head covers the whole leg and the line seems to bend at the corner.
+const GUTTER_R = 724;                // rãnh dọc sát mép phải
 
 const cx1 = C1 + CW / 2;
 const cx2 = C2 + CW / 2;
@@ -140,10 +142,11 @@ p.push(edge([[LOGIN.box.cx, LOGIN.box.b], [REG.box.cx, REG.box.y]], { label: 'no
 // một đầu mũi tên quay lung tung.
 p.push(edge([[LOGIN.box.cx + 60, LOGIN.box.b], [LOGIN.box.cx + 60, 400],
              [RESET.box.cx, 400], [RESET.box.cx, RESET.box.y]],
-  { label: 'forgot password', labelDx: 36 }));
+  { label: 'forgot password', labelDx: 52 }));
 // Quay lại đăng nhập sau khi đặt lại mật khẩu: rãnh giữa hai cột phải.
-p.push(edge([[RESET.box.x, RESET.box.cy], [C3 - 20, RESET.box.cy],
-             [C3 - 20, LOGIN.box.cy + 16], [LOGIN.box.r, LOGIN.box.cy + 16]]));
+// The vertical runs 8 px from RESET so the leg into LOGIN is 24 px, longer than the arrowhead.
+p.push(edge([[RESET.box.x, RESET.box.cy], [C3 - 8, RESET.box.cy],
+             [C3 - 8, LOGIN.box.cy + 16], [LOGIN.box.r, LOGIN.box.cy + 16]]));
 
 // Ba đường cùng dẫn tới trang tải lên
 p.push(edge([[REG.box.cx, REG.box.b], [UPLOAD.box.cx, UPLOAD.box.y]]));
@@ -176,8 +179,10 @@ p.push(edge([[FAILED.box.cx, FAILED.box.b], [CHANNEL.box.cx, CHANNEL.box.y]]));
 // dọc. Dùng toạ độ tuyệt đối chứ không lấy theo tâm hộp: WATCH cao 76 còn
 // CHANNEL cao 58, nên `cy` của chúng lệch nhau 9px và cạnh nối hai tâm sẽ hơi
 // xiên — đủ để nhìn ra là vẽ ẩu chứ chưa đủ để tưởng là cố ý.
-p.push(edge([[READY.box.x, READY.box.cy], [GUTTER_L, READY.box.cy],
-             [GUTTER_L, 920], [WATCH.box.r, 920]]));
+// READY enters the top of WATCH: through the left gutter its last leg would be
+// 12 px, shorter than the arrowhead.
+p.push(edge([[READY.box.x, READY.box.cy], [WATCH.box.r - 36, READY.box.cy],
+             [WATCH.box.r - 36, WATCH.box.y]]));
 p.push(edge([[CHANNEL.box.x, 952], [WATCH.box.r, 952]]));
 
 // ── Chú giải ────────────────────────────────────────────────────────────────
